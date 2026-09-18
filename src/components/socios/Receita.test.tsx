@@ -30,7 +30,7 @@ function montar(props: Partial<Parameters<typeof Receita>[0]> = {}) {
   render(
     <Receita
       hoje={HOJE}
-      assinatura={{ comecouEm: '2026-09-01', valorMensal: 39.9 }}
+      assinatura={{ comecouEm: '2026-09-01', valorMensal: 39.9, pagaNoCartao: false }}
       estado={pronto()}
       escrita={PARADO}
       aoLancar={aoLancar}
@@ -48,7 +48,7 @@ describe('o resumo', () => {
         linha({ id: 'a', competencia: '2026-08-01' }),
         linha({ id: 'b', competencia: '2026-09-01' }),
       ]),
-      assinatura: { comecouEm: '2026-08-01', valorMensal: 39.9 },
+      assinatura: { comecouEm: '2026-08-01', valorMensal: 39.9, pagaNoCartao: false },
     });
     expect(screen.getByText(/79,80/)).toBeInTheDocument();
   });
@@ -61,7 +61,7 @@ describe('o resumo', () => {
         linha({ id: 'a', competencia: '2026-08-01' }),
         linha({ id: 'b', competencia: '2026-09-01', estornado_em: '2026-09-10T12:00:00Z' }),
       ]),
-      assinatura: { comecouEm: '2026-08-01', valorMensal: 39.9 },
+      assinatura: { comecouEm: '2026-08-01', valorMensal: 39.9, pagaNoCartao: false },
     });
     expect(screen.getByText(/Recebido na mão:/)).toHaveTextContent('39,90');
   });
@@ -81,7 +81,7 @@ describe('o resumo', () => {
 
   it('quem deve aparece devendo, com quantos meses e quanto', () => {
     // O total é o que decide se vale insistir ou encerrar.
-    montar({ assinatura: { comecouEm: '2026-07-01', valorMensal: 39.9 }, estado: pronto() });
+    montar({ assinatura: { comecouEm: '2026-07-01', valorMensal: 39.9, pagaNoCartao: false }, estado: pronto() });
     expect(screen.getByText(/devendo 3 meses/)).toBeInTheDocument();
     expect(screen.getByText(/119,70/)).toBeInTheDocument();
   });
@@ -94,13 +94,13 @@ describe('o resumo', () => {
   it('sem valor combinado é sem cobrança, e não devendo', () => {
     // Quem não combinou pagar não deve nada. Chamar isso de dívida encheria a
     // fila de gente que não tem o que pagar.
-    montar({ assinatura: { comecouEm: '2026-01-01', valorMensal: null } });
+    montar({ assinatura: { comecouEm: '2026-01-01', valorMensal: null, pagaNoCartao: false } });
     expect(screen.getByText('sem cobrança')).toBeInTheDocument();
     expect(screen.queryByText(/devendo/)).not.toBeInTheDocument();
   });
 
   it('lista os meses em aberto, do mais antigo primeiro', () => {
-    montar({ assinatura: { comecouEm: '2026-07-01', valorMensal: 39.9 } });
+    montar({ assinatura: { comecouEm: '2026-07-01', valorMensal: 39.9, pagaNoCartao: false } });
     expect(screen.getByText(/Em aberto: 07\/2026, 08\/2026, 09\/2026/)).toBeInTheDocument();
   });
 
@@ -109,7 +109,7 @@ describe('o resumo', () => {
     // 18 meses" faria os dois números da MESMA tela se desmentirem. Resumir a
     // linha é legítimo, porque trinta e três meses escritos um a um não são
     // cobrança, são ruído. Resumir calado é o defeito.
-    montar({ assinatura: { comecouEm: '2025-04-01', valorMensal: 39.9 } });
+    montar({ assinatura: { comecouEm: '2025-04-01', valorMensal: 39.9, pagaNoCartao: false } });
     expect(screen.getByText(/devendo 18 meses/)).toBeInTheDocument();
     expect(screen.getByText(/e mais 6/)).toBeInTheDocument();
   });
@@ -120,7 +120,7 @@ describe('o resumo', () => {
     // fim promete seis meses DEPOIS de setembro de 2026, quando os escondidos
     // eram os seis anteriores a outubro de 2025. O aviso apontava para a ponta
     // oposta à que tinha sido cortada.
-    montar({ assinatura: { comecouEm: '2025-04-01', valorMensal: 39.9 } });
+    montar({ assinatura: { comecouEm: '2025-04-01', valorMensal: 39.9, pagaNoCartao: false } });
     expect(screen.getByText(/Em aberto: 04\/2025/)).toBeInTheDocument();
   });
 });
@@ -130,7 +130,7 @@ describe('lançar um pagamento', () => {
     // É o lançamento que o sócio vai fazer em quase toda visita. Campo vazio é
     // um passo a mais entre receber o Pix e registrá-lo, e é nesse passo que
     // ele deixa de ser registrado.
-    const { aoLancar } = montar({ assinatura: { comecouEm: '2026-07-01', valorMensal: 39.9 } });
+    const { aoLancar } = montar({ assinatura: { comecouEm: '2026-07-01', valorMensal: 39.9, pagaNoCartao: false } });
     expect(screen.getByLabelText('Mês de competência do pagamento')).toHaveValue('2026-07');
     await userEvent.click(screen.getByRole('button', { name: /Registrar pagamento/ }));
     expect(aoLancar).toHaveBeenCalledWith({
@@ -150,7 +150,7 @@ describe('lançar um pagamento', () => {
     // conseguia lançar os seis mais antigos por aqui: eles não estavam na
     // lista, então o campo nunca os oferecia e a dívida mais velha ficava sem
     // caminho de quitação na tela.
-    const { aoLancar } = montar({ assinatura: { comecouEm: '2025-04-01', valorMensal: 39.9 } });
+    const { aoLancar } = montar({ assinatura: { comecouEm: '2025-04-01', valorMensal: 39.9, pagaNoCartao: false } });
     expect(screen.getByLabelText('Mês de competência do pagamento')).toHaveValue('2025-04');
     await userEvent.click(screen.getByRole('button', { name: /Registrar pagamento/ }));
     expect(aoLancar).toHaveBeenCalledWith({
@@ -168,7 +168,7 @@ describe('lançar um pagamento', () => {
     const { rerender } = render(
       <Receita
         hoje={HOJE}
-        assinatura={{ comecouEm: '2026-07-01', valorMensal: 39.9 }}
+        assinatura={{ comecouEm: '2026-07-01', valorMensal: 39.9, pagaNoCartao: false }}
         estado={{ tipo: 'carregando' }}
         escrita={PARADO}
         aoLancar={vi.fn()}
@@ -178,7 +178,7 @@ describe('lançar um pagamento', () => {
     rerender(
       <Receita
         hoje={HOJE}
-        assinatura={{ comecouEm: '2026-07-01', valorMensal: 39.9 }}
+        assinatura={{ comecouEm: '2026-07-01', valorMensal: 39.9, pagaNoCartao: false }}
         estado={pronto([linha({ competencia: '2026-07-01' })])}
         escrita={PARADO}
         aoLancar={vi.fn()}
@@ -338,12 +338,43 @@ describe('quem está devendo', () => {
   it('é avisado de que a assinatura não encerra sozinha', () => {
     // Ver "devendo 3 meses" sem saber o que acontece em seguida leva a
     // esperar um corte que não vem.
-    montar({ assinatura: { comecouEm: '2026-07-01', valorMensal: 39.9 } });
+    montar({ assinatura: { comecouEm: '2026-07-01', valorMensal: 39.9, pagaNoCartao: false } });
     expect(screen.getByText(/não encerra sozinha/)).toBeInTheDocument();
   });
 
   it('quem está em dia não recebe o aviso', () => {
     montar({ estado: pronto([linha()]) });
     expect(screen.queryByText(/não encerra sozinha/)).not.toBeInTheDocument();
+  });
+});
+
+describe('a virada para o cartão, na ficha', () => {
+  it('⚠️ a ficha DIZ desde quando o cartão assumiu', () => {
+    // Sem esta frase, o sócio vê a conta parar num mês qualquer e conclui que o
+    // sistema esqueceu de contar.
+    montar({
+      assinatura: { comecouEm: '2026-06-01', valorMensal: 39.9, pagaNoCartao: true },
+      estado: pronto([
+        linha({ id: 'g1', competencia: '2026-08-01', origem: 'stripe', valor: '49.90' }),
+      ]),
+    });
+    expect(screen.getByText(/também paga no cartão desde 08\/2026/)).toBeInTheDocument();
+  });
+
+  it('e os meses anteriores à virada continuam listados', () => {
+    // A outra metade: o acordo na mão existiu, e o que não foi pago naquele
+    // tempo continua devido. A frase da virada não pode virar perdão.
+    montar({
+      assinatura: { comecouEm: '2026-06-01', valorMensal: 39.9, pagaNoCartao: true },
+      estado: pronto([
+        linha({ id: 'g1', competencia: '2026-08-01', origem: 'stripe', valor: '49.90' }),
+      ]),
+    });
+    expect(screen.getByText(/Em aberto: 06\/2026, 07\/2026/)).toBeInTheDocument();
+  });
+
+  it('sem cartão, a ficha não fala de virada nenhuma', () => {
+    montar({ assinatura: { comecouEm: '2026-07-01', valorMensal: 39.9, pagaNoCartao: false } });
+    expect(screen.queryByText(/também paga no cartão desde/)).not.toBeInTheDocument();
   });
 });

@@ -96,7 +96,22 @@ export function usePagamentos(userId: string | undefined): EstadoDosPagamentos {
 export type EstadoDosPagamentosPorAssinatura =
   | { tipo: 'carregando' }
   | { tipo: 'erro' }
-  | { tipo: 'pronto'; porAssinatura: ReadonlyMap<string, Pagamento[]> };
+  | {
+      tipo: 'pronto';
+      porAssinatura: ReadonlyMap<string, Pagamento[]>;
+      /**
+       * Os pagamentos do GATEWAY, agrupados por PESSOA.
+       *
+       * Dois mapas da mesma consulta porque são duas chaves diferentes: o
+       * dinheiro do acordo manual pendura na assinatura, e o do gateway pendura
+       * na pessoa — ele não tem assinatura manual e nunca vai ter.
+       *
+       * Serve para uma coisa só: achar a **virada para o cartão** de quem tem
+       * as duas origens. Ele NÃO entra na conta de mês em aberto, que continua
+       * sendo só do que foi combinado na mão.
+       */
+      doGatewayPorPessoa: ReadonlyMap<string, Pagamento[]>;
+    };
 
 /**
  * Os pagamentos de TODAS as assinaturas, agrupados por assinatura.
@@ -112,11 +127,14 @@ export type EstadoDosPagamentosPorAssinatura =
 export function usePagamentosDasAssinaturas(): EstadoDosPagamentosPorAssinatura {
   const consulta = useQuery({
     queryKey: CHAVES.pagamentosDeTodas,
-    queryFn: async (): Promise<Map<string, Pagamento[]>> => {
+    queryFn: async (): Promise<{
+      porAssinatura: Map<string, Pagamento[]>;
+      doGatewayPorPessoa: Map<string, Pagamento[]>;
+    }> => {
       const { data, error } = await createClient()
         .from('crm_pagamento')
         .select(
-          'id, assinatura_id, competencia, valor, origem, pago_em, estornado_em, motivo_do_estorno',
+          'id, assinatura_id, user_id, competencia, valor, origem, pago_em, estornado_em, motivo_do_estorno',
         )
         .order('competencia', { ascending: false });
       if (error) throw error;
@@ -125,30 +143,55 @@ export function usePagamentosDasAssinaturas(): EstadoDosPagamentosPorAssinatura 
        * ⚠️ `assinatura_id` pode ser NULO desde a migration 151, e o tipo local
        * dizia que não podia. Pagamento do gateway não tem assinatura manual.
        *
-       * As linhas sem assinatura são IGNORADAS aqui de propósito: esta consulta
-       * alimenta só a fila de inadimplentes, que é derivada do nosso registro e
-       * vale apenas para a origem manual — está no glossário e tem teste. Sem o
-       * filtro, elas se agrupariam sob uma chave indefinida e a fila passaria a
-       * contar dinheiro do gateway como se fosse acordo feito na mão.
+       * A linha sem assinatura NÃO é mais descartada: ela vai para o segundo
+       * mapa, o da pessoa. Ela continua fora do primeiro, que é o que alimenta
+       * a conta de mês em aberto — a fila de inadimplentes é derivada do nosso
+       * registro e vale só para a origem manual, está no glossário e tem teste.
+       *
+       * O que mudou é que agora ela serve para OUTRA pergunta: desde quando o
+       * cartão assumiu esta pessoa. Descartá-la fazia essa pergunta ficar sem
+       * resposta possível, e o acordo manual antigo seguia acumulando mês para
+       * sempre em cima de quem já pagava no gateway.
        */
       const linhas = (data ?? []) as unknown as (PagamentoDoBanco & {
         assinatura_id: string | null;
+        user_id: string | null;
       })[];
-      const brutas = new Map<string, PagamentoDoBanco[]>();
+
+      const porAssinatura = new Map<string, PagamentoDoBanco[]>();
+      const doGateway = new Map<string, PagamentoDoBanco[]>();
+
       for (const linha of linhas) {
-        if (linha.assinatura_id === null) continue;
-        const daAssinatura = brutas.get(linha.assinatura_id) ?? [];
-        daAssinatura.push(linha);
-        brutas.set(linha.assinatura_id, daAssinatura);
+        if (linha.assinatura_id !== null) {
+          const daAssinatura = porAssinatura.get(linha.assinatura_id) ?? [];
+          daAssinatura.push(linha);
+          porAssinatura.set(linha.assinatura_id, daAssinatura);
+          continue;
+        }
+        // Sem assinatura E sem pessoa não dá para agrupar por nada. Não deveria
+        // existir — a 151 fez a pessoa virar o pai —, e pular é melhor que
+        // agrupar sob uma chave indefinida, que foi o defeito de antes.
+        if (linha.user_id === null) continue;
+        const daPessoa = doGateway.get(linha.user_id) ?? [];
+        daPessoa.push(linha);
+        doGateway.set(linha.user_id, daPessoa);
       }
-      return new Map([...brutas].map(([id, lista]) => [id, montarPagamentos(lista)]));
+
+      const montar = (m: Map<string, PagamentoDoBanco[]>) =>
+        new Map([...m].map(([chave, lista]) => [chave, montarPagamentos(lista)]));
+
+      return { porAssinatura: montar(porAssinatura), doGatewayPorPessoa: montar(doGateway) };
     },
     staleTime: 60 * 1000,
   });
 
   if (consulta.isError) return { tipo: 'erro' };
   if (!consulta.data) return { tipo: 'carregando' };
-  return { tipo: 'pronto', porAssinatura: consulta.data };
+  return {
+    tipo: 'pronto',
+    porAssinatura: consulta.data.porAssinatura,
+    doGatewayPorPessoa: consulta.data.doGatewayPorPessoa,
+  };
 }
 
 export interface PagamentoALancar {

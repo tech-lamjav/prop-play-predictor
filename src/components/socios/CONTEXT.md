@@ -170,6 +170,11 @@ ordem de quem vence primeiro. Existe porque assinatura manual não renova
 sozinha: sem a fila, o acesso some um dia e a conversa acontece tarde, com a
 pessoa já sem o produto. É a terceira seção do CRM, ao lado de Leads e
 Feedbacks, e responde uma terceira pergunta: "quem eu preciso cobrar".
+
+⚠️ Quem também paga no cartão sai dela na hora, e a tela DIZ quantos saíram.
+Renovação é o assunto desta fila, e quem está no gateway já renova sozinho:
+pedir Pix a quem tem cartão passando é como se produz pagamento em dobro. Sair
+daqui não encerra o acordo na mão, que continua aberto em "Todas".
 _Avoid_: Renovações, vencimentos, inadimplentes
 
 **Fila de inadimplentes**:
@@ -307,7 +312,28 @@ O mês corrente conta como em aberto, porque a cobrança é no começo dele.
 ⚠️ Só de assinatura de origem manual, e só quando há valor mensal combinado.
 Quem paga pelo Stripe nunca tem mês em aberto: o gateway cobra sozinho, e
 derivar dívida de quem está em dia seria inventar dinheiro que ninguém deve.
+
+⚠️ Para quem tem as DUAS origens, a conta para na **virada para o cartão**: os
+meses anteriores continuam em aberto, e nenhum mês novo acumula a partir dela.
 _Avoid_: Pendência, atraso, débito, inadimplência (essa é a situação, não o mês)
+
+**Virada para o cartão**:
+O mês em que o gateway assumiu o pagamento de alguém que já tinha um acordo
+feito na mão. É onde o **mês em aberto** daquele acordo para de acumular.
+
+É DERIVADA do dinheiro: o pagamento mais antigo que o Stripe nos mandou daquela
+pessoa. Não existe data de início de assinatura no gateway em lugar nenhum do
+nosso banco — as colunas de prazo são de renovação.
+
+Sem nenhum pagamento do gateway, a virada é o MÊS CORRENTE. É o ponto mais
+conservador: nada do passado é perdoado sem prova, e o número para de crescer a
+partir de hoje. E ela melhora sozinha — quando a primeira fatura entra, a virada
+recua para o mês dela sem ninguém mexer.
+
+⚠️ Virar NÃO encerra o acordo na mão. O acordo continua aberto, sai da **fila de
+cobrança** e aparece em "Todas" com o selo. Encerrar segue sendo decisão do
+sócio, como tudo que mexe no que foi combinado com uma pessoa.
+_Avoid_: Migração, upgrade, troca de plano, conversão
 
 **Sem cobrança**:
 Assinatura manual sem valor mensal combinado. Não é inadimplência e não entra em

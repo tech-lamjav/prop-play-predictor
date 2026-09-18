@@ -28,11 +28,16 @@ const linha = ({
   };
 };
 
-const pronto = (linhas: AssinaturaDoBanco[]): EstadoDosInadimplentes => ({
+const pronto = (
+  linhas: AssinaturaDoBanco[],
+  cadastros = [cadastro({ id: 'u1', name: 'Maria' })],
+  doGatewayPorPessoa = new Map(),
+): EstadoDosInadimplentes => ({
   tipo: 'pronto',
   inadimplentes: inadimplentes(
-    montarAssinaturas(linhas, [cadastro({ id: 'u1', name: 'Maria' })]),
+    montarAssinaturas(linhas, cadastros),
     new Map(),
+    doGatewayPorPessoa,
     HOJE,
   ),
 });
@@ -109,5 +114,22 @@ describe('ListaDeInadimplentes', () => {
   it('erro é erro, e não fila vazia', () => {
     montar({ tipo: 'erro' });
     expect(screen.getByText(/estaria chutando/)).toBeInTheDocument();
+  });
+
+  it('⚠️ quem também paga no cartão aparece com o selo', () => {
+    // Ela continua nesta fila pela dívida ANTERIOR à virada, e sem o selo o
+    // sócio leria "devendo" e iria cobrar por fora quem já paga sozinho.
+    montar(
+      pronto(
+        [linha()],
+        [cadastro({ id: 'u1', name: 'Maria', tem_assinatura_no_stripe: true })],
+      ),
+    );
+    expect(screen.getByText(/Também paga no cartão/)).toBeInTheDocument();
+  });
+
+  it('e quem deve só na mão não recebe selo', () => {
+    montar(pronto([linha()]));
+    expect(screen.queryByText(/Também paga no cartão/)).not.toBeInTheDocument();
   });
 });

@@ -3,6 +3,7 @@ import { AlertTriangle } from 'lucide-react';
 import type { Inadimplente } from './crm-assinatura';
 import { formatarDia } from './crm-lista';
 import { emReais, textoDosMesesEmAberto } from './crm-receita';
+import { SeloDoCartao } from './ListaDeCobranca';
 import { ROTA_DO_CRM, ROTULO_DO_PLANO } from './crm-vocabulario';
 
 export type EstadoDosInadimplentes =
@@ -37,6 +38,8 @@ function Linha({ item }: { item: Inadimplente }) {
       </p>
 
       <p className="mt-1 text-[12px] text-ink-2">Em aberto: {textoDosMesesEmAberto(meses)}</p>
+
+      {assinatura.pagaNoCartao ? <SeloDoCartao /> : null}
     </div>
   );
 }

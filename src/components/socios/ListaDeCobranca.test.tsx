@@ -22,10 +22,15 @@ const linha = (over: Partial<AssinaturaDoBanco> = {}): AssinaturaDoBanco => ({
   ...over,
 });
 
-function montar(estado: EstadoDasAssinaturas) {
+function montar(estado: EstadoDasAssinaturas, noCartao = 0) {
   return render(
     <MemoryRouter>
-      <ListaDeCobranca estado={estado} hoje={HOJE} vazio="Ninguém para cobrar agora." />
+      <ListaDeCobranca
+        estado={estado}
+        hoje={HOJE}
+        vazio="Ninguém para cobrar agora."
+        noCartao={noCartao}
+      />
     </MemoryRouter>,
   );
 }
@@ -154,5 +159,50 @@ describe('a mensagem tem como ir para o WhatsApp', () => {
     montar(pronto([linha()], [cadastro({ id: 'u1', name: 'Maria', whatsapp_number: null })]));
     const links = within(document.body).queryAllByRole('link', { name: /WhatsApp/i });
     expect(links).toHaveLength(0);
+  });
+});
+
+describe('quem também paga no cartão', () => {
+  const noCartao = [cadastro({ id: 'u1', name: 'Maria', tem_assinatura_no_stripe: true })];
+
+  it('a linha diz que a pessoa também paga no cartão', () => {
+    // Em "Todas" essa pessoa aparece, e sem o selo o sócio mandaria a mensagem
+    // de renovação para quem já renova sozinho.
+    montar(pronto([linha()], noCartao));
+    expect(screen.getByText(/Também paga no cartão/)).toBeInTheDocument();
+    expect(screen.getByText(/parou de acumular mês/)).toBeInTheDocument();
+  });
+
+  it('e quem não paga não recebe selo nenhum', () => {
+    // Selo em todo mundo é selo que ninguém lê.
+    montar(pronto([linha()]));
+    expect(screen.queryByText(/Também paga no cartão/)).not.toBeInTheDocument();
+  });
+
+  it('⚠️ o rodapé DIZ quantos saíram da fila', () => {
+    // Sumiço silencioso é a mesma família de defeito do encerramento que
+    // rebaixava acesso sem avisar: a fila encolhe e o sócio não sabe por quê.
+    montar(pronto([linha()]), 2);
+    expect(screen.getByText(/2 pessoas saíram desta fila/)).toBeInTheDocument();
+  });
+
+  it('uma pessoa é dita no singular', () => {
+    montar(pronto([linha()]), 1);
+    expect(screen.getByText(/1 pessoa saiu desta fila/)).toBeInTheDocument();
+  });
+
+  it('⚠️ e o rodapé aparece MESMO com a fila vazia', () => {
+    // O caso que mais importa, e o que a primeira versão errava: a lista vazia
+    // saía por um desvio que pulava o rodapé. O sócio lia "ninguém para
+    // cobrar", fechava a tela, e nunca ficava sabendo que havia gente escondida
+    // ali dentro.
+    montar({ tipo: 'pronto', assinaturas: [] }, 3);
+    expect(screen.getByText(/Ninguém para cobrar agora/)).toBeInTheDocument();
+    expect(screen.getByText(/3 pessoas saíram desta fila/)).toBeInTheDocument();
+  });
+
+  it('sem ninguém escondido, não há rodapé', () => {
+    montar(pronto([linha()]), 0);
+    expect(screen.queryByText(/saíram desta fila|saiu desta fila/)).not.toBeInTheDocument();
   });
 });

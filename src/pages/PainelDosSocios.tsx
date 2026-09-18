@@ -247,6 +247,12 @@ function FichaDoModal({ id }: { id: string }) {
                   // inadimplentes fazia a MESMA conta do lado dela.
                   comecouEm: assinaturaAberta.comecouEm,
                   valorMensal: assinaturaAberta.valorMensal,
+                  // O fato é da PESSOA, e chega aqui pela assinatura porque é
+                  // ela que carrega quem é a pessoa. Sem ele, a ficha seguiria
+                  // acumulando mês em aberto de quem já paga no cartão
+                  // enquanto a fila de inadimplentes, que recebe o mesmo fato,
+                  // já teria parado.
+                  pagaNoCartao: assinaturaAberta.pagaNoCartao,
                 }
               : null
           }

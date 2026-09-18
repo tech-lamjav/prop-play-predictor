@@ -8,7 +8,12 @@ import {
   type EstadoDosInadimplentes,
 } from '@/components/socios/ListaDeInadimplentes';
 import { ListaDoStripe, type EstadoDoStripe } from '@/components/socios/ListaDoStripe';
-import { aCobrar, DIAS_PARA_COBRAR, inadimplentes } from '@/components/socios/crm-assinatura';
+import {
+  aCobrar,
+  DIAS_PARA_COBRAR,
+  inadimplentes,
+  saiuParaOCartao,
+} from '@/components/socios/crm-assinatura';
 import { assinaturasDoStripe } from '@/components/socios/crm-assinatura-do-stripe';
 import { useAssinaturas, type EstadoDasAssinaturas } from '@/hooks/use-assinaturas';
 import { useCadastros } from '@/hooks/use-cadastros';
@@ -85,9 +90,29 @@ export default function AssinaturasDoCrm() {
     if (todas.tipo !== 'pronto' || pagamentos.tipo !== 'pronto') return { tipo: 'carregando' };
     return {
       tipo: 'pronto',
-      inadimplentes: inadimplentes(todas.assinaturas, pagamentos.porAssinatura, hoje),
+      inadimplentes: inadimplentes(
+        todas.assinaturas,
+        pagamentos.porAssinatura,
+        pagamentos.doGatewayPorPessoa,
+        hoje,
+      ),
     };
   }, [todas, pagamentos, hoje]);
+
+  /*
+   * Quantos o recorte "A cobrar" escondeu por pagarem no cartão.
+   *
+   * ⚠️ Só no recorte de cobrar. Em "Todas" ninguém é escondido, e um rodapé
+   * dizendo que gente saiu da fila apareceria numa lista onde essa gente está
+   * logo acima — o aviso viraria ruído, e ruído ensina a ignorar aviso.
+   */
+  const escondidosPeloCartao = useMemo(
+    () =>
+      todas.tipo === 'pronto' && recorte === 'cobrar'
+        ? saiuParaOCartao(todas.assinaturas, hoje).length
+        : 0,
+    [todas, recorte, hoje],
+  );
 
   /*
    * Quem paga no gateway sai dos CADASTROS, e não de consulta nova: a lista já
@@ -173,6 +198,7 @@ export default function AssinaturasDoCrm() {
               <ListaDeCobranca
                 estado={estado}
                 hoje={hoje}
+                noCartao={escondidosPeloCartao}
                 vazio={
                   recorte === 'cobrar'
                     ? 'Ninguém para cobrar agora. Nenhuma assinatura manual vence nesta semana.'

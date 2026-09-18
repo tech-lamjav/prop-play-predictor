@@ -9,6 +9,7 @@ import {
   recebidoTotal,
   resumirMeses,
   situacaoDaReceita,
+  viradaParaOCartao,
   MESES_MOSTRADOS_NA_TELA,
   type PagamentoDoBanco,
 } from './crm-receita';
@@ -125,7 +126,7 @@ describe('mesesEmAberto', () => {
   it('o mês corrente é devido', () => {
     // A cobrança é no começo do mês. Quem paga no dia 20 aparece devendo do
     // dia 1º ao 20, e é isso que faz a cobrança acontecer.
-    expect(mesesEmAberto('2026-09-01', 39.9, [], HOJE)).toEqual(['2026-09']);
+    expect(mesesEmAberto('2026-09-01', 39.9, [], HOJE, null)).toEqual(['2026-09']);
   });
 
   it('⚠️ fatura do cartão NÃO quita mês de assinatura manual', () => {
@@ -143,39 +144,39 @@ describe('mesesEmAberto', () => {
     const doGateway = montarPagamentos([
       linha({ competencia: '2026-09-01', origem: 'stripe' }),
     ]);
-    expect(mesesEmAberto('2026-09-01', 39.9, doGateway, HOJE)).toEqual(['2026-09']);
+    expect(mesesEmAberto('2026-09-01', 39.9, doGateway, HOJE, null)).toEqual(['2026-09']);
   });
 
   it('e o dinheiro da mão continua quitando', () => {
     // O outro lado do mesmo guarda: filtrar demais quebraria a cobrança.
     const naMao = montarPagamentos([linha({ competencia: '2026-09-01', origem: 'pix' })]);
-    expect(mesesEmAberto('2026-09-01', 39.9, naMao, HOJE)).toEqual([]);
+    expect(mesesEmAberto('2026-09-01', 39.9, naMao, HOJE, null)).toEqual([]);
   });
 
   it('o mês pago sai da lista', () => {
     const pagos = montarPagamentos([linha({ competencia: '2026-09-01' })]);
-    expect(mesesEmAberto('2026-09-01', 39.9, pagos, HOJE)).toEqual([]);
+    expect(mesesEmAberto('2026-09-01', 39.9, pagos, HOJE, null)).toEqual([]);
   });
 
   it('conta todos os meses desde o começo, do mais antigo primeiro', () => {
-    expect(mesesEmAberto('2026-07-01', 39.9, [], HOJE)).toEqual(['2026-07', '2026-08', '2026-09']);
+    expect(mesesEmAberto('2026-07-01', 39.9, [], HOJE, null)).toEqual(['2026-07', '2026-08', '2026-09']);
   });
 
   it('um mês pago no meio não tira os outros', () => {
     const pagos = montarPagamentos([linha({ competencia: '2026-08-01' })]);
-    expect(mesesEmAberto('2026-07-01', 39.9, pagos, HOJE)).toEqual(['2026-07', '2026-09']);
+    expect(mesesEmAberto('2026-07-01', 39.9, pagos, HOJE, null)).toEqual(['2026-07', '2026-09']);
   });
 
   it('pagamento estornado volta a devendo', () => {
     const pagos = montarPagamentos([
       linha({ competencia: '2026-09-01', estornado_em: '2026-09-10T12:00:00Z' }),
     ]);
-    expect(mesesEmAberto('2026-09-01', 39.9, pagos, HOJE)).toEqual(['2026-09']);
+    expect(mesesEmAberto('2026-09-01', 39.9, pagos, HOJE, null)).toEqual(['2026-09']);
   });
 
   it('atravessa a virada do ano', () => {
     // Dezembro para janeiro é onde a conta de mês costuma quebrar.
-    expect(mesesEmAberto('2025-11-01', 39.9, [], '2026-01-15')).toEqual([
+    expect(mesesEmAberto('2025-11-01', 39.9, [], '2026-01-15', null)).toEqual([
       '2025-11',
       '2025-12',
       '2026-01',
@@ -185,11 +186,11 @@ describe('mesesEmAberto', () => {
   it('sem valor mensal não tem mês em aberto', () => {
     // Quem não combinou pagar não deve nada. Chamar isso de dívida encheria a
     // fila de cobrança de gente que não tem o que pagar.
-    expect(mesesEmAberto('2026-01-01', null, [], HOJE)).toEqual([]);
+    expect(mesesEmAberto('2026-01-01', null, [], HOJE, null)).toEqual([]);
   });
 
   it('assinatura que começa no futuro não deve nada', () => {
-    expect(mesesEmAberto('2026-12-01', 39.9, [], HOJE)).toEqual([]);
+    expect(mesesEmAberto('2026-12-01', 39.9, [], HOJE, null)).toEqual([]);
   });
 
   it('uma assinatura muito antiga devolve TODOS os meses, sem cortar', () => {
@@ -201,7 +202,7 @@ describe('mesesEmAberto', () => {
     //
     // Resumir a lista continua valendo, mas é decisão de TELA e mora noutro
     // lugar. A conta precisa da verdade.
-    const abertos = mesesEmAberto('2023-01-01', 39.9, [], HOJE);
+    const abertos = mesesEmAberto('2023-01-01', 39.9, [], HOJE, null);
     expect(abertos).toHaveLength(45);
     expect(abertos[0]).toBe('2023-01');
     expect(abertos[abertos.length - 1]).toBe('2026-09');
@@ -210,17 +211,17 @@ describe('mesesEmAberto', () => {
 
 describe('situacaoDaReceita', () => {
   it('sem cobrança é estado próprio, e não inadimplência', () => {
-    expect(situacaoDaReceita('2026-01-01', null, [], HOJE)).toEqual({ tipo: 'sem_cobranca' });
+    expect(situacaoDaReceita('2026-01-01', null, [], HOJE, null)).toEqual({ tipo: 'sem_cobranca' });
   });
 
   it('em dia quando não falta mês', () => {
     const pagos = montarPagamentos([linha({ competencia: '2026-09-01' })]);
-    expect(situacaoDaReceita('2026-09-01', 39.9, pagos, HOJE)).toEqual({ tipo: 'em_dia' });
+    expect(situacaoDaReceita('2026-09-01', 39.9, pagos, HOJE, null)).toEqual({ tipo: 'em_dia' });
   });
 
   it('devendo diz quantos meses e quanto', () => {
     // O total é o que decide se vale insistir ou encerrar.
-    const situacao = situacaoDaReceita('2026-07-01', 39.9, [], HOJE);
+    const situacao = situacaoDaReceita('2026-07-01', 39.9, [], HOJE, null);
     expect(situacao.tipo).toBe('devendo');
     if (situacao.tipo === 'devendo') {
       expect(situacao.meses).toBe(3);
@@ -234,12 +235,110 @@ describe('situacaoDaReceita', () => {
     // lista que recebe — então o corte não encolhia só a lista, encolhia o
     // dinheiro. Quem devia 718,20 aparecia devendo 478,80, e a diferença
     // sumia sem nenhum aviso na tela.
-    const situacao = situacaoDaReceita('2025-04-01', 39.9, [], HOJE);
+    const situacao = situacaoDaReceita('2025-04-01', 39.9, [], HOJE, null);
     expect(situacao.tipo).toBe('devendo');
     if (situacao.tipo === 'devendo') {
       expect(situacao.meses).toBe(18);
       expect(situacao.total).toBeCloseTo(718.2);
     }
+  });
+});
+
+describe('viradaParaOCartao', () => {
+  it('quem não paga no cartão não tem virada', () => {
+    // Nulo é "não se aplica", e é a resposta da esmagadora maioria. Devolver o
+    // mês corrente aqui faria TODA assinatura manual parar de acumular hoje.
+    expect(viradaParaOCartao(false, [], HOJE)).toBeNull();
+  });
+
+  it('⚠️ nem quando existe pagamento do gateway na lista', () => {
+    // O sim ou não manda, e não a presença de uma fatura. Uma fatura antiga de
+    // quem cancelou o cartão não pode parar a cobrança do acordo na mão.
+    const doGateway = montarPagamentos([linha({ competencia: '2026-07-01', origem: 'stripe' })]);
+    expect(viradaParaOCartao(false, doGateway, HOJE)).toBeNull();
+  });
+
+  it('paga no cartão e sem fatura registrada: a virada é o MÊS CORRENTE', () => {
+    // O caso de hoje, e o que mais importa: o webhook só começou a gravar
+    // agora e o histórico não foi importado, então quem já assina pelo cartão
+    // não tem nenhuma fatura do lado de cá.
+    //
+    // O mês corrente é o ponto conservador: nada do passado é perdoado sem
+    // prova, e a dívida para de crescer a partir de hoje.
+    expect(viradaParaOCartao(true, [], HOJE)).toBe('2026-09');
+  });
+
+  it('com fatura, a virada é a competência MAIS ANTIGA', () => {
+    // É o que faz a conta melhorar sozinha: quando as faturas chegam, a virada
+    // recua para onde o cartão de fato assumiu, sem ninguém mexer.
+    const doGateway = montarPagamentos([
+      linha({ id: 'g1', competencia: '2026-08-01', origem: 'stripe' }),
+      linha({ id: 'g2', competencia: '2026-06-01', origem: 'stripe' }),
+      linha({ id: 'g3', competencia: '2026-09-01', origem: 'stripe' }),
+    ]);
+    expect(viradaParaOCartao(true, doGateway, HOJE)).toBe('2026-06');
+  });
+
+  it('⚠️ dinheiro da MÃO não vira virada', () => {
+    // Sem este filtro, o primeiro Pix da pessoa pararia a cobrança do próprio
+    // acordo que ele estava pagando — a conta se desligaria sozinha no mês em
+    // que começou a funcionar.
+    const naMao = montarPagamentos([linha({ competencia: '2026-06-01', origem: 'pix' })]);
+    expect(viradaParaOCartao(true, naMao, HOJE)).toBe('2026-09');
+  });
+
+  it('fatura estornada não conta como virada', () => {
+    // Dinheiro que voltou não prova que o cartão assumiu.
+    const estornada = montarPagamentos([
+      linha({ competencia: '2026-06-01', origem: 'stripe', estornado_em: '2026-06-10T12:00:00Z' }),
+    ]);
+    expect(viradaParaOCartao(true, estornada, HOJE)).toBe('2026-09');
+  });
+});
+
+describe('mesesEmAberto com virada para o cartão', () => {
+  it('⚠️ os meses ANTERIORES à virada continuam em aberto', () => {
+    // A metade que não pode ser perdoada: o acordo na mão existiu, e o que não
+    // foi pago naquele tempo continua devido. Zerar tudo apagaria dívida real
+    // de quem simplesmente assinou pelo cartão depois.
+    expect(mesesEmAberto('2026-06-01', 39.9, [], HOJE, '2026-08')).toEqual([
+      '2026-06',
+      '2026-07',
+    ]);
+  });
+
+  it('⚠️ o mês da virada JÁ não acumula', () => {
+    // A virada é inclusiva: o mês em que o cartão assumiu é do cartão. Contar
+    // ele cobraria duas vezes o mesmo mês, uma em cada origem.
+    expect(mesesEmAberto('2026-08-01', 39.9, [], HOJE, '2026-08')).toEqual([]);
+  });
+
+  it('e nenhum mês novo acumula depois dela', () => {
+    expect(mesesEmAberto('2026-09-01', 39.9, [], HOJE, '2026-06')).toEqual([]);
+  });
+
+  it('sem virada, nada muda: a conta vai até hoje', () => {
+    // O caminho de sempre, que é o de quase todo mundo. Um corte que vazasse
+    // para quem não tem cartão esconderia dívida de verdade.
+    expect(mesesEmAberto('2026-07-01', 39.9, [], HOJE, null)).toEqual([
+      '2026-07',
+      '2026-08',
+      '2026-09',
+    ]);
+  });
+
+  it('a virada convive com o mês pago na mão', () => {
+    // Os dois cortes são independentes: um tira o mês pago, o outro fecha a
+    // série. Quem paga julho e vira em agosto não deve nada.
+    const pagos = montarPagamentos([linha({ competencia: '2026-07-01', origem: 'pix' })]);
+    expect(mesesEmAberto('2026-07-01', 39.9, pagos, HOJE, '2026-08')).toEqual([]);
+  });
+
+  it('situacaoDaReceita respeita a virada, e não só mesesEmAberto', () => {
+    // ⚠️ São DOIS derivados da mesma regra, e o segundo multiplica pelo tamanho
+    // da lista. Um passar a virada e o outro não faria o selo dizer "em dia"
+    // com a linha de baixo listando meses, ou o contrário.
+    expect(situacaoDaReceita('2026-08-01', 39.9, [], HOJE, '2026-08')).toEqual({ tipo: 'em_dia' });
   });
 });
 
