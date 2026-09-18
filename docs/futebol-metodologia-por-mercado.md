@@ -360,6 +360,7 @@ para mudar sem release.
 | **Peso de cada premissa** | **Só no frontend**, `src/utils/futebol-premissas.ts` | Release do app |
 | Rótulo e copy da premissa | Frontend, e uma cópia em `futebol_premissa_copy` | Release / UPDATE |
 | Critério transcrito (só Gols) | Frontend, `src/utils/futebol-criterio.ts` | Release do app |
+| **O número embaixo da premissa** (a evidência) | **Três rotas, nesta ordem**: critério transcrito no frontend; histórico jogo a jogo, RPC 117; perfil de temporada, RPC 094 | Release / migration |
 | Quais premissas se aplicam a cada saída | **Duas cópias**: mart e migration 112 | Deploy nos dois |
 | Mercado na vitrine | Tabela `futebol_mercados_ocultos` | UPDATE, sem release |
 | Regra de liquidação (green/red) | **Só no navegador**, `src/utils/futebol-settlement.ts` | Release do app |
@@ -408,6 +409,22 @@ os cinco mercados incluindo o quarto de gol do handicap asiático, mas roda no
 navegador e é descartada ao fechar a aba. Os ingredientes estão guardados — a odd
 do momento da publicação em duas tabelas, o placar final em outras duas —, só
 nunca foram cruzados fora do cliente.
+
+**A terceira rota da evidência lia dado do futuro, e parte dela ainda lê.** As
+quatro premissas sem gráfico — `superioridade_tabela` e `h2h_favoravel` no
+Resultado, `supremacia` no Handicap e `lado_coberto_forte` na Dupla chance —
+caem no perfil de temporada, que não tinha âncora nenhuma na data do jogo. Num
+jogo encerrado a tela mostrava a classificação de hoje e contava confrontos
+diretos que aconteceram depois dele: medido, entre 14,5% e 15,9% de veredito
+trocado, contra 0,1% a 1,6% da rota que tem gráfico. A #464 ancorou as duas
+consultas na data do jogo, e onde não existe foto da época a tela passou a
+omitir o número em vez de mostrar o atual.
+
+O que **continua** olhando para o futuro, na #467: o gráfico de barras da
+temporada na página do jogo, que agrega todos os jogos encerrados da competição
+sem recorte de data, e as tendências, que leem a foto mais recente. Enquanto
+isso não for feito, as premissas falam pela data do jogo e o gráfico logo abaixo
+fala pela temporada inteira.
 
 ---
 
