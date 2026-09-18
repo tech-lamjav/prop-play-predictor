@@ -30,6 +30,7 @@ const OPCOES: { id: Valor; rotulo: string }[] = [
 export function FiltroDeWhatsApp({
   valor,
   semAsMarcas,
+  suspensoPelaBusca,
   aoMudar,
 }: {
   valor: Valor;
@@ -40,6 +41,14 @@ export function FiltroDeWhatsApp({
    * tela DIZ isso: calar faria a lista parecer completa quando ela não está.
    */
   semAsMarcas: boolean;
+  /**
+   * Tem termo de busca digitado, e por isso este filtro não está valendo.
+   *
+   * ⚠️ Dizer isso não é conforto: filtro ligado que silenciosamente não se
+   * aplica é outra forma de a tela mentir. Quem vê "Só quem tem WhatsApp"
+   * marcado e um resultado sem WhatsApp na lista precisa saber por quê.
+   */
+  suspensoPelaBusca: boolean;
   aoMudar: (valor: Valor) => void;
 }) {
   return (
@@ -57,8 +66,12 @@ export function FiltroDeWhatsApp({
         ))}
       </select>
 
-      {semAsMarcas && (
-        <span className="text-[12px] text-ink-dim">só pelo número — as marcas não carregaram</span>
+      {suspensoPelaBusca ? (
+        <span className="text-[12px] text-ink-dim">a busca mostra todo mundo</span>
+      ) : (
+        semAsMarcas && (
+          <span className="text-[12px] text-ink-dim">só pelo número — as marcas não carregaram</span>
+        )
       )}
     </div>
   );

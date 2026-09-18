@@ -1,4 +1,9 @@
-import { mensagemDeCobranca, mensagemDeConversao, prazoDe } from './crm-cobranca';
+import {
+  mensagemDeCobranca,
+  mensagemDeConversao,
+  mensagemDeFechamento,
+  prazoDe,
+} from './crm-cobranca';
 import { primeiroNome as primeiroNomeDe, saudacao, type TipoDeGancho } from './crm-ficha';
 import { ETAPAS, ROTULO_DA_ETAPA, type Etapa } from './crm-vocabulario';
 
@@ -106,9 +111,13 @@ const POR_ETAPA: Record<Etapa, string> = {
   boletada:
     '{saudacao} Te mandei um bilhete esses dias. Queria saber se você chegou a acompanhar e ' +
     'o que achou da leitura por trás dele.',
+  // ⚠️ "Interesse" é a etapa mais perto da venda, e o texto antigo perguntava
+  // "ficou alguma dúvida?". Perguntar por dúvida convida a pessoa a procurar
+  // uma. Aqui a mensagem propõe o passo, e deixa o "ver na prática" como
+  // alternativa para quem ainda não quer decidir.
   interesse:
-    '{saudacao} Retomando nossa conversa: ficou alguma dúvida sobre o que a gente falou? Se ' +
-    'quiser, eu te mostro na prática antes de você decidir qualquer coisa.',
+    '{saudacao} Retomando nossa conversa: quer que eu já deixe seu acesso pronto pra você ' +
+    'começar? Se preferir ver na prática antes, eu te mostro hoje mesmo.',
   sem_resposta:
     `{saudacao} ${NAO_INSISTIR} Deixo a porta aberta: se quiser retomar em algum momento, é só ` +
     'me chamar por aqui.',
@@ -257,7 +266,17 @@ export function modelosDaFicha(
       ]
     : [];
 
-  return [...modelosDeAbordagem(primeiroNomeDe(nome)), ...conversao, ...deCobranca];
+  // O fechamento fica depois da conversão porque é o passo seguinte dela, e
+  // está sempre disponível: o sim pode vir de qualquer conversa, não só de um
+  // teste que venceu.
+  const fechamento: ModeloDeMensagem = {
+    id: 'fechamento',
+    grupo: 'Fechamento',
+    rotulo: 'Depois do sim',
+    texto: mensagemDeFechamento(nome),
+  };
+
+  return [...modelosDeAbordagem(primeiroNomeDe(nome)), ...conversao, fechamento, ...deCobranca];
 }
 
 /**
