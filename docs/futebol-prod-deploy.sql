@@ -1866,7 +1866,7 @@ as $function$
   -- todas as colunas nulas: a tela sabe que hoje ha N oportunidades e mostra N
   -- cadeados, sem dizer em qual jogo, em que mercado nem a que preco.
   --
-  -- DUAS COLUNAS ESCAPAM DO NULO, e sem elas a contagem nao existe:
+  -- TRES COLUNAS ESCAPAM DO NULO, e sem elas a contagem nao existe:
   --
   --   c1 fixture_id  -- a tela precisa de chave estavel por linha; sem ela duas
   --                     linhas bloqueadas colidem na mesma chave de React
@@ -1874,6 +1874,15 @@ as $function$
   --                     nenhuma linha casa o dia, a contagem vira 0 e a tela cai
   --                     em "Sem valor claro hoje" -- a frase que este trabalho
   --                     existe para corrigir
+  --  c23 score_versao -- o contrato do Score (futebol-score-contract.ts) LANCA
+  --                     excecao quando a versao vem nula, de proposito: deduzir
+  --                     a escala carimbaria de `legacy` uma resposta malformada
+  --                     e a classificaria na regua errada, em silencio (#310).
+  --                     Anulada aqui, o normalizador estourava no cliente, o
+  --                     withRetry repetia a chamada 8 vezes e a tela do
+  --                     bloqueado ficava em 0 oportunidades. E marcador de
+  --                     ESCALA, nao a nota: `score` (c21) e `faixa` (c22)
+  --                     continuam nulos.
   --
   -- O que isso entrega a quem nao assina: que existe oportunidade naquele jogo.
   -- Nao entrega qual aposta, em que mercado, a que preco, com que chance nem com
@@ -1905,7 +1914,7 @@ as $function$
     case when _g.tem then _b.c20 end,
     case when _g.tem then _b.c21 end,
     case when _g.tem then _b.c22 end,
-    case when _g.tem then _b.c23 end,
+    _b.c23,
     case when _g.tem then _b.c24 end,
     case when _g.tem then _b.c25 end,
     case when _g.tem then _b.c26 end
