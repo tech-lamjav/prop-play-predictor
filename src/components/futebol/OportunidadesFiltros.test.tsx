@@ -2,11 +2,13 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { OportunidadesFiltros, type MarketFilter } from './OportunidadesFiltros';
-import type { FiltroDeValor } from '@/utils/futebol-score';
+import { ESTADOS_DO_JOGO, type FiltroDeValor } from '@/utils/futebol-score';
 
 const props = {
   mercado: 'all' as MarketFilter,
   onMercadoChange: vi.fn(),
+  estadosSelecionados: [...ESTADOS_DO_JOGO],
+  onEstadosChange: vi.fn(),
   faixasSelecionadas: ['alta', 'media'] as const,
   onFaixasChange: vi.fn(),
   competicoesSelecionadas: null,
@@ -18,49 +20,62 @@ const props = {
 
 describe('OportunidadesFiltros', () => {
   it('mantém mercado e filtros de visualização em duas faixas independentes no mobile', () => {
-    render(<OportunidadesFiltros {...props} soEmAberto onSoEmAbertoChange={vi.fn()} />);
+    render(<OportunidadesFiltros {...props} />);
 
     expect(screen.getByTestId('filtros-mercado')).toBeInTheDocument();
     expect(screen.getByTestId('filtros-visualizacao')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Só jogos em aberto' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: /Estado Todos/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Faixa Alta e Média/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Competição Todas/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Valor Todos/i })).toBeInTheDocument();
   });
 
-  // O filtro de valor é seleção ÚNICA: clicar numa opção troca, não acumula.
-  it('troca a faixa de valor por seleção única', async () => {
-    const onValorChange = vi.fn();
-    render(<OportunidadesFiltros {...props} soEmAberto onSoEmAbertoChange={vi.fn()} onValorChange={onValorChange} />);
+  // O estado do jogo virou filtro de marcar vários (era o interruptor "Só jogos
+  // em aberto", que não tinha como pedir os encerrados nem o que está rolando).
+  it('combina estados sem fechar o seletor', async () => {
+    const onEstadosChange = vi.fn();
+    render(
+      <OportunidadesFiltros
+        {...props}
+        estadosSelecionados={['aberto']}
+        onEstadosChange={onEstadosChange}
+      />,
+    );
 
-    await userEvent.click(screen.getByRole('button', { name: /Valor Todos/i }));
-    await userEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Acima do justo' }));
-    expect(onValorChange).toHaveBeenCalledWith('positivo');
+    await userEvent.click(screen.getByRole('button', { name: /Estado Em aberto/i }));
+    await userEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Ao vivo' }));
+    expect(onEstadosChange).toHaveBeenCalledWith(['aberto', 'ao_vivo']);
+    expect(screen.getByRole('menuitemcheckbox', { name: 'Encerrado' })).toBeInTheDocument();
   });
 
-  it('permite desligar só os jogos em aberto sem alterar os demais filtros', async () => {
-    const onSoEmAbertoChange = vi.fn();
-    render(<OportunidadesFiltros {...props} soEmAberto onSoEmAbertoChange={onSoEmAbertoChange} />);
+  it('resume dois estados pelos nomes e não pela contagem', () => {
+    render(<OportunidadesFiltros {...props} estadosSelecionados={['aberto', 'ao_vivo']} />);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Só jogos em aberto' }));
-    expect(onSoEmAbertoChange).toHaveBeenCalledWith(false);
+    expect(screen.getByRole('button', { name: 'Estado Em aberto e Ao vivo' })).toBeInTheDocument();
   });
 
-  it('permite combinar Alta, Média e Baixa sem fechar o seletor', async () => {
+  // O feedback que originou a mudança: o clique tem que acompanhar. Desmarcar o
+  // último item era engolido — a lista ficava como estava, sem dizer por quê.
+  it('deixa desmarcar o último item que sobrou', async () => {
     const onFaixasChange = vi.fn();
-    render(<OportunidadesFiltros {...props} soEmAberto onSoEmAbertoChange={vi.fn()} onFaixasChange={onFaixasChange} />);
+    render(
+      <OportunidadesFiltros {...props} faixasSelecionadas={['alta']} onFaixasChange={onFaixasChange} />,
+    );
 
-    await userEvent.click(screen.getByRole('button', { name: /Faixa Alta e Média/i }));
-    expect(screen.getByRole('menuitemcheckbox', { name: 'Alta' })).toHaveAttribute('data-state', 'checked');
-    expect(screen.getByRole('menuitemcheckbox', { name: 'Média' })).toHaveAttribute('data-state', 'checked');
-    await userEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Baixa' }));
-    expect(onFaixasChange).toHaveBeenCalledWith(['alta', 'media', 'baixa']);
-    expect(screen.getByRole('menuitemcheckbox', { name: 'Baixa' })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /Faixa Alta/i }));
+    await userEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Alta' }));
+    expect(onFaixasChange).toHaveBeenCalledWith([]);
+  });
+
+  it('anuncia no botão quando nada está marcado', () => {
+    render(<OportunidadesFiltros {...props} faixasSelecionadas={[]} />);
+
+    expect(screen.getByRole('button', { name: 'Faixa Nenhuma' })).toBeInTheDocument();
   });
 
   it('marca as três faixas de uma vez pela opção Todas', async () => {
     const onFaixasChange = vi.fn();
-    render(<OportunidadesFiltros {...props} soEmAberto onSoEmAbertoChange={vi.fn()} onFaixasChange={onFaixasChange} />);
+    render(<OportunidadesFiltros {...props} onFaixasChange={onFaixasChange} />);
 
     await userEvent.click(screen.getByRole('button', { name: /Faixa Alta e Média/i }));
     const todas = screen.getByRole('menuitemcheckbox', { name: 'Todas' });
@@ -69,18 +84,33 @@ describe('OportunidadesFiltros', () => {
     expect(onFaixasChange).toHaveBeenCalledWith(['alta', 'media', 'baixa']);
   });
 
-  it('mostra Todas marcada quando as três faixas já estão selecionadas', async () => {
+  // "Todas" alterna dos DOIS lados: com tudo marcado ela desmarca, em vez de
+  // ser um clique sem efeito nenhum.
+  it('desmarca tudo pela opção Todas quando já estava tudo marcado', async () => {
+    const onFaixasChange = vi.fn();
     render(
       <OportunidadesFiltros
         {...props}
-        soEmAberto
-        onSoEmAbertoChange={vi.fn()}
         faixasSelecionadas={['alta', 'media', 'baixa']}
+        onFaixasChange={onFaixasChange}
       />,
     );
 
     await userEvent.click(screen.getByRole('button', { name: /Faixa Todas/i }));
-    expect(screen.getByRole('menuitemcheckbox', { name: 'Todas' })).toHaveAttribute('data-state', 'checked');
+    const todas = screen.getByRole('menuitemcheckbox', { name: 'Todas' });
+    expect(todas).toHaveAttribute('data-state', 'checked');
+    await userEvent.click(todas);
+    expect(onFaixasChange).toHaveBeenCalledWith([]);
+  });
+
+  // O filtro de valor é seleção ÚNICA: clicar numa opção troca, não acumula.
+  it('troca a faixa de valor por seleção única', async () => {
+    const onValorChange = vi.fn();
+    render(<OportunidadesFiltros {...props} onValorChange={onValorChange} />);
+
+    await userEvent.click(screen.getByRole('button', { name: /Valor Todos/i }));
+    await userEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Acima do justo' }));
+    expect(onValorChange).toHaveBeenCalledWith('positivo');
   });
 
   it('abre com todos os campeonatos marcados e permite tirar um sem fechar o seletor', async () => {
@@ -88,8 +118,6 @@ describe('OportunidadesFiltros', () => {
     render(
       <OportunidadesFiltros
         {...props}
-        soEmAberto
-        onSoEmAbertoChange={vi.fn()}
         competicoesSelecionadas={null}
         onCompeticoesChange={onCompeticoesChange}
         competicaoOptions={[
@@ -112,8 +140,6 @@ describe('OportunidadesFiltros', () => {
     render(
       <OportunidadesFiltros
         {...props}
-        soEmAberto
-        onSoEmAbertoChange={vi.fn()}
         competicoesSelecionadas={['brasileirao']}
         onCompeticoesChange={onCompeticoesChange}
         competicaoOptions={[

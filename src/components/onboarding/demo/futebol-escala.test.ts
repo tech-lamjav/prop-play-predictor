@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { demoFutebolBoard, demoFixtureValueRows } from './futebol';
 import { useDemoFutebolBoard } from './use-demo-futebol';
+
+// Um dia qualquer: estes testes são sobre a ESCALA. Que o hook remapeie o
+// kickoff para o dia pedido é assunto do teste da demonstração.
+const DIA = '2026-09-18';
 import { versaoDaJanela, opcoesDeFaixa, fronteirasDoScore } from '@/utils/futebol-score';
 
 // ============================================================================
@@ -44,7 +48,7 @@ describe('a escala da demonstração', () => {
   // ==========================================================================
 
   it('janela vazia cai na escala que o produto publica hoje, não na antiga', () => {
-    const { result } = renderHook(() => useDemoFutebolBoard([]));
+    const { result } = renderHook(() => useDemoFutebolBoard([], DIA));
     expect(versaoDaJanela(result.current)).toBe('contexto_v1');
   });
 
@@ -52,7 +56,7 @@ describe('a escala da demonstração', () => {
     // O histórico point-in-time devolve linhas na escala antiga, e ali a
     // demonstração tem de acompanhar — senão volta o defeito da #333, com o
     // tour ensinando uma régua e o board ao lado mostrando outra.
-    const { result } = renderHook(() => useDemoFutebolBoard(demoFutebolBoard('legacy')));
+    const { result } = renderHook(() => useDemoFutebolBoard(demoFutebolBoard('legacy'), DIA));
     expect(versaoDaJanela(result.current)).toBe('legacy');
   });
 });

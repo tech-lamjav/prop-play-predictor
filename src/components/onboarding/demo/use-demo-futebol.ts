@@ -4,7 +4,7 @@ import type {
   FutebolValueBoardRow,
 } from '@/services/futebol-data.service';
 import { escalaDeExibicao, type FutebolScoreVersion } from '@/utils/futebol-score';
-import { demoFutebolBoard, demoFixtureValueRows } from './futebol';
+import { demoBoardNoDia, demoFutebolBoard, demoFixtureValueRows } from './futebol';
 
 /**
  * A escala que o produto está usando, para a demonstração herdar (#333).
@@ -25,12 +25,20 @@ function useEscalaDoProduto(
   return escalaDeExibicao(janela ?? []);
 }
 
-/** O board de exemplo, na escala que o produto está usando. */
+/**
+ * O board de exemplo, na escala que o produto usa e no DIA que a tela mostra.
+ *
+ * O dia é obrigatório de propósito. Com ele opcional, a página que esquecesse
+ * de passar voltaria a exibir os cartões em 10/08/2025 com a régua de datas
+ * marcando hoje — e o defeito é justamente do tipo que ninguém vê num teste,
+ * só na tela.
+ */
 export function useDemoFutebolBoard(
   janela: readonly { score_versao?: FutebolScoreVersion }[] | null | undefined,
+  dia: string,
 ): FutebolValueBoardRow[] {
   const escala = useEscalaDoProduto(janela);
-  return useMemo(() => demoFutebolBoard(escala), [escala]);
+  return useMemo(() => demoBoardNoDia(demoFutebolBoard(escala), dia), [escala, dia]);
 }
 
 /** As saídas de exemplo do detalhe do jogo, na escala que o produto está usando. */

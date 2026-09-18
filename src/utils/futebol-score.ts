@@ -2,6 +2,10 @@
 // futebol-score.ts — apresentação do Score (motor é backend)
 // ============================================================
 import { linhaDaSaida, type Saida } from '@/utils/futebol-saida';
+// O estado do jogo se decide com o RELÓGIO e o status juntos — as três funções
+// vêm do mesmo lugar que as telas usam, para não nascer uma segunda definição
+// de 'acabou' aqui dentro.
+import { hasKickoffPassed, isFinished, isLive } from '@/utils/futebol-datas';
 // O Score, edge, premissas, evidências e avisos vêm prontos da
 // fact_value_opportunities (pipeline dbt no BigQuery). Aqui só ROTULAMOS
 // (mercado, pick com linha) e ajudamos a ranquear/agrupar. Nada de cálculo.
@@ -423,4 +427,54 @@ export function compararOportunidades(
   const porFaixa = ordemDaFaixa(a.faixa) - ordemDaFaixa(b.faixa);
   if (porFaixa !== 0) return porFaixa;
   return (b.score as number) - (a.score as number);
+}
+
+/**
+ * O estado do jogo, para o filtro do painel.
+ *
+ * Substitui o antigo botão "Só jogos em aberto", que era um interruptor: ligado
+ * mostrava o que ainda não começou, desligado mostrava tudo. Quem queria ver os
+ * encerrados do dia — para conferir como as leituras fecharam — não tinha o que
+ * apertar, e quem queria acompanhar o que está rolando agora também não.
+ *
+ * ⚠️ QUEM MANDA É O RELÓGIO, não o status. O `status_short` vem do espelho e
+ * atrasa: jogo que já apitou segue em `NS` por alguns minutos. É a mesma razão
+ * pela qual `hasKickoffPassed` existe, e a mesma regra que o filtro antigo já
+ * usava — "em aberto" nunca foi "status diz que não começou", e sim "o apito
+ * ainda não soou".
+ *
+ * A consequência é que "ao vivo" aqui significa COMEÇOU E NÃO ACABOU, e não
+ * "a API disse que a bola está rolando". Jogo adiado depois do horário marcado
+ * cai nesse balaio, porque o painel não recebe os status de adiamento (PST,
+ * CANC, SUSP) em lugar nenhum hoje — o board só publica linha de jogo com odds
+ * coletadas. Se um dia esses status chegarem, é aqui que eles entram, e não em
+ * cada tela.
+ */
+export type EstadoDoJogo = 'aberto' | 'ao_vivo' | 'encerrado';
+
+export const ESTADOS_DO_JOGO: readonly EstadoDoJogo[] = ['aberto', 'ao_vivo', 'encerrado'];
+
+export function estadoDoJogo(
+  status: string | null | undefined,
+  kickoffUtc: string | null | undefined,
+  agora: Date,
+): EstadoDoJogo {
+  if (isFinished(status)) return 'encerrado';
+  if (isLive(status)) return 'ao_vivo';
+  return hasKickoffPassed(kickoffUtc, agora) ? 'ao_vivo' : 'aberto';
+}
+
+/**
+ * Lista vazia esconde tudo, e isso é decisão de produto: o seletor deixa
+ * desmarcar o último item de propósito, e a tela responde com o vazio e a
+ * instrução de escolher um. O contrário — o último clique não fazer nada — é
+ * o que havia antes, e ninguém descobria por quê.
+ */
+export function passaNoFiltroDeEstado(
+  selecionados: readonly EstadoDoJogo[],
+  status: string | null | undefined,
+  kickoffUtc: string | null | undefined,
+  agora: Date,
+): boolean {
+  return selecionados.includes(estadoDoJogo(status, kickoffUtc, agora));
 }

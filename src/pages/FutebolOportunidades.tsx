@@ -16,19 +16,21 @@ import { OportunidadesFiltros, type MarketFilter } from '@/components/futebol/Op
 import { draftFromBoardRow } from '@/components/futebol/registrar-aposta-utils';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 import { competitionLabel, sortCompetitions, fixtureScopesFor } from '@/utils/futebol-competitions';
+import { VerAnaliseCTA } from '@/components/futebol/VerAnaliseCTA';
 import {
   pickLabel, marketLabel, fmtEdgeScore,
   faixaBadgeCls, faixaWord, faixaTone, chancePct, edgeToneCls,
   opcoesDeFaixa, passaNoFiltroDeFaixas, versaoDaJanela, compararOportunidades,
   FAIXAS_FILTRO_PADRAO, type Faixa,
   FILTRO_DE_VALOR_PADRAO, passaNoFiltroDeValor, type FiltroDeValor,
+  ESTADOS_DO_JOGO, passaNoFiltroDeEstado, type EstadoDoJogo,
 } from '@/utils/futebol-score';
 import { settleFutebol, resultBadge, resumoDoDia, type BetResult } from '@/utils/futebol-settlement';
 import { mercadoEstaOculto } from '@/utils/futebol-mercados-ocultos';
 import { hrefDaSaida } from '@/utils/futebol-links';
 import { mergeBoardAndHistory, historyWindow, HISTORY_WINDOW_DAYS } from '@/utils/futebol-history';
 import { oppKey, oportunidadesDoDia, type OppLike } from '@/utils/futebol-registradas';
-import { parseUtc, brtDayOf, brtDateStr, fmtTime, hasKickoffPassed, isFinished, addDays } from '@/utils/futebol-datas';
+import { parseUtc, brtDayOf, brtDateStr, fmtTime, isFinished, addDays } from '@/utils/futebol-datas';
 import { idsSemFecho as idsSemFechoDaLista } from '@/utils/futebol-placar-fresco';
 import { onboardingHref, ONBOARDING_SRC_ALERTAS_FUTEBOL } from '@/utils/onboarding-return';
 import { useNow } from '@/hooks/use-now';
@@ -69,6 +71,27 @@ function Crest({ teamId, name, size = 20 }: { teamId: number; name: string; size
 }
 
 const LABEL = 'text-[10px] uppercase tracking-[0.14em] font-bold text-ink-3';
+/**
+ * O que dizer quando o filtro esvaziou a lista.
+ *
+ * Três casos e não dois: além de "está tudo em outro recorte", agora dá para
+ * ficar com NENHUM item marcado num seletor — e aí a frase precisa dizer isso,
+ * senão a pessoa procura no lugar errado. É o preço combinado de deixar
+ * desmarcar o último item, e ele se paga aqui.
+ *
+ * E dizer QUAIS: "um dos filtros" obriga a abrir os quatro para descobrir onde
+ * foi. Com Faixa e Estado vazios ao mesmo tempo, os dois são nomeados.
+ */
+function textoDoFiltroQueEsvaziou(escondidas: number, vazios: readonly string[]): string {
+  if (vazios.length > 0) {
+    const nomes = vazios.length === 1 ? vazios[0] : `${vazios.slice(0, -1).join(', ')} e ${vazios[vazios.length - 1]}`;
+    const verbo = vazios.length === 1 ? 'está' : 'estão';
+    return `O filtro de ${nomes} ${verbo} sem nenhuma opção marcada. Marque ao menos uma para ver a lista.`;
+  }
+  const quantas = `Este dia tem ${escondidas} ${escondidas === 1 ? 'oportunidade' : 'oportunidades'}`;
+  return `${quantas} em outro filtro. Troque o filtro para ver.`;
+}
+
 const GRID = 'grid grid-cols-[56px_64px_1fr_140px_64px_80px_72px_28px] gap-3 items-center';
 
 // Linha da tabela (desktop)
@@ -153,7 +176,7 @@ function OppMobileCard({ o, to, locked, result, homeGoals, awayGoals, canRegiste
   const hasScore = homeGoals != null && awayGoals != null;
   return (
     <div className="w-full rounded-rebrand-md bg-white border border-line overflow-hidden">
-      <Link to={to} className="block w-full text-left p-3.5">
+      <Link to={to} className="group block w-full text-left p-3.5">
         <div className="flex items-start gap-3">
           <div className="flex items-center -space-x-1 shrink-0 pt-0.5">
             <Crest teamId={o.home_team_id} name={o.home_team_name} size={24} />
@@ -209,6 +232,13 @@ function OppMobileCard({ o, to, locked, result, homeGoals, awayGoals, canRegiste
             </div>
           ))}
         </div>
+        {/* Só no celular, e só para quem tem a leitura.
+            No desktop a linha da tabela termina num chevron e a coluna inteira
+            de setas já diz que cada linha abre; no celular não há coluna, não
+            há cursor e o cartão parecia um resumo fechado em si. E linha
+            bloqueada não ganha convite: atrás dela está a paywall, não a
+            análise. */}
+        {!bloqueada && <VerAnaliseCTA className="mt-3" />}
       </Link>
       {canRegister && (
         <div className="px-3.5 pb-3.5 -mt-0.5">
@@ -274,10 +304,11 @@ export default function FutebolOportunidades() {
   const locked = isDemo ? false : !access?.unlocked;
   const [mercado, setMercado] = useState<MarketFilter>('all');
   const [faixasSelecionadas, setFaixasSelecionadas] = useState<Faixa[]>([...FAIXAS_FILTRO_PADRAO]);
-  // Desligado por padrão: a lista é o retrato do dia, e esconder o que já entrou
-  // em campo apagaria metade dele numa noite de sábado. Quem está caçando aposta
-  // agora liga e vê só o que dá para acompanhar.
-  const [soEmAberto, setSoEmAberto] = useState(false);
+  // Os três estados marcados por padrão: a lista é o retrato do dia, e esconder
+  // o que já entrou em campo apagaria metade dele numa noite de sábado. Quem
+  // está caçando aposta agora tira "Encerrados"; quem quer conferir como o dia
+  // fechou deixa só ele — o que o interruptor "Só jogos em aberto" não permitia.
+  const [estadosSelecionados, setEstadosSelecionados] = useState<EstadoDoJogo[]>([...ESTADOS_DO_JOGO]);
   const [valor, setValor] = useState<FiltroDeValor>(FILTRO_DE_VALOR_PADRAO);
   // `null` significa todas: acompanha automaticamente as competições daquele dia.
   const [competicoesSelecionadas, setCompeticoesSelecionadas] = useState<string[] | null>(null);
@@ -511,6 +542,25 @@ export default function FutebolOportunidades() {
     return { gh: g?.gh ?? null, ga: g?.ga ?? null, status };
   };
 
+  /**
+   * O estado do jogo com AS MESMAS FONTES que desenham a linha.
+   *
+   * ⚠️ Não passe `r.status_short` cru para o filtro. A linha do board é a que
+   * mais atrasa — é ela que fica em `2H` com o jogo terminado —, e foi para
+   * contornar isso que existem o placar fresco (migration 152) e a leitura da
+   * segunda linha do espelho. Filtrar pelo board enquanto a tela desenha pelo
+   * fresco produz o pior tipo de defeito: a linha mostra placar final e o
+   * veredito, e mesmo assim some de "Encerrados" porque o filtro acha que ela
+   * ainda está rolando.
+   *
+   * O kickoff vem do calendário quando existe, como em `idsSemFecho`: o board
+   * guarda o horário da publicação, e jogo remarcado muda no calendário antes.
+   */
+  const estadoDaLinha = (o: OppLike) => ({
+    status: placarDe(o).status,
+    kickoff: fixtureMap.get(o.fixture_id)?.kickoff_utc ?? o.kickoff_utc,
+  });
+
   const resultOf = (o: OppLike): BetResult | null => {
     const p = placarDe(o);
     if (!isFinished(p.status)) return null;
@@ -520,7 +570,9 @@ export default function FutebolOportunidades() {
   // A demonstração herda a escala do produto (#333). A janela passada aqui é a
   // MESMA que a tela exibe: herdar de outra faz o tour anunciar uma régua e a
   // legenda ao lado dele anunciar outra, que é o defeito inteiro de volta.
-  const demoBoard = useDemoFutebolBoard(dayRows);
+  // O dia vai junto, pelo mesmo motivo da home: a demonstração não pode
+  // contradizer a régua de datas que está logo acima dela.
+  const demoBoard = useDemoFutebolBoard(dayRows, selectedDay);
 
   const filtered = useMemo(
     () => dayRows.filter((r) => {
@@ -529,18 +581,18 @@ export default function FutebolOportunidades() {
       if (!passaNoFiltroDeFaixas(faixasSelecionadas, r.faixa)) return false;
       if (!passaNoFiltroDeValor(valor, r.edge)) return false;
       if (competicoesSelecionadas && !competicoesSelecionadas.includes(r.competition)) return false;
-      // Em aberto = o apito inicial ainda não soou. O status vem depois, e às
-      // vezes atrasado, então quem manda é o relógio (ver futebol-datas.ts).
-      if (
-        soEmAberto &&
-        (r.kickoff_utc == null ||
-          hasKickoffPassed(r.kickoff_utc, new Date(agora)) ||
-          isFinished(r.status_short))
-      )
-        return false;
+      // Em aberto, ao vivo ou encerrado: a regra mora em futebol-score.ts, junto
+      // das outras do painel, e decide pelo relógio antes do status — que vem do
+      // espelho e atrasa. As FONTES são as da tela (ver `estadoDaLinha`).
+      const estado = estadoDaLinha(r);
+      if (!passaNoFiltroDeEstado(estadosSelecionados, estado.status, estado.kickoff, new Date(agora))) return false;
       return true;
     }),
-    [dayRows, mercado, faixasSelecionadas, valor, competicoesSelecionadas, soEmAberto, agora]
+    // `fixtureMap` e `frescoMap` entram porque `estadoDaLinha` lê os dois: sem
+    // elas, o filtro continuaria mostrando o recorte de antes de o placar
+    // fresco chegar. O eslint não cobra estas dependências aqui (a regra está
+    // desligada no arquivo), então elas são responsabilidade de quem edita.
+    [dayRows, mercado, faixasSelecionadas, valor, competicoesSelecionadas, estadosSelecionados, agora, fixtureMap, frescoMap]
   );
 
   // Uma linha por oportunidade (sem colapsar por jogo), ranqueado por Score.
@@ -562,6 +614,16 @@ export default function FutebolOportunidades() {
   // Quantas o dia tem e o filtro escondeu. Serve ao estado vazio: sem isto ele
   // diz "não há oportunidade nesse dia" quando o que houve foi um filtro.
   const escondidasPeloFiltro = (isDemo ? demoBoard.length : dayRows.length) - bestRows.length;
+  // Quais seletores ficaram sem nenhuma opção marcada. Eles escondem TUDO, e a
+  // tela vazia precisa dizer isso com todas as letras: é o estado que o produto
+  // passou a permitir para que desmarcar o último item deixasse de ser um
+  // clique engolido. Competição é a exceção de sempre — lá `null` é "todas", e
+  // só a lista vazia de verdade significa nenhuma.
+  const filtrosVazios = [
+    faixasSelecionadas.length === 0 ? 'faixa' : null,
+    estadosSelecionados.length === 0 ? 'estado' : null,
+    competicoesSelecionadas?.length === 0 ? 'competição' : null,
+  ].filter((nome): nome is string => nome != null);
   const distribuicao = isDemo ? demoBoard : dayRows;
   const nAlta = distribuicao.filter((o) => faixaTone(o.faixa ?? '') === 'alta' && o.faixa != null).length;
   const nMedia = distribuicao.filter((o) => o.faixa != null && faixaTone(o.faixa) === 'media').length;
@@ -773,8 +835,8 @@ export default function FutebolOportunidades() {
         <OportunidadesFiltros
           mercado={mercado}
           onMercadoChange={setMercado}
-          soEmAberto={soEmAberto}
-          onSoEmAbertoChange={setSoEmAberto}
+          estadosSelecionados={estadosSelecionados}
+          onEstadosChange={setEstadosSelecionados}
           faixasSelecionadas={faixasSelecionadas}
           onFaixasChange={setFaixasSelecionadas}
           valor={valor}
@@ -792,14 +854,14 @@ export default function FutebolOportunidades() {
                 foi o filtro. Culpar o dado nesse caso manda a pessoa embora de
                 uma tela que só precisava de um clique em Todas. */}
             <p className="text-sm text-ink-2">
-              {escondidasPeloFiltro > 0 ? 'Nenhuma oportunidade nesse filtro.'
+              {filtrosVazios.length > 0 || escondidasPeloFiltro > 0 ? 'Nenhuma oportunidade nesse filtro.'
                 : isPastDay ? 'Nenhuma oportunidade publicada nesse dia.'
                 : isFutureDay ? 'Ainda sem oportunidades para este dia.'
                 : 'Nenhum jogo com odds nesse filtro.'}
             </p>
             <p className="text-xs text-ink-3 mt-1">
-              {escondidasPeloFiltro > 0
-                ? `Este dia tem ${escondidasPeloFiltro} ${escondidasPeloFiltro === 1 ? 'oportunidade' : 'oportunidades'}${soEmAberto ? ' de jogos que já começaram ou em outro filtro. Desligue "Só jogos em aberto" para ver.' : ' em outra faixa ou mercado. Troque o filtro para ver.'}`
+              {filtrosVazios.length > 0 || escondidasPeloFiltro > 0
+                ? textoDoFiltroQueEsvaziou(escondidasPeloFiltro, filtrosVazios)
                 : isPastDay ? 'Só listamos aqui o que foi publicado no dia.'
                 : isFutureDay ? 'As odds costumam ser coletadas a partir de ~24h antes do jogo — as oportunidades aparecem aqui quando chegarem.'
                 : 'As oportunidades aparecem quando há odds coletadas antes do jogo.'}
