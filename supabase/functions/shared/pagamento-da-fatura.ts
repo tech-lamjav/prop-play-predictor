@@ -68,7 +68,31 @@ interface FaturaCrua {
   created?: unknown;
   status_transitions?: { paid_at?: unknown };
   period_start?: unknown;
-  lines?: { data?: { period?: { start?: unknown } }[] };
+  period_end?: unknown;
+  lines?: { data?: { period?: { start?: unknown; end?: unknown } }[] };
+}
+
+/**
+ * Quantos meses o período declarado DURA.
+ *
+ * ⚠️ Sem `+ 1`, e isto é o conserto de um defeito que teria zerado a receita do
+ * gateway.
+ *
+ * O Stripe declara o período com fim EXCLUSIVO: uma renovação mensal vai de
+ * 15/09 a 15/10, e isso é UM mês. A primeira versão somava um, dava dois, e o
+ * guarda de fatura longa recusava — ou seja, recusava toda renovação mensal
+ * real. Nenhum pagamento do gateway seria gravado, e como o webhook só escreve
+ * um aviso no log e responde 200, o dinheiro sumiria calado.
+ *
+ * O piso de 1 existe para o caso em que o fim cai no mesmo mês do início: a
+ * subtração dá zero, e zero mês não é resposta.
+ */
+function mesesDoPeriodo(inicio: number, fim: number): number {
+  const a = diaEmBrasilia(inicio);
+  const b = diaEmBrasilia(fim);
+  const [anoA, mesA] = a.split('-').map(Number);
+  const [anoB, mesB] = b.split('-').map(Number);
+  return Math.max(1, (anoB - anoA) * 12 + (mesB - mesA));
 }
 
 /**
@@ -117,6 +141,31 @@ export function pagamentoDaFatura(
    */
   const inicioDoPeriodo =
     numeroFinito(f.lines?.data?.[0]?.period?.start) ?? numeroFinito(f.period_start);
+  const fimDoPeriodo = numeroFinito(f.lines?.data?.[0]?.period?.end) ?? numeroFinito(f.period_end);
+
+  /*
+   * ⚠️ Fatura que cobre MAIS DE UM MÊS é recusada, e não empilhada.
+   *
+   * Hoje todo preço cadastrado é mensal, mas o código nunca leu o intervalo do
+   * preço: se alguém criar um preço anual e apontar uma variável para ele, uma
+   * fatura passaria a cobrir doze meses. Gravar isso numa competência só
+   * poria doze meses de dinheiro num mês, e os outros onze apareceriam em
+   * aberto — a pessoa seria cobrada por um período que ela pagou.
+   *
+   * Dividir em doze pagamentos seria pior: cada um precisaria de identificador
+   * próprio, e é o identificador da fatura que garante "uma fatura, uma vez".
+   * Inventar identificadores derrubaria a única proteção contra o Stripe
+   * reentregar o evento.
+   *
+   * Recusar faz o caso aparecer no log, alto, no dia em que ele existir.
+   */
+  if (inicioDoPeriodo !== null && fimDoPeriodo !== null) {
+    const meses = mesesDoPeriodo(inicioDoPeriodo, fimDoPeriodo);
+    if (meses > 1) {
+      return { tipo: 'recusa', motivo: `periodo cobre ${meses} meses de competencia` };
+    }
+  }
+
   const diaDaCompetencia = diaEmBrasilia(inicioDoPeriodo ?? pagoEmSegundos);
 
   return {

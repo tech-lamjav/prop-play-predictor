@@ -68,6 +68,35 @@ describe('o glossário manda', () => {
     expect(culpados).toEqual([]);
   });
 
+  it('quem vem do gateway não é chamado de "inadimplente"', () => {
+    // ⚠️ Nomes de ARQUIVO, e não a palavra solta, pelo mesmo motivo dos outros
+    // guardas: "inadimplente" é termo legítimo e está por toda parte falando da
+    // fila de origem MANUAL, que é derivada do nosso registro de pagamento.
+    //
+    // O que não pode é a palavra atravessar para o lado do gateway. Lá o que
+    // existe é COBRANÇA FALHANDO: fato relatado pelo Stripe, e não conclusão
+    // nossa. Somar as duas encheria a fila de inadimplentes de gente que o
+    // gateway já está cobrando sozinho — e o sócio pediria Pix a quem tem
+    // cartão em nova tentativa, que é como se produz pagamento em dobro.
+    // ⚠️ E olha o que a TELA MOSTRA, não o que o comentário explica.
+    //
+    // A primeira versão varria o arquivo inteiro e me pegou na hora — nas
+    // quatro vezes em que o código explica, em comentário, POR QUE a palavra
+    // não se aplica ali: "é cobrança falhando, e nunca inadimplente". Proibir
+    // isso apagaria justamente a explicação que impede alguém de reintroduzir a
+    // confusão.
+    //
+    // É a armadilha que o cabeçalho deste arquivo descreve: guarda que fica
+    // vermelho com código certo é guarda que alguém apaga.
+    const doGateway = ['crm-assinatura-do-stripe.ts', 'ListaDoStripe.tsx'];
+    const semComentarios = (texto: string) =>
+      texto.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    const culpados = codigo
+      .filter(([nome, texto]) => doGateway.includes(nome) && /inadimpl/i.test(semComentarios(texto)))
+      .map(([nome]) => nome);
+    expect(culpados).toEqual([]);
+  });
+
   it('"admin" não voltou, nem como caminho de arquivo', () => {
     // A pasta se chamou `admin/` antes, e o verbete "Sócio" proíbe a palavra.
     // Um ponteiro para `components/admin/CONTEXT.md` sobreviveu numa migration

@@ -107,6 +107,106 @@ Deno.test("o dia do pagamento pode ser de outro mês que o da competência", () 
   assertEquals(p.pago_em, "2026-10-02");
 });
 
+Deno.test("⚠️ fatura que cobre MAIS DE UM MÊS é recusada, e não empilhada", () => {
+  // Hoje todo preço cadastrado é mensal, mas o código nunca leu o intervalo do
+  // preço: se alguém criar um preço anual e apontar uma variável para ele, uma
+  // fatura passaria a cobrir doze meses.
+  //
+  // Gravar isso numa competência só poria doze meses de dinheiro num mês, e os
+  // outros onze apareceriam EM ABERTO — a pessoa seria cobrada por um período
+  // que ela já pagou.
+  //
+  // Dividir seria pior: cada pedaço precisaria de identificador próprio, e é o
+  // identificador da fatura que garante "uma fatura, uma vez". Inventar
+  // identificadores derrubaria a única proteção contra a reentrega de evento.
+  const anual = {
+    lines: {
+      data: [
+        {
+          period: {
+            start: Date.UTC(2026, 0, 15, 12, 0, 0) / 1000,
+            end: Date.UTC(2027, 0, 15, 12, 0, 0) / 1000,
+          },
+        },
+      ],
+    },
+  };
+  assertEquals(recusa(fatura(anual)), "periodo cobre 12 meses de competencia");
+});
+
+Deno.test("⚠️ a renovação mensal por ANIVERSÁRIO passa, e não é confundida com longa", () => {
+  // O defeito que a revisão pegou, e ele teria zerado a receita do gateway.
+  //
+  // O Stripe declara o período com fim EXCLUSIVO: 28/09 a 28/10 é UM mês. A
+  // primeira versão somava um, dava dois, e o guarda recusava — ou seja,
+  // recusava toda renovação mensal real. Nenhum pagamento seria gravado, e o
+  // webhook só escreve aviso no log: o dinheiro sumiria calado.
+  //
+  // ⚠️ E um teste meu CONSAGRAVA o defeito: ele usava 15/09 a 15/10, que é a
+  // forma exata de uma mensalidade comum, e afirmava que a recusa estava certa.
+  const porAniversario = {
+    lines: {
+      data: [
+        {
+          period: {
+            start: Date.UTC(2026, 8, 28, 12, 0, 0) / 1000,
+            end: Date.UTC(2026, 9, 28, 12, 0, 0) / 1000,
+          },
+        },
+      ],
+    },
+  };
+  assertEquals(gravado(fatura(porAniversario)).competencia, "2026-09-01");
+});
+
+Deno.test("dois meses de verdade continuam sendo recusados", () => {
+  // Dois meses inteiros: 15/09 a 15/11. Sem este caso, tirar o guarda inteiro
+  // passaria despercebido.
+  const doisMeses = {
+    lines: {
+      data: [
+        {
+          period: {
+            start: Date.UTC(2026, 8, 15, 12, 0, 0) / 1000,
+            end: Date.UTC(2026, 10, 15, 12, 0, 0) / 1000,
+          },
+        },
+      ],
+    },
+  };
+  assertEquals(recusa(fatura(doisMeses)), "periodo cobre 2 meses de competencia");
+});
+
+Deno.test("o mês inteiro dentro do mesmo mês continua passando", () => {
+  // O outro lado do guarda: recusar demais faria o dinheiro de verdade sumir
+  // do total. Uma fatura de 1 a 30 de setembro é um mês só.
+  const mesCheio = {
+    lines: {
+      data: [
+        {
+          period: {
+            start: Date.UTC(2026, 8, 1, 12, 0, 0) / 1000,
+            end: Date.UTC(2026, 8, 30, 12, 0, 0) / 1000,
+          },
+        },
+      ],
+    },
+  };
+  assertEquals(gravado(fatura(mesCheio)).competencia, "2026-09-01");
+});
+
+Deno.test("sem fim de período declarado, não recusa por suspeita", () => {
+  // Faltar o fim não é sinal de período longo. Recusar aqui perderia dinheiro
+  // de verdade por falta de dado, e o caminho do mês do pagamento já cobre.
+  //
+  // ⚠️ O início aqui é de AGOSTO, e não o padrão da fábrica. A primeira versão
+  // passava um `lines` idêntico ao padrão, então não exercitava nada: o teste
+  // teria passado com a função ignorando o argumento inteiro.
+  const inicioEmAgosto = Date.UTC(2026, 7, 10, 12, 0, 0) / 1000;
+  const semFim = { lines: { data: [{ period: { start: inicioEmAgosto } }] } };
+  assertEquals(gravado(fatura(semFim)).competencia, "2026-08-01");
+});
+
 Deno.test("sem pessoa resolvida, recusa em vez de gravar órfão", () => {
   // Pagamento sem dono é dinheiro sem pessoa, e o script de importação relata
   // isso em vez de adivinhar.
