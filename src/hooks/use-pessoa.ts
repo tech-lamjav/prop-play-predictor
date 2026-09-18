@@ -33,6 +33,9 @@ const MAPA_DE_CAMPOS: Record<keyof Pessoa, true> = {
   futebol_trial_started_at: true,
   futebol_publication_alerts_ack_at: true,
   futebol_trial_ends_at: true,
+  // De onde veio o acesso. Sim ou não, calculado pelo banco — o identificador
+  // da assinatura continua sem sair de lá, que é a regra deste mapa.
+  tem_assinatura_no_stripe: true,
   has_report_access: true,
 };
 

@@ -27,6 +27,16 @@ export const cadastroDeTeste = (over: Partial<Cadastro> = {}): Cadastro => ({
   futebol_trial_started_at: null,
   futebol_publication_alerts_ack_at: null,
   futebol_trial_ends_at: null,
+  /*
+   * Sem assinatura no gateway por padrão, pelo mesmo raciocínio do WhatsApp
+   * logo acima: o caso comum de um lead é não pagar no cartão, e um padrão
+   * `true` faria toda a suíte contar como cliente do Stripe sem nenhum teste
+   * falar disso. Quem testa a origem do gateway põe `true` explicitamente, e
+   * aí o teste diz o que está testando.
+   */
+  tem_assinatura_no_stripe: false,
+  betinho_subscription_period_end: null,
+  analytics_subscription_period_end: null,
   ...over,
 });
 

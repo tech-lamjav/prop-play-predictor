@@ -43,6 +43,31 @@ export interface Cadastro {
    * é gravado junto com o início, então cada coorte já traz a sua duração.
    */
   futebol_trial_ends_at: string | null;
+  /**
+   * Se a pessoa tem assinatura no gateway. Calculada pelo banco.
+   *
+   * ⚠️ Existe porque "tem premium" NÃO diz de onde veio o acesso: o webhook do
+   * Stripe, a assinatura dada na mão e o acesso avulso escrevem todos `premium`
+   * nas mesmas colunas. Sem isto, a tela chamaria acesso dado na mão de cliente
+   * pagante.
+   *
+   * É um sim ou não, e não o identificador da assinatura: esse fica no banco de
+   * propósito, pela mesma regra que mantém esta lista escrita à mão.
+   */
+  tem_assinatura_no_stripe: boolean | null;
+  /**
+   * Até quando o período pago corrente vai, por produto.
+   *
+   * ⚠️ É data de RENOVAÇÃO, e não de vencimento: quem paga no gateway não perde
+   * o acesso nessa data, ele é cobrado de novo. Confundir as duas faria a tela
+   * pôr um cliente em dia na fila de cobrança.
+   *
+   * O futebol não tem estas colunas, por decisão registrada em
+   * `shared/concessoes.ts`. Quem assina só o futebol fica sem data, e a tela
+   * diz que não sabe em vez de inventar.
+   */
+  betinho_subscription_period_end: string | null;
+  analytics_subscription_period_end: string | null;
 }
 
 export interface DiaDe<T> {
