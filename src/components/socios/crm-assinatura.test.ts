@@ -3,6 +3,7 @@ import {
   aCobrar,
   inadimplentes,
   montarAssinaturas,
+  saiuParaOCartao,
   type Assinatura,
   type AssinaturaDoBanco,
 } from './crm-assinatura';
@@ -197,6 +198,7 @@ describe('inadimplentes', () => {
     const [i] = inadimplentes(
       assinaturas(linha({ criada_em: '2026-07-10T15:00:00Z' })),
       new Map(),
+      new Map(),
       HOJE_I,
     );
     expect(i.meses).toEqual(['2026-07', '2026-08', '2026-09']);
@@ -212,6 +214,7 @@ describe('inadimplentes', () => {
     const [i] = inadimplentes(
       assinaturas(linha({ criada_em: '2025-04-10T15:00:00Z' })),
       new Map(),
+      new Map(),
       HOJE_I,
     );
     expect(i.meses).toHaveLength(18);
@@ -226,20 +229,20 @@ describe('inadimplentes', () => {
       pagamento({ competencia: '2026-09-01' }),
     ]);
     const lista = assinaturas(linha({ criada_em: '2026-07-10T15:00:00Z' }));
-    expect(inadimplentes(lista, new Map([['a1', pagos]]), HOJE_I)).toEqual([]);
+    expect(inadimplentes(lista, new Map([['a1', pagos]]), new Map(), HOJE_I)).toEqual([]);
   });
 
   it('sem cobrança nunca entra', () => {
     // Quem não combinou pagar não deve nada.
     const lista = assinaturas(linha({ valor_mensal: null, criada_em: '2026-01-10T15:00:00Z' }));
-    expect(inadimplentes(lista, new Map(), HOJE_I)).toEqual([]);
+    expect(inadimplentes(lista, new Map(), new Map(), HOJE_I)).toEqual([]);
   });
 
   it('vitalícia com cobrança entra quando deixa de pagar', () => {
     // ⚠️ É o que separa esta fila da de cobrança: a vitalícia nunca vence, mas
     // quem combinou pagar e parou está devendo como qualquer outro.
     const lista = assinaturas(linha({ vence_em: null, criada_em: '2026-08-10T15:00:00Z' }));
-    const [i] = inadimplentes(lista, new Map(), HOJE_I);
+    const [i] = inadimplentes(lista, new Map(), new Map(), HOJE_I);
     expect(i.meses).toEqual(['2026-08', '2026-09']);
   });
 
@@ -249,7 +252,7 @@ describe('inadimplentes', () => {
       linha({ id: 'a1', user_id: 'u1', criada_em: '2026-09-02T15:00:00Z' }),
       linha({ id: 'a2', user_id: 'u2', criada_em: '2026-06-02T15:00:00Z' }),
     );
-    expect(inadimplentes(lista, new Map(), HOJE_I).map((i) => i.assinatura.pessoa)).toEqual([
+    expect(inadimplentes(lista, new Map(), new Map(), HOJE_I).map((i) => i.assinatura.pessoa)).toEqual([
       'João',
       'Maria',
     ]);
@@ -268,13 +271,13 @@ describe('inadimplentes', () => {
     // O ganho concreto: o começo passou a poder ser RETROATIVO, e uma derivação
     // do carimbo de criação nunca conseguiria expressar isso.
     const lista = assinaturas(linha({ comecou_em: '2026-07-31' }));
-    expect(inadimplentes(lista, new Map(), HOJE_I)[0].meses[0]).toBe('2026-07');
+    expect(inadimplentes(lista, new Map(), new Map(), HOJE_I)[0].meses[0]).toBe('2026-07');
   });
 
   it('retroagir o começo abre os meses anteriores', () => {
     // O que o campo novo entrega, visto de onde ele importa: a fila.
     const lista = assinaturas(linha({ comecou_em: '2026-06-01' }));
-    expect(inadimplentes(lista, new Map(), HOJE_I)[0].meses).toEqual([
+    expect(inadimplentes(lista, new Map(), new Map(), HOJE_I)[0].meses).toEqual([
       '2026-06',
       '2026-07',
       '2026-08',
@@ -287,6 +290,147 @@ describe('inadimplentes', () => {
       pagamento({ competencia: '2026-09-01', estornado_em: '2026-09-04T12:00:00Z' }),
     ]);
     const lista = assinaturas(linha({ criada_em: '2026-09-02T15:00:00Z' }));
-    expect(inadimplentes(lista, new Map([['a1', estornado]]), HOJE_I)).toHaveLength(1);
+    expect(inadimplentes(lista, new Map([['a1', estornado]]), new Map(), HOJE_I)).toHaveLength(1);
+  });
+
+  it('⚠️ quem tem as duas origens para de acumular na virada', () => {
+    // O critério das duas origens, visto de onde ele importa. Sem isto, o
+    // acordo na mão de quem passou para o cartão seguia acumulando mês para
+    // sempre, e a fila cobrava por fora alguém que já paga sozinho.
+    const lista = montarAssinaturas(
+      [linha({ comecou_em: '2026-06-01', vence_em: null })],
+      [cadastro({ id: 'u1', name: 'Maria', tem_assinatura_no_stripe: true })],
+    );
+    const doGateway = new Map([
+      ['u1', montarPagamentos([pagamento({ competencia: '2026-08-01', origem: 'stripe' })])],
+    ]);
+
+    // Junho e julho continuam devidos; agosto é do cartão, e setembro também.
+    expect(inadimplentes(lista, new Map(), doGateway, HOJE_I)[0].meses).toEqual([
+      '2026-06',
+      '2026-07',
+    ]);
+  });
+
+  it('e sem fatura do gateway a virada é o mês corrente', () => {
+    // O caso de hoje: o histórico não foi importado, então quem já assina pelo
+    // cartão não tem fatura nenhuma do lado de cá. Setembro para de contar.
+    const lista = montarAssinaturas(
+      [linha({ comecou_em: '2026-07-01', vence_em: null })],
+      [cadastro({ id: 'u1', name: 'Maria', tem_assinatura_no_stripe: true })],
+    );
+    expect(inadimplentes(lista, new Map(), new Map(), HOJE_I)[0].meses).toEqual([
+      '2026-07',
+      '2026-08',
+    ]);
+  });
+
+  it('⚠️ a fatura do gateway de OUTRA pessoa não vira nada aqui', () => {
+    // O mapa é por pessoa, e trocar a chave faria a virada de um vazar para o
+    // acordo de outro — o defeito mais caro possível numa conta de dívida.
+    const lista = montarAssinaturas(
+      [linha({ comecou_em: '2026-07-01', vence_em: null })],
+      [cadastro({ id: 'u1', name: 'Maria', tem_assinatura_no_stripe: false })],
+    );
+    const deOutro = new Map([
+      ['u9', montarPagamentos([pagamento({ competencia: '2026-07-01', origem: 'stripe' })])],
+    ]);
+    expect(inadimplentes(lista, new Map(), deOutro, HOJE_I)[0].meses).toEqual([
+      '2026-07',
+      '2026-08',
+      '2026-09',
+    ]);
+  });
+});
+
+describe('pagaNoCartao', () => {
+  it('sai da coluna calculada pelo banco', () => {
+    const [a] = montarAssinaturas(
+      [linha()],
+      [cadastro({ id: 'u1', tem_assinatura_no_stripe: true })],
+    );
+    expect(a.pagaNoCartao).toBe(true);
+  });
+
+  it('⚠️ e NUNCA de "tem premium"', () => {
+    // Três caminhos escrevem premium nas mesmas colunas: o webhook, a
+    // assinatura dada na mão e o acesso avulso. Pelo status, toda assinatura
+    // manual sairia sozinha da fila de cobrança no instante em que fosse dada.
+    const [a] = montarAssinaturas(
+      [linha()],
+      [
+        cadastro({
+          id: 'u1',
+          tem_assinatura_no_stripe: false,
+          betinho_subscription_status: 'premium',
+          futebol_subscription_status: 'premium',
+          analytics_subscription_status: 'premium',
+        }),
+      ],
+    );
+    expect(a.pagaNoCartao).toBe(false);
+  });
+
+  it('coluna nula é NÃO, e não "não sei"', () => {
+    // A coluna é gerada e nasce preenchida, mas o tipo local admite nulo. Tirar
+    // da fila quem tem nulo esconderia gente de verdade.
+    const [a] = montarAssinaturas(
+      [linha()],
+      [cadastro({ id: 'u1', tem_assinatura_no_stripe: null })],
+    );
+    expect(a.pagaNoCartao).toBe(false);
+  });
+});
+
+describe('a fila de cobrança e o cartão', () => {
+  const noCartao = [cadastro({ id: 'u1', name: 'Maria', tem_assinatura_no_stripe: true })];
+
+  it('⚠️ quem paga no cartão sai da fila de cobrança', () => {
+    // Assinatura manual é cobrada porque não renova sozinha. Quem está no
+    // gateway renova sozinho, e pedir Pix a quem tem cartão passando é como se
+    // produz pagamento em dobro.
+    const lista = montarAssinaturas([linha({ vence_em: '2026-09-14' })], noCartao);
+    expect(aCobrar(lista, HOJE)).toEqual([]);
+  });
+
+  it('e quem não paga continua sendo cobrado', () => {
+    // O outro lado do guarda: tirar demais esvaziaria a fila inteira.
+    const lista = montarAssinaturas([linha({ vence_em: '2026-09-14' })], base);
+    expect(aCobrar(lista, HOJE)).toHaveLength(1);
+  });
+
+  it('saiuParaOCartao devolve exatamente quem foi tirado', () => {
+    // É o número que o rodapé escreve. Ele tem que sair da MESMA condição de
+    // janela, senão a tela conta uma coisa e a lista mostra outra.
+    const lista = montarAssinaturas([linha({ vence_em: '2026-09-14' })], noCartao);
+    expect(saiuParaOCartao(lista, HOJE).map((a) => a.id)).toEqual(['a1']);
+  });
+
+  it('⚠️ quem paga no cartão mas NÃO vence na janela não entra na conta', () => {
+    // O rodapé promete "saíram desta fila". Quem nunca entraria nela não saiu
+    // de lugar nenhum, e contá-lo faria o aviso inflar sozinho.
+    const lista = montarAssinaturas([linha({ vence_em: '2026-12-20' })], noCartao);
+    expect(saiuParaOCartao(lista, HOJE)).toEqual([]);
+  });
+
+  it('vitalícia no cartão também não entra na conta', () => {
+    // Ela nunca esteve na fila de vencimento: não tem o que vencer.
+    const lista = montarAssinaturas([linha({ vence_em: null })], noCartao);
+    expect(saiuParaOCartao(lista, HOJE)).toEqual([]);
+  });
+
+  it('as duas listas não se sobrepõem, e juntas dão a janela inteira', () => {
+    // ⚠️ É o que prova que a condição de janela tem um dono só. Com ela
+    // copiada, as duas podiam divergir e alguém sumiria das duas de uma vez.
+    const lista = montarAssinaturas(
+      [linha({ id: 'a1', user_id: 'u1', vence_em: '2026-09-14' }),
+       linha({ id: 'a2', user_id: 'u2', vence_em: '2026-09-15' })],
+      [
+        cadastro({ id: 'u1', tem_assinatura_no_stripe: true }),
+        cadastro({ id: 'u2', tem_assinatura_no_stripe: false }),
+      ],
+    );
+    expect(aCobrar(lista, HOJE).map((a) => a.id)).toEqual(['a2']);
+    expect(saiuParaOCartao(lista, HOJE).map((a) => a.id)).toEqual(['a1']);
   });
 });

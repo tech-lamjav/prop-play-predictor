@@ -28,7 +28,19 @@ const resposta = vi.hoisted(() => ({
 vi.mock('@/integrations/supabase/client', () => ({
   createClient: () => {
     const consulta = {
-      select: () => consulta,
+      /*
+       * ⚠️ As colunas pedidas são GUARDADAS, e não jogadas fora.
+       *
+       * O dublê ignorava o argumento, e isso abriu um buraco no dia em que a
+       * consulta passou a precisar de `user_id` para agrupar o dinheiro do
+       * gateway por pessoa: tirar a coluna do select deixaria o mapa vazio em
+       * silêncio, com a suíte inteira verde, e a virada para o cartão
+       * simplesmente pararia de existir.
+       */
+      select: (colunas: string) => {
+        resposta.filtros.push({ metodo: 'select', campo: colunas });
+        return consulta;
+      },
       eq: (campo: string, valor: unknown) => {
         resposta.filtros.push({ metodo: 'eq', campo, valor });
         return consulta;
@@ -225,16 +237,16 @@ describe('usePagamentosDasAssinaturas', () => {
     expect(result.current.porAssinatura.get('a2')?.[0].valor).toBe(39.9);
   });
 
-  it('⚠️ ignora pagamento SEM assinatura, em vez de agrupar sob chave indefinida', async () => {
+  it('⚠️ pagamento SEM assinatura fica FORA do mapa por assinatura', async () => {
     // O dinheiro do gateway não tem assinatura manual desde a migration 151, e
-    // o tipo local dizia que tinha. Esta consulta alimenta só a fila de
-    // inadimplentes, que é derivada do NOSSO registro e vale apenas para a
-    // origem manual. Sem o filtro, o dinheiro do Stripe entraria na fila como
-    // se fosse acordo feito na mão.
+    // o tipo local dizia que tinha. O mapa por assinatura alimenta a conta de
+    // mês em aberto, que é derivada do NOSSO registro e vale apenas para a
+    // origem manual. Sem esta separação, o dinheiro do Stripe quitaria mês de
+    // acordo feito na mão.
     resposta.linhas = {
       data: [
-        { ...linhaDoBanco, id: 'p1', assinatura_id: 'a1' },
-        { ...linhaDoBanco, id: 'p2', assinatura_id: null, origem: 'stripe' },
+        { ...linhaDoBanco, id: 'p1', assinatura_id: 'a1', user_id: 'u1' },
+        { ...linhaDoBanco, id: 'p2', assinatura_id: null, user_id: 'u1', origem: 'stripe' },
       ],
       error: null,
     };
@@ -244,6 +256,75 @@ describe('usePagamentosDasAssinaturas', () => {
     if (result.current.tipo !== 'pronto') throw new Error('não ficou pronto');
     expect(result.current.porAssinatura.get('a1')).toHaveLength(1);
     expect([...result.current.porAssinatura.keys()]).toEqual(['a1']);
+  });
+
+  it('⚠️ mas ele NÃO é descartado: vai para o mapa da pessoa', async () => {
+    // Era descartado, e o descarte é o que impedia a **virada para o cartão**
+    // de existir: sem saber desde quando o gateway cobra aquela pessoa, o
+    // acordo manual antigo dela seguia acumulando mês em aberto para sempre.
+    resposta.linhas = {
+      data: [
+        { ...linhaDoBanco, id: 'p1', assinatura_id: 'a1', user_id: 'u1' },
+        {
+          ...linhaDoBanco,
+          id: 'p2',
+          assinatura_id: null,
+          user_id: 'u1',
+          origem: 'stripe',
+          competencia: '2026-08-01',
+        },
+      ],
+      error: null,
+    };
+    const { wrapper } = ambiente();
+    const { result } = renderHook(() => usePagamentosDasAssinaturas(), { wrapper });
+    await waitFor(() => expect(result.current.tipo).toBe('pronto'));
+    if (result.current.tipo !== 'pronto') throw new Error('não ficou pronto');
+    expect(result.current.doGatewayPorPessoa.get('u1')).toHaveLength(1);
+    expect(result.current.doGatewayPorPessoa.get('u1')?.[0].mes).toBe('2026-08');
+  });
+
+  it('⚠️ e a linha com assinatura NÃO vaza para o mapa da pessoa', async () => {
+    // Os dois mapas respondem perguntas diferentes. Se o dinheiro da mão
+    // entrasse no mapa do gateway, o primeiro Pix da pessoa viraria a virada
+    // para o cartão dela — e a cobrança do acordo se desligaria sozinha no mês
+    // em que começou a funcionar.
+    resposta.linhas = {
+      data: [{ ...linhaDoBanco, id: 'p1', assinatura_id: 'a1', user_id: 'u1', origem: 'pix' }],
+      error: null,
+    };
+    const { wrapper } = ambiente();
+    const { result } = renderHook(() => usePagamentosDasAssinaturas(), { wrapper });
+    await waitFor(() => expect(result.current.tipo).toBe('pronto'));
+    if (result.current.tipo !== 'pronto') throw new Error('não ficou pronto');
+    expect([...result.current.doGatewayPorPessoa.keys()]).toEqual([]);
+  });
+
+  it('linha sem assinatura E sem pessoa é pulada, e não agrupada sob chave indefinida', async () => {
+    // Não deveria existir — a 151 fez a pessoa virar o pai do pagamento —, mas
+    // agrupar sob uma chave indefinida foi exatamente o defeito de antes.
+    resposta.linhas = {
+      data: [{ ...linhaDoBanco, id: 'p2', assinatura_id: null, user_id: null, origem: 'stripe' }],
+      error: null,
+    };
+    const { wrapper } = ambiente();
+    const { result } = renderHook(() => usePagamentosDasAssinaturas(), { wrapper });
+    await waitFor(() => expect(result.current.tipo).toBe('pronto'));
+    if (result.current.tipo !== 'pronto') throw new Error('não ficou pronto');
+    expect([...result.current.doGatewayPorPessoa.keys()]).toEqual([]);
+    expect([...result.current.porAssinatura.keys()]).toEqual([]);
+  });
+
+  it('⚠️ pede a coluna da PESSOA ao banco', async () => {
+    // O guarda mais barato e o mais fácil de perder: sem `user_id` no select, o
+    // agrupamento por pessoa recebe indefinido em toda linha, o mapa do gateway
+    // nasce vazio, e a virada para o cartão some da tela sem nenhum erro.
+    const { wrapper } = ambiente();
+    const { result } = renderHook(() => usePagamentosDasAssinaturas(), { wrapper });
+    await waitFor(() => expect(result.current.tipo).toBe('pronto'));
+    const select = resposta.filtros.find((f) => f.metodo === 'select');
+    expect(select?.campo).toContain('user_id');
+    expect(select?.campo).toContain('assinatura_id');
   });
 
   it('lê a tabela inteira, sem filtrar por assinatura', async () => {

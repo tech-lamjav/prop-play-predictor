@@ -145,6 +145,45 @@ function proximoMes(mes: string): string {
 }
 
 /**
+ * O mês a partir do qual o acordo feito na mão PARA de acumular, ou nulo.
+ *
+ * Existe para a pessoa que tem as duas origens: um acordo manual antigo e uma
+ * assinatura no gateway. Sem isto, o acordo manual seguia contando mês em
+ * aberto para sempre, e a tela cobrava por fora alguém que já paga no cartão.
+ *
+ * ⚠️ NÃO existe data de início de assinatura no gateway em lugar nenhum do
+ * nosso banco. As colunas de prazo são de RENOVAÇÃO, e o identificador da
+ * assinatura não carrega quando ela nasceu. A única fonte de data é o dinheiro:
+ * o pagamento mais antigo que o gateway nos mandou.
+ *
+ * Quando não há pagamento nenhum do gateway, a virada é o MÊS CORRENTE. É o
+ * ponto mais conservador possível: nada do passado é perdoado sem prova, e o
+ * número para de crescer a partir de hoje. As outras duas saídas eram piores —
+ * não cortar nada deixa uma dívida falsa crescendo para sempre, e chutar uma
+ * data para trás perdoaria meses que talvez nunca tenham sido pagos.
+ *
+ * E ela melhora sozinha: assim que a primeira fatura do gateway entra, a virada
+ * recua para o mês dela sem ninguém mexer em nada.
+ *
+ * Estornado não conta: dinheiro que voltou não prova que o cartão assumiu.
+ */
+export function viradaParaOCartao(
+  pagaNoCartao: boolean,
+  pagamentos: Pagamento[],
+  hoje: string,
+): string | null {
+  if (!pagaNoCartao) return null;
+
+  const doGateway = pagamentos
+    .filter((p) => !p.estornado && p.origem === ORIGEM_DO_GATEWAY)
+    .map((p) => p.mes);
+
+  return doGateway.length === 0
+    ? hoje.slice(0, 7)
+    : doGateway.reduce((maisAntigo, m) => (m < maisAntigo ? m : maisAntigo));
+}
+
+/**
  * Os meses que já venceram e ninguém pagou, do mais antigo para o mais novo.
  *
  * Conta do mês em que a assinatura começou até o mês de HOJE, inclusive: o mês
@@ -166,6 +205,16 @@ export function mesesEmAberto(
   valorMensal: number | null,
   pagamentos: Pagamento[],
   hoje: string,
+  /**
+   * O mês em que o cartão assumiu, de `viradaParaOCartao`, ou nulo.
+   *
+   * ⚠️ Obrigatório, e não opcional com padrão. São DOIS donos desta conta — a
+   * ficha e a fila de inadimplentes —, e um parâmetro que dá para esquecer é a
+   * forma exata do defeito que já vazou duas vezes nesta tela: um lugar passa a
+   * responder diferente do outro sobre a mesma pessoa, sem erro nenhum
+   * aparecer. Escrito, quem chamar tem que responder.
+   */
+  viradaParaOCartao: string | null,
 ): string[] {
   if (!valorMensal) return [];
 
@@ -193,6 +242,15 @@ export function mesesEmAberto(
   // O laço tem teto duro para não girar para sempre se `comecouEm` vier de um
   // dado estranho — uma data futura, por exemplo.
   for (let i = 0; i < 600 && mes <= ate; i += 1) {
+    /*
+     * A virada é INCLUSIVA: o mês em que o cartão assumiu já não acumula.
+     *
+     * O corte é aqui dentro, e não num `ate` menor calculado antes, porque os
+     * meses ANTERIORES continuam em aberto — o acordo manual existiu e o que
+     * não foi pago naquele tempo continua devido. O que a virada encerra é o
+     * futuro, e não o passado.
+     */
+    if (viradaParaOCartao !== null && mes >= viradaParaOCartao) break;
     if (!pagos.has(mes)) abertos.push(mes);
     mes = proximoMes(mes);
   }
@@ -274,10 +332,12 @@ export function situacaoDaReceita(
   valorMensal: number | null,
   pagamentos: Pagamento[],
   hoje: string,
+  /** O mês em que o cartão assumiu, de `viradaParaOCartao`, ou nulo. */
+  viradaParaOCartao: string | null,
 ): SituacaoDaReceita {
   if (!valorMensal) return { tipo: 'sem_cobranca' };
 
-  const abertos = mesesEmAberto(comecouEm, valorMensal, pagamentos, hoje);
+  const abertos = mesesEmAberto(comecouEm, valorMensal, pagamentos, hoje, viradaParaOCartao);
   if (abertos.length === 0) return { tipo: 'em_dia' };
 
   return { tipo: 'devendo', meses: abertos.length, total: totalEmAberto(abertos, valorMensal) };

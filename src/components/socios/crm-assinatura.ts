@@ -1,5 +1,5 @@
 import type { Cadastro } from './crm-lista';
-import { mesesEmAberto, totalEmAberto, type Pagamento } from './crm-receita';
+import { mesesEmAberto, totalEmAberto, viradaParaOCartao, type Pagamento } from './crm-receita';
 import { PLANOS_A_VENDER, type PlanoAVender } from './crm-vocabulario';
 
 // ============================================================================
@@ -68,6 +68,19 @@ export interface Assinatura {
    */
   comecouEm: string;
   criadaPor: string | null;
+  /**
+   * Se ESTA PESSOA também tem assinatura no gateway.
+   *
+   * ⚠️ É fato da pessoa, e não da assinatura manual — e mesmo assim mora aqui,
+   * porque é o que muda o que as duas filas têm direito de derivar deste
+   * acordo. Sem ele, quem passou a pagar no cartão continuava sendo cobrado
+   * por fora e acumulando mês em aberto para sempre.
+   *
+   * Isto NÃO fura a separação de tipos. A assinatura do gateway continua sendo
+   * outro tipo e continua sem poder entrar nestas filas; o que entra aqui é um
+   * sim ou não sobre a pessoa, que é justamente o que impede a fila de mentir.
+   */
+  pagaNoCartao: boolean;
 }
 
 const CONHECIDOS = new Set<string>(PLANOS_A_VENDER);
@@ -121,6 +134,14 @@ export function montarAssinaturas(
           criadaEm: linha.criada_em,
           comecouEm: linha.comecou_em,
           criadaPor: linha.criada_por,
+          /*
+           * ⚠️ Sai de `tem_assinatura_no_stripe`, e NUNCA de "tem premium".
+           * Três caminhos escrevem premium nas mesmas colunas — o webhook, a
+           * assinatura dada na mão e o acesso avulso —, então o status não diz
+           * nada sobre origem. Pelo status, toda assinatura manual sairia da
+           * fila de cobrança sozinha.
+           */
+          pagaNoCartao: pessoa.tem_assinatura_no_stripe === true,
         },
       ];
     })
@@ -172,26 +193,67 @@ export type AssinaturaQueVence = Assinatura & { venceEm: string };
  * ficar devendo, e essa é a fila de INADIMPLENTES, que sai dos meses em aberto
  * e não de uma data.
  */
+function limiteDaJanela(hoje: string, dias: number): string {
+  return new Date(Date.parse(`${hoje}T12:00:00Z`) + dias * 86_400_000).toISOString().slice(0, 10);
+}
+
+/**
+ * Se a assinatura vence dentro da janela, ou já venceu.
+ *
+ * ⚠️ Mora num lugar só porque DUAS listas dependem dela: quem precisa ser
+ * cobrado e quem saiu da fila por pagar no cartão. Com a condição copiada, o
+ * rodapé que conta os que saíram passaria a discordar da lista que ficou no dia
+ * em que uma das duas mudasse — e discordaria em silêncio.
+ *
+ * O `!== null` é escrito, e não deixado por conta da comparação. `null <=
+ * '2026-09-19'` já dá falso em JavaScript, porque os dois viram número e a data
+ * vira `NaN` — então a vitalícia ficaria de fora de qualquer jeito. Mas ficaria
+ * de fora por acidente de conversão, e não por uma regra: quem trocasse a
+ * comparação por uma de datas de verdade veria a vitalícia aparecer na fila sem
+ * nenhum aviso. Escrito, ele também é o que estreita o tipo.
+ */
+function venceNaJanela(a: Assinatura, limite: string): a is AssinaturaQueVence {
+  return a.venceEm !== null && a.venceEm <= limite;
+}
+
 export function aCobrar(
   assinaturas: Assinatura[],
   hoje: string,
   dias = DIAS_PARA_COBRAR,
 ): AssinaturaQueVence[] {
-  const limite = new Date(Date.parse(`${hoje}T12:00:00Z`) + dias * 86_400_000)
-    .toISOString()
-    .slice(0, 10);
+  const limite = limiteDaJanela(hoje, dias);
   /*
-   * O `!== null` é escrito, e não deixado por conta da comparação.
+   * ⚠️ Quem paga no cartão sai da fila NA HORA.
    *
-   * `null <= '2026-09-19'` já dá falso em JavaScript, porque os dois viram
-   * número e a data vira `NaN` — então a vitalícia ficaria de fora de qualquer
-   * jeito. Mas ficaria de fora por acidente de conversão, e não por uma regra:
-   * quem trocasse a comparação por uma de datas de verdade veria a vitalícia
-   * aparecer na fila sem nenhum aviso. Escrito, ele também é o que estreita o
-   * tipo para `AssinaturaQueVence`.
+   * Assinatura manual é cobrada porque não renova sozinha. Quem passou a pagar
+   * no gateway está renovando sozinho, e mandar a mensagem de renovação para
+   * essa pessoa é pedir Pix a quem já tem cartão passando — que é como se
+   * produz pagamento em dobro.
+   *
+   * Sair daqui NÃO encerra o acordo manual: ele continua aberto, aparece em
+   * "Todas" com o selo, e encerrar segue sendo decisão do sócio.
    */
   return assinaturas.filter(
-    (a): a is AssinaturaQueVence => a.venceEm !== null && a.venceEm <= limite,
+    (a): a is AssinaturaQueVence => venceNaJanela(a, limite) && !a.pagaNoCartao,
+  );
+}
+
+/**
+ * Quem sairia da fila de cobrança, mas saiu por pagar no cartão.
+ *
+ * Existe para a tela DIZER o que tirou dali. Sumiço silencioso é a mesma
+ * família de defeito que o encerramento que rebaixava acesso sem avisar: o
+ * sócio olha uma fila curta e conclui que não há trabalho, sem saber que o
+ * sistema escondeu gente dele.
+ */
+export function saiuParaOCartao(
+  assinaturas: Assinatura[],
+  hoje: string,
+  dias = DIAS_PARA_COBRAR,
+): AssinaturaQueVence[] {
+  const limite = limiteDaJanela(hoje, dias);
+  return assinaturas.filter(
+    (a): a is AssinaturaQueVence => venceNaJanela(a, limite) && a.pagaNoCartao,
   );
 }
 
@@ -221,6 +283,14 @@ export interface Inadimplente {
 export function inadimplentes(
   assinaturas: Assinatura[],
   pagamentosPorAssinatura: ReadonlyMap<string, Pagamento[]>,
+  /**
+   * Os pagamentos do GATEWAY, por pessoa.
+   *
+   * Mapa separado porque a chave é outra: o pagamento do gateway nasce sem
+   * assinatura manual e pendura na pessoa. É daqui que sai a virada para o
+   * cartão de quem tem as duas origens.
+   */
+  pagamentosDoGatewayPorPessoa: ReadonlyMap<string, Pagamento[]>,
   hoje: string,
 ): Inadimplente[] {
   return assinaturas
@@ -235,6 +305,11 @@ export function inadimplentes(
         assinatura.valorMensal,
         pagamentosPorAssinatura.get(assinatura.id) ?? [],
         hoje,
+        viradaParaOCartao(
+          assinatura.pagaNoCartao,
+          pagamentosDoGatewayPorPessoa.get(assinatura.userId) ?? [],
+          hoje,
+        ),
       );
       if (meses.length === 0) return [];
       return [{ assinatura, meses, total: totalEmAberto(meses, assinatura.valorMensal) }];

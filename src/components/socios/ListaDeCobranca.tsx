@@ -16,6 +16,23 @@ function comoDizer(prazo: Prazo): string {
 }
 
 /**
+ * O selo de quem tem as duas origens.
+ *
+ * ⚠️ Mora num componente só porque aparece em DUAS listas — esta e a de
+ * inadimplentes — e a frase precisa ser a mesma nas duas: o sócio compara os
+ * dois lugares, e duas redações do mesmo aviso fariam ele achar que são
+ * situações diferentes.
+ */
+export function SeloDoCartao() {
+  return (
+    <p className="mt-1 text-[12px] text-ink-2">
+      <span className="font-bold">Também paga no cartão.</span> O acordo feito na mão continua
+      aberto e parou de acumular mês. Se ele acabou, encerre na ficha.
+    </p>
+  );
+}
+
+/**
  * Uma cobrança, com a mensagem já escrita.
  *
  * A mensagem fica ABERTA, e não atrás de um botão "gerar": o trabalho aqui é
@@ -67,6 +84,8 @@ function Cobranca({ assinatura, hoje }: { assinatura: Assinatura; hoje: string }
           : `${emReais(assinatura.valorMensal)} por mês`}
       </p>
 
+      {assinatura.pagaNoCartao ? <SeloDoCartao /> : null}
+
       {/* `assinatura.venceEm` está aqui em vez de `prazo`: o compilador sabe
           que ele não é nulo por causa da checagem do prazo, e repetir a
           condição faria a tela ter duas verdades sobre a mesma coisa. */}
@@ -101,10 +120,13 @@ export function ListaDeCobranca({
   estado,
   hoje,
   vazio,
+  noCartao,
 }: {
   estado: EstadoDasAssinaturas;
   hoje: string;
   vazio: string;
+  /** Quantos venceriam na janela mas saíram da fila por pagar no cartão. */
+  noCartao: number;
 }) {
   if (estado.tipo === 'carregando') {
     return <p className="px-5 py-8 text-[14px] text-ink-2">Carregando as assinaturas…</p>;
@@ -118,15 +140,31 @@ export function ListaDeCobranca({
     );
   }
 
-  if (estado.assinaturas.length === 0) {
-    return <p className="px-5 py-8 text-[14px] text-ink-2">{vazio}</p>;
-  }
-
+  /*
+   * ⚠️ O rodapé sai FORA do desvio de lista vazia, e é o caso que mais importa.
+   *
+   * Fila vazia com gente escondida é a pior combinação possível: o sócio lê
+   * "ninguém para cobrar", fecha a tela, e nunca fica sabendo que o sistema
+   * tirou pessoas dali. Escrever o aviso só quando sobrou alguém faria o
+   * silêncio acontecer justamente onde ele engana.
+   */
   return (
     <div>
-      {estado.assinaturas.map((a) => (
-        <Cobranca key={a.id} assinatura={a} hoje={hoje} />
-      ))}
+      {estado.assinaturas.length === 0 ? (
+        <p className="px-5 py-8 text-[14px] text-ink-2">{vazio}</p>
+      ) : (
+        estado.assinaturas.map((a) => <Cobranca key={a.id} assinatura={a} hoje={hoje} />)
+      )}
+
+      {noCartao > 0 ? (
+        <p className="border-t border-line-2 px-5 py-3 text-[12px] text-ink-2">
+          {noCartao === 1
+            ? '1 pessoa saiu desta fila por já pagar no cartão.'
+            : `${noCartao} pessoas saíram desta fila por já pagarem no cartão.`}{' '}
+          O gateway cobra sozinho, e pedir Pix a quem tem cartão passando é como se produz
+          pagamento em dobro. O acordo na mão delas continua aberto, em "Todas".
+        </p>
+      ) : null}
     </div>
   );
 }
