@@ -11,7 +11,7 @@ import type { Saida } from '@/utils/futebol-saida';
 import { rotuloDaFaixa } from '@/utils/futebol-score';
 import { outcomeLabel, contaQueValem, PORTA_PREMISSAS } from '@/utils/futebol-premissas';
 import { isFinished, isLive } from '@/utils/futebol-datas';
-import type { JogoInfo } from './JogoResumo';
+import type { JogoInfo } from './jogo-info';
 
 /**
  * A faixa da partida: o jogo e a melhor leitura na MESMA faixa forest, colada no

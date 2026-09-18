@@ -143,15 +143,36 @@ export const demoFutebolFixtures: FutebolFixture[] = [
  * basta; se passar da meia-noite, o kickoff cai no dia UTC seguinte, e nesse caso o
  * `day_brt` continua sendo o dia pedido, que é o certo.
  */
+function kickoffNoDia(dayKey: string, kickoffUtc: string | null): string {
+  const [hh, mm] = (fmtTime(kickoffUtc) || '21:30').split(':').map(Number);
+  const utcHour = hh + 3;
+  const diaUtc = utcHour >= 24 ? addDays(dayKey, 1) : dayKey;
+  const hora = String(utcHour % 24).padStart(2, '0');
+  return `${diaUtc}T${hora}:${String(mm).padStart(2, '0')}:00`;
+}
+
+/**
+ * As linhas de exemplo no dia que a tela está mostrando.
+ *
+ * Sem isto a demonstração cravava 10/08/2025 nos cartões enquanto a régua de
+ * datas ao lado marcava hoje — o tour ensinava a tela a mentir sobre a própria
+ * data. A agenda já resolvia isso desde que virou agenda por dia; o board não,
+ * e ninguém tinha voltado para emparelhar os dois.
+ */
+export function demoBoardNoDia<T extends { kickoff_utc: string | null }>(
+  linhas: readonly T[],
+  dayKey: string,
+): T[] {
+  return linhas.map((linha) => ({ ...linha, kickoff_utc: kickoffNoDia(dayKey, linha.kickoff_utc) }));
+}
+
 export function makeDemoAgenda(dayKey: string): FutebolFixtureByDay[] {
   return demoFutebolFixtures.map((f) => {
-    const [hh, mm] = (fmtTime(f.kickoff_utc) || '21:30').split(':').map(Number);
-    const utcHour = hh + 3;
-    const diaUtc = utcHour >= 24 ? addDays(dayKey, 1) : dayKey;
-    const hora = String(utcHour % 24).padStart(2, '0');
+    const kickoff = kickoffNoDia(dayKey, f.kickoff_utc);
+    const diaUtc = kickoff.slice(0, 10);
     return {
       ...f,
-      kickoff_utc: `${diaUtc}T${hora}:${String(mm).padStart(2, '0')}:00`,
+      kickoff_utc: kickoff,
       date_utc: diaUtc,
       competition: 'brasileirao',
       season: 2026,

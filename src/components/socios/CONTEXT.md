@@ -116,8 +116,30 @@ cara de teste. Tem três estados, e não dois — nunca usou, correndo, já usou
 porque o terceiro é o que decide se dar outro faz sentido.
 _Avoid_: Trial, free trial, degustação, período de teste
 
+**Assinatura**:
+Um plano de pé para uma pessoa, com a **origem da assinatura** dizendo de onde
+ele veio. São duas: manual e Stripe.
+
+Por muito tempo a única palavra definida aqui foi "assinatura manual", e
+"assinatura" sozinha não queria dizer nada. Isso escondia que quem compra pelo
+gateway também tem uma, e que o CRM não enxergava nenhuma delas.
+
+⚠️ O guarda-chuva vale para o SUBSTANTIVO, e não para as contas. **Mês em
+aberto**, **fila de inadimplentes** e **recebido na mão** são derivados do nosso
+registro e continuam valendo só para origem manual. Calcular mês em aberto para
+quem vem do Stripe inventaria dívida de alguém que está pagando em dia.
+_Avoid_: Plano, contrato, adesão
+
+**Origem da assinatura**:
+Manual ou Stripe. Não é detalhe de procedência: é o que decide quem manda no
+acesso, em que fila a pessoa entra e quais números a tela tem direito de
+calcular. Por isso fica gravada, e nunca é adivinhada pela presença de um campo
+preenchido.
+_Avoid_: Tipo, fonte, canal
+
 **Assinatura manual**:
-Um plano inteiro concedido por um sócio, fora do Stripe. Segue a escada
+Uma **assinatura** de origem manual: um plano inteiro concedido por um sócio,
+fora do Stripe. Segue a escada
 cumulativa: Entrada é o Betinho, Essencial é futebol mais Betinho, Completo é os
 três. É coisa diferente de um acesso avulso, que liga UM produto sem plano nem
 prazo. Trocar o plano, o prazo ou o valor é mudar os termos da MESMA assinatura,
@@ -148,6 +170,11 @@ ordem de quem vence primeiro. Existe porque assinatura manual não renova
 sozinha: sem a fila, o acesso some um dia e a conversa acontece tarde, com a
 pessoa já sem o produto. É a terceira seção do CRM, ao lado de Leads e
 Feedbacks, e responde uma terceira pergunta: "quem eu preciso cobrar".
+
+⚠️ Quem também paga no cartão sai dela na hora, e a tela DIZ quantos saíram.
+Renovação é o assunto desta fila, e quem está no gateway já renova sozinho:
+pedir Pix a quem tem cartão passando é como se produz pagamento em dobro. Sair
+daqui não encerra o acordo na mão, que continua aberto em "Todas".
 _Avoid_: Renovações, vencimentos, inadimplentes
 
 **Fila de inadimplentes**:
@@ -156,7 +183,23 @@ para o que deve menos. É OUTRA fila, e não a de cobrança: a de cobrança sai 
 data de vencimento, e esta sai do dinheiro que não entrou. Por isso a vitalícia
 com cobrança entra aqui e nunca entra na outra. Ninguém sai dela encerrado
 sozinho: ela é o lugar onde o sócio decide encerrar.
+
+⚠️ Só origem manual. Quem assina pelo Stripe nunca entra aqui, mesmo com
+fatura atrasada: lá o gateway cobra sozinho, e o que ele relata é **cobrança
+falhando**. Quem está nesta fila está aqui porque o dinheiro depende de você ir
+atrás dele.
 _Avoid_: Devedores, calote, caloteiros, bloqueados
+
+**Cobrança falhando**:
+O que o Stripe relata quando tentou cobrar e não conseguiu. É fato do gateway,
+RELATADO, e não conclusão nossa. Por isso nunca se soma com **mês em aberto** e
+nunca entra na **fila de inadimplentes**: aquela fila é derivada do nosso
+registro de pagamento e só vale para assinatura de origem manual.
+
+⚠️ Quem está aqui não precisa de cobrança na mão. O Stripe segue tentando
+sozinho, e pedir Pix a quem tem cartão em nova tentativa é como se produz o
+pagamento em dobro. Precisa de acompanhamento, que é outra conversa.
+_Avoid_: Inadimplente, devendo, atrasado, em aberto
 
 **Etiqueta**:
 O que o produto diz sobre a pessoa, num eixo SEPARADO da etapa. Hoje só existem
@@ -184,14 +227,22 @@ antes a pessoa esquece; no dia seguinte ela já perdeu o acesso, e aí a convers
 _Avoid_: Expirando, a expirar, trial ending
 
 **Pagamento**:
-Dinheiro recebido de uma assinatura manual, referente a um mês de competência.
-Guarda a origem — Pix, dinheiro, transferência — porque o Stripe não vende por
-Pix e boa parte dos clientes paga assim: essa receita acontece fora do gateway
-e não tinha registro em lugar nenhum.
+Dinheiro recebido de uma **assinatura**, referente a um mês de competência.
+Guarda a origem — Pix, dinheiro, transferência, Stripe — porque o Stripe não
+vende por Pix e boa parte dos clientes paga assim: essa receita acontece fora
+do gateway e não tinha registro em lugar nenhum.
 
-Só o que entra FORA do Stripe. Quem paga por lá já tem registro lá, e duas
-fontes para o mesmo dinheiro discordam. A tela diz isso com essas palavras:
-"recebido na mão".
+Cobre as DUAS origens. Até 16/09/2026 era só o que entrava fora do Stripe, e o
+motivo escrito era que duas fontes para o mesmo dinheiro discordam. O Victor
+pediu o contrário, por um motivo melhor: uma fonte só, com a origem gravada em
+cada linha, é o que permite somar receita de verdade e construir em cima depois.
+A discordância que se temia vira problema de idempotência — cada fatura do
+Stripe entra uma vez só, presa ao identificador dela — e não de vocabulário.
+
+⚠️ Pagamento de origem Stripe é REGISTRO, nunca lançamento: ninguém digita, o
+webhook grava. A tela de lançar na mão continua oferecendo só as origens que
+entram na mão, porque digitar um pagamento que o gateway também vai gravar é
+exatamente a linha duplicada que se quer evitar.
 
 Estorna, nunca apaga: um registro de dinheiro que alguém apaga é um registro
 que ninguém consegue auditar. Estornar exige motivo e não recua o acesso — a
@@ -218,17 +269,35 @@ Abaixo de cinco apostas a tela mostra o número mas não chama de perfil.
 _Avoid_: Segmento, cluster, padrão, comportamento de aposta
 
 **Recebido na mão**:
-O total de pagamentos não estornados de uma pessoa. É o que ela já gerou FORA
-do Stripe, e a tela diz isso com essas palavras: quem paga pelo gateway já tem
-registro lá, e um total que parece ser "tudo que a pessoa pagou" leva a
-conclusão errada sobre quanto ela vale.
+O total de pagamentos não estornados de uma pessoa **de origem manual**. É o
+que ela já gerou FORA do Stripe, e a tela diz isso com essas palavras.
+
+Convive com o **recebido total**, que soma as duas origens, e os dois ficam na
+tela porque respondem perguntas diferentes: este é o dinheiro que depende de
+alguém ir atrás, e o total é quanto a pessoa vale. Trocar um pelo outro tiraria
+do sócio um número que ele já usa para trabalhar.
 _Avoid_: Receita total, faturamento, LTV, valor do cliente
+
+**Recebido total**:
+Tudo que a pessoa já pagou, das duas origens, sem os estornados. Só passou a
+existir quando o **pagamento** deixou de ser só o de fora do gateway; antes
+disso um número com esse nome seria mentira.
+
+⚠️ É a soma do que entrou por UMA pessoa, e não receita da empresa. Chamar de
+LTV convidaria a projetar futuro em cima de um número que só olha para trás.
+_Avoid_: LTV, faturamento, receita da empresa, valor do cliente
 
 **Mês de competência**:
 O mês a que um pagamento se refere, e não o dia em que o dinheiro caiu. Um Pix
 que chega em 2 de outubro pagando setembro tem competência em setembro. Os dois
 são campos diferentes porque é a competência que responde qual mês está em
 aberto.
+
+No Stripe a competência é o mês de Brasília em que COMEÇA o período que a
+própria fatura declara: uma renovação em 28/09 cobrindo 28/09 a 28/10 é
+competência de setembro. ⚠️ Sai do período declarado, e nunca de assumir que
+todo plano é mensal — hoje todos são, mas o código nunca leu o intervalo do
+preço, e um preço anual cadastrado passaria despercebido.
 _Avoid_: Mês de referência, período, data do pagamento
 
 **Mês em aberto**:
@@ -239,7 +308,32 @@ deixa de gerar a cobrança — o sistema esqueceria de cobrar sem ninguém
 descobrir.
 
 O mês corrente conta como em aberto, porque a cobrança é no começo dele.
+
+⚠️ Só de assinatura de origem manual, e só quando há valor mensal combinado.
+Quem paga pelo Stripe nunca tem mês em aberto: o gateway cobra sozinho, e
+derivar dívida de quem está em dia seria inventar dinheiro que ninguém deve.
+
+⚠️ Para quem tem as DUAS origens, a conta para na **virada para o cartão**: os
+meses anteriores continuam em aberto, e nenhum mês novo acumula a partir dela.
 _Avoid_: Pendência, atraso, débito, inadimplência (essa é a situação, não o mês)
+
+**Virada para o cartão**:
+O mês em que o gateway assumiu o pagamento de alguém que já tinha um acordo
+feito na mão. É onde o **mês em aberto** daquele acordo para de acumular.
+
+É DERIVADA do dinheiro: o pagamento mais antigo que o Stripe nos mandou daquela
+pessoa. Não existe data de início de assinatura no gateway em lugar nenhum do
+nosso banco — as colunas de prazo são de renovação.
+
+Sem nenhum pagamento do gateway, a virada é o MÊS CORRENTE. É o ponto mais
+conservador: nada do passado é perdoado sem prova, e o número para de crescer a
+partir de hoje. E ela melhora sozinha — quando a primeira fatura entra, a virada
+recua para o mês dela sem ninguém mexer.
+
+⚠️ Virar NÃO encerra o acordo na mão. O acordo continua aberto, sai da **fila de
+cobrança** e aparece em "Todas" com o selo. Encerrar segue sendo decisão do
+sócio, como tudo que mexe no que foi combinado com uma pessoa.
+_Avoid_: Migração, upgrade, troca de plano, conversão
 
 **Sem cobrança**:
 Assinatura manual sem valor mensal combinado. Não é inadimplência e não entra em

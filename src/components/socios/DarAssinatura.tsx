@@ -27,6 +27,27 @@ function daquiUmMes(hoje: string): string {
   return d.toISOString().slice(0, 10);
 }
 
+/** O limite de quanto dá para retroagir. Proteção contra ano digitado errado. */
+function umAnoAtras(hoje: string): string {
+  const d = new Date(`${hoje}T12:00:00Z`);
+  d.setUTCFullYear(d.getUTCFullYear() - 1);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Quantos meses de competência abrem entre o começo e hoje, inclusive.
+ *
+ * Nulo quando não há o que avisar: sem cobrança combinada não existe mês em
+ * aberto, e começar hoje abre só o mês corrente, que é o caso normal. Avisar
+ * nesses dois casos seria ruído, e ruído ensina a ignorar o aviso.
+ */
+function mesesAbertosAte(comecouEm: string, hoje: string, valor: number | null): number | null {
+  if (valor === null || comecouEm >= hoje.slice(0, 7) + '-01') return null;
+  const [anoI, mesI] = comecouEm.split('-').map(Number);
+  const [anoF, mesF] = hoje.split('-').map(Number);
+  return (anoF - anoI) * 12 + (mesF - mesI) + 1;
+}
+
 export type EstadoDaConcessao =
   { tipo: 'parado' } | { tipo: 'salvando' } | { tipo: 'erro'; recado: string };
 
@@ -75,11 +96,25 @@ export function DarAssinatura({
   hoje: string;
   atual: AssinaturaAtual | null;
   estado: EstadoDaConcessao;
-  aoConceder: (plano: PlanoAVender, venceEm: string | null, valorMensal: number | null) => void;
+  aoConceder: (
+    plano: PlanoAVender,
+    venceEm: string | null,
+    valorMensal: number | null,
+    comecouEm: string,
+  ) => void;
   aoEncerrar: (id: string) => void;
 }) {
   const [plano, setPlano] = useState<PlanoAVender>(atual?.plano ?? 'essencial');
   const [vitalicia, setVitalicia] = useState(atual ? atual.venceEm === null : false);
+  /*
+   * Quando o acordo começou. Hoje, no caso normal.
+   *
+   * ⚠️ Só aparece ao CRIAR. Trocar o plano de quem já tem assinatura não mexe no
+   * começo, porque o histórico de pagamento pendura naquela linha e os meses em
+   * aberto contam a partir dele: deixar editar aqui faria a dívida inteira
+   * sumir quando o sócio só queria corrigir o valor.
+   */
+  const [comecouEm, setComecouEm] = useState(hoje);
   // A data continua guardada enquanto "vitalícia" está marcada. Desmarcar
   // devolve o que estava digitado, em vez de um campo vazio que obriga a
   // digitar de novo quem só queria ver a outra opção.
@@ -89,6 +124,9 @@ export function DarAssinatura({
   const salvando = estado.tipo === 'salvando';
   const valorLido = lerValorDigitado(valor);
   const valorInvalido = valorLido === 'invalido';
+  const mesesQueVaoAbrir = valorInvalido
+    ? null
+    : mesesAbertosAte(comecouEm, hoje, valorLido);
 
   return (
     <div className="rounded-rebrand-sm border border-line-2 bg-canvas p-3">
@@ -111,6 +149,17 @@ export function DarAssinatura({
           >
             Encerrar a assinatura
           </button>
+          {/* ⚠️ Dizer isso aqui é o que impede o sócio de encerrar e ir embora
+              achando que cortou.
+
+              Encerrar já tirou acesso, e parou de tirar: para saber se podia,
+              a função adivinhava quem paga no cartão olhando um campo que quase
+              nunca é preenchido — e derrubava o produto de quem estava pagando.
+              Sem sinal confiável, a saída foi parar de adivinhar. */}
+          <p className="mt-1 text-[11px] text-ink-2">
+            Encerrar registra o fim do acordo e <span className="font-bold">não tira o acesso</span>
+            . Para cortar o produto, use os acessos avulsos ao lado.
+          </p>
         </div>
       ) : null}
 
@@ -191,13 +240,57 @@ export function DarAssinatura({
         <p className="mt-2 text-[13px] font-bold text-ink">{estado.recado}</p>
       )}
 
+      {atual ? null : (
+        <label className="mt-3 block text-[12px] text-ink-2">
+          Começou em
+          <input
+            type="date"
+            value={comecouEm}
+            // Para trás no máximo um ano, e nunca para frente. O limite não é da
+            // conta, que soma a dívida inteira desde a #451: é proteção contra
+            // ano digitado errado, e a mensagem abaixo diz isso.
+            min={umAnoAtras(hoje)}
+            max={hoje}
+            disabled={salvando}
+            onChange={(e) => setComecouEm(e.target.value)}
+            aria-label="Quando a assinatura começou"
+            className={CAMPO}
+          />
+          <span className="mt-1 block text-[11px] text-ink-2">
+            {comecouEm > hoje
+              ? 'Não dá para começar no futuro.'
+              : comecouEm < umAnoAtras(hoje)
+                ? 'Mais de um ano atrás. Confira o ano antes de gravar.'
+                : mesesQueVaoAbrir === null
+                  ? 'Hoje, no caso normal. Para trás, no máximo um ano.'
+                  : /* ⚠️ O aviso central deste campo. Retroagir com cobrança
+                       combinada faz a pessoa aparecer devendo vários meses de
+                       uma vez, e esse número não pode pegar ninguém de
+                       surpresa depois, na fila. */
+                    `Vai abrir ${mesesQueVaoAbrir} ${
+                      mesesQueVaoAbrir === 1 ? 'mês' : 'meses'
+                    } em aberto, ${emReais(mesesQueVaoAbrir * (valorLido as number))} no total.`}
+          </span>
+        </label>
+      )}
+
       <button
         type="button"
         // Sem data e sem vitalícia não há como saber quando isto acaba, e é
         // essa resposta que coloca a pessoa na fila de vencimento.
-        disabled={salvando || valorInvalido || (!vitalicia && !venceEm)}
+        disabled={
+          salvando ||
+          valorInvalido ||
+          (!vitalicia && !venceEm) ||
+          (!atual && (comecouEm > hoje || comecouEm < umAnoAtras(hoje)))
+        }
         onClick={() =>
-          aoConceder(plano, vitalicia ? null : venceEm, valorInvalido ? null : valorLido)
+          aoConceder(
+            plano,
+            vitalicia ? null : venceEm,
+            valorInvalido ? null : valorLido,
+            atual ? hoje : comecouEm,
+          )
         }
         className="mt-3 h-10 w-full rounded-rebrand-sm bg-forest px-3 text-[13px] font-bold text-white disabled:opacity-40"
       >

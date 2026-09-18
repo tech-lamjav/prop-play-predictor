@@ -1,0 +1,185 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { describe, expect, it } from 'vitest';
+import { comPlacarFresco, idsSemFecho, precisaDoFresco, type JogoComPlacar } from './futebol-placar-fresco';
+
+// ============================================================================
+// O placar fresco (migration 152)
+// ============================================================================
+// Existem DUAS fontes para o mesmo fato: `public.fixtures`, do coletor, que
+// pergunta o placar de 2 em 2 minutos enquanto o jogo rola; e
+// `futebol.fact_fixtures`, o espelho, que recarrega no ritmo do pipeline de
+// analytics. Todas as RPCs do painel leem o espelho.
+//
+// Medido em 18/09/2026: o painel dizia "10 de 19 sem resultado" no dia anterior,
+// e as 19 vinham de dois jogos presos em `2H` onze horas depois do apito final.
+// Um deles já estava `FT` com 1×1 na tabela do coletor.
+//
+// ⚠️ ESTE TESTE LÊ TEXTO. O repositório não tem harness de SQL — sem pgtap, sem
+// supabase/tests, e o CI não sobe banco. O COMPORTAMENTO foi conferido à mão num
+// Postgres 16 descartável, com quatro jogos montados: encerrado com placar,
+// em andamento, adiado e encerrado sem placar. Só o primeiro voltou.
+// ============================================================================
+
+const RAIZ = resolve(__dirname, '../..');
+const SQL = readFileSync(
+  resolve(RAIZ, 'supabase/migrations/20260918120000_152_futebol_placar_fresco.sql'),
+  'utf8',
+);
+// O espelho em `docs/futebol-prod-deploy.sql` NÃO é conferido aqui:
+// `shape-file-futebol.test.ts` já exige que toda função criada por migration
+// exista lá, e repetir a asserção daria a impressão de duas redes onde há uma.
+
+/** Sem comentários: nenhuma guarda pode passar por causa de prosa. */
+const semComentario = SQL.split(/\r?\n/)
+  .filter((l) => !l.trimStart().startsWith('--'))
+  .join('\n');
+
+describe('a consulta do placar fresco', () => {
+  it('só devolve jogo ENCERRADO', () => {
+    // Jogo em andamento não pode entrar: o painel não liquida com placar
+    // parcial, e devolver 2H com 1×0 convidaria exatamente isso.
+    expect(semComentario).toContain("f.status_short in ('FT', 'AET', 'PEN')");
+  });
+
+  it('e só com placar nos dois lados', () => {
+    // Encerrado sem placar existe — jogo anulado, dado que não chegou — e
+    // liquidar com nulo viraria green ou red inventado.
+    expect(semComentario).toContain('f.goals_home is not null');
+    expect(semComentario).toContain('f.goals_away is not null');
+  });
+
+  it('lê a tabela do coletor, e não o espelho', () => {
+    // O ponto inteiro da função. Se alguém trocar a fonte para
+    // `futebol.fact_fixtures`, ela deixa de resolver o que foi criada para
+    // resolver e ninguém percebe, porque o resultado continua "certo".
+    expect(semComentario).toContain('from public.fixtures f');
+    expect(semComentario).not.toContain('futebol.fact_fixtures');
+  });
+
+  it('nasce fechada para anon e authenticated, e depois recebe o grant', () => {
+    // Função nova nasce executável por PUBLIC no Postgres (issue #408). Esta é
+    // chamada pelo navegador do assinante, então o grant é explícito e vem
+    // DEPOIS do revoke — na ordem inversa, o revoke apagaria o grant.
+    //
+    // `funcao-sem-revoke.test.ts` já exige que exista revoke; o que ele não olha
+    // é a ORDEM, e é a ordem que decide se a função fica aberta ou fechada.
+    const revoke = semComentario.indexOf(
+      'revoke execute on function public.get_futebol_placar_fresco(bigint[]) from anon, authenticated',
+    );
+    const grant = semComentario.indexOf(
+      'grant execute on function public.get_futebol_placar_fresco(bigint[]) to anon, authenticated, service_role',
+    );
+    expect(revoke).toBeGreaterThan(-1);
+    expect(grant).toBeGreaterThan(revoke);
+  });
+});
+
+// ============================================================================
+// A REGRA: a quem perguntar, e como sobrepor
+// ============================================================================
+// Estes casos são de comportamento, não de texto. A regra mora em
+// `futebol-placar-fresco.ts` porque já foi escrita errado uma vez: a primeira
+// versão pedia pelo calendário inteiro — a temporada de oito ligas — e
+// arrastava todo jogo adiado desde janeiro (revisão do PR #472).
+// ============================================================================
+
+const AGORA = Date.parse('2026-09-18T12:00:00Z');
+const jogo = (over: Partial<JogoComPlacar> = {}): JogoComPlacar => ({
+  fixture_id: 1,
+  status_short: '2H',
+  goals_home: null,
+  goals_away: null,
+  kickoff_utc: '2026-09-18T00:30:00Z',
+  ...over,
+});
+
+describe('quem precisa do placar fresco', () => {
+  it('o jogo que apitou e nenhum status fechou', () => {
+    expect(precisaDoFresco('2H', '2026-09-18T00:30:00Z', AGORA)).toBe(true);
+  });
+
+  it('mas não o que já está encerrado', () => {
+    // Já temos o resultado: perguntar de novo é gastar consulta para confirmar
+    // o que a tela já mostra.
+    for (const status of ['FT', 'AET', 'PEN']) {
+      expect(precisaDoFresco(status, '2026-09-18T00:30:00Z', AGORA)).toBe(false);
+    }
+  });
+
+  it('nem o que ainda não começou', () => {
+    expect(precisaDoFresco('NS', '2026-09-19T00:30:00Z', AGORA)).toBe(false);
+  });
+
+  it('nem o que não tem horário', () => {
+    // Sem kickoff não dá para afirmar que o apito passou, e o coletor não tem
+    // como ter placar de um jogo que ninguém sabe quando aconteceu.
+    expect(precisaDoFresco('NS', null, AGORA)).toBe(false);
+  });
+
+  it('e o jogo antigo preso continua sendo perguntado', () => {
+    // Houve uma janela de sete dias aqui, e ela era um buraco: a lista de
+    // Oportunidades navega 30 dias para trás, então o sócio que abrisse um dia
+    // de duas semanas atrás via a aposta sem resultado PARA SEMPRE. A
+    // justificativa da janela ("preso há mais de uma semana é liga desligada")
+    // morreu no mesmo dia, quando a #478 ligou as oito competições. Quem limita
+    // o tamanho da pergunta é quem chama, passando o recorte que a tela mostra.
+    expect(precisaDoFresco('2H', '2026-08-20T00:30:00Z', AGORA)).toBe(true);
+  });
+});
+
+describe('a lista de ids', () => {
+  it('não repete e sai ordenada', () => {
+    // A lista É a chave da consulta: duas ordens diferentes do mesmo conjunto
+    // seriam duas entradas de cache para a mesma pergunta.
+    const ids = idsSemFecho(
+      [jogo({ fixture_id: 9 }), jogo({ fixture_id: 2 }), jogo({ fixture_id: 9 })],
+      AGORA,
+    );
+    expect(ids).toEqual([2, 9]);
+  });
+
+  it('e sai vazia quando o dia inteiro fechou', () => {
+    expect(idsSemFecho([jogo({ status_short: 'FT' })], AGORA)).toEqual([]);
+  });
+});
+
+describe('a sobreposição', () => {
+  it('troca status e placar JUNTOS', () => {
+    // Sobrepor só os gols deixaria "em andamento" com placar final na tela — e,
+    // pior, a aposta não liquidaria, porque quem decide isso é o status.
+    const [saida] = comPlacarFresco([jogo()], [
+      { fixture_id: 1, status_short: 'FT', goals_home: 3, goals_away: 0 },
+    ]);
+    expect(saida.status_short).toBe('FT');
+    expect(saida.goals_home).toBe(3);
+    expect(saida.goals_away).toBe(0);
+  });
+
+  it('não mexe em quem o coletor não devolveu', () => {
+    const saida = comPlacarFresco([jogo({ fixture_id: 1 }), jogo({ fixture_id: 2 })], [
+      { fixture_id: 1, status_short: 'FT', goals_home: 1, goals_away: 1 },
+    ]);
+    expect(saida[1].status_short).toBe('2H');
+  });
+
+  it('sobrepõe também quando o status bate e o placar não', () => {
+    // O espelho carrega em duas etapas: ele pode chegar em FT com os gols ainda
+    // nulos. A primeira versão saía cedo quando os status batiam, e nesse
+    // instante descartava o placar bom — jogo encerrado exibindo "—", que é o
+    // defeito que esta função existe para não deixar acontecer.
+    const [saida] = comPlacarFresco([jogo({ status_short: 'FT' })], [
+      { fixture_id: 1, status_short: 'FT', goals_home: 2, goals_away: 1 },
+    ]);
+    expect(saida.goals_home).toBe(2);
+    expect(saida.goals_away).toBe(1);
+  });
+
+  it('e devolve o MESMO array quando não há o que sobrepor', () => {
+    // Identidade importa: quem chama põe isto em `useMemo`, e um array novo a
+    // cada render refaria a lista inteira da tela sem nada ter mudado.
+    const lista = [jogo()];
+    expect(comPlacarFresco(lista, [])).toBe(lista);
+    expect(comPlacarFresco(lista, undefined)).toBe(lista);
+  });
+});

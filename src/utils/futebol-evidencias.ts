@@ -502,25 +502,4 @@ export function tilesDe(
   return tiles.slice(0, 4);
 }
 
-/**
- * A manchete do mercado: uma frase que diz o caso em português, montada a partir da
- * evidência da premissa de maior peso. Espelha o "Por quê" da /futebol, que é o
- * padrão do produto para isso e já está no ar.
- */
-export function manchete(
-  slugsAcesos: string[],
-  ordemPorPeso: string[],
-  numeros: FutebolFixtureNumeros[] | undefined,
-  lado: 'home' | 'away' | null,
-): { texto: string; slug: string } | null {
-  for (const slug of ordemPorPeso) {
-    if (!slugsAcesos.includes(slug)) continue;
-    const ev = evidenciaDe(slug, numeros, lado);
-    // Devolve o slug junto pra lista de premissas não repetir a mesma frase logo
-    // abaixo da manchete.
-    if (ev) return { texto: ev.texto, slug };
-  }
-  return null;
-}
-
 export { n1, n2 };

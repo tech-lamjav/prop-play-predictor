@@ -814,7 +814,7 @@ CREATE OR REPLACE FUNCTION public.futebol_acesso_vigente(
  RETURNS boolean
  LANGUAGE sql
  STABLE
-AS $function$ select coalesce(coalesce(p_status, 'free') = 'premium' or p_fim > now(), false) $function$
+AS $function$ select coalesce(coalesce(p_status, 'free') = 'premium' or p_fim > now(), false) $function$;
 
 -- ── Guarda de acesso das RPCs de valor ───────────────────────────
 -- As RPCs de valor nasceram abertas: definer, sem checar quem chama, com grant
@@ -1554,11 +1554,10 @@ CREATE OR REPLACE FUNCTION public.get_futebol_matchup_markets(p_home_id bigint, 
 AS $function$
 declare v jsonb;
 begin
-  -- Sem acesso, nada de valor sai daqui. Vazio, nao erro: bloqueio nao e falha.
-  if not public.futebol_acesso_do_chamador() then
-    return '{}'::jsonb;
-  end if;
-
+  -- SEM PORTAO: isto e fato publico de futebol, nao saida do modelo. O corpo so
+  -- agrega jogos ENCERRADOS (status FT) -- media de gols feitos e sofridos,
+  -- percentual de over 2,5 e de ambos marcam. Nenhum numero nosso entra, e o
+  -- passado liquidado fica aberto pela mesma regra que mantem o historico.
   select jsonb_object_agg(g.who, jsonb_build_object(
            'games', g.games, 'avg_gf', round(g.avg_gf, 2), 'avg_ga', round(g.avg_ga, 2),
            'over25_pct', round(g.over25 * 100), 'btts_pct', round(g.btts * 100)
@@ -1867,16 +1866,48 @@ as $function$
   -- todas as colunas nulas: a tela sabe que hoje ha N oportunidades e mostra N
   -- cadeados, sem dizer em qual jogo, em que mercado nem a que preco.
   --
+  -- SETE COLUNAS ESCAPAM DO NULO, e sem elas a tela nao se sustenta:
+  --
+  --   c1 fixture_id  -- a tela precisa de chave estavel por linha; sem ela duas
+  --                     linhas bloqueadas colidem na mesma chave de React
+  --   c2..c5 times   -- id e nome das duas equipes. A lista desenha o escudo e
+  --                     escreve "A x B"; sem o nome, crestInitials chamava
+  --                     .replace em nulo e DERRUBAVA a pagina inteira -- tela em
+  --                     branco, nao lista vazia. E nao e o que se vende: quem
+  --                     joga contra quem ja sai aberto em get_futebol_fixtures,
+  --                     _by_day, fixture_detail e teams, e a tela de Jogos
+  --                     mostra de graca. O que se vende -- qual aposta, em que
+  --                     mercado, a que preco -- continua nulo.
+  --   c7 kickoff_utc -- a home conta por DIA (brtDayOf(kickoff) == dia). Anulada,
+  --                     nenhuma linha casa o dia, a contagem vira 0 e a tela cai
+  --                     em "Sem valor claro hoje" -- a frase que este trabalho
+  --                     existe para corrigir
+  --  c23 score_versao -- o contrato do Score (futebol-score-contract.ts) LANCA
+  --                     excecao quando a versao vem nula, de proposito: deduzir
+  --                     a escala carimbaria de `legacy` uma resposta malformada
+  --                     e a classificaria na regua errada, em silencio (#310).
+  --                     Anulada aqui, o normalizador estourava no cliente, o
+  --                     withRetry repetia a chamada 8 vezes e a tela do
+  --                     bloqueado ficava em 0 oportunidades. E marcador de
+  --                     ESCALA, nao a nota: `score` (c21) e `faixa` (c22)
+  --                     continuam nulos.
+  --
+  -- O que isso entrega a quem nao assina: que existe oportunidade naquele jogo,
+  -- em qual jogo e a que horas. Nao entrega qual aposta, em que mercado, a que
+  -- preco, com que chance nem com que nota. Jogo e horario ja vem da agenda, que
+  -- e publica -- nao havia o que proteger escondendo metade dela, e esconder
+  -- quebrava a tela que a contagem existe para alimentar.
+  --
   -- O apelido posicional (_b.c1..) existe porque a consulta de baixo tem colunas
   -- sem nome (expressoes); nomear aqui e o que permite projetar uma a uma.
   select
-    case when _g.tem then _b.c1 end,
-    case when _g.tem then _b.c2 end,
-    case when _g.tem then _b.c3 end,
-    case when _g.tem then _b.c4 end,
-    case when _g.tem then _b.c5 end,
+    _b.c1,
+    _b.c2,
+    _b.c3,
+    _b.c4,
+    _b.c5,
     case when _g.tem then _b.c6 end,
-    case when _g.tem then _b.c7 end,
+    _b.c7,
     case when _g.tem then _b.c8 end,
     case when _g.tem then _b.c9 end,
     case when _g.tem then _b.c10 end,
@@ -1892,7 +1923,7 @@ as $function$
     case when _g.tem then _b.c20 end,
     case when _g.tem then _b.c21 end,
     case when _g.tem then _b.c22 end,
-    case when _g.tem then _b.c23 end,
+    _b.c23,
     case when _g.tem then _b.c24 end,
     case when _g.tem then _b.c25 end,
     case when _g.tem then _b.c26 end
@@ -1972,6 +2003,13 @@ as $function$
     where fx.kickoff_utc >= ((p_from::timestamp at time zone 'America/Sao_Paulo') at time zone 'UTC')
       and fx.kickoff_utc <  (((p_to + 1)::timestamp at time zone 'America/Sao_Paulo') at time zone 'UTC')
       and fx.kickoff_utc <  (now() at time zone 'UTC')
+      -- APITO DADO NAO E JOGO ENCERRADO. Esta funcao fica aberta para quem nao
+      -- assina porque e a prova de metodo, e prova de metodo e sobre jogo
+      -- LIQUIDADO. So `kickoff < now()` deixava passar a partida EM ANDAMENTO
+      -- com aposta, odd, Score, faixa e evidencias -- valor apostavel ao vivo,
+      -- sem conta. E a janela padrao do front vai ate HOJE, entao nao era caso
+      -- de borda: era toda carga de pagina.
+      and fx.status_short in ('FT', 'AET', 'PEN')
       and h.dbt_valid_from <= fx.kickoff_utc
       and (h.dbt_valid_to is null or fx.kickoff_utc < h.dbt_valid_to)
     order by h.opportunity_key, h.dbt_valid_from desc
@@ -1987,6 +2025,8 @@ as $function$
     where fx.kickoff_utc >= ((p_from::timestamp at time zone 'America/Sao_Paulo') at time zone 'UTC')
       and fx.kickoff_utc <  (((p_to + 1)::timestamp at time zone 'America/Sao_Paulo') at time zone 'UTC')
       and fx.kickoff_utc <  (now() at time zone 'UTC')
+      -- Mesma regra do CTE de cima: encerrado, nao apenas comecado.
+      and fx.status_short in ('FT', 'AET', 'PEN')
     order by h.opportunity_key, h.dbt_valid_from asc, h.dbt_scd_id asc
   )
   select v.fixture_id, f.home_team_id, f.away_team_id, f.home_team_name, f.away_team_name,
@@ -2300,7 +2340,7 @@ CREATE OR REPLACE FUNCTION public.get_futebol_fixture_numeros(p_fixture_id bigin
  SET search_path TO ''
 AS $function$
   with jogo as (
-    select f.fixture_id, f.competition, f.season, f.home_team_id, f.away_team_id
+    select f.fixture_id, f.competition, f.season, f.home_team_id, f.away_team_id, f.kickoff_utc, f.date_utc
     from futebol.fact_fixtures f
     where f.fixture_id = p_fixture_id
   ),
@@ -2329,19 +2369,29 @@ AS $function$
       or (hh.home_team_id = j.away_team_id and hh.away_team_id = j.home_team_id)
     join lados l on true
     where hh.goals_home is not null and hh.goals_away is not null
+      -- A âncora (#464): só confronto que já tinha acontecido quando esta partida
+      -- começou. Mesmo padrão da 117. Apito nulo derruba a linha, e a tela omite.
+      and hh.kickoff_utc < j.kickoff_utc
     group by l.team_id
   ),
   tabela as (
+    -- A foto mais recente ANTERIOR ao jogo, por time (#464). Sem foto da época,
+    -- nenhuma linha: `posicao` vem nula e a tela omite em vez de mostrar hoje.
     select distinct on (s.team_id) s.team_id, s.rank_pos, s.pontos, s.zona
     from (
       select st.team_id,
              st."rank"::bigint          as rank_pos,
              st.points::bigint          as pontos,
-             st.rank_description        as zona
-      from jogo j,
-           public.get_futebol_standings_official(j.competition, j.season) st
+             st.rank_description        as zona,
+             st.snapshot_date
+      from jogo j
+      join futebol.fact_standings_snapshot st
+        on st.competition = j.competition
+       and st.season = j.season
+       and st.snapshot_date < j.date_utc
+      join lados l on l.team_id = st.team_id
     ) s
-    order by s.team_id
+    order by s.team_id, s.snapshot_date desc
   )
   select l.side,
          l.team_id,
@@ -2380,6 +2430,41 @@ AS $function$
 $function$
 
 ;
+
+CREATE OR REPLACE FUNCTION public.get_futebol_fixture_insumos(p_fixture_id bigint)
+ RETURNS TABLE(outcome text, market text, line_value double precision, premissa text, insumo text, valor double precision)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+  -- Sem acesso, nada de valor sai daqui. Vazio, nao erro: bloqueio nao e falha.
+  --
+  -- Esta funcao devolve mercado, saida, linha e o NUMERO que sustenta cada
+  -- premissa: e o raciocinio do modelo, a materia-prima do "por que essa
+  -- aposta". Na lista de grants ela esta entre `get_futebol_fixture_premissas`
+  -- e `get_futebol_fixture_reason_contract`, agrupada como irma direta das
+  -- duas -- e as duas passam pelo portao. Ficou aberta porque nasceu depois
+  -- desta guarda, que e exatamente o modo de falha que o teste
+  -- futebol-guarda-acesso.test.ts existe para pegar. Ele pegou.
+  select * from (
+  select i.outcome, i.market, i.line_value, i.premissa, i.insumo, i.valor
+  from futebol.fact_insumos_medidos i
+  where i.fixture_id = p_fixture_id
+  order by i.outcome, i.market, i.premissa, i.insumo
+  ) _acesso where public.futebol_acesso_do_chamador();
+$function$
+
+;
+
+-- Fechar aqui, junto da função, senão um ambiente provisionado por este arquivo
+-- nasce com ela aberta. Revogar só de `public` não basta no Supabase: o schema
+-- tem privilégio padrão que dá EXECUTE explícito a anon, authenticated e
+-- service_role em toda função nova, e esses grants sobrevivem ao revoke de
+-- PUBLIC — foi o que aconteceu com as duas da #408 entre a 140 e a 143.
+-- O grant fica na lista de grants mais abaixo, junto dos irmãos diretos
+-- (`get_futebol_fixture_numeros` e `_historico`).
+revoke execute on function public.get_futebol_fixture_insumos(bigint) from public;
+revoke execute on function public.get_futebol_fixture_insumos(bigint) from anon, authenticated;
 
 CREATE OR REPLACE FUNCTION public.get_futebol_fixture_historico(p_fixture_id bigint, p_max integer DEFAULT 40)
  RETURNS TABLE(side text, team_id bigint, team_name text, past_fixture_id bigint, data date, ordem bigint, mesma_competicao boolean, em_casa boolean, adversario text, adversario_id bigint, gols_pro integer, gols_contra integer, total_gols integer, ambos_marcaram boolean, sem_sofrer boolean, sem_marcar boolean, xg double precision, xg_contra double precision, resultado text)
@@ -2471,6 +2556,11 @@ LANGUAGE sql
 SECURITY DEFINER
 SET search_path TO ''
 AS $function$
+  -- Sem acesso, zero linha. Ela devolve odd comparada entre casas (pinnacle,
+  -- media, melhor e qual casa paga) -- trabalho nosso, valor pela regra. Ficou
+  -- de fora da primeira leva porque hoje responde 500 em toda chamada; no dia
+  -- em que consertarem o 500, sem isto ela voltaria aberta.
+  select * from (
   with base as (
     select o.market_name, o.outcome_label, o.bookmaker_name, o.collection_window,
            o.odd_decimal, o.line_value, f.kickoff_utc
@@ -2563,7 +2653,9 @@ AS $function$
   join best_book bb using (market_name, outcome_label)
   left join pinnacle p using (market_name, outcome_label)
   where a.market_name <> 'Asian Handicap' or a.n_books >= 3
-  order by 1, 5 nulls first, 4;
+  order by 1, 5 nulls first, 4
+  ) _acesso
+  where public.futebol_acesso_do_chamador();
 $function$;
 
 -- ── 5d. Contrato de motivos da leitura dos cinco mercados (migration 109) ────
@@ -2885,6 +2977,7 @@ grant execute on function public.get_futebol_fixture_days(p_from date, p_to date
 grant execute on function public.get_futebol_fixtures_by_day(p_day date, p_competitions text[]) to anon, authenticated, service_role;
 grant execute on function public.get_futebol_fixture_premissas(p_fixture_id bigint) to anon, authenticated, service_role;
 grant execute on function public.get_futebol_fixture_numeros(p_fixture_id bigint) to anon, authenticated, service_role;
+grant execute on function public.get_futebol_fixture_insumos(p_fixture_id bigint) to anon, authenticated, service_role;
 grant execute on function public.get_futebol_fixture_historico(p_fixture_id bigint, p_max integer) to anon, authenticated, service_role;
 grant execute on function public.get_futebol_fixture_reason_contract(p_fixture_id bigint) to anon, authenticated, service_role;
 
@@ -3127,17 +3220,18 @@ returns table (market text, oculto_desde timestamptz, oculto_ate timestamptz)
  security definer
  set search_path to ''
 as $function$
-  -- Sem acesso, zero linha. O filtro e do CHAMADOR, nao da consulta: com o
-  -- guarda falso nenhuma linha sobrevive, e a tela mostra bloqueado em vez de
-  -- inventar "sem leitura". Vazio, e nao erro: bloqueio nao e falha.
-  select * from (
-
+  -- SEM PORTAO, de proposito. A vitrine e regra de EXIBICAO, nao saida do
+  -- modelo: o glossario (CONTEXT.md, "Mercado oculto") diz que mercado oculto
+  -- "nao e porta de publicacao: nada muda no gate, no mart nem nas RPCs".
+  --
+  -- Fechar aqui quebrava em silencio: vazio nao e erro, entao o fallback do
+  -- servico nao dispara, `mercadoEstaOculto` para de filtrar, e a lista de quem
+  -- NAO tem acesso passa a mostrar linhas que o assinante nao ve. Esconder a
+  -- regra de exibicao nao protege valor nenhum -- so desalinha as duas listas.
   select o.market, o.oculto_desde, o.oculto_ate
     from public.futebol_mercados_ocultos o
    where o.oculto or o.oculto_ate is not null
-   order by o.market
-  ) _acesso
-  where public.futebol_acesso_do_chamador();
+   order by o.market;
 $function$;
 
 comment on function public.get_futebol_vitrine() is
@@ -3244,6 +3338,37 @@ revoke execute on function public.release_futebol_oferta_pos_teste(uuid) from pu
 revoke execute on function public.release_futebol_oferta_pos_teste(uuid) from anon, authenticated;
 grant execute on function public.release_futebol_oferta_pos_teste(uuid) to service_role;
 
+-- ── O placar fresco (migration 152) ─────────────────────────────────────────
+-- Duas fontes para o mesmo fato: `public.fixtures` é do coletor, que pergunta de
+-- 2 em 2 minutos enquanto o jogo rola; `futebol.fact_fixtures` é o espelho, que
+-- recarrega no ritmo do pipeline. O painel lê o espelho, então jogo que acaba de
+-- madrugada amanhece sem resultado na tela. Esta função entrega só o FATO —
+-- placar final de jogo encerrado — e deixa nota, faixa e vantagem virem do
+-- espelho, que segue sendo a foto do apito.
+create or replace function public.get_futebol_placar_fresco(p_fixture_ids bigint[])
+returns table(
+  fixture_id   bigint,
+  status_short text,
+  goals_home   integer,
+  goals_away   integer
+)
+language sql
+stable
+security definer
+set search_path to ''
+as $function$
+  select f.fixture_id, f.status_short, f.goals_home, f.goals_away
+    from public.fixtures f
+   where f.fixture_id = any(p_fixture_ids)
+     and f.status_short in ('FT', 'AET', 'PEN')
+     and f.goals_home is not null
+     and f.goals_away is not null;
+$function$;
+
+revoke execute on function public.get_futebol_placar_fresco(bigint[]) from public;
+revoke execute on function public.get_futebol_placar_fresco(bigint[]) from anon, authenticated;
+grant execute on function public.get_futebol_placar_fresco(bigint[]) to anon, authenticated, service_role;
+
 -- O handicap VOLTOU à vitrine em 15/09/2026 às 17h BRT: fica escondido para
 -- linha detectada antes disso e aparece de lá em diante. A linha continua aqui,
 -- com o período FECHADO, porque é ela que segura o passado — sem ela, um
@@ -3292,16 +3417,13 @@ stable
 security definer
 set search_path to ''
 as $function$
-  -- Sem acesso, zero linha. O filtro e do CHAMADOR, nao da consulta: com o
-  -- guarda falso nenhuma linha sobrevive, e a tela mostra bloqueado em vez de
-  -- inventar "sem leitura". Vazio, e nao erro: bloqueio nao e falha.
-  select * from (
-
+  -- SEM PORTAO, mesma razao da vitrine: o limiar e regra de EXIBICAO. Ele diz
+  -- qual linha o produto corta, e esse corte tem que valer igual para todo
+  -- mundo. Fechado, `cortadaNaData` parava de cortar para quem nao tem acesso, e
+  -- o deslogado via no historico linhas que o assinante nao ve.
   select l.market, l.limiar, l.vigente_desde
     from public.futebol_limiar_valor l
-   order by l.market
-  ) _acesso
-  where public.futebol_acesso_do_chamador();
+   order by l.market;
 $function$;
 
 comment on function public.get_futebol_limiar_valor() is

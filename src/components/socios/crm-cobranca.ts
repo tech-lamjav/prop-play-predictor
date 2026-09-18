@@ -98,22 +98,55 @@ export function mensagemDeConversao(nome: string | null, diasRestantes: number):
 
   if (diasRestantes < 0) {
     return (
-      `${saudacao} Seu teste do futebol acabou. Queria saber o que você achou das análises ` +
-      'enquanto testou, e se faz sentido continuar. Se quiser, eu já deixo seu acesso de volta.'
+      `${saudacao} Seu teste do futebol acabou. Quer que eu devolva seu acesso? Me diz que eu ` +
+      'libero e te passo como seguir. E depois me conta o que você achou das análises, isso me ' +
+      'ajuda a ajustar.'
     );
   }
 
   if (diasRestantes === 0) {
     return (
-      `${saudacao} Hoje é o último dia do seu teste do futebol. Queria saber se as análises ` +
-      'te ajudaram, e se você quer seguir com a gente. Me avisa que eu resolvo agora e você ' +
-      'não fica sem nada amanhã.'
+      `${saudacao} Hoje é o último dia do seu teste do futebol. Quer seguir com a gente? ` +
+      'Me avisa que eu resolvo agora e amanhã você pega as análises normalmente.'
     );
   }
 
   const quando = diasRestantes === 1 ? 'amanhã' : `em ${diasRestantes} dias`;
   return (
-    `${saudacao} Seu teste do futebol acaba ${quando}. Queria saber o que você achou das ` +
-    'análises até aqui, e se você quer continuar sem interrupção.'
+    `${saudacao} Seu teste do futebol acaba ${quando}. Quer continuar? Me diz que eu já deixo ` +
+    'acertado antes de vencer e você não fica um dia sem as análises.'
+  );
+}
+
+// ============================================================================
+// Depois do sim
+// ============================================================================
+// A lacuna que faltava no catálogo. Ele cobria abordar, converter e cobrar, e
+// parava exatamente onde a venda acontece: a pessoa responde "quero" e o sócio
+// improvisa valor, forma de pagamento e prazo na hora.
+//
+// Improvisar ali é onde a venda esfria. Quem acabou de dizer sim não precisa de
+// mais argumento, precisa de um caminho curto: quanto é, como paga, e quando
+// recebe o acesso.
+// ============================================================================
+
+/**
+ * A mensagem para fechar com quem já disse sim.
+ *
+ * ⚠️ Ela TEM lacuna, ao contrário de todas as outras, e isso é deliberado: o
+ * valor e a chave são do sócio, e inventar qualquer um dos dois é pior que
+ * deixar em branco. Os colchetes são para serem vistos e substituídos — e são
+ * colchetes, e não chaves, porque chave é o marcador de substituição automática
+ * deste código e passaria por engano de template que não rodou.
+ *
+ * Não pede opinião, não reforça benefício e não pergunta de novo se a pessoa
+ * quer. Responder um sim com mais venda é o jeito mais rápido de reabrir uma
+ * decisão que já estava tomada.
+ */
+export function mensagemDeFechamento(nome: string | null): string {
+  const saudacao = saudacaoPara(primeiroNome(nome));
+  return (
+    `${saudacao} Fechado! É [valor] por mês. Pix: [sua chave]. Me manda o comprovante que eu ` +
+    'libero na hora e você já pega as análises de hoje.'
   );
 }

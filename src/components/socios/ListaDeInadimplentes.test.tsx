@@ -7,22 +7,37 @@ import { cadastroDeTeste as cadastro } from './crm-cadastro-de-teste';
 
 const HOJE = '2026-09-15';
 
-const linha = (over: Partial<AssinaturaDoBanco> = {}): AssinaturaDoBanco => ({
-  id: 'a1',
-  user_id: 'u1',
-  plano: 'essencial',
-  vence_em: '2026-10-20',
-  valor_mensal: '39.90',
-  criada_em: '2026-07-10T15:00:00Z',
-  criada_por: null,
-  ...over,
-});
+const linha = ({
+  comecou_em,
+  ...over
+}: Partial<AssinaturaDoBanco> = {}): AssinaturaDoBanco => {
+  const criadaEm = over.criada_em ?? '2026-07-10T15:00:00Z';
+  return {
+    id: 'a1',
+    user_id: 'u1',
+    plano: 'essencial',
+    vence_em: '2026-10-20',
+    valor_mensal: '39.90',
+    criada_por: null,
+    ...over,
+    criada_em: criadaEm,
+    // O começo cai no dia do cadastro quando ninguém disser outra coisa, como
+    // no preenchimento da migration 153. Os testes daqui controlam a dívida
+    // passando `criada_em`, e derivar dele mantém o que eles já provavam.
+    comecou_em: comecou_em ?? criadaEm.slice(0, 10),
+  };
+};
 
-const pronto = (linhas: AssinaturaDoBanco[]): EstadoDosInadimplentes => ({
+const pronto = (
+  linhas: AssinaturaDoBanco[],
+  cadastros = [cadastro({ id: 'u1', name: 'Maria' })],
+  doGatewayPorPessoa = new Map(),
+): EstadoDosInadimplentes => ({
   tipo: 'pronto',
   inadimplentes: inadimplentes(
-    montarAssinaturas(linhas, [cadastro({ id: 'u1', name: 'Maria' })]),
+    montarAssinaturas(linhas, cadastros),
     new Map(),
+    doGatewayPorPessoa,
     HOJE,
   ),
 });
@@ -44,6 +59,24 @@ describe('ListaDeInadimplentes', () => {
   it('lista os meses em aberto, do mais antigo primeiro', () => {
     montar(pronto([linha()]));
     expect(screen.getByText(/Em aberto: 07\/2026, 08\/2026, 09\/2026/)).toBeInTheDocument();
+  });
+
+  it('lista longa é resumida, e a tela DIZ que resumiu', () => {
+    // ⚠️ Aqui o resumo calado custa mais caro que na ficha: esta fila é
+    // ordenada PELO TOTAL, e o total é o que decide insistir ou encerrar. Uma
+    // linha que mostra doze meses embaixo de um selo de dezoito faz o sócio
+    // duvidar do número que ele usa para decidir.
+    montar(pronto([linha({ criada_em: '2025-04-10T15:00:00Z' })]));
+    expect(screen.getByText(/devendo 18 meses/)).toHaveTextContent('718,20');
+    expect(screen.getByText(/e mais 6/)).toBeInTheDocument();
+  });
+
+  it('a dívida mais VELHA é a que a linha mostra', () => {
+    // ⚠️ Esta fila existe para decidir insistir ou encerrar, e é a idade da
+    // dívida que responde isso. Resumir cortando os meses antigos jogava fora
+    // exatamente o dado pelo qual a fila existe.
+    montar(pronto([linha({ criada_em: '2025-04-10T15:00:00Z' })]));
+    expect(screen.getByText(/Em aberto: 04\/2025/)).toBeInTheDocument();
   });
 
   it('o nome leva para a ficha, onde se registra o Pix e se encerra', () => {
@@ -81,5 +114,22 @@ describe('ListaDeInadimplentes', () => {
   it('erro é erro, e não fila vazia', () => {
     montar({ tipo: 'erro' });
     expect(screen.getByText(/estaria chutando/)).toBeInTheDocument();
+  });
+
+  it('⚠️ quem também paga no cartão aparece com o selo', () => {
+    // Ela continua nesta fila pela dívida ANTERIOR à virada, e sem o selo o
+    // sócio leria "devendo" e iria cobrar por fora quem já paga sozinho.
+    montar(
+      pronto(
+        [linha()],
+        [cadastro({ id: 'u1', name: 'Maria', tem_assinatura_no_stripe: true })],
+      ),
+    );
+    expect(screen.getByText(/Também paga no cartão/)).toBeInTheDocument();
+  });
+
+  it('e quem deve só na mão não recebe selo', () => {
+    montar(pronto([linha()]));
+    expect(screen.queryByText(/Também paga no cartão/)).not.toBeInTheDocument();
   });
 });

@@ -189,6 +189,23 @@ export interface FutebolFixtureNumeros {
 }
 
 /**
+ * O VALOR que uma premissa comparou, publicado pelo mart (RPC 158, issue #464).
+ *
+ * Uma linha por saída × mercado × premissa × insumo. `premissa` e `insumo` vêm
+ * sem tradução: o vocabulário é do dbt, e copiá-lo para cá criaria mais uma
+ * cópia para divergir sozinha. Hoje só o 1X2 é populado, e linha gravada antes
+ * do deploy não tem valor — ausência é normal, não erro.
+ */
+export interface FutebolFixtureInsumo {
+  outcome: string;
+  market: string;
+  line_value: number | null;
+  premissa: string;
+  insumo: string;
+  valor: number | null;
+}
+
+/**
  * Um jogo passado de um dos times, em QUALQUER competição, antes do apito (RPC 117).
  *
  * É o que permite auditar o insumo: recortado pela janela e pelo mando de cada
@@ -636,6 +653,19 @@ export interface FutebolAlertedPick {
 }
 
 /**
+ * O placar de um jogo que o COLETOR já fechou (migration 152).
+ *
+ * Só status terminal com placar. É fato, e não leitura point-in-time: nota,
+ * faixa e vantagem continuam vindo do espelho, que é a foto do apito.
+ */
+export interface FutebolPlacarFresco {
+  fixture_id: number;
+  status_short: string;
+  goals_home: number;
+  goals_away: number;
+}
+
+/**
  * O que o detalhe do jogo recebe: as linhas de valor, e as saídas que o corte de
  * valor removeu (#432).
  *
@@ -811,6 +841,17 @@ export const futebolDataService = {
       });
       if (error) throw error;
       return (data || []) as FutebolFixtureNumeros[];
+    });
+  },
+
+  /** O valor que cada premissa comparou, direto do mart (#464). Vazio é normal. */
+  async getFixtureInsumos(fixtureId: number): Promise<FutebolFixtureInsumo[]> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient.rpc('get_futebol_fixture_insumos', {
+        p_fixture_id: fixtureId,
+      });
+      if (error) throw error;
+      return (data || []) as FutebolFixtureInsumo[];
     });
   },
 
@@ -1169,6 +1210,26 @@ export const futebolDataService = {
       });
       if (error) throw error;
       return (data || []) as FutebolAlertedPick[];
+    });
+  },
+
+  /**
+   * O placar dos jogos que o coletor já fechou.
+   *
+   * Chamada com os ids que a tela já tem na mão: é uma leitura pequena e
+   * pontual, para o painel não esperar o espelho recarregar para dizer se a
+   * oportunidade foi green ou red (migration 152). O parâmetro é um array num
+   * POST de RPC, e não filtro de PostgREST: não passa por URL nem cai no corte
+   * padrão de mil linhas.
+   */
+  async getPlacarFresco(fixtureIds: number[]): Promise<FutebolPlacarFresco[]> {
+    if (fixtureIds.length === 0) return [];
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient.rpc('get_futebol_placar_fresco', {
+        p_fixture_ids: fixtureIds,
+      });
+      if (error) throw error;
+      return (data || []) as FutebolPlacarFresco[];
     });
   },
 

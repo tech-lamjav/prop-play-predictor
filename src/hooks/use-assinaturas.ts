@@ -35,11 +35,22 @@ export function useAssinaturas(cadastros: Cadastro[]): EstadoDasAssinaturas {
     queryFn: async (): Promise<AssinaturaDoBanco[]> => {
       const { data, error } = await createClient()
         .from('crm_assinatura_manual')
-        .select('id, user_id, plano, vence_em, valor_mensal, criada_em, criada_por')
+        .select('id, user_id, plano, vence_em, valor_mensal, criada_em, comecou_em, criada_por')
         .is('encerrada_em', null)
         .order('vence_em', { ascending: true });
       if (error) throw error;
-      return (data ?? []) as AssinaturaDoBanco[];
+      /*
+       * ⚠️ Passa por `unknown` por causa de `comecou_em`.
+       *
+       * `src/integrations/supabase/types.ts` é GERADO a partir do banco, e o
+       * banco de onde ele foi gerado não tem essa coluna: ela nasce na
+       * migration 153, que sobe no deploy. Até lá o tipo gerado diz que a
+       * coluna não existe, e o cast direto vira erro.
+       *
+       * Regenerar o arquivo exigiria ler produção, o que não se faz daqui. O
+       * cast some sozinho quando alguém regenerar os tipos depois do deploy.
+       */
+      return (data ?? []) as unknown as AssinaturaDoBanco[];
     },
     staleTime: 60 * 1000,
   });
@@ -68,17 +79,24 @@ export function useDarAssinatura(userId: string | undefined) {
       plano,
       venceEm,
       valorMensal,
+      comecouEm,
     }: {
       plano: PlanoAVender;
       venceEm: string | null;
       valorMensal: number | null;
+      /** `YYYY-MM-DD`. Hoje no caso normal; pode ser retroativo ao CRIAR. */
+      comecouEm: string;
     }) => {
       const { error } = await createClient().rpc('crm_dar_assinatura_manual', {
         p_user_id: userId!,
         p_plano: plano,
         p_vence_em: venceEm,
         p_valor_mensal: valorMensal,
-      });
+        // ⚠️ Mesmo motivo do cast da consulta: os tipos gerados ainda descrevem
+        // a função de quatro parâmetros, porque o quinto nasce na migration 153
+        // e só existe depois do deploy. Regenerar exigiria ler produção.
+        p_comecou_em: comecouEm,
+      } as unknown as { p_user_id: string; p_plano: string; p_vence_em: string });
       if (error) throw error;
     },
     onSuccess: () => invalidar(fila, userId),

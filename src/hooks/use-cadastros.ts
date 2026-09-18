@@ -41,6 +41,16 @@ const MAPA_DE_CAMPOS: Record<keyof Cadastro, true> = {
   // O fim do teste, para a etiqueta. O início sozinho mede errado desde que o
   // teste passou para 48 horas.
   futebol_trial_ends_at: true,
+  // De onde veio o acesso. Sim ou não, calculado pelo banco — o identificador
+  // da assinatura continua sem sair de lá, que é a regra desta lista.
+  tem_assinatura_no_stripe: true,
+  // A data da próxima renovação de quem paga no gateway. O futebol não tem
+  // estas colunas de propósito, e aí a tela diz que não sabe.
+  betinho_subscription_period_end: true,
+  analytics_subscription_period_end: true,
+  // O que o gateway relatou, cru. Não é portão: as colunas por produto é que
+  // decidem acesso.
+  stripe_subscription_status: true,
 };
 
 const CAMPOS = Object.keys(MAPA_DE_CAMPOS) as (keyof Cadastro)[];

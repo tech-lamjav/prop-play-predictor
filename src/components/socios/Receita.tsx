@@ -4,10 +4,13 @@ import {
   formatarMes,
   lerValorDigitado,
   mesesEmAberto,
-  receitaRecebida,
+  recebidoNaMao,
+  recebidoTotal,
   rotuloDaOrigem,
   situacaoDaReceita,
+  textoDosMesesEmAberto,
   valorComoTexto,
+  viradaParaOCartao,
   ORIGENS_PARA_LANCAR,
   ROTULO_DA_ORIGEM,
   type OrigemParaLancar,
@@ -42,6 +45,16 @@ export interface AssinaturaDaReceita {
   comecouEm: string;
   /** Nulo é SEM COBRANÇA: não se combinou valor. */
   valorMensal: number | null;
+  /**
+   * Se esta pessoa também tem assinatura no gateway.
+   *
+   * ⚠️ Obrigatório, e não opcional. Esquecer aqui faria a ficha seguir
+   * acumulando mês em aberto de quem já paga no cartão, enquanto a fila de
+   * inadimplentes — que recebe o mesmo fato — pararia. Duas telas, a mesma
+   * pessoa, respostas opostas: é exatamente o defeito que já apareceu duas
+   * vezes nesta parte do CRM.
+   */
+  pagaNoCartao: boolean;
 }
 
 const CAMPO =
@@ -185,9 +198,34 @@ export function Receita({
   }
 
   const { pagamentos } = estado;
-  const recebido = receitaRecebida(pagamentos);
-  const abertos = mesesEmAberto(assinatura.comecouEm, assinatura.valorMensal, pagamentos, hoje);
-  const situacao = situacaoDaReceita(assinatura.comecouEm, assinatura.valorMensal, pagamentos, hoje);
+  const naMao = recebidoNaMao(pagamentos);
+  const total = recebidoTotal(pagamentos);
+  // Só mostra o total quando ele DIFERE do de cá: para quem nunca pagou pelo
+  // gateway os dois números são iguais, e repetir o mesmo valor duas vezes com
+  // nomes diferentes faria o sócio procurar uma diferença que não existe.
+  const temDinheiroDoGateway = total !== naMao;
+  /*
+   * A virada é calculada UMA vez e entregue às duas contas.
+   *
+   * Calcular dentro de cada uma faria a mesma regra ter dois donos aqui
+   * dentro, que é como o corte de doze meses vazou: a ficha e a fila
+   * derivavam por conta própria e começaram a discordar sem nada acender.
+   */
+  const virada = viradaParaOCartao(assinatura.pagaNoCartao, pagamentos, hoje);
+  const abertos = mesesEmAberto(
+    assinatura.comecouEm,
+    assinatura.valorMensal,
+    pagamentos,
+    hoje,
+    virada,
+  );
+  const situacao = situacaoDaReceita(
+    assinatura.comecouEm,
+    assinatura.valorMensal,
+    pagamentos,
+    hoje,
+    virada,
+  );
 
   const mes = mesEscolhido ?? abertos[0] ?? hoje.slice(0, 7);
   const valor = valorDigitado ?? valorComoTexto(assinatura.valorMensal);
@@ -198,7 +236,10 @@ export function Receita({
     <div className="space-y-3">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <p className="text-[13px] text-ink">
-          Recebido na mão: <span className="font-bold">{emReais(recebido)}</span>
+          Recebido na mão: <span className="font-bold">{emReais(naMao)}</span>
+          {temDinheiroDoGateway ? (
+            <span className="text-ink-2"> · total {emReais(total)}</span>
+          ) : null}
         </p>
 
         {situacao.tipo === 'devendo' ? (
@@ -219,15 +260,31 @@ export function Receita({
 
       {abertos.length > 0 ? (
         <p className="text-[12px] text-ink-2">
-          Em aberto: {abertos.map(formatarMes).join(', ')}. A assinatura não encerra sozinha: se
-          for para cortar o acesso, encerre na assinatura acima.
+          Em aberto: {textoDosMesesEmAberto(abertos)}. A assinatura não encerra sozinha: se for
+          para cortar o acesso, encerre na assinatura acima.
+        </p>
+      ) : null}
+
+      {/* ⚠️ A virada tem que ser DITA. Sem esta linha, o sócio vê a conta parar
+          num mês qualquer e não tem como saber por quê — e o que ele conclui é
+          que o sistema esqueceu de contar. */}
+      {virada !== null ? (
+        <p className="text-[12px] text-ink-2">
+          Esta pessoa também paga no cartão desde {formatarMes(virada)}, então o acordo feito na
+          mão parou de acumular mês a partir daí. O que ficou para trás continua em aberto. Se o
+          acordo na mão acabou, encerre na assinatura acima.
         </p>
       ) : null}
 
       {/* Só o que entra fora do Stripe. Escrito na tela porque um total que
           parece ser "tudo que a pessoa pagou" leva a conclusão errada. */}
       <p className="text-[11px] text-ink-dim">
-        Só o que entrou fora do Stripe. O que passa pelo gateway tem registro lá.
+        {/* ⚠️ A frase antiga dizia que só havia o dinheiro de fora do gateway, e
+            deixou de ser verdade quando a ficha passou a somar as duas origens.
+            O que continua valendo é a distinção entre os dois números — e é ela
+            que a linha explica agora. */}
+        "Recebido na mão" é o que depende de você cobrar. O total soma também o
+        que entra pelo cartão, que é cobrado sozinho.
       </p>
 
       <div className="rounded-rebrand-sm border border-line-2 bg-canvas p-2.5">

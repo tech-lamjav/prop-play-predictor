@@ -4,6 +4,7 @@ import type {
   FutebolValueBoardRow,
 } from '@/services/futebol-data.service';
 import { opportunityKey } from '@/utils/futebol-history';
+import { brtDayOf } from '@/utils/futebol-datas';
 
 /**
  * A lista de oportunidades de um dia, como as telas a montam.
@@ -104,12 +105,59 @@ export function oportunidadesDoDia({
   dia: string;
   fixturePorId: Map<number, FutebolFixture>;
 }): OppLike[] {
-  const jaNaLista = new Set(
-    doBoard.map((r) => oppKey(r.fixture_id, r.market, r.outcome, r.line_value)),
+  // ⚠️ O DIA É DECIDIDO AQUI, e não por quem chama.
+  //
+  // Antes esta função confiava que o board já vinha recortado, e a página fazia
+  // esse recorte por fora. Duas metades da mesma regra, em arquivos diferentes,
+  // e nenhum teste sobre o todo — foi assim que uma partida ao vivo apareceu na
+  // lista de cinco dias anteriores sem nada acusar. Filtrar de novo aqui é
+  // barato e transforma a regra em invariante: o que sai desta função é do dia
+  // pedido, ponto.
+  // ⚠️ E A LISTA NÃO REPETE CHAVE. Nem entre board e registrada, nem dentro de
+  // cada um dos dois.
+  //
+  // Isto não é asseio: as duas telas usam a chave desta linha como `key` do
+  // React, e chave repetida na mesma lista quebra a reconciliação. Medido em
+  // 18/09 com Atlético Torque × Cienciano, cujo "Menos de 3,5" foi enviado duas
+  // vezes (12/09 e 17/09) e virava duas linhas idênticas no dia 17: ao trocar
+  // para o dia 16, o React não casava os filhos e DEIXAVA uma das linhas na
+  // tela — uma aposta do dia 17 aparecendo num dia em que ela não existe. E
+  // acumulava: cada ida e volta somava mais uma.
+  //
+  // O estado nunca conteve essa linha (conferido no navegador: a lista tinha 71
+  // itens e zero do Torque), só o DOM — por isso o defeito resistia a ser
+  // procurado no dado. A garantia mora aqui porque é aqui que a lista nasce.
+  const jaNaLista = new Set<string>();
+  const doDia: OppLike[] = [];
+  for (const r of doBoard) {
+    if (brtDayOf(r.kickoff_utc) !== dia) continue;
+    const chave = oppKey(r.fixture_id, r.market, r.outcome, r.line_value);
+    if (jaNaLista.has(chave)) continue;
+    jaNaLista.add(chave);
+    doDia.push(r);
+  }
+
+  // Qual envio sobrevive é DECISÃO, não sorte da ordenação de quem consultou:
+  // fica o MAIS ANTIGO, que é a foto de nascimento — a odd, o Score e a janela
+  // com que a oportunidade foi anunciada pela primeira vez. Hoje a RPC devolve
+  // por `created_at` e o resultado calhava de ser esse; depender disso é o
+  // acoplamento que quebra em silêncio no dia em que ela mudar de ordem.
+  const porEnvio = [...registradas].sort((a, b) =>
+    (a.sent_at ?? '').localeCompare(b.sent_at ?? ''),
   );
-  const soRegistradas = registradas
-    .filter((a) => a.game_day === dia)
-    .filter((a) => !jaNaLista.has(oppKey(a.fixture_id, a.market, a.outcome, a.line_value)))
-    .map((a) => oppFromAlerted(a, fixturePorId.get(a.fixture_id)));
-  return [...doBoard, ...soRegistradas];
+
+  const soRegistradas: OppLike[] = [];
+  for (const a of porEnvio) {
+    if (a.game_day !== dia) continue;
+    const chave = oppKey(a.fixture_id, a.market, a.outcome, a.line_value);
+    // Dedup contra o board E contra as outras registradas. A segunda parte
+    // faltava: o mesmo pick enviado em dias diferentes vira uma linha por envio
+    // na origem, e a lista mostrava a oportunidade repetida — sempre no topo,
+    // porque o Score é o mesmo em todas as cópias.
+    if (jaNaLista.has(chave)) continue;
+    jaNaLista.add(chave);
+    soRegistradas.push(oppFromAlerted(a, fixturePorId.get(a.fixture_id)));
+  }
+
+  return [...doDia, ...soRegistradas];
 }

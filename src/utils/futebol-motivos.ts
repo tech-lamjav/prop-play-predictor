@@ -8,6 +8,7 @@ import type {
 import { PREMISSAS_OCULTAS, premissaDe, type Premissa } from '@/utils/futebol-premissas';
 import { evidenciaDe, type Evidencia } from '@/utils/futebol-evidencias';
 import { evidenciaDaPremissa } from '@/utils/futebol-evidencia-da-premissa';
+import type { InsumoMedido } from '@/utils/futebol-insumo-medido';
 import { mesmaLinha } from '@/utils/futebol-leitura';
 
 /**
@@ -138,6 +139,8 @@ export function premissasAcesasDaLeitura(
     acesas: readonly string[] | null | undefined;
     numeros: FutebolFixtureNumeros[] | undefined;
     historico: FutebolFixtureHistorico[] | undefined;
+    /** O valor medido pelo mart (#464). Ausência é normal, não erro. */
+    insumos?: InsumoMedido[] | undefined;
     lado: 'home' | 'away' | null;
     /**
      * A linha da saída, quando o texto da evidência depende dela.
@@ -152,7 +155,7 @@ export function premissasAcesasDaLeitura(
   },
   opcoes: OpcoesDasPremissasAcesas,
 ): PremissaComEvidencia[] {
-  const { mercado, acesas, numeros, historico, lado, linha } = entrada;
+  const { mercado, acesas, numeros, historico, insumos, lado, linha } = entrada;
 
   return (acesas ?? [])
     .map((slug) => premissaDe(mercado, slug))
@@ -167,6 +170,7 @@ export function premissasAcesasDaLeitura(
         slug: premissa.slug,
         numeros,
         historico,
+        insumos,
         lado,
         linha,
       }),
@@ -221,6 +225,8 @@ export function explicacaoDaLeitura(
     contrato: FutebolFixtureReasonContractRow[] | undefined;
     numeros: FutebolFixtureNumeros[] | undefined;
     historico: FutebolFixtureHistorico[] | undefined;
+    /** O valor medido pelo mart (#464). Ausência é normal, não erro. */
+    insumos?: InsumoMedido[] | undefined;
     lado: 'home' | 'away' | null;
   },
   opcoes: OpcoesDasPremissasAcesas & {
@@ -240,13 +246,13 @@ export function explicacaoDaLeitura(
    */
   total: number;
 } {
-  const { mercado, candidato, temPreco, contrato, numeros, historico, lado } = entrada;
+  const { mercado, candidato, temPreco, contrato, numeros, historico, insumos, lado } = entrada;
   const linha = candidato?.line_value ?? null;
 
   // Sem corte: quem corta é quem chama, e o total precisa ser contado antes.
   const monta = (slugs: readonly string[]) =>
     premissasAcesasDaLeitura(
-      { mercado, acesas: slugs, numeros, historico, lado, linha },
+      { mercado, acesas: slugs, numeros, historico, insumos, lado, linha },
       { incluirPesoZero: opcoes.incluirPesoZero },
     );
 

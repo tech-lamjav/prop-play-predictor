@@ -369,16 +369,34 @@ migration roda no Postgres, sem módulo que os dois importem. Há um teste que l
 os dois arquivos e cobra que concedam o mesmo: se divergirem, um assinante
 manual do Essencial ganha um acesso a menos que um pagante do mesmo plano.
 
-**Encerrar tira só o que AQUELE plano deu.** A escada é cumulativa, então cada
-plano concedeu um conjunto diferente, e os interruptores por produto existem
-justamente para dar um produto solto por fora de plano nenhum. A primeira versão
-zerava os três acessos de uma vez: encerrar um "Entrada" apagava futebol e
-análises que tinham vindo de outro lugar. Corrigido na migration 132.
+**⚠️ Encerrar NÃO tira acesso.** Ele registra que o acordo acabou, e só. Para
+cortar o produto, use os interruptores por produto, que ficam ao lado na mesma
+aba da ficha.
+
+A versão anterior tirava, e para decidir se podia ela perguntava "esta pessoa
+paga no Stripe?", respondendo por um campo que o webhook escreve num único
+evento. Quem comprou por outro caminho nunca ganhava esse campo — mesmo pagando
+todo mês —, e encerrar derrubava o produto de quem estava pagando. O espelho
+também acontecia: um identificador antigo, de assinatura já cancelada no
+gateway, fazia a função poupar quem deveria perder o acesso.
+
+Não deu para consertar trocando o sinal, porque não existe sinal confiável no
+nosso banco: a coluna de situação crua nasce vazia para todo mundo. A fonte
+confiável é o Stripe, e função de banco não fala com ele. Então o conserto foi
+parar de adivinhar, na migration 159.
+
+O custo é aceito: são dois passos do sócio. Em troca, o sistema nunca mais tira
+o produto de quem está pagando.
+
+**Histórico: a escada de rebaixamento por plano.** Enquanto encerrar mexia em
+acesso, ele tirava só o que AQUELE plano tinha dado — a escada é cumulativa, e
+a primeira versão zerava os três acessos de uma vez, apagando futebol e análises
+que tinham vindo dos interruptores. Foi corrigido na migration 132 e saiu
+inteiro na 159, junto com o rebaixamento. Fica registrado porque foi conserto
+real, e porque o teste que o guardava continua no repositório como memória.
 
 **Encerrar é marcar, e não apagar.** O histórico é o que responde "quantas a
-gente deu este mês" e "esta pessoa já teve uma antes". E quem passou a pagar de
-verdade no meio do caminho mantém o acesso: encerrar a assinatura dada na mão
-não pode derrubar uma do Stripe, que é outra coisa.
+gente deu este mês" e "esta pessoa já teve uma antes".
 
 **A mensagem de cobrança já vem escrita**, aberta na tela e não atrás de um
 botão: o trabalho é copiar e colar num WhatsApp, e cada clique a mais entre ver

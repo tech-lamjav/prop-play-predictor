@@ -19,9 +19,16 @@ function pessoa(campos: Partial<Pessoa> = {}): Pessoa {
     futebol_trial_started_at: null,
     futebol_publication_alerts_ack_at: null,
     futebol_trial_ends_at: null,
+    // Sem assinatura no gateway por padrão: o caso comum de um lead é não pagar
+    // no cartão, e `true` aqui faria a suíte inteira contar como cliente do
+    // Stripe sem nenhum teste falar disso.
+    tem_assinatura_no_stripe: false,
     telegram_username: null,
     betinho_subscription_period_end: null,
     analytics_subscription_period_end: null,
+    // O que o gateway relatou, cru. Nulo é o caso comum: quem não assina pelo
+    // cartão não tem situação relatada por ninguém.
+    stripe_subscription_status: null,
     has_report_access: null,
     ...campos,
   };

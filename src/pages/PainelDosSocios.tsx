@@ -157,7 +157,9 @@ function FichaDoModal({ id }: { id: string }) {
       ? (assinaturas.assinaturas.find((a) => a.userId === id) ?? null)
       : null;
 
-  const pagamentos = usePagamentos(assinaturaAberta?.id);
+  // Por PESSOA, e não pela assinatura aberta: a ficha responde "quanto esta
+  // pessoa já pagou", e o dinheiro do gateway não pendura em assinatura manual.
+  const pagamentos = usePagamentos(id);
   const registrarPagamento = useRegistrarPagamento(assinaturaAberta?.id, id);
   const estornarPagamento = useEstornarPagamento(assinaturaAberta?.id, id);
 
@@ -227,8 +229,8 @@ function FichaDoModal({ id }: { id: string }) {
                 : null
             }
             estado={concessao}
-            aoConceder={(plano, venceEm, valorMensal) =>
-              darAssinatura.mutate({ plano, venceEm, valorMensal })
+            aoConceder={(plano, venceEm, valorMensal, comecouEm) =>
+              darAssinatura.mutate({ plano, venceEm, valorMensal, comecouEm })
             }
             aoEncerrar={(idDaAssinatura) => encerrarAssinatura.mutate(idDaAssinatura)}
           />
@@ -240,11 +242,17 @@ function FichaDoModal({ id }: { id: string }) {
           assinatura={
             assinaturaAberta
               ? {
-                  // O dia em BRT, e não o carimbo cru: uma assinatura criada às
-                  // 22h de 31 de agosto é de agosto para quem deu, e de setembro
-                  // para o UTC. O mês de competência sairia errado por uma hora.
-                  comecouEm: brtDayOf(assinaturaAberta.criadaEm) ?? hoje,
+                  // Vem do banco, já no dia certo, e pode ser retroativo. Antes
+                  // era derivado aqui com conversão de fuso, e a fila de
+                  // inadimplentes fazia a MESMA conta do lado dela.
+                  comecouEm: assinaturaAberta.comecouEm,
                   valorMensal: assinaturaAberta.valorMensal,
+                  // O fato é da PESSOA, e chega aqui pela assinatura porque é
+                  // ela que carrega quem é a pessoa. Sem ele, a ficha seguiria
+                  // acumulando mês em aberto de quem já paga no cartão
+                  // enquanto a fila de inadimplentes, que recebe o mesmo fato,
+                  // já teria parado.
+                  pagaNoCartao: assinaturaAberta.pagaNoCartao,
                 }
               : null
           }

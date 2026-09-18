@@ -13,6 +13,7 @@ import {
   useFutebolValueHistory,
   useFutebolAccess,
   useVitrine,
+  useJogosComPlacarFresco,
 } from '@/hooks/use-futebol-data';
 import type { FutebolFixtureByDay, FutebolValueBoardRow } from '@/services/futebol-data.service';
 import { addDays, brtToday, fmtDayHeader } from '@/utils/futebol-datas';
@@ -20,6 +21,7 @@ import { groupBoardByFixture } from '@/utils/futebol-score';
 import { sufixoDeLeitura } from '@/utils/futebol-leitura';
 import { mergeBoardAndHistory } from '@/utils/futebol-history';
 import { hrefDaSaida } from '@/utils/futebol-links';
+import { useNow } from '@/hooks/use-now';
 import { competitionLabel, sortCompetitions } from '@/utils/futebol-competitions';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
@@ -90,6 +92,9 @@ export default function FutebolJogos() {
 
   const { from, to } = useMemo(() => monthRange(dia), [dia]);
   const { data: fixtures, isLoading, isError } = useFutebolFixturesByDay(dia);
+  // Um instante só para a tela, como manda o use-now.ts: quem escolhe a quem
+  // pedir placar fresco escolhe pelo relógio.
+  const agora = useNow();
   const { data: dias } = useFutebolFixtureDays(from, to);
   // O carregando do board é separado do carregando dos jogos do dia: a agenda
   // consegue listar o confronto antes de saber se ele tem leitura, e é isso que
@@ -109,8 +114,11 @@ export default function FutebolJogos() {
   // apitou, foto do apito para o que já passou. A mesma função, para as duas
   // telas contarem a mesma história do mesmo dia.
   const board = useMemo(
-    () => mergeBoardAndHistory(boardCorrente ?? [], histRows ?? [], Date.now(), vitrine, limiares),
-    [boardCorrente, histRows, vitrine, limiares],
+    // O MESMO instante do resto da tela. Este `Date.now()` sobreviveu à chegada
+    // do `agora` e virava dois relógios no mesmo componente, que é como se erra
+    // a virada do dia (ver o cabeçalho de use-now.ts).
+    () => mergeBoardAndHistory(boardCorrente ?? [], histRows ?? [], agora, vitrine, limiares),
+    [boardCorrente, histRows, agora, vitrine, limiares],
   );
 
   const jogosTour = useOnboardingTour(FUT_JOGOS_TOUR_ID, { enabled: !isLoading && !isError });
@@ -122,15 +130,27 @@ export default function FutebolJogos() {
   // trocando por pick meio segundo depois. Mesma regra da home (FutebolHoje).
   const leituraCarregando = isDemo ? false : boardCarregando || histCarregando;
 
-  const effFixtures = useMemo<FutebolFixtureByDay[]>(
+  const doEspelho = useMemo<FutebolFixtureByDay[]>(
     () => (isDemo ? makeDemoAgenda(dia) : (fixtures ?? [])),
     [isDemo, dia, fixtures],
   );
+  // O placar do coletor entra aqui, antes da linha e do painel de resumo (issue
+  // #479): os dois liquidam pelo status do jogo, e é o status que o espelho
+  // demora a fechar.
+  //
+  // A demonstração fica de fora: os ids dela são inventados, e perguntar por
+  // eles gastaria uma consulta que só pode voltar vazia. O tour não tem jogo
+  // esperando placar — ele tem o roteiro que a gente escreveu.
+  const comFresco = useJogosComPlacarFresco(isDemo ? [] : doEspelho, agora);
+  const effFixtures = isDemo ? doEspelho : comFresco;
 
   // A demonstração herda a escala do produto (#333). Aqui a janela É o board:
   // a agenda não recorta por dia o que já veio do dia, e é dele que a leitura
   // de cada confronto sai.
-  const demoBoard = useDemoFutebolBoard(board);
+  // O dia é o mesmo que a agenda de exemplo já usa (`makeDemoAgenda(dia)`):
+  // board e agenda precisam cair no mesmo dia, senão a etiqueta de faixa do
+  // trilho não casa com o jogo ao lado dela.
+  const demoBoard = useDemoFutebolBoard(board, dia);
 
   const bestByFixture = useMemo(() => {
     const m = new Map<number, FutebolValueBoardRow>();

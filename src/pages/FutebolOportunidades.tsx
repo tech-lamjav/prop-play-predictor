@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ChevronRight, AlertTriangle } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useFutebolValueBoard, useFutebolValueHistory, useFutebolAccess, useFutebolFixturesMulti, useFutebolAlertedPicks, useFutebolCompetitions, useVitrine } from '@/hooks/use-futebol-data';
+import { useFutebolValueBoard, useFutebolValueHistory, useFutebolAccess, useFutebolFixturesMulti, useFutebolAlertedPicks, useFutebolCompetitions, useVitrine, useFutebolPlacarFresco } from '@/hooks/use-futebol-data';
 import { useFutebolPublicationAlerts } from '@/hooks/use-futebol-publication-alerts';
 import FutebolDayStepper from '@/components/FutebolDayStepper';
 import { CartaoBloqueado, FutebolAccessBanner, ValorBloqueado } from '@/components/futebol/FutebolGate';
@@ -16,22 +16,25 @@ import { OportunidadesFiltros, type MarketFilter } from '@/components/futebol/Op
 import { draftFromBoardRow } from '@/components/futebol/registrar-aposta-utils';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 import { competitionLabel, sortCompetitions, fixtureScopesFor } from '@/utils/futebol-competitions';
+import { VerAnaliseCTA } from '@/components/futebol/VerAnaliseCTA';
 import {
   pickLabel, marketLabel, fmtEdgeScore,
   faixaBadgeCls, faixaWord, faixaTone, chancePct, edgeToneCls,
-  opcoesDeFaixa, passaNoFiltroDeFaixas, versaoDaJanela, ehDestaque, compararOportunidades,
+  opcoesDeFaixa, passaNoFiltroDeFaixas, versaoDaJanela, compararOportunidades,
   FAIXAS_FILTRO_PADRAO, type Faixa,
   FILTRO_DE_VALOR_PADRAO, passaNoFiltroDeValor, type FiltroDeValor,
+  ESTADOS_DO_JOGO, passaNoFiltroDeEstado, type EstadoDoJogo,
 } from '@/utils/futebol-score';
 import { settleFutebol, resultBadge, resumoDoDia, type BetResult } from '@/utils/futebol-settlement';
 import { mercadoEstaOculto } from '@/utils/futebol-mercados-ocultos';
 import { hrefDaSaida } from '@/utils/futebol-links';
 import { mergeBoardAndHistory, historyWindow, HISTORY_WINDOW_DAYS } from '@/utils/futebol-history';
 import { oppKey, oportunidadesDoDia, type OppLike } from '@/utils/futebol-registradas';
-import { parseUtc, brtDayOf, brtDateStr, fmtTime, hasKickoffPassed, addDays } from '@/utils/futebol-datas';
+import { parseUtc, brtDayOf, brtDateStr, fmtTime, isFinished, addDays } from '@/utils/futebol-datas';
+import { idsSemFecho as idsSemFechoDaLista } from '@/utils/futebol-placar-fresco';
 import { onboardingHref, ONBOARDING_SRC_ALERTAS_FUTEBOL } from '@/utils/onboarding-return';
 import { useNow } from '@/hooks/use-now';
-import type { FutebolValueBoardRow, FutebolAlertedPick, FutebolFixture } from '@/services/futebol-data.service';
+import type { FutebolValueBoardRow, FutebolAlertedPick, FutebolFixture, FutebolPlacarFresco } from '@/services/futebol-data.service';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { FUT_OPP_TOUR_ID, makeFutebolOportunidadesSteps } from '@/components/onboarding/tours';
@@ -39,7 +42,9 @@ import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
 import { useDemoFutebolBoard } from '@/components/onboarding/demo/use-demo-futebol';
 import { useDiaNaUrl } from '@/hooks/use-dia-na-url';
 
-const FINISHED_STATUS = new Set(['FT', 'AET', 'PEN']);
+// "Acabou" mora em futebol-datas.ts (`isFinished`), e o Set local que vivia
+// aqui era a terceira cópia da mesma lista de status — logo acima do
+// comentário que comemora ter tirado daqui as cópias de aritmética de fuso.
 
 // O `kickoffMs`, o `brtDayStr` e o `TODAY_BRT` que moravam aqui eram cópia
 // literal do que `futebol-datas.ts` já exporta como `parseUtc`, `brtDayOf` e
@@ -66,6 +71,27 @@ function Crest({ teamId, name, size = 20 }: { teamId: number; name: string; size
 }
 
 const LABEL = 'text-[10px] uppercase tracking-[0.14em] font-bold text-ink-3';
+/**
+ * O que dizer quando o filtro esvaziou a lista.
+ *
+ * Três casos e não dois: além de "está tudo em outro recorte", agora dá para
+ * ficar com NENHUM item marcado num seletor — e aí a frase precisa dizer isso,
+ * senão a pessoa procura no lugar errado. É o preço combinado de deixar
+ * desmarcar o último item, e ele se paga aqui.
+ *
+ * E dizer QUAIS: "um dos filtros" obriga a abrir os quatro para descobrir onde
+ * foi. Com Faixa e Estado vazios ao mesmo tempo, os dois são nomeados.
+ */
+function textoDoFiltroQueEsvaziou(escondidas: number, vazios: readonly string[]): string {
+  if (vazios.length > 0) {
+    const nomes = vazios.length === 1 ? vazios[0] : `${vazios.slice(0, -1).join(', ')} e ${vazios[vazios.length - 1]}`;
+    const verbo = vazios.length === 1 ? 'está' : 'estão';
+    return `O filtro de ${nomes} ${verbo} sem nenhuma opção marcada. Marque ao menos uma para ver a lista.`;
+  }
+  const quantas = `Este dia tem ${escondidas} ${escondidas === 1 ? 'oportunidade' : 'oportunidades'}`;
+  return `${quantas} em outro filtro. Troque o filtro para ver.`;
+}
+
 const GRID = 'grid grid-cols-[56px_64px_1fr_140px_64px_80px_72px_28px] gap-3 items-center';
 
 // Linha da tabela (desktop)
@@ -150,7 +176,7 @@ function OppMobileCard({ o, to, locked, result, homeGoals, awayGoals, canRegiste
   const hasScore = homeGoals != null && awayGoals != null;
   return (
     <div className="w-full rounded-rebrand-md bg-white border border-line overflow-hidden">
-      <Link to={to} className="block w-full text-left p-3.5">
+      <Link to={to} className="group block w-full text-left p-3.5">
         <div className="flex items-start gap-3">
           <div className="flex items-center -space-x-1 shrink-0 pt-0.5">
             <Crest teamId={o.home_team_id} name={o.home_team_name} size={24} />
@@ -206,6 +232,13 @@ function OppMobileCard({ o, to, locked, result, homeGoals, awayGoals, canRegiste
             </div>
           ))}
         </div>
+        {/* Só no celular, e só para quem tem a leitura.
+            No desktop a linha da tabela termina num chevron e a coluna inteira
+            de setas já diz que cada linha abre; no celular não há coluna, não
+            há cursor e o cartão parecia um resumo fechado em si. E linha
+            bloqueada não ganha convite: atrás dela está a paywall, não a
+            análise. */}
+        {!bloqueada && <VerAnaliseCTA className="mt-3" />}
       </Link>
       {canRegister && (
         <div className="px-3.5 pb-3.5 -mt-0.5">
@@ -271,10 +304,11 @@ export default function FutebolOportunidades() {
   const locked = isDemo ? false : !access?.unlocked;
   const [mercado, setMercado] = useState<MarketFilter>('all');
   const [faixasSelecionadas, setFaixasSelecionadas] = useState<Faixa[]>([...FAIXAS_FILTRO_PADRAO]);
-  // Desligado por padrão: a lista é o retrato do dia, e esconder o que já entrou
-  // em campo apagaria metade dele numa noite de sábado. Quem está caçando aposta
-  // agora liga e vê só o que dá para acompanhar.
-  const [soEmAberto, setSoEmAberto] = useState(false);
+  // Os três estados marcados por padrão: a lista é o retrato do dia, e esconder
+  // o que já entrou em campo apagaria metade dele numa noite de sábado. Quem
+  // está caçando aposta agora tira "Encerrados"; quem quer conferir como o dia
+  // fechou deixa só ele — o que o interruptor "Só jogos em aberto" não permitia.
+  const [estadosSelecionados, setEstadosSelecionados] = useState<EstadoDoJogo[]>([...ESTADOS_DO_JOGO]);
   const [valor, setValor] = useState<FiltroDeValor>(FILTRO_DE_VALOR_PADRAO);
   // `null` significa todas: acompanha automaticamente as competições daquele dia.
   const [competicoesSelecionadas, setCompeticoesSelecionadas] = useState<string[] | null>(null);
@@ -343,12 +377,6 @@ export default function FutebolOportunidades() {
     return m;
   }, [fixtures]);
 
-  const resultOf = (o: OppLike): BetResult | null => {
-    if (!FINISHED_STATUS.has(o.status_short ?? '')) return null;
-    const g = goalsMap.get(o.fixture_id);
-    return g ? settleFutebol(o, g.gh, g.ga) : null;
-  };
-
   // ── Oportunidades REGISTRADAS ─────────────────────────────────────────────
   // O mart é full-refresh e escolhe UMA janela de odds por jogo (t24h de manhã →
   // t15m no fechamento), então uma oportunidade que existiu durante o dia pode
@@ -397,7 +425,7 @@ export default function FutebolOportunidades() {
     const horizon = agora + 8 * 864e5; // ~8 dias à frente
     (fixtures ?? []).forEach((f) => {
       const t = parseUtc(f.kickoff_utc)?.getTime() ?? null;
-      if (t != null && t > agora && t < horizon && !FINISHED_STATUS.has(f.status_short ?? '')) {
+      if (t != null && t > agora && t < horizon && !isFinished(f.status_short)) {
         const d = brtDayOf(f.kickoff_utc);
         if (d) set.add(d);
       }
@@ -432,8 +460,12 @@ export default function FutebolOportunidades() {
   // Uma lista só: as duas são oportunidade daquele dia, a diferença é de onde
   // veio o número, não de natureza.
   const dayRows = useMemo<OppLike[]>(
+    // A lista inteira vai, e quem recorta por dia é `oportunidadesDoDia`. A
+    // página recortava aqui também, e ter a mesma regra em dois lugares foi o
+    // que deixou uma partida ao vivo aparecer em cinco dias anteriores sem
+    // nenhum teste acusar: cada metade parecia certa lida sozinha.
     () => oportunidadesDoDia({
-      doBoard: allRows.filter((r) => brtDayOf(r.kickoff_utc) === selectedDay),
+      doBoard: allRows,
       registradas: registradasAll,
       dia: selectedDay,
       fixturePorId: fixtureMap,
@@ -441,10 +473,106 @@ export default function FutebolOportunidades() {
     [allRows, selectedDay, registradasAll, fixtureMap],
   );
 
+  // ── O placar fresco ───────────────────────────────────────────────────────
+  // As linhas DESTE dia cujo apito já passou e que nenhum espelho fechou.
+  //
+  // O painel lê o espelho, que recarrega no ritmo do pipeline de analytics; o
+  // coletor, que pergunta o placar de 2 em 2 minutos, grava em outra tabela.
+  // Entre o jogo acabar de madrugada e o espelho recarregar, a oportunidade
+  // amanhecia sem resultado — em 17/09 foram 19 linhas assim, de dois jogos.
+  //
+  // ⚠️ SAI DE `dayRows`, e não de `fixtures`. O calendário traz a TEMPORADA
+  // inteira de cada liga: perguntar por ele arrastaria todo jogo adiado,
+  // cancelado ou preso em status antigo desde o começo do ano — ids que crescem
+  // para sempre e que não estão nesta tela. O dia mostrado é o recorte certo.
+  //
+  // Quem responde "acabou?" são as DUAS linhas do espelho (a do calendário e a
+  // do board), porque elas podem discordar: basta uma dizer encerrado para não
+  // haver o que perguntar.
+  //
+  // O "quando perguntar" propriamente dito é `precisaDoFresco`, compartilhado
+  // com a home, a agenda e o detalhe do jogo (issue #479): uma tela que
+  // resolvesse isso na mão acabaria com uma regra diferente das outras, que foi
+  // exatamente como a primeira versão desta consulta nasceu pedindo pela
+  // temporada inteira. O que é DESTA tela é a segunda linha do espelho.
+  const idsSemFecho = useMemo(
+    () =>
+      idsSemFechoDaLista(
+        dayRows.map((r) => {
+          const fx = fixtureMap.get(r.fixture_id);
+          return {
+            fixture_id: r.fixture_id,
+            // O calendário fala primeiro quando já sabe que acabou: ele e o
+            // board são marts diferentes e podem discordar.
+            status_short: isFinished(fx?.status_short) ? fx!.status_short : r.status_short,
+            goals_home: null,
+            goals_away: null,
+            kickoff_utc: fx?.kickoff_utc ?? r.kickoff_utc,
+          };
+        }),
+        agora,
+      ),
+    [dayRows, fixtureMap, agora],
+  );
+  const { data: placarFresco } = useFutebolPlacarFresco(idsSemFecho);
+  const frescoMap = useMemo(() => {
+    const m = new Map<number, FutebolPlacarFresco>();
+    (placarFresco ?? []).forEach((p) => m.set(p.fixture_id, p));
+    return m;
+  }, [placarFresco]);
+
+  /**
+   * O placar que vale para esta linha, e de onde ele veio.
+   *
+   * O fresco ganha quando existe, e ele só existe para jogo encerrado com
+   * placar. O resto continua vindo do espelho: nota, faixa e vantagem são
+   * leitura point-in-time, e disso o coletor não sabe nada.
+   *
+   * ⚠️ O status do espelho é lido das duas linhas. O board e o calendário são
+   * marts diferentes e podem discordar; quando uma delas já diz encerrado, o
+   * jogo acabou. Ler só a do board era o que deixava um jogo com placar na mão
+   * sem liquidar, porque a linha do board ainda dizia "2H".
+   */
+  const placarDe = (o: OppLike) => {
+    const fresco = frescoMap.get(o.fixture_id);
+    if (fresco) return { gh: fresco.goals_home, ga: fresco.goals_away, status: fresco.status_short };
+    const fx = fixtureMap.get(o.fixture_id);
+    const g = goalsMap.get(o.fixture_id);
+    const status = isFinished(fx?.status_short) ? fx?.status_short ?? null : o.status_short;
+    return { gh: g?.gh ?? null, ga: g?.ga ?? null, status };
+  };
+
+  /**
+   * O estado do jogo com AS MESMAS FONTES que desenham a linha.
+   *
+   * ⚠️ Não passe `r.status_short` cru para o filtro. A linha do board é a que
+   * mais atrasa — é ela que fica em `2H` com o jogo terminado —, e foi para
+   * contornar isso que existem o placar fresco (migration 152) e a leitura da
+   * segunda linha do espelho. Filtrar pelo board enquanto a tela desenha pelo
+   * fresco produz o pior tipo de defeito: a linha mostra placar final e o
+   * veredito, e mesmo assim some de "Encerrados" porque o filtro acha que ela
+   * ainda está rolando.
+   *
+   * O kickoff vem do calendário quando existe, como em `idsSemFecho`: o board
+   * guarda o horário da publicação, e jogo remarcado muda no calendário antes.
+   */
+  const estadoDaLinha = (o: OppLike) => ({
+    status: placarDe(o).status,
+    kickoff: fixtureMap.get(o.fixture_id)?.kickoff_utc ?? o.kickoff_utc,
+  });
+
+  const resultOf = (o: OppLike): BetResult | null => {
+    const p = placarDe(o);
+    if (!isFinished(p.status)) return null;
+    return p.gh != null && p.ga != null ? settleFutebol(o, p.gh, p.ga) : null;
+  };
+
   // A demonstração herda a escala do produto (#333). A janela passada aqui é a
   // MESMA que a tela exibe: herdar de outra faz o tour anunciar uma régua e a
   // legenda ao lado dele anunciar outra, que é o defeito inteiro de volta.
-  const demoBoard = useDemoFutebolBoard(dayRows);
+  // O dia vai junto, pelo mesmo motivo da home: a demonstração não pode
+  // contradizer a régua de datas que está logo acima dela.
+  const demoBoard = useDemoFutebolBoard(dayRows, selectedDay);
 
   const filtered = useMemo(
     () => dayRows.filter((r) => {
@@ -453,18 +581,18 @@ export default function FutebolOportunidades() {
       if (!passaNoFiltroDeFaixas(faixasSelecionadas, r.faixa)) return false;
       if (!passaNoFiltroDeValor(valor, r.edge)) return false;
       if (competicoesSelecionadas && !competicoesSelecionadas.includes(r.competition)) return false;
-      // Em aberto = o apito inicial ainda não soou. O status vem depois, e às
-      // vezes atrasado, então quem manda é o relógio (ver futebol-datas.ts).
-      if (
-        soEmAberto &&
-        (r.kickoff_utc == null ||
-          hasKickoffPassed(r.kickoff_utc, new Date(agora)) ||
-          FINISHED_STATUS.has(r.status_short ?? ''))
-      )
-        return false;
+      // Em aberto, ao vivo ou encerrado: a regra mora em futebol-score.ts, junto
+      // das outras do painel, e decide pelo relógio antes do status — que vem do
+      // espelho e atrasa. As FONTES são as da tela (ver `estadoDaLinha`).
+      const estado = estadoDaLinha(r);
+      if (!passaNoFiltroDeEstado(estadosSelecionados, estado.status, estado.kickoff, new Date(agora))) return false;
       return true;
     }),
-    [dayRows, mercado, faixasSelecionadas, valor, competicoesSelecionadas, soEmAberto, agora]
+    // `fixtureMap` e `frescoMap` entram porque `estadoDaLinha` lê os dois: sem
+    // elas, o filtro continuaria mostrando o recorte de antes de o placar
+    // fresco chegar. O eslint não cobra estas dependências aqui (a regra está
+    // desligada no arquivo), então elas são responsabilidade de quem edita.
+    [dayRows, mercado, faixasSelecionadas, valor, competicoesSelecionadas, estadosSelecionados, agora, fixtureMap, frescoMap]
   );
 
   // Uma linha por oportunidade (sem colapsar por jogo), ranqueado por Score.
@@ -486,6 +614,16 @@ export default function FutebolOportunidades() {
   // Quantas o dia tem e o filtro escondeu. Serve ao estado vazio: sem isto ele
   // diz "não há oportunidade nesse dia" quando o que houve foi um filtro.
   const escondidasPeloFiltro = (isDemo ? demoBoard.length : dayRows.length) - bestRows.length;
+  // Quais seletores ficaram sem nenhuma opção marcada. Eles escondem TUDO, e a
+  // tela vazia precisa dizer isso com todas as letras: é o estado que o produto
+  // passou a permitir para que desmarcar o último item deixasse de ser um
+  // clique engolido. Competição é a exceção de sempre — lá `null` é "todas", e
+  // só a lista vazia de verdade significa nenhuma.
+  const filtrosVazios = [
+    faixasSelecionadas.length === 0 ? 'faixa' : null,
+    estadosSelecionados.length === 0 ? 'estado' : null,
+    competicoesSelecionadas?.length === 0 ? 'competição' : null,
+  ].filter((nome): nome is string => nome != null);
   const distribuicao = isDemo ? demoBoard : dayRows;
   const nAlta = distribuicao.filter((o) => faixaTone(o.faixa ?? '') === 'alta' && o.faixa != null).length;
   const nMedia = distribuicao.filter((o) => o.faixa != null && faixaTone(o.faixa) === 'media').length;
@@ -501,12 +639,27 @@ export default function FutebolOportunidades() {
       byDay.get(d)!.push(r);
     });
     const out: Record<string, number> = {};
-    // Conta o mesmo recorte que a lista abre por padrão (Alta e Média), senão o
-    // selo promete um número que a tela não mostra ao ser aberta.
-    byDay.forEach((rs, d) => { out[d] = rs.filter((o) => ehDestaque(o.faixa)).length; });
+    // Conta o mesmo recorte que a lista abre por padrão, e conta com a MESMA
+    // função que a lista usa — não com uma equivalente.
+    //
+    // `ehDestaque` era equivalente enquanto toda linha tinha faixa. Com a guarda
+    // de acesso a linha bloqueada chega com faixa nula, e aí as duas divergiram:
+    // o filtro deixa faixa nula passar (a linha aparece), `ehDestaque` não (o
+    // selo não conta). A barra dizia "hoje · 0" com oito linhas logo abaixo —
+    // dois números certos pela própria regra, mentindo juntos na mesma tela.
+    byDay.forEach((rs, d) => {
+      out[d] = rs.filter((o) => passaNoFiltroDeFaixas(FAIXAS_FILTRO_PADRAO, o.faixa)).length;
+    });
     // Registrada que o board não tem entra na conta, senão dia que só tem
     // registro apareceria zerado no seletor.
+    // Uma vez por oportunidade, e não por envio: o mesmo pick mandado no
+    // Telegram em três dias diferentes é UMA linha na lista, e o selo tem de
+    // contar igual — senão a lista mostra 1 e o chip do dia diz 3.
+    const jaContadas = new Set<string>();
     registradasAll.forEach((a) => {
+      const chave = `${a.game_day}|${oppKey(a.fixture_id, a.market, a.outcome, a.line_value)}`;
+      if (jaContadas.has(chave)) return;
+      jaContadas.add(chave);
       const naLista = (byDay.get(a.game_day) ?? []).some(
         (r) => oppKey(r.fixture_id, r.market, r.outcome, r.line_value) === oppKey(a.fixture_id, a.market, a.outcome, a.line_value)
       );
@@ -527,8 +680,10 @@ export default function FutebolOportunidades() {
         resultado: resultOf(o),
       })))
       : null),
+    // `resultOf` lê os três mapas, e o eslint está desligado aqui: quem esquecer
+    // um deles faz a manchete do dia congelar no que o espelho dizia antes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [isPastDay, comValor, goalsMap, fixtureMap],
+    [isPastDay, comValor, goalsMap, fixtureMap, frescoMap],
   );
 
   // Pick publicado num jogo que o calendário não trouxe é anomalia de catálogo,
@@ -551,7 +706,11 @@ export default function FutebolOportunidades() {
   // A montagem da URL saiu daqui para `futebol-links.ts` (#344): esta tela era a
   // única que carregava a saída clicada, e a home e o painel abriam a tela do
   // jogo no desempate padrão. Com um lugar só, a próxima origem não esquece.
-  const key = (o: OppLike) => `${o.fixture_id}-${o.market}-${o.outcome}-${o.line_value}`;
+  // A linha bloqueada chega com mercado, saída e linha nulos, então a chave de
+  // todas elas no mesmo jogo seria a mesma — e chave repetida faz o React
+  // duplicar ou omitir irmãos, em silêncio. Nessas, a posição é o que distingue.
+  const key = (o: OppLike, i: number) =>
+    linhaBloqueada(o) ? `bloqueada-${i}` : `${o.fixture_id}-${o.market}-${o.outcome}-${o.line_value}`;
 
   const oppSteps = useMemo(
     () => makeFutebolOportunidadesSteps({ hasDayBar: !isLoading && days.length > 0, hasBoard: bestRows.length > 0 }),
@@ -676,8 +835,8 @@ export default function FutebolOportunidades() {
         <OportunidadesFiltros
           mercado={mercado}
           onMercadoChange={setMercado}
-          soEmAberto={soEmAberto}
-          onSoEmAbertoChange={setSoEmAberto}
+          estadosSelecionados={estadosSelecionados}
+          onEstadosChange={setEstadosSelecionados}
           faixasSelecionadas={faixasSelecionadas}
           onFaixasChange={setFaixasSelecionadas}
           valor={valor}
@@ -695,14 +854,14 @@ export default function FutebolOportunidades() {
                 foi o filtro. Culpar o dado nesse caso manda a pessoa embora de
                 uma tela que só precisava de um clique em Todas. */}
             <p className="text-sm text-ink-2">
-              {escondidasPeloFiltro > 0 ? 'Nenhuma oportunidade nesse filtro.'
+              {filtrosVazios.length > 0 || escondidasPeloFiltro > 0 ? 'Nenhuma oportunidade nesse filtro.'
                 : isPastDay ? 'Nenhuma oportunidade publicada nesse dia.'
                 : isFutureDay ? 'Ainda sem oportunidades para este dia.'
                 : 'Nenhum jogo com odds nesse filtro.'}
             </p>
             <p className="text-xs text-ink-3 mt-1">
-              {escondidasPeloFiltro > 0
-                ? `Este dia tem ${escondidasPeloFiltro} ${escondidasPeloFiltro === 1 ? 'oportunidade' : 'oportunidades'}${soEmAberto ? ' de jogos que já começaram ou em outro filtro. Desligue "Só jogos em aberto" para ver.' : ' em outra faixa ou mercado. Troque o filtro para ver.'}`
+              {filtrosVazios.length > 0 || escondidasPeloFiltro > 0
+                ? textoDoFiltroQueEsvaziou(escondidasPeloFiltro, filtrosVazios)
                 : isPastDay ? 'Só listamos aqui o que foi publicado no dia.'
                 : isFutureDay ? 'As odds costumam ser coletadas a partir de ~24h antes do jogo — as oportunidades aparecem aqui quando chegarem.'
                 : 'As oportunidades aparecem quando há odds coletadas antes do jogo.'}
@@ -716,11 +875,11 @@ export default function FutebolOportunidades() {
                 <div>Score ↓</div><div>Faixa</div><div>Aposta</div><div>Mercado</div>
                 <div className="text-right">Chance</div><div className="text-right">Odd</div><div className="text-right">Valor</div><div />
               </div>
-              {comValor.map((o) => {
+              {comValor.map((o, i) => {
                 const res = resultOf(o);
-                const g = goalsMap.get(o.fixture_id);
+                const g = placarDe(o);
                 return (
-                  <div key={key(o)}>
+                  <div key={key(o, i)}>
                     <OppRow o={o} to={hrefDaSaida(o.fixture_id, o)} locked={locked} result={res} homeGoals={g?.gh} awayGoals={g?.ga} />
                     {!locked && (
                       <div className="px-5 pb-2 -mt-0.5">
@@ -734,12 +893,12 @@ export default function FutebolOportunidades() {
 
             {/* Cards (mobile) */}
             <div className="md:hidden flex flex-col gap-2.5">
-              {comValor.map((o) => {
+              {comValor.map((o, i) => {
                 const res = resultOf(o);
-                const g = goalsMap.get(o.fixture_id);
+                const g = placarDe(o);
                 return (
                   <OppMobileCard
-                    key={key(o)}
+                    key={key(o, i)}
                     o={o}
                     to={hrefDaSaida(o.fixture_id, o)}
                     locked={locked}

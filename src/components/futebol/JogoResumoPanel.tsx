@@ -22,8 +22,8 @@ import { melhorLeitura, resumoDosMercados } from '@/utils/futebol-leitura';
 import { mesmaSaida } from '@/utils/futebol-saida';
 import { estadoDosMotivos, explicacaoDaLeitura } from '@/utils/futebol-motivos';
 import { ladoDaSaida } from '@/utils/futebol-evidencias';
-import { evidenciaDoHistorico, perfilDaJanela } from '@/utils/futebol-historico';
-import { useFutebolAccess } from '@/hooks/use-futebol-data';
+import { perfilDaJanela } from '@/utils/futebol-historico';
+import { useFutebolAccess, useFutebolFixtureInsumos } from '@/hooks/use-futebol-data';
 import { settleFutebol, isHit } from '@/utils/futebol-settlement';
 import type {
   FutebolFixtureByDay,
@@ -109,6 +109,9 @@ export function JogoResumoPanel({
   const numeros = demo?.numeros ?? numerosReais;
   const { data: injuries } = useFutebolFixtureInjuries(fixture.fixture_id);
   const { data: historico } = useFutebolFixtureHistorico(fixture.fixture_id);
+  // O valor que o modelo comparou (#464). No tour não existe, e não faz falta:
+  // ausência cai na rota seguinte, como em jogo gravado antes do deploy.
+  const { data: insumos } = useFutebolFixtureInsumos(demo ? undefined : fixture.fixture_id);
   // A camada de VALOR é paga, e este painel era o furo: chance, odd e vantagem
   // apareciam limpas para quem não tem acesso, enquanto as MESMAS três estão
   // borradas na tela de Oportunidades e na folha do jogo. Uma tela dava de
@@ -198,6 +201,7 @@ export function JogoResumoPanel({
       contrato,
       numeros,
       historico,
+      insumos,
       lado,
     },
     { max: 4, incluirPesoZero: false, maxContra: 2 },
@@ -278,8 +282,6 @@ export function JogoResumoPanel({
   //
   // A exceção do passado continua de pé no banco: linha de jogo encerrado vem
   // pelo histórico, que é passado por construção e não pede acesso.
-  // A camada de valor está fechada para esta linha. A exceção do passado
-  // continua: linha já liquidada é registro do que foi publicado, não aposta.
   const valorFechado = semAcesso && !desfecho;
   const bloqueadoSemLeitura = valorFechado && !best;
 
@@ -381,11 +383,15 @@ export function JogoResumoPanel({
               )}
             </div>
             <div className="text-center shrink-0">
+              {/* A contagem de premissas também é leitura do modelo, e sem o
+                  Score ela vira o número que sobra na tela. A faixa do confronto
+                  já esconde as duas sob bloqueio; aqui ficava à mostra, e uma
+                  das duas telas estava errada. */}
               <div className="tabular-nums text-[40px] font-bold leading-none tracking-[-0.04em]" style={{ color: '#fbbf24' }}>
-                {best ? best.score : nValem}
+                {valorFechado ? '—' : best ? best.score : nValem}
               </div>
               <div className="mt-1 text-[9px] uppercase tracking-[0.12em]" style={{ color: 'rgba(255,255,255,.5)' }}>
-                {best ? `Score · ${rotuloDaFaixa(best.faixa)}` : 'premissas a favor'}
+                {valorFechado ? 'de assinante' : best ? `Score · ${rotuloDaFaixa(best.faixa)}` : 'premissas a favor'}
               </div>
             </div>
           </div>

@@ -5,7 +5,7 @@ import { rotuloEmTitulo } from '@/utils/futebol-estado-da-premissa';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Seo } from '@/components/Seo';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useFutebolFixturesMulti, useFutebolValueBoard, useFutebolValueHistory, useFutebolAlertedPicks, useFutebolFixtureReasonContract, useFutebolAccess, useVitrine, useFutebolCompetitions } from '@/hooks/use-futebol-data';
+import { useFutebolFixturesMulti, useFutebolValueBoard, useFutebolValueHistory, useFutebolAlertedPicks, useFutebolFixtureReasonContract, useFutebolAccess, useVitrine, useFutebolCompetitions, useJogosComPlacarFresco } from '@/hooks/use-futebol-data';
 import FutebolDayStepper from '@/components/FutebolDayStepper';
 import { CartaoBloqueado, FutebolAccessBanner, ValorBloqueado } from '@/components/futebol/FutebolGate';
 import { linhaBloqueada } from '@/utils/futebol-bloqueio';
@@ -13,6 +13,8 @@ import { AjudaCampo } from '@/components/futebol/AjudaCampo';
 import { textoDoScore, TEXTO_CHANCE, TEXTO_ODD, TEXTO_VALOR } from '@/utils/futebol-ajuda-copy';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 import { competitionLabel, fixtureScopesFor } from '@/utils/futebol-competitions';
+import { LigaCrest } from '@/components/futebol/LigaCrest';
+import { VerAnaliseCTA } from '@/components/futebol/VerAnaliseCTA';
 import {
   pickLabel, marketLabel, fmtEdgeScore, groupBoardByFixture,
   faixaBadgeCls, faixaWord, faixaTone, topEvidencia, chancePct, ehDestaque, compararOportunidades, escalaDeExibicao,
@@ -22,7 +24,7 @@ import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { FUTEBOL_TOUR_ID, makeFutebolSteps } from '@/components/onboarding/tours';
 import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
-import { demoFutebolFixtures } from '@/components/onboarding/demo/futebol';
+import { makeDemoAgenda } from '@/components/onboarding/demo/futebol';
 import { useDemoFutebolBoard } from '@/components/onboarding/demo/use-demo-futebol';
 // Aritmética de fuso vem de um lugar só. As cópias locais que existiam aqui
 // eram idênticas às de futebol-datas.ts, e duas cópias da mesma conta de fuso é
@@ -96,7 +98,7 @@ function HeroStat({ label, value, dark, ajuda }: { label: string; value: string;
   );
 }
 
-// ── Hero: melhor valor do dia — 3 colunas (pick · por quê · confiab). ────────
+// ── Hero: melhor oportunidade do dia — 3 colunas (pick · por quê · confiab). ─
 // Alta = gradiente forest (texto branco); Média = card claro com acento âmbar.
 function TopValueHero({ o, to, favor, contra, textoScore, carregandoMotivos = false }: { o: FutebolValueBoardRow; to: string; favor: Motivo[]; contra: Motivo[]; textoScore: string; carregandoMotivos?: boolean }) {
   const pick = pickLabel(o, o.home_team_name, o.away_team_name);
@@ -132,7 +134,16 @@ function TopValueHero({ o, to, favor, contra, textoScore, carregandoMotivos = fa
         <div className="md:col-span-4 flex flex-col">
           <span className={`inline-flex items-center gap-1.5 px-2.5 h-7 rounded-md text-[10px] uppercase tracking-[0.18em] font-bold w-fit ${d ? '' : 'bg-amber/15 text-amber-2 border border-amber/30'}`}
             style={d ? { background: '#fbbf24', color: '#1a1d1a' } : undefined}>
-            <Zap className="w-3 h-3" /> {pagaAcima ? 'Melhor valor do dia' : 'Destaque do dia'}
+            {/* UM nome só, e ele não fala de preço.
+                O selo alternava entre "Melhor valor do dia" e "Destaque do
+                dia" conforme o sinal da vantagem, pelo motivo certo: com a
+                linha pagando abaixo do justo, prometer valor no selo é mentir
+                com o número negativo logo ao lado. O preço, porém, não é o que
+                põe a linha aqui em cima — quem ordena é o Score. "Melhor
+                oportunidade do dia" é verdade nos dois casos, e a ressalva
+                sobre o preço continua onde ela pesa, na frase do porquê, que
+                segue mudando com `pagaAcima`. */}
+            <Zap className="w-3 h-3" /> Melhor oportunidade do dia
           </span>
           <div className={`text-[11px] uppercase tracking-[0.16em] font-semibold mt-5 ${d ? 'text-white/50' : 'text-ink-3'}`}>{marketLabel(o.market)} · {competitionLabel(o.competition)}</div>
           <div className={`text-[28px] md:text-[32px] font-bold tracking-tight leading-[1.1] mt-2 ${d ? '' : 'text-ink'}`}>{pick}</div>
@@ -262,11 +273,34 @@ function OppCard({ o, to }: { o: FutebolValueBoardRow; to: string }) {
   const pick = pickLabel(o, o.home_team_name, o.away_team_name);
   const chance = chancePct(o.prob_justa_fechamento);
   return (
-    <Link to={to} className={`${CARD} block p-4 text-left hover:shadow-sm hover:border-line-2 transition w-full`}>
+    // `flex-col` + `h-full`, e não `block`: no grid os cartões já esticavam
+    // para a mesma altura, mas o conteúdo parava onde acabava, e uma aposta que
+    // quebra em duas linhas ("Mais de 2,5 gols" contra o nome de dois times
+    // longos) empurrava só o botão dela. Com o botão em `mt-auto`, a fileira
+    // inteira termina na mesma linha.
+    <Link to={to} className={`${CARD} group flex h-full flex-col p-4 text-left hover:shadow-sm hover:border-line-2 transition w-full`}>
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-1.5">
-          <span className="px-1.5 h-5 inline-flex items-center rounded text-[10px] font-semibold uppercase tracking-[0.1em] bg-canvas-2 text-ink-2">{marketLabel(o.market)}</span>
-          <span className={`px-1.5 h-5 inline-flex items-center rounded text-[10px] font-bold uppercase tracking-[0.1em] ${faixaBadgeCls(o.faixa)}`}>{faixaWord(o.faixa)}</span>
+        {/* A esquerda do topo é uma PILHA, e não uma linha, por causa do Score.
+            O número de 26px deixa o bloco da direita com quase o dobro da
+            altura das etiquetas, e com as duas colunas começando no topo
+            sobrava um vão embaixo delas. A competição ocupa esse vão com o que
+            o cartão não dizia: de que campeonato é a oportunidade. Até a #478
+            dava para supor pelo escudo, porque quase tudo era brasileiro; com
+            oito competições ligadas, supor deixou de funcionar. */}
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="px-1.5 h-5 inline-flex items-center rounded text-[10px] font-semibold uppercase tracking-[0.1em] bg-canvas-2 text-ink-2">{marketLabel(o.market)}</span>
+            <span className={`px-1.5 h-5 inline-flex items-center rounded text-[10px] font-bold uppercase tracking-[0.1em] ${faixaBadgeCls(o.faixa)}`}>{faixaWord(o.faixa)}</span>
+          </div>
+          {/* Mesma métrica da linha dos times logo abaixo — escudo de 16,
+              o mesmo vão, o mesmo corpo de 12px — para os dois nomes começarem
+              na mesma coluna. Com 14px o escudo da liga desalinhava do escudo
+              do time por 2px, e duas linhas seguidas quase alinhadas leem pior
+              do que duas linhas claramente diferentes. */}
+          <div className="flex items-center gap-1.5 mt-2 min-w-0 text-[12px] text-ink-3">
+            <LigaCrest slug={o.competition} size={16} />
+            <span className="truncate">{competitionLabel(o.competition)}</span>
+          </div>
         </div>
         <div className="text-right shrink-0">
           <div className="text-[9px] uppercase tracking-[0.14em] font-semibold text-ink-3">Score</div>
@@ -280,7 +314,14 @@ function OppCard({ o, to }: { o: FutebolValueBoardRow; to: string }) {
         <Crest teamId={o.away_team_id} name={o.away_team_name} size={16} />
         <span className="shrink-0 opacity-80">· {fmtDayTime(o.kickoff_utc)}</span>
       </div>
-      <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-line">
+      {/* `sm:grow` é o que empurra o botão para o pé do cartão: este bloco
+          estica e ocupa a sobra, em vez de o botão ganhar margem automática.
+          É aqui e não no botão porque margem `auto` no botão não convive com
+          uma margem mínima — ou uma ou outra —, e a primeira tentativa resolveu
+          isso com `pt-3` NO BOTÃO: padding onde eu queria espaço acima. Com
+          altura fixa, o padding come o botão por dentro e derruba o texto do
+          centro. Foi assim que ele subiu torto para a homologação. */}
+      <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-line sm:grow">
         <div>
           <div className="text-[9px] uppercase tracking-[0.14em] font-semibold text-ink-3">Chance</div>
           <div className="text-[15px] font-bold tabular-nums text-ink mt-0.5">{chance != null ? `${chance}%` : '—'}</div>
@@ -294,6 +335,7 @@ function OppCard({ o, to }: { o: FutebolValueBoardRow; to: string }) {
           <div className="text-[15px] font-bold tabular-nums text-forest mt-0.5">{fmtEdgeScore(o.edge)}</div>
         </div>
       </div>
+      <VerAnaliseCTA className="mt-3" />
     </Link>
   );
 }
@@ -432,7 +474,10 @@ export default function FutebolHoje() {
 
   const dayRows = useMemo<OppLike[]>(
     () => oportunidadesDoDia({
-      doBoard: valueRows.filter((r) => brtDayOf(r.kickoff_utc) === selectedDay),
+      // A lista inteira: quem recorta por dia é `oportunidadesDoDia`. Recortar
+      // aqui também deixaria a mesma regra viva em dois lugares — que é o que
+      // esta mudança existe para acabar.
+      doBoard: valueRows,
       registradas: registradasAll,
       dia: selectedDay,
       fixturePorId,
@@ -443,7 +488,9 @@ export default function FutebolHoje() {
   // A demonstração herda a escala do produto (#333). A janela passada aqui é a
   // MESMA que a tela exibe: herdar de outra faz o tour anunciar uma régua e a
   // legenda ao lado dele anunciar outra, que é o defeito inteiro de volta.
-  const demoBoard = useDemoFutebolBoard(dayRows);
+  // O dia vai junto: a régua de datas manda também na demonstração, senão os
+  // cartões do tour trazem 10/08/2025 embaixo de uma barra marcando hoje.
+  const demoBoard = useDemoFutebolBoard(dayRows, selectedDay);
 
   // Os blocos visuais precisam de Score e faixa para existir. A oportunidade
   // registrada ANTES da migration 091 não guardou esses números, então ela conta
@@ -539,7 +586,17 @@ export default function FutebolHoje() {
   const textoScore = textoDoScore(escalaDeExibicao(dayRows));
   const moreOpps = oppsByFixture.filter((o) => o !== heroOpp && ehDestaque(o.faixa)).slice(0, 4);
   const nOpps = isDemo ? demoBoard.length : dayRows.length;
-  const gameList = isDemo ? demoFutebolFixtures : dayGames;
+  // O placar do coletor entra AQUI, no recorte do dia — e não na lista inteira
+  // (issue #479). `allGames` é a temporada de treze ligas: perguntar por ela
+  // arrastaria todo jogo adiado desde janeiro, e foi para tapar esse buraco que
+  // a primeira versão inventou uma janela de sete dias — que, de quebra, parava
+  // de perguntar pelo jogo antigo preso, justamente o que o coletor sabe
+  // responder desde que as ligas foram ligadas (#478).
+  const dayGamesFrescos = useJogosComPlacarFresco(isDemo ? [] : dayGames, agora);
+  // A MESMA agenda de exemplo da tela de jogos, e no dia selecionado. A lista
+  // fixa que estava aqui tinha os jogos cravados em agosto de 2025, então o
+  // trilho do tour mostrava uma data e a régua acima dele outra.
+  const gameList = isDemo ? makeDemoAgenda(selectedDay) : dayGamesFrescos;
   // O que CABE na coluna, que não é o mesmo que o total do dia — o cabeçalho
   // continua dizendo "33 partidas" porque essa é a verdade sobre o dia; o que
   // muda é quantas linhas a coluna empilha. Recalcula com o relógio, então o

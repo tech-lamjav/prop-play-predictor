@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { brtToday } from '@/utils/futebol-datas';
 import { historyWindow } from '@/utils/futebol-history';
 import { ocultosAgora, type MercadoOculto } from '@/utils/futebol-mercados-ocultos';
+import { comPlacarFresco, idsSemFecho, type JogoComPlacar } from '@/utils/futebol-placar-fresco';
 import type { LimiarDeValor } from '@/utils/futebol-corte-de-valor';
 import type { Saida } from '@/utils/futebol-saida';
 import type { FixtureScope } from '@/utils/futebol-competitions';
@@ -18,6 +19,7 @@ import {
   type FutebolFixtureReasonContractRow,
   type FutebolFixtureDisponibilidade,
   type FutebolFixtureNumeros,
+  type FutebolFixtureInsumo,
   type FutebolFixtureHistorico,
   type FutebolCompetitionInfo,
   type FutebolFixtureDetail,
@@ -37,6 +39,7 @@ import {
   type FutebolFixtureValueRow,
   type FutebolFixtureValueComCortadas,
   type FutebolAlertedPick,
+  type FutebolPlacarFresco,
 } from '@/services/futebol-data.service';
 
 /**
@@ -138,6 +141,18 @@ export function useFutebolFixtureNumeros(fixtureId: number | undefined) {
   return useQuery<FutebolFixtureNumeros[]>({
     queryKey: ['futebol', 'fixture-numeros', fixtureId],
     queryFn: () => futebolDataService.getFixtureNumeros(fixtureId as number),
+    enabled: !!fixtureId,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
+}
+
+/** O valor que cada premissa comparou, direto do mart (#464). Vazio é normal. */
+export function useFutebolFixtureInsumos(fixtureId: number | undefined) {
+  return useQuery<FutebolFixtureInsumo[]>({
+    queryKey: ['futebol', 'fixture-insumos', fixtureId],
+    queryFn: () => futebolDataService.getFixtureInsumos(fixtureId as number),
     enabled: !!fixtureId,
     staleTime: 10 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
@@ -370,6 +385,59 @@ export function useFutebolAlertedPicks() {
     gcTime: 15 * 60 * 1000,
     refetchOnWindowFocus: false,
   });
+}
+
+/**
+ * O placar dos jogos que o coletor já fechou e o espelho ainda não.
+ *
+ * Existe porque o painel lê o espelho, que recarrega no ritmo do pipeline: jogo
+ * que acaba de madrugada amanhece sem resultado na tela, e o sócio via "10 de 19
+ * sem resultado" no dia anterior. Só é chamada quando sobra jogo sem placar no
+ * dia mostrado — dia inteiro fechado não gasta consulta.
+ *
+ * O `refetchInterval` é o que faz o resultado APARECER com a tela aberta. Sem
+ * ele o `staleTime` curto não busca nada sozinho (ver o cabeçalho de
+ * `use-now.ts`: o tique move o relógio, não os dados), e o jogo que acabou às
+ * 23h só ganharia placar no F5. Dois minutos é o passo do coletor.
+ *
+ * O `placeholderData` segura o que já veio enquanto a lista de ids muda: a
+ * chave muda junto, e sem isso a linha pisca de volta para "sem resultado".
+ */
+export function useFutebolPlacarFresco(fixtureIds: number[]) {
+  const ids = [...fixtureIds].sort((a, b) => a - b);
+  return useQuery<FutebolPlacarFresco[]>({
+    queryKey: ['futebol', 'placar-fresco', ids],
+    queryFn: () => futebolDataService.getPlacarFresco(ids),
+    enabled: ids.length > 0,
+    staleTime: 60 * 1000,
+    gcTime: 5 * 60 * 1000,
+    refetchInterval: 2 * 60 * 1000,
+    refetchOnWindowFocus: true,
+    placeholderData: (anterior) => anterior,
+  });
+}
+
+/**
+ * Os jogos que a tela já tem, com o placar do coletor sobreposto onde o espelho
+ * ainda não fechou (issue #479).
+ *
+ * É o caminho curto para qualquer superfície que mostre placar: entra a lista
+ * que a tela ia desenhar, sai a mesma lista com o resultado dos jogos que
+ * acabaram. Quem decide a quem perguntar é `futebol-placar-fresco.ts`, num lugar
+ * só, e não cada tela por conta própria.
+ *
+ * `agoraMs` vem de fora de propósito: a regra do repositório é um instante só
+ * para a tela inteira (ver `use-now.ts`). Dois relógios discordam na virada do
+ * dia, e esta função escolhe jogos justamente pelo relógio.
+ */
+export function useJogosComPlacarFresco<T extends JogoComPlacar>(
+  jogos: readonly T[] | undefined,
+  agoraMs: number,
+): T[] {
+  const lista = useMemo(() => jogos ?? [], [jogos]);
+  const ids = useMemo(() => idsSemFecho(lista, agoraMs), [lista, agoraMs]);
+  const { data } = useFutebolPlacarFresco(ids);
+  return useMemo(() => comPlacarFresco(lista, data), [lista, data]);
 }
 
 const opcoesDoValorDoJogo = (fixtureId: number | undefined) => ({
