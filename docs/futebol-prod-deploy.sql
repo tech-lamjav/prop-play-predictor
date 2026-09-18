@@ -1866,10 +1866,18 @@ as $function$
   -- todas as colunas nulas: a tela sabe que hoje ha N oportunidades e mostra N
   -- cadeados, sem dizer em qual jogo, em que mercado nem a que preco.
   --
-  -- TRES COLUNAS ESCAPAM DO NULO, e sem elas a contagem nao existe:
+  -- SETE COLUNAS ESCAPAM DO NULO, e sem elas a tela nao se sustenta:
   --
   --   c1 fixture_id  -- a tela precisa de chave estavel por linha; sem ela duas
   --                     linhas bloqueadas colidem na mesma chave de React
+  --   c2..c5 times   -- id e nome das duas equipes. A lista desenha o escudo e
+  --                     escreve "A x B"; sem o nome, crestInitials chamava
+  --                     .replace em nulo e DERRUBAVA a pagina inteira -- tela em
+  --                     branco, nao lista vazia. E nao e o que se vende: quem
+  --                     joga contra quem ja sai aberto em get_futebol_fixtures,
+  --                     _by_day, fixture_detail e teams, e a tela de Jogos
+  --                     mostra de graca. O que se vende -- qual aposta, em que
+  --                     mercado, a que preco -- continua nulo.
   --   c7 kickoff_utc -- a home conta por DIA (brtDayOf(kickoff) == dia). Anulada,
   --                     nenhuma linha casa o dia, a contagem vira 0 e a tela cai
   --                     em "Sem valor claro hoje" -- a frase que este trabalho
@@ -1884,19 +1892,20 @@ as $function$
   --                     ESCALA, nao a nota: `score` (c21) e `faixa` (c22)
   --                     continuam nulos.
   --
-  -- O que isso entrega a quem nao assina: que existe oportunidade naquele jogo.
-  -- Nao entrega qual aposta, em que mercado, a que preco, com que chance nem com
-  -- que nota. E o horario ja identifica o jogo pela agenda, que e publica -- nao
-  -- havia o que proteger escondendo so um dos dois.
+  -- O que isso entrega a quem nao assina: que existe oportunidade naquele jogo,
+  -- em qual jogo e a que horas. Nao entrega qual aposta, em que mercado, a que
+  -- preco, com que chance nem com que nota. Jogo e horario ja vem da agenda, que
+  -- e publica -- nao havia o que proteger escondendo metade dela, e esconder
+  -- quebrava a tela que a contagem existe para alimentar.
   --
   -- O apelido posicional (_b.c1..) existe porque a consulta de baixo tem colunas
   -- sem nome (expressoes); nomear aqui e o que permite projetar uma a uma.
   select
     _b.c1,
-    case when _g.tem then _b.c2 end,
-    case when _g.tem then _b.c3 end,
-    case when _g.tem then _b.c4 end,
-    case when _g.tem then _b.c5 end,
+    _b.c2,
+    _b.c3,
+    _b.c4,
+    _b.c5,
     case when _g.tem then _b.c6 end,
     _b.c7,
     case when _g.tem then _b.c8 end,
