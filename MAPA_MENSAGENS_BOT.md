@@ -63,6 +63,11 @@ normal: 0 a 2. O silêncio é parte do produto.
   Chave separada de propósito: `settlement_reminders_muted` é serviço, e usar a
   mesma faria quem recusa oferta perder o lembrete da própria aposta — troca que a
   pessoa nunca pediu. ⚠️ Ainda **não** aparece no `/mensagens`; entra junto do item 17.
+- `users.telegram_bloqueado_em` cala **tudo**, e não é escolha do produto: é o
+  Telegram respondendo 403 porque a pessoa bloqueou o bot. Escrita por quem toma o
+  403, some sozinha quando ela volta a falar com o bot. Existe porque sem ela o
+  produto seguia tentando para sempre — e cada tentativa contava como enviada no
+  funil de quem nunca receberia, diluindo a taxa de clique de todas as mensagens (#466).
 - **`/mensagens`** é o centro de controle: lista os recorrentes com estado e toggles
   (liquidação e resumo; o daily é automático — para sozinho sem clique). Embrião do
   item 17 (preferências). `/silenciar`, `/lembretes` e `/resumo` seguem como atalhos.

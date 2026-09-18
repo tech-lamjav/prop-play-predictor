@@ -10,11 +10,17 @@
 //                  id. É o que se roda antes de ligar qualquer coisa.
 //   ?mode=send   → reserva, manda, registra.
 //
-// A RESERVA VEM ANTES DO ENVIO, e não é desfeita quando o envio falha. Entre
-// mandar e registrar cabe um timeout, e no timeout ninguém sabe se o Telegram
-// entregou. Soltar a vaga ali transforma dúvida em segundo envio — o pior
-// desfecho de uma mensagem de venda. O erro fica gravado na linha; devolver a
-// vaga é decisão humana, com `release_futebol_oferta_pos_teste`.
+// A RESERVA VEM ANTES DO ENVIO, e o que acontece com ela na falha depende do
+// que a falha PROVA:
+//
+//   · timeout e 5xx não provam nada — ninguém sabe se o Telegram entregou. A
+//     reserva FICA, o erro é gravado na linha, e devolver a vaga é decisão
+//     humana, com `release_futebol_oferta_pos_teste`. Soltar ali transformaria
+//     dúvida em segundo envio, o pior desfecho de uma mensagem de venda;
+//   · 403 prova que NÃO entregou: o Telegram recusou. A reserva volta, porque
+//     esta oferta é uma por pessoa para sempre e quem bloqueou hoje pode
+//     desbloquear amanhã. Não há risco de repetição: a marca de bloqueado passa
+//     a pular essa pessoa nas próximas rodadas.
 //
 // A janela de silêncio é a mesma do resto do bot: 09h–22h59 de Brasília. O
 // teste dura 48 horas e pode vencer de madrugada; sem esta guarda, a oferta
@@ -35,8 +41,10 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { generateTraceId, trackEvent } from "../shared/posthog.ts";
 import { trackedUrl } from "../shared/links.ts";
 import { esc } from "../shared/format.ts";
+import { carregarBloqueados, enviarDm } from "../shared/telegram.ts";
 
-const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
+// O token do bot passou a ser lido dentro de `shared/telegram.ts`, que é quem
+// fala com a API agora. A variável de ambiente continua a mesma.
 const TABELA = "futebol_oferta_pos_teste_notifications";
 
 /** A campanha, para separar este clique do daily no `notification_clicks`. */
@@ -97,27 +105,23 @@ function mensagem(nome: string | null): string {
 }
 
 async function enviar(
+  supabase: any,
+  userId: string,
   chatId: string,
   texto: string,
   url: string,
-): Promise<void> {
-  const res = await fetch(
-    `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: texto,
-        parse_mode: "HTML",
-        disable_web_page_preview: true,
-        reply_markup: {
-          inline_keyboard: [[{ text: "Ver os planos do futebol", url }]],
-        },
-      }),
+): Promise<{ desfecho: "enviada" | "bloqueada"; erro?: string }> {
+  const r = await enviarDm(supabase, userId, {
+    chat_id: chatId,
+    text: texto,
+    parse_mode: "HTML",
+    disable_web_page_preview: true,
+    reply_markup: {
+      inline_keyboard: [[{ text: "Ver os planos do futebol", url }]],
     },
-  );
-  if (!res.ok) throw new Error(`telegram ${res.status}: ${await res.text()}`);
+  });
+  if (r.desfecho === "falhou") throw new Error(r.erro);
+  return { desfecho: r.desfecho, erro: r.erro };
 }
 
 type Alvo = {
@@ -197,11 +201,27 @@ serve(async (req) => {
   }
 
   const traceId = generateTraceId();
+
+  // Quem bloqueou o bot sai ANTES da reserva, com uma consulta só para a rodada.
+  // A ordem importa: a reserva não é desfeita, então reservar para depois
+  // descobrir o 403 queimaria a única oferta que essa pessoa tem — e ela pode
+  // desbloquear amanhã. Foi neste envio que o problema apareceu (#466).
+  const bloqueadosSet = await carregarBloqueados(supabase);
+
+  // O corte vem DEPOIS de tirar os bloqueados, e não antes. Pulando dentro do
+  // laço, quem bloqueou consumia vaga do teto da rodada e ainda inflava
+  // `elegiveis` e `ficaram_para_a_proxima` — número sujo numa mudança que existe
+  // para limpar número.
+  const alcancaveis = alvos.filter((a) => !bloqueadosSet.has(a.user_id));
+  const bloqueados = alvos.length - alcancaveis.length;
+
   let enviados = 0;
   let pulados = 0;
   let falhas = 0;
+  /** Quem bloqueou ENTRE a lista e o envio: só descobre no 403. */
+  let bloqueadosNoEnvio = 0;
 
-  for (const alvo of alvos.slice(0, MAX_POR_RODADA)) {
+  for (const alvo of alcancaveis.slice(0, MAX_POR_RODADA)) {
     const { data: reservou, error: erroReserva } = await supabase.rpc(
       "claim_futebol_oferta_pos_teste",
       { p_user_id: alvo.user_id },
@@ -213,7 +233,46 @@ serve(async (req) => {
 
     try {
       const botao = await trackedUrl(alvo.user_id, "assinar", CAMPANHA);
-      await enviar(alvo.chat_id, mensagem(alvo.user_name), botao);
+      const r = await enviar(
+        supabase,
+        alvo.user_id,
+        alvo.chat_id,
+        mensagem(alvo.user_name),
+        botao,
+      );
+      // Bloqueou entre a lista e o envio: a RESERVA VOLTA, e só neste caso.
+      //
+      // 403 é a única falha que PROVA que não entregou — o Telegram recusou.
+      // Sem entrega, a oferta desta pessoa não foi gastada, e ela é uma por
+      // pessoa para sempre: manter a reserva queimaria a única chance de quem
+      // pode desbloquear amanhã. E não há risco de mandar duas vezes, porque a
+      // marca de bloqueado passa a pular essa pessoa nas próximas rodadas.
+      //
+      // O timeout do `catch` abaixo é o oposto: ele não prova nada, então lá a
+      // reserva fica.
+      if (r.desfecho === "bloqueada") {
+        bloqueadosNoEnvio++;
+        const { error: erroSolta } = await supabase.rpc(
+          "release_futebol_oferta_pos_teste",
+          { p_user_id: alvo.user_id },
+        );
+        // A linha é APAGADA pela devolução, então o motivo não fica gravado em
+        // lugar nenhum da tabela: ele só sobrevive aqui e no evento que o
+        // remetente dispara. Registrar é o que impede este caso de virar um
+        // sumiço sem explicação.
+        //
+        // E se a devolução falhar, a pessoa fica reservada sem nunca ter
+        // recebido — perde a única oferta dela, em silêncio. Por isso o erro é
+        // olhado, e não engolido.
+        if (erroSolta) {
+          console.error(`não devolvi a vaga de ${alvo.user_id}:`, erroSolta);
+        } else {
+          console.log(
+            `vaga devolvida, bloqueado: ${alvo.user_id} — ${r.erro ?? "telegram 403"}`,
+          );
+        }
+        continue;
+      }
       await supabase.from(TABELA).update({ enviada_em: new Date().toISOString() })
         .eq("user_id", alvo.user_id);
       enviados++;
@@ -237,10 +296,13 @@ serve(async (req) => {
   return json({
     mode,
     elegiveis: alvos.length,
+    alcancaveis: alcancaveis.length,
     enviados,
     pulados,
     falhas,
-    ficaram_para_a_proxima: Math.max(0, alvos.length - MAX_POR_RODADA),
+    bloqueados,
+    bloqueados_no_envio: bloqueadosNoEnvio,
+    ficaram_para_a_proxima: Math.max(0, alcancaveis.length - MAX_POR_RODADA),
     hora_brt: hora,
   });
 });
