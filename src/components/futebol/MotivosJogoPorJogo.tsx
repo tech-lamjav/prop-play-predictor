@@ -15,6 +15,7 @@ import {
   type Prestacao,
 } from '@/utils/futebol-criterio';
 import { evidenciaDaPremissa } from '@/utils/futebol-evidencia-da-premissa';
+import type { InsumoMedido } from '@/utils/futebol-insumo-medido';
 import { Crest } from './Crest';
 
 /**
@@ -794,6 +795,7 @@ export function MotivosJogoPorJogo({
   extras,
   historico,
   numeros,
+  insumos,
   lado,
   linha,
   saidaLabel,
@@ -810,6 +812,8 @@ export function MotivosJogoPorJogo({
   extras?: { t: string; sub?: string; pontos?: number }[];
   historico: FutebolFixtureHistorico[] | undefined;
   numeros: FutebolFixtureNumeros[] | undefined;
+  /** O valor medido pelo mart (#464). Ausência é normal, não erro. */
+  insumos?: InsumoMedido[] | undefined;
   lado: 'home' | 'away' | null;
   linha: number | null;
   /** A saída analisada, para o fechamento dizer a favor de quê. */
@@ -829,11 +833,11 @@ export function MotivosJogoPorJogo({
           // A frase e o card saem da MESMA prestação. Enquanto a frase lia o
           // histórico jogo a jogo e o card lia o perfil de temporada, a tela
           // mostrava 2,3 e 2,4 para a mesma afirmação, um embaixo do outro.
-          ev: evidenciaDaPremissa({ mercado, slug: p.slug, numeros, historico, lado, linha, acesa }),
+          ev: evidenciaDaPremissa({ mercado, slug: p.slug, numeros, historico, insumos, lado, linha, acesa }),
           story: storyDaPremissa(p.slug, historico, lado, linha),
         };
       }),
-    [mercado, premissas, numeros, historico, lado, linha, acesa],
+    [mercado, premissas, numeros, historico, insumos, lado, linha, acesa],
   );
 
   const total = itens.length + (extras?.length ?? 0);

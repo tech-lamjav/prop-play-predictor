@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { FaixaPartida } from './FaixaPartida';
-import type { JogoInfo } from './JogoResumo';
+import type { JogoInfo } from './jogo-info';
 import type { FutebolFixturePremissas } from '@/services/futebol-data.service';
 
 // O cabeçalho tem dois arranjos e o hook decide qual. Fixá-lo por teste é o que

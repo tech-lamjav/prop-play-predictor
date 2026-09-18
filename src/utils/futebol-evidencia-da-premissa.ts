@@ -2,17 +2,22 @@ import type { FutebolFixtureHistorico, FutebolFixtureNumeros } from '@/services/
 import { evidenciaDe, type Evidencia } from '@/utils/futebol-evidencias';
 import { evidenciaDoHistorico } from '@/utils/futebol-historico';
 import { fraseDaPrestacao, prestacaoDaPremissa } from '@/utils/futebol-criterio';
+import { evidenciaDoInsumoMedido, type InsumoMedido } from '@/utils/futebol-insumo-medido';
 
 // O número que acompanha uma premissa, de UMA fonte só (spec #349, issue #358).
 //
-// Três fontes existem, em ordem de proximidade com o critério:
+// Quatro fontes existem, em ordem de proximidade com o critério:
 //
 //   1. a PRESTAÇÃO DE CONTAS — o insumo que o modelo comparou, medido na janela
 //      da premissa, contra o corte real. É a única que reproduz o veredito.
-//   2. o HISTÓRICO jogo a jogo (RPC 095) — a mesma AMOSTRA do modelo (últimos
+//   2. o INSUMO MEDIDO (RPC 158, issue #464) — o mesmo número, publicado pelo
+//      MART em vez de recalculado por nós. Não traz o corte junto, e por isso
+//      fica atrás da prestação; mas não é reconstrução nenhuma, e por isso fica
+//      à frente das duas que recalculam. Hoje só o 1X2 publica.
+//   3. o HISTÓRICO jogo a jogo (RPC 095) — a mesma AMOSTRA do modelo (últimos
 //      dez, qualquer competição), medida por nós. Não é o número dele, mas é do
 //      mesmo conjunto de jogos que o gráfico logo abaixo desenha.
-//   3. o PERFIL DE TEMPORADA (RPC 094) — número verdadeiro, de outro recorte.
+//   4. o PERFIL DE TEMPORADA (RPC 094) — número verdadeiro, de outro recorte.
 //      Último recurso, para o que não tem gráfico.
 //
 // ⚠️ A ORDEM DAS DUAS ÚLTIMAS INVERTEU, e não foi arrumação. Até a
@@ -45,6 +50,7 @@ export function evidenciaDaPremissa({
   slug,
   numeros,
   historico,
+  insumos,
   lado,
   linha,
   acesa = true,
@@ -53,6 +59,8 @@ export function evidenciaDaPremissa({
   slug: string;
   numeros: FutebolFixtureNumeros[] | undefined;
   historico: FutebolFixtureHistorico[] | undefined;
+  /** O valor medido pelo mart (#464). Ausência é normal: o funil é append-only. */
+  insumos?: InsumoMedido[] | undefined;
   lado: 'home' | 'away' | null;
   linha: number | null;
   /**
@@ -66,6 +74,13 @@ export function evidenciaDaPremissa({
 }): Evidencia | null {
   const p = prestacaoDaPremissa(mercado, slug, historico, lado, linha);
   if (p) return { texto: fraseDaPrestacao(p) };
+  // O nome do time sai da 094 e o VALOR do mart: nome não é medição, não muda
+  // com a janela, e é o que a barra precisa para dizer de quem é cada lado.
+  const medido = evidenciaDoInsumoMedido(mercado, slug, lado, insumos, {
+    time: numeros?.find((n) => n.side === lado)?.team_name,
+    adversario: numeros?.find((n) => n.side !== lado)?.team_name,
+  });
+  if (medido) return medido;
   return (
     evidenciaDoHistorico(slug, historico, lado, linha) ??
     evidenciaDe(slug, numeros, lado, acesa, linha)

@@ -2300,7 +2300,7 @@ CREATE OR REPLACE FUNCTION public.get_futebol_fixture_numeros(p_fixture_id bigin
  SET search_path TO ''
 AS $function$
   with jogo as (
-    select f.fixture_id, f.competition, f.season, f.home_team_id, f.away_team_id
+    select f.fixture_id, f.competition, f.season, f.home_team_id, f.away_team_id, f.kickoff_utc, f.date_utc
     from futebol.fact_fixtures f
     where f.fixture_id = p_fixture_id
   ),
@@ -2329,19 +2329,29 @@ AS $function$
       or (hh.home_team_id = j.away_team_id and hh.away_team_id = j.home_team_id)
     join lados l on true
     where hh.goals_home is not null and hh.goals_away is not null
+      -- A âncora (#464): só confronto que já tinha acontecido quando esta partida
+      -- começou. Mesmo padrão da 117. Apito nulo derruba a linha, e a tela omite.
+      and hh.kickoff_utc < j.kickoff_utc
     group by l.team_id
   ),
   tabela as (
+    -- A foto mais recente ANTERIOR ao jogo, por time (#464). Sem foto da época,
+    -- nenhuma linha: `posicao` vem nula e a tela omite em vez de mostrar hoje.
     select distinct on (s.team_id) s.team_id, s.rank_pos, s.pontos, s.zona
     from (
       select st.team_id,
              st."rank"::bigint          as rank_pos,
              st.points::bigint          as pontos,
-             st.rank_description        as zona
-      from jogo j,
-           public.get_futebol_standings_official(j.competition, j.season) st
+             st.rank_description        as zona,
+             st.snapshot_date
+      from jogo j
+      join futebol.fact_standings_snapshot st
+        on st.competition = j.competition
+       and st.season = j.season
+       and st.snapshot_date < j.date_utc
+      join lados l on l.team_id = st.team_id
     ) s
-    order by s.team_id
+    order by s.team_id, s.snapshot_date desc
   )
   select l.side,
          l.team_id,
@@ -2380,6 +2390,30 @@ AS $function$
 $function$
 
 ;
+
+CREATE OR REPLACE FUNCTION public.get_futebol_fixture_insumos(p_fixture_id bigint)
+ RETURNS TABLE(outcome text, market text, line_value double precision, premissa text, insumo text, valor double precision)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+  select i.outcome, i.market, i.line_value, i.premissa, i.insumo, i.valor
+  from futebol.fact_insumos_medidos i
+  where i.fixture_id = p_fixture_id
+  order by i.outcome, i.market, i.premissa, i.insumo;
+$function$
+
+;
+
+-- Fechar aqui, junto da função, senão um ambiente provisionado por este arquivo
+-- nasce com ela aberta. Revogar só de `public` não basta no Supabase: o schema
+-- tem privilégio padrão que dá EXECUTE explícito a anon, authenticated e
+-- service_role em toda função nova, e esses grants sobrevivem ao revoke de
+-- PUBLIC — foi o que aconteceu com as duas da #408 entre a 140 e a 143.
+-- O grant fica na lista de grants mais abaixo, junto dos irmãos diretos
+-- (`get_futebol_fixture_numeros` e `_historico`).
+revoke execute on function public.get_futebol_fixture_insumos(bigint) from public;
+revoke execute on function public.get_futebol_fixture_insumos(bigint) from anon, authenticated;
 
 CREATE OR REPLACE FUNCTION public.get_futebol_fixture_historico(p_fixture_id bigint, p_max integer DEFAULT 40)
  RETURNS TABLE(side text, team_id bigint, team_name text, past_fixture_id bigint, data date, ordem bigint, mesma_competicao boolean, em_casa boolean, adversario text, adversario_id bigint, gols_pro integer, gols_contra integer, total_gols integer, ambos_marcaram boolean, sem_sofrer boolean, sem_marcar boolean, xg double precision, xg_contra double precision, resultado text)
@@ -2885,6 +2919,7 @@ grant execute on function public.get_futebol_fixture_days(p_from date, p_to date
 grant execute on function public.get_futebol_fixtures_by_day(p_day date, p_competitions text[]) to anon, authenticated, service_role;
 grant execute on function public.get_futebol_fixture_premissas(p_fixture_id bigint) to anon, authenticated, service_role;
 grant execute on function public.get_futebol_fixture_numeros(p_fixture_id bigint) to anon, authenticated, service_role;
+grant execute on function public.get_futebol_fixture_insumos(p_fixture_id bigint) to anon, authenticated, service_role;
 grant execute on function public.get_futebol_fixture_historico(p_fixture_id bigint, p_max integer) to anon, authenticated, service_role;
 grant execute on function public.get_futebol_fixture_reason_contract(p_fixture_id bigint) to anon, authenticated, service_role;
 

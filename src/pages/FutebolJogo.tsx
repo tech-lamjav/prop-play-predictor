@@ -4,7 +4,7 @@ import { MapPin } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { FutebolAccessBanner } from '@/components/futebol/FutebolGate';
 import { RegistrarApostaCTA } from '@/components/futebol/RegistrarAposta';
-import { type JogoInfo } from '@/components/futebol/JogoResumo';
+import { type JogoInfo } from '@/components/futebol/jogo-info';
 import { FaixaPartida } from '@/components/futebol/FaixaPartida';
 import { BancadaMercados } from '@/components/futebol/BancadaMercados';
 import { CampoEscalacao } from '@/components/futebol/CampoEscalacao';

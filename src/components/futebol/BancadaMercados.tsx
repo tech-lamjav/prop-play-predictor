@@ -5,6 +5,7 @@ import {
   useVitrine,
   useFutebolFixturePremissas,
   useFutebolFixtureNumeros,
+  useFutebolFixtureInsumos,
   useFutebolFixtureHistorico,
   useFutebolFixtureInjuries,
   useFutebolFixtureOdds,
@@ -26,8 +27,7 @@ import {
   type MercadoInfo,
   type Premissa,
 } from '@/utils/futebol-premissas';
-import { evidenciaDe, ladoDaSaida } from '@/utils/futebol-evidencias';
-import { evidenciaDoHistorico } from '@/utils/futebol-historico';
+import { ladoDaSaida } from '@/utils/futebol-evidencias';
 import { MotivosJogoPorJogo } from './MotivosJogoPorJogo';
 import { avisoSemDado } from '@/utils/futebol-sem-dado';
 import { valueDoCandidato, resumoDosMercados, mesmaLinha, saidaCortada, passaNaLeitura, leituraDaFolha, saidaQueAbreAFolha, type SaidaPreferida } from '@/utils/futebol-leitura';
@@ -44,7 +44,7 @@ import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futeb
 import { hasKickoffPassed, isFinished, parseUtc } from '@/utils/futebol-datas';
 import { linhaDaSaida, type Saida } from '@/utils/futebol-saida';
 import type { MatchupTendencies } from '@/utils/futebol-tendencias';
-import type { JogoInfo } from './JogoResumo';
+import type { JogoInfo } from './jogo-info';
 
 /**
  * Aba MERCADOS — a "bancada" do Protótipo 1b: um mercado por vez, com a régua de
@@ -270,6 +270,9 @@ export function BancadaMercados({
   const { data: rows, isLoading } = useFutebolFixturePremissas(jogo.fixtureId);
   const { data: numeros } = useFutebolFixtureNumeros(jogo.fixtureId);
   const { data: historico } = useFutebolFixtureHistorico(jogo.fixtureId);
+  // O valor que o modelo comparou (#464). Vazio é normal: o funil é append-only
+  // e jogo gravado antes do deploy não tem insumo medido.
+  const { data: insumos } = useFutebolFixtureInsumos(jogo.fixtureId);
   const { data: injuries } = useFutebolFixtureInjuries(jogo.fixtureId);
   const { data: oddsRows } = useFutebolFixtureOdds(jogo.fixtureId);
   const {
@@ -470,6 +473,15 @@ export function BancadaMercados({
     ? String(valPrincipal.score)
     : leituraPrincipal === 'premissas' ? nPrincipal : '—';
   const ate = numeros?.[0]?.ate ?? null;
+  // Sem foto da classificação daquela data (#464), a RPC ancorada não devolve
+  // posição, e a evidência das premissas de tabela some — de propósito, porque
+  // mostrar a posição de HOJE num jogo de 2025 é a tela discordando de si mesma.
+  //
+  // Dizer por quê é o que separa "não temos este dado" de "a tela quebrou". Pela
+  // ADR 0003 isto DIAGNOSTICA e não penaliza: não mexe no Score, não é aviso de
+  // risco, e por isso mora nesta linha e não na faixa de ressalva.
+  const semTabelaDaEpoca =
+    (numeros?.length ?? 0) > 0 && (numeros ?? []).every((n) => n.posicao == null);
 
   const chaveDosVisiveis = visiveis.map((p) => p.slug).join('|');
 
@@ -503,6 +515,7 @@ export function BancadaMercados({
       slug,
       numeros,
       historico,
+      insumos,
       lado: ladoPrincipal,
       linha,
       acesa,
@@ -1396,6 +1409,7 @@ export function BancadaMercados({
             extras={motivosFavor.extras}
             historico={historico}
             numeros={numeros}
+            insumos={insumos}
             lado={ladoPrincipal}
             linha={linha}
             saidaLabel={pickAtual}
@@ -1408,6 +1422,7 @@ export function BancadaMercados({
             extras={motivosContra.extras}
             historico={historico}
             numeros={numeros}
+            insumos={insumos}
             lado={ladoPrincipal}
             linha={linha}
             saidaLabel={pickAtual}
@@ -1469,6 +1484,9 @@ export function BancadaMercados({
             ? 'Cada parada da régua tem o seu conjunto de premissas: trocar a linha muda o que precisa ser verdade.'
             : 'Cada saída do mercado tem o seu conjunto de premissas.'}{' '}
           {ate ? `Números da temporada até ${ate}.` : ''}
+          {semTabelaDaEpoca
+            ? ' Não há foto da classificação desta data, então a posição na tabela não é mostrada.'
+            : ''}
         </div>
       </div>
 

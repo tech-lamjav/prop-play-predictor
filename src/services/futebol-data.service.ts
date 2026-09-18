@@ -189,6 +189,23 @@ export interface FutebolFixtureNumeros {
 }
 
 /**
+ * O VALOR que uma premissa comparou, publicado pelo mart (RPC 158, issue #464).
+ *
+ * Uma linha por saída × mercado × premissa × insumo. `premissa` e `insumo` vêm
+ * sem tradução: o vocabulário é do dbt, e copiá-lo para cá criaria mais uma
+ * cópia para divergir sozinha. Hoje só o 1X2 é populado, e linha gravada antes
+ * do deploy não tem valor — ausência é normal, não erro.
+ */
+export interface FutebolFixtureInsumo {
+  outcome: string;
+  market: string;
+  line_value: number | null;
+  premissa: string;
+  insumo: string;
+  valor: number | null;
+}
+
+/**
  * Um jogo passado de um dos times, em QUALQUER competição, antes do apito (RPC 117).
  *
  * É o que permite auditar o insumo: recortado pela janela e pelo mando de cada
@@ -824,6 +841,17 @@ export const futebolDataService = {
       });
       if (error) throw error;
       return (data || []) as FutebolFixtureNumeros[];
+    });
+  },
+
+  /** O valor que cada premissa comparou, direto do mart (#464). Vazio é normal. */
+  async getFixtureInsumos(fixtureId: number): Promise<FutebolFixtureInsumo[]> {
+    return withRetry(async () => {
+      const { data, error } = await supabaseClient.rpc('get_futebol_fixture_insumos', {
+        p_fixture_id: fixtureId,
+      });
+      if (error) throw error;
+      return (data || []) as FutebolFixtureInsumo[];
     });
   },
 
