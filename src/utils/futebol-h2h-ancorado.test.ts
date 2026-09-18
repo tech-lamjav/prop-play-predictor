@@ -22,7 +22,7 @@ import type { FutebolFixtureNumeros } from '@/services/futebol-data.service';
 
 const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const MIGRACAO = readFileSync(
-  resolve(RAIZ, 'supabase/migrations/20260918120000_156_futebol_h2h_ancorado_no_apito.sql'),
+  resolve(RAIZ, 'supabase/migrations/20260918130000_156_futebol_h2h_ancorado_no_apito.sql'),
   'utf8',
 );
 const SHAPE = readFileSync(resolve(RAIZ, 'docs/futebol-prod-deploy.sql'), 'utf8');
