@@ -169,7 +169,23 @@ export function mesesEmAberto(
 ): string[] {
   if (!valorMensal) return [];
 
-  const pagos = new Set(pagamentos.filter((p) => !p.estornado).map((p) => p.mes));
+  /*
+   * ⚠️ Só o dinheiro da MÃO quita mês de assinatura manual.
+   *
+   * Desde que a ficha passou a carregar pagamento por pessoa, a lista que chega
+   * aqui tem as duas origens. Sem este filtro, uma fatura do cartão fechava um
+   * mês do acordo feito na mão: a pessoa aparecia "em dia" na ficha e "devendo"
+   * na fila de inadimplentes, que descarta as linhas sem assinatura de
+   * propósito. Duas telas, a mesma pessoa, respostas opostas.
+   *
+   * São dinheiros de acordos diferentes. Quem paga no cartão não está pagando a
+   * mensalidade que o sócio combinou por fora.
+   */
+  const pagos = new Set(
+    pagamentos
+      .filter((p) => !p.estornado && p.origem !== ORIGEM_DO_GATEWAY)
+      .map((p) => p.mes),
+  );
   const ate = hoje.slice(0, 7);
 
   const abertos: string[] = [];
@@ -215,7 +231,11 @@ export const MESES_MOSTRADOS_NA_TELA = 12;
  * aberto:" e conta doze meses precisa saber que há mais, senão a linha
  * desmente o selo de "devendo 18 meses" que está logo acima dela.
  *
- * Mantém os mais RECENTES, como a lista sempre fez.
+ * ⚠️ Mantém os mais ANTIGOS. A primeira versão mantinha os recentes, só porque
+ * era o que o código antigo fazia, e a revisão mostrou que isso quebrava duas
+ * coisas: o "e mais N" no fim da frase prometia meses posteriores ao último
+ * listado, quando os escondidos eram os anteriores; e a ficha sugeria lançar um
+ * mês que a própria linha não mostrava.
  */
 export function resumirMeses(meses: string[]): { mostrados: string[]; ocultos: number } {
   if (meses.length <= MESES_MOSTRADOS_NA_TELA) return { mostrados: meses, ocultos: 0 };

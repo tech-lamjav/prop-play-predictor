@@ -85,12 +85,21 @@ alter table public.crm_pagamento
 comment on column public.crm_pagamento.stripe_invoice_id is
   'A fatura do Stripe que gerou este pagamento. E o que garante que a mesma fatura entre UMA vez, mesmo com o webhook reentregando o evento.';
 
--- Único e parcial: o Stripe reentrega evento de propósito, e sem isto a mesma
--- fatura entraria duas vezes e o total inflaria sozinho. Parcial porque o lado
--- manual não tem fatura, e vários nulos não podem colidir entre si.
+-- Único: o Stripe reentrega evento de propósito, e sem isto a mesma fatura
+-- entraria duas vezes e o total inflaria sozinho.
+--
+-- ⚠️ E NÃO é parcial, apesar de a primeira versão ser. O `where ... is not null`
+-- parecia necessário para o lado manual, que não tem fatura — mas no Postgres
+-- um índice único já trata cada NULO como distinto, então várias linhas sem
+-- fatura sempre foram permitidas. O predicado não comprava nada.
+--
+-- E cobrava caro: o Postgres só usa um índice PARCIAL como árbitro de
+-- `ON CONFLICT` se a cláusula repetir o predicado, e o PostgREST não tem como
+-- mandá-lo. O upsert do webhook falharia com 42P10, o erro cairia num log e o
+-- evento responderia 200 — o dinheiro do gateway sumiria em silêncio, que é
+-- exatamente o que este índice existe para impedir.
 create unique index if not exists idx_crm_pagamento_fatura_unica
-  on public.crm_pagamento(stripe_invoice_id)
-  where stripe_invoice_id is not null;
+  on public.crm_pagamento(stripe_invoice_id);
 
 -- ── O mês único passa a valer só para a origem manual ───────────────────────
 drop index if exists public.idx_crm_pagamento_mes_unico;

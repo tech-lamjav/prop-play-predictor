@@ -81,6 +81,19 @@ declare
   v_trocou boolean;
   -- Nulo quer dizer "começa hoje", que é o caso normal.
   v_comecou date := coalesce(p_comecou_em, (now() at time zone 'America/Sao_Paulo')::date);
+  /*
+   * ⚠️ Variável SEPARADA para o que volta do banco, e isto não é estilo.
+   *
+   * A primeira versão reusava `v_comecou` no `returning ... into` do update. Em
+   * plpgsql, um `update` que não acerta nenhuma linha atribui NULO a TODOS os
+   * alvos do `into` — e o caminho de criar é exatamente o caminho em que o
+   * update não acerta nada. O começo escolhido era apagado ali, o `insert`
+   * gravava nulo numa coluna `not null`, e TODA concessão nova falhava.
+   *
+   * Uma variável, dois trabalhos: o começo pedido e o começo lido. Separá-las é
+   * o conserto.
+   */
+  v_comecou_do_banco date;
 begin
   if not public.eh_socio() then
     raise exception 'apenas socios';
@@ -147,7 +160,12 @@ begin
         vence_em = p_vence_em,
         valor_mensal = p_valor_mensal
     where user_id = p_user_id and encerrada_em is null
-    returning id, comecou_em into v_id, v_comecou;
+    returning id, comecou_em into v_id, v_comecou_do_banco;
+
+  -- Numa troca, o começo é o que já estava gravado: o histórico de pagamento
+  -- pendura nesta linha. Numa criação, `v_comecou_do_banco` é nulo e o pedido
+  -- continua valendo.
+  v_comecou := coalesce(v_comecou_do_banco, v_comecou);
 
   v_trocou := v_id is not null;
 

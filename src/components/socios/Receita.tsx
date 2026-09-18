@@ -237,7 +237,12 @@ export function Receita({
       {/* Só o que entra fora do Stripe. Escrito na tela porque um total que
           parece ser "tudo que a pessoa pagou" leva a conclusão errada. */}
       <p className="text-[11px] text-ink-dim">
-        Só o que entrou fora do Stripe. O que passa pelo gateway tem registro lá.
+        {/* ⚠️ A frase antiga dizia que só havia o dinheiro de fora do gateway, e
+            deixou de ser verdade quando a ficha passou a somar as duas origens.
+            O que continua valendo é a distinção entre os dois números — e é ela
+            que a linha explica agora. */}
+        "Recebido na mão" é o que depende de você cobrar. O total soma também o
+        que entra pelo cartão, que é cobrado sozinho.
       </p>
 
       <div className="rounded-rebrand-sm border border-line-2 bg-canvas p-2.5">

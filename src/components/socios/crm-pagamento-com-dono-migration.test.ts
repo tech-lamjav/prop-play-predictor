@@ -66,15 +66,28 @@ describe('o lugar do Stripe', () => {
     // entra duas vezes e o total infla sozinho.
     expect(MIGRATION).toMatch(/add column if not exists stripe_invoice_id text/);
     expect(MIGRATION).toMatch(
-      /create unique index if not exists idx_crm_pagamento_fatura_unica[\s\S]*?on public\.crm_pagamento\(stripe_invoice_id\)[\s\S]*?where stripe_invoice_id is not null/,
+      /create unique index if not exists idx_crm_pagamento_fatura_unica[\s\S]*?on public\.crm_pagamento\(stripe_invoice_id\)/,
     );
   });
 
-  it('o índice da fatura é PARCIAL, senão o lado manual colide consigo mesmo', () => {
-    // Todo pagamento na mão tem fatura nula. Sem o `where`, o segundo deles
-    // seria recusado pelo banco.
-    const indice = comando(MIGRATION, /create unique index if not exists idx_crm_pagamento_fatura_unica/);
-    expect(indice).toMatch(/where stripe_invoice_id is not null/);
+  it('⚠️ o índice da fatura NÃO é parcial, senão o upsert do webhook falha', () => {
+    // Este teste já afirmou o contrário, e a versão anterior estava errada por
+    // dois motivos de uma vez.
+    //
+    // O `where ... is not null` parecia proteger o lado manual, que não tem
+    // fatura. Não protegia nada: no Postgres, índice único trata cada NULO como
+    // distinto, então várias linhas sem fatura sempre couberam.
+    //
+    // E quebrava o que importa: o Postgres só aceita um índice PARCIAL como
+    // árbitro de `ON CONFLICT` se a cláusula repetir o predicado, e o PostgREST
+    // não tem como mandá-lo. O upsert do webhook falharia com 42P10, o erro
+    // cairia num log e o evento responderia 200 — dinheiro do gateway sumindo
+    // calado.
+    const indice = comando(
+      MIGRATION,
+      /create unique index if not exists idx_crm_pagamento_fatura_unica/,
+    );
+    expect(indice).not.toMatch(/where/);
   });
 });
 

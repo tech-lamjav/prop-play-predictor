@@ -128,6 +128,30 @@ describe('mesesEmAberto', () => {
     expect(mesesEmAberto('2026-09-01', 39.9, [], HOJE)).toEqual(['2026-09']);
   });
 
+  it('⚠️ fatura do cartão NÃO quita mês de assinatura manual', () => {
+    // O defeito que a revisão pegou, e ele nasceu quando a ficha passou a
+    // carregar pagamento por pessoa: a lista que chega aqui tem as duas
+    // origens, e sem filtro uma fatura do Stripe fechava um mês do acordo feito
+    // na mão.
+    //
+    // A consequência era duas telas se desmentindo sobre a mesma pessoa: "em
+    // dia" na ficha e "devendo" na fila de inadimplentes, que descarta as
+    // linhas sem assinatura de propósito.
+    //
+    // São dinheiros de acordos diferentes. Quem paga no cartão não está pagando
+    // a mensalidade que o sócio combinou por fora.
+    const doGateway = montarPagamentos([
+      linha({ competencia: '2026-09-01', origem: 'stripe' }),
+    ]);
+    expect(mesesEmAberto('2026-09-01', 39.9, doGateway, HOJE)).toEqual(['2026-09']);
+  });
+
+  it('e o dinheiro da mão continua quitando', () => {
+    // O outro lado do mesmo guarda: filtrar demais quebraria a cobrança.
+    const naMao = montarPagamentos([linha({ competencia: '2026-09-01', origem: 'pix' })]);
+    expect(mesesEmAberto('2026-09-01', 39.9, naMao, HOJE)).toEqual([]);
+  });
+
   it('o mês pago sai da lista', () => {
     const pagos = montarPagamentos([linha({ competencia: '2026-09-01' })]);
     expect(mesesEmAberto('2026-09-01', 39.9, pagos, HOJE)).toEqual([]);

@@ -66,11 +66,17 @@ describe('o resumo', () => {
     expect(screen.getByText(/Recebido na mão:/)).toHaveTextContent('39,90');
   });
 
-  it('diz que o total é só o de fora do Stripe', () => {
-    // ⚠️ Um total que parece ser "tudo que a pessoa pagou" leva a conclusão
-    // errada sobre quanto ela vale.
+  it('explica a diferença entre os dois números', () => {
+    // ⚠️ Este teste fixava a frase "Só o que entrou fora do Stripe", e ela
+    // virou mentira quando a ficha passou a somar as duas origens — teste verde
+    // segurando texto falso é pior que texto falso sozinho, porque dá a
+    // impressão de que alguém conferiu.
+    //
+    // O que precisa estar na tela agora é a distinção: um número é o que
+    // depende do sócio cobrar, o outro é tudo que a pessoa pagou.
     montar();
-    expect(screen.getByText(/fora do Stripe/i)).toBeInTheDocument();
+    expect(screen.getByText(/depende de você cobrar/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Só o que entrou fora do Stripe/i)).not.toBeInTheDocument();
   });
 
   it('quem deve aparece devendo, com quantos meses e quanto', () => {

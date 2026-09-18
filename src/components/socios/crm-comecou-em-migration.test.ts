@@ -102,10 +102,27 @@ describe('crm_dar_assinatura_manual, com começo', () => {
     expect(troca).not.toMatch(/set[\s\S]*comecou_em\s*=/);
   });
 
-  it('e LÊ o começo que já existia, para não perdê-lo', () => {
-    // Numa troca o começo volta do banco para o texto da linha do tempo. Sem o
-    // `returning`, a anotação falaria do começo errado.
-    expect(CONCEDER).toMatch(/returning id, comecou_em into v_id, v_comecou/);
+  it('⚠️ o `returning` usa variável PRÓPRIA, e não a do começo pedido', () => {
+    // O defeito mais caro desta migration, e ele quebrava TUDO, não só o
+    // retroativo: reusar `v_comecou` no `returning ... into` fazia o caminho de
+    // CRIAR apagá-la. Em plpgsql, um `update` que não acerta linha nenhuma
+    // atribui NULO a todos os alvos do `into` — e criar é justamente o caso em
+    // que não há linha para acertar. O `insert` seguinte gravava nulo numa
+    // coluna `not null`, e toda concessão nova falhava.
+    //
+    // ⚠️ E este teste já passou por ACIDENTE: ele procurava
+    // `into v_id, v_comecou`, que casa como prefixo de `v_comecou_do_banco`.
+    // Ficaria verde com a variável errada. A âncora agora exige o fim da
+    // instrução.
+    expect(CONCEDER).toMatch(/returning id, comecou_em into v_id, v_comecou_do_banco;/);
+    expect(CONCEDER).not.toMatch(/into v_id, v_comecou;/);
+  });
+
+  it('e o começo PEDIDO sobrevive ao caminho de criar', () => {
+    // O `coalesce` depois do update é o que devolve o pedido quando não havia
+    // assinatura aberta. Sem ele, o valor apagado pelo `into` seguiria nulo.
+    expect(CONCEDER).toMatch(/v_comecou := coalesce\(v_comecou_do_banco, v_comecou\);/);
+    expect(CONCEDER).toMatch(/valor_mensal, comecou_em, criada_por\)/);
   });
 
   it('grava o começo ao criar uma assinatura nova', () => {
