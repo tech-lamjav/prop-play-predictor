@@ -142,14 +142,18 @@ with jogos as (
          f.home_team_id, f.away_team_id, f.date_utc, f.kickoff_utc
   from futebol.int_futebol_premissas_1x2 p
   join futebol.fact_fixtures f on f.fixture_id = p.fixture_id
-  where p.outcome in ('home','away')
+  -- lower(), e não o literal 'Home': o mercado de Resultado grava a saída
+  -- capitalizada, e comparar com o caso errado devolve ZERO linha sem erro
+  -- nenhum, que foi exatamente como esta medição saiu vazia da primeira vez.
+  -- (Sem crase neste comentário: ele vive dentro de um template literal.)
+  where lower(p.outcome) in ('home','away')
     and f.status_short in ('FT','AET','PEN')
     and f.kickoff_utc is not null
 ),
 lado as (
   select j.*,
-         case when j.outcome = 'home' then j.home_team_id else j.away_team_id end as time_id,
-         case when j.outcome = 'home' then j.away_team_id else j.home_team_id end as adv_id
+         case when lower(j.outcome) = 'home' then j.home_team_id else j.away_team_id end as time_id,
+         case when lower(j.outcome) = 'home' then j.away_team_id else j.home_team_id end as adv_id
   from jogos j
 ),
 -- classificação como a RPC via ANTES: a foto mais recente da competição
