@@ -5,7 +5,7 @@ import { rotuloEmTitulo } from '@/utils/futebol-estado-da-premissa';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Seo } from '@/components/Seo';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useFutebolFixturesMulti, useFutebolValueBoard, useFutebolValueHistory, useFutebolAlertedPicks, useFutebolFixtureReasonContract, useFutebolAccess, useVitrine, useFutebolCompetitions } from '@/hooks/use-futebol-data';
+import { useFutebolFixturesMulti, useFutebolValueBoard, useFutebolValueHistory, useFutebolAlertedPicks, useFutebolFixtureReasonContract, useFutebolAccess, useVitrine, useFutebolCompetitions, useJogosComPlacarFresco } from '@/hooks/use-futebol-data';
 import FutebolDayStepper from '@/components/FutebolDayStepper';
 import { CartaoBloqueado, FutebolAccessBanner, ValorBloqueado } from '@/components/futebol/FutebolGate';
 import { linhaBloqueada } from '@/utils/futebol-bloqueio';
@@ -346,7 +346,11 @@ export default function FutebolHoje() {
     () => fixtureScopesFor(catalog, janelaDeFixtures, Number(todayStr.slice(0, 4))),
     [catalog, janelaDeFixtures, todayStr],
   );
-  const { data: allGames, isLoading: lFix } = useFutebolFixturesMulti(fixtureScopes);
+  const { data: jogosDoEspelho, isLoading: lFix } = useFutebolFixturesMulti(fixtureScopes);
+  // O placar do coletor entra ANTES de qualquer conta desta tela (issue #479):
+  // a grade, o trilho de jogos e a liquidação descem todos daqui, e sobrepor
+  // depois deixaria cada consumidor com uma versão diferente do mesmo jogo.
+  const allGames = useJogosComPlacarFresco(jogosDoEspelho, agora);
   const { data: boardRows, isLoading: l3 } = useFutebolValueBoard();
   const { data: histRows, isLoading: lHist } = useFutebolValueHistory();
   const { data: alertedRaw, isLoading: lReg } = useFutebolAlertedPicks();

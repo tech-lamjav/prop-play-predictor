@@ -28,7 +28,8 @@ import { mercadoEstaOculto } from '@/utils/futebol-mercados-ocultos';
 import { hrefDaSaida } from '@/utils/futebol-links';
 import { mergeBoardAndHistory, historyWindow, HISTORY_WINDOW_DAYS } from '@/utils/futebol-history';
 import { oppKey, oportunidadesDoDia, type OppLike } from '@/utils/futebol-registradas';
-import { parseUtc, brtDayOf, brtDateStr, fmtTime, hasKickoffPassed, addDays } from '@/utils/futebol-datas';
+import { parseUtc, brtDayOf, brtDateStr, fmtTime, hasKickoffPassed, isFinished, addDays } from '@/utils/futebol-datas';
+import { idsSemFecho as idsSemFechoDaLista } from '@/utils/futebol-placar-fresco';
 import { onboardingHref, ONBOARDING_SRC_ALERTAS_FUTEBOL } from '@/utils/onboarding-return';
 import { useNow } from '@/hooks/use-now';
 import type { FutebolValueBoardRow, FutebolAlertedPick, FutebolFixture, FutebolPlacarFresco } from '@/services/futebol-data.service';
@@ -455,21 +456,31 @@ export default function FutebolOportunidades() {
   // Quem responde "acabou?" são as DUAS linhas do espelho (a do calendário e a
   // do board), porque elas podem discordar: basta uma dizer encerrado para não
   // haver o que perguntar.
-  const idsSemFecho = useMemo(() => {
-    const ids: number[] = [];
-    const vistos = new Set<number>();
-    for (const r of dayRows) {
-      if (vistos.has(r.fixture_id)) continue;
-      const fx = fixtureMap.get(r.fixture_id);
-      if (FINISHED_STATUS.has(fx?.status_short ?? '') || FINISHED_STATUS.has(r.status_short ?? '')) continue;
-      // O relógio manda, como no filtro "só em aberto" logo acima: o status
-      // atrasa, o horário não. Kickoff nulo não entra — não há o que afirmar.
-      if (!hasKickoffPassed(fx?.kickoff_utc ?? r.kickoff_utc, new Date(agora))) continue;
-      vistos.add(r.fixture_id);
-      ids.push(r.fixture_id);
-    }
-    return ids;
-  }, [dayRows, fixtureMap, agora]);
+  //
+  // O "quando perguntar" propriamente dito é `precisaDoFresco`, compartilhado
+  // com a home, a agenda e o detalhe do jogo (issue #479): uma tela que
+  // resolvesse isso na mão acabaria com uma regra diferente das outras, que foi
+  // exatamente como a primeira versão desta consulta nasceu pedindo pela
+  // temporada inteira. O que é DESTA tela é a segunda linha do espelho.
+  const idsSemFecho = useMemo(
+    () =>
+      idsSemFechoDaLista(
+        dayRows.map((r) => {
+          const fx = fixtureMap.get(r.fixture_id);
+          return {
+            fixture_id: r.fixture_id,
+            // O calendário fala primeiro quando já sabe que acabou: ele e o
+            // board são marts diferentes e podem discordar.
+            status_short: isFinished(fx?.status_short) ? fx!.status_short : r.status_short,
+            goals_home: null,
+            goals_away: null,
+            kickoff_utc: fx?.kickoff_utc ?? r.kickoff_utc,
+          };
+        }),
+        agora,
+      ),
+    [dayRows, fixtureMap, agora],
+  );
   const { data: placarFresco } = useFutebolPlacarFresco(idsSemFecho);
   const frescoMap = useMemo(() => {
     const m = new Map<number, FutebolPlacarFresco>();

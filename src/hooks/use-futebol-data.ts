@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { brtToday } from '@/utils/futebol-datas';
 import { historyWindow } from '@/utils/futebol-history';
 import { ocultosAgora, type MercadoOculto } from '@/utils/futebol-mercados-ocultos';
+import { comPlacarFresco, idsSemFecho, type JogoComPlacar } from '@/utils/futebol-placar-fresco';
 import type { LimiarDeValor } from '@/utils/futebol-corte-de-valor';
 import type { Saida } from '@/utils/futebol-saida';
 import type { FixtureScope } from '@/utils/futebol-competitions';
@@ -414,6 +415,29 @@ export function useFutebolPlacarFresco(fixtureIds: number[]) {
     refetchOnWindowFocus: true,
     placeholderData: (anterior) => anterior,
   });
+}
+
+/**
+ * Os jogos que a tela já tem, com o placar do coletor sobreposto onde o espelho
+ * ainda não fechou (issue #479).
+ *
+ * É o caminho curto para qualquer superfície que mostre placar: entra a lista
+ * que a tela ia desenhar, sai a mesma lista com o resultado dos jogos que
+ * acabaram. Quem decide a quem perguntar é `futebol-placar-fresco.ts`, num lugar
+ * só, e não cada tela por conta própria.
+ *
+ * `agoraMs` vem de fora de propósito: a regra do repositório é um instante só
+ * para a tela inteira (ver `use-now.ts`). Dois relógios discordam na virada do
+ * dia, e esta função escolhe jogos justamente pelo relógio.
+ */
+export function useJogosComPlacarFresco<T extends JogoComPlacar>(
+  jogos: readonly T[] | undefined,
+  agoraMs: number,
+): T[] {
+  const lista = useMemo(() => jogos ?? [], [jogos]);
+  const ids = useMemo(() => idsSemFecho(lista, agoraMs), [lista, agoraMs]);
+  const { data } = useFutebolPlacarFresco(ids);
+  return useMemo(() => comPlacarFresco(lista, data), [lista, data]);
 }
 
 const opcoesDoValorDoJogo = (fixtureId: number | undefined) => ({

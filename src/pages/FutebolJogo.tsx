@@ -9,7 +9,8 @@ import { FaixaPartida } from '@/components/futebol/FaixaPartida';
 import { BancadaMercados } from '@/components/futebol/BancadaMercados';
 import { CampoEscalacao } from '@/components/futebol/CampoEscalacao';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useVitrine, useFutebolFixtureDetail, useFutebolFixtureExtras, useFutebolMatchupTendencies, useFutebolFixtureValue, useFutebolFixtureCortadas, useFutebolH2H, useFutebolFixtureInjuries, useFutebolFixturePremissas, useFutebolTeamProfile, useFutebolAccess } from '@/hooks/use-futebol-data';
+import { useVitrine, useFutebolFixtureDetail, useFutebolFixtureExtras, useFutebolMatchupTendencies, useFutebolFixtureValue, useFutebolFixtureCortadas, useFutebolH2H, useFutebolFixtureInjuries, useFutebolFixturePremissas, useFutebolTeamProfile, useFutebolAccess, useJogosComPlacarFresco } from '@/hooks/use-futebol-data';
+import { useNow } from '@/hooks/use-now';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 import {
   computeMatchupTendencies,
@@ -249,7 +250,19 @@ export default function FutebolJogo() {
   const jogoTour = useOnboardingTour(FUT_JOGO_TOUR_ID, { enabled: !isLoading, delay: 1200 });
   const isDemo = jogoTour.run; // durante o tour, preenche a tela com exemplo
 
-  const fixture = isDemo ? demoFixtureDetail.fixture : data?.fixture;
+  const fixtureDoEspelho = isDemo ? demoFixtureDetail.fixture : data?.fixture;
+  // O placar do coletor, quando o espelho ainda não fechou o jogo (issue #479).
+  //
+  // Um jogo só, e mesmo assim passa pela mesma função das listas: a regra de
+  // quem precisa de placar fresco é uma, e uma tela que resolvesse "na mão"
+  // acabaria com uma regra diferente das outras — foi assim que a versão
+  // anterior desta mesma consulta nasceu pedindo pela temporada inteira.
+  const agora = useNow();
+  const [fixtureFresco] = useJogosComPlacarFresco(
+    isDemo || !fixtureDoEspelho ? [] : [fixtureDoEspelho],
+    agora,
+  );
+  const fixture = fixtureFresco ?? fixtureDoEspelho;
   const { data: h2h, isLoading: h2hLoading } = useFutebolH2H(fixture?.home_team_id, fixture?.away_team_id);
   const { data: injuries } = useFutebolFixtureInjuries(fid);
   const { data: realTend } = useFutebolMatchupTendencies(
