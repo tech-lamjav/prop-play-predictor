@@ -314,7 +314,14 @@ function OppCard({ o, to }: { o: FutebolValueBoardRow; to: string }) {
         <Crest teamId={o.away_team_id} name={o.away_team_name} size={16} />
         <span className="shrink-0 opacity-80">· {fmtDayTime(o.kickoff_utc)}</span>
       </div>
-      <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-line">
+      {/* `sm:grow` é o que empurra o botão para o pé do cartão: este bloco
+          estica e ocupa a sobra, em vez de o botão ganhar margem automática.
+          É aqui e não no botão porque margem `auto` no botão não convive com
+          uma margem mínima — ou uma ou outra —, e a primeira tentativa resolveu
+          isso com `pt-3` NO BOTÃO: padding onde eu queria espaço acima. Com
+          altura fixa, o padding come o botão por dentro e derruba o texto do
+          centro. Foi assim que ele subiu torto para a homologação. */}
+      <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-line sm:grow">
         <div>
           <div className="text-[9px] uppercase tracking-[0.14em] font-semibold text-ink-3">Chance</div>
           <div className="text-[15px] font-bold tabular-nums text-ink mt-0.5">{chance != null ? `${chance}%` : '—'}</div>
@@ -328,7 +335,7 @@ function OppCard({ o, to }: { o: FutebolValueBoardRow; to: string }) {
           <div className="text-[15px] font-bold tabular-nums text-forest mt-0.5">{fmtEdgeScore(o.edge)}</div>
         </div>
       </div>
-      <VerAnaliseCTA className="mt-3 sm:mt-auto sm:pt-3" />
+      <VerAnaliseCTA className="mt-3" />
     </Link>
   );
 }
