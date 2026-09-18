@@ -814,7 +814,7 @@ CREATE OR REPLACE FUNCTION public.futebol_acesso_vigente(
  RETURNS boolean
  LANGUAGE sql
  STABLE
-AS $function$ select coalesce(coalesce(p_status, 'free') = 'premium' or p_fim > now(), false) $function$
+AS $function$ select coalesce(coalesce(p_status, 'free') = 'premium' or p_fim > now(), false) $function$;
 
 -- ── Guarda de acesso das RPCs de valor ───────────────────────────
 -- As RPCs de valor nasceram abertas: definer, sem checar quem chama, com grant
