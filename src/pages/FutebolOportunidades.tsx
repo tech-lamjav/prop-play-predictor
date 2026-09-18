@@ -19,7 +19,7 @@ import { competitionLabel, sortCompetitions, fixtureScopesFor } from '@/utils/fu
 import {
   pickLabel, marketLabel, fmtEdgeScore,
   faixaBadgeCls, faixaWord, faixaTone, chancePct, edgeToneCls,
-  opcoesDeFaixa, passaNoFiltroDeFaixas, versaoDaJanela, ehDestaque, compararOportunidades,
+  opcoesDeFaixa, passaNoFiltroDeFaixas, versaoDaJanela, compararOportunidades,
   FAIXAS_FILTRO_PADRAO, type Faixa,
   FILTRO_DE_VALOR_PADRAO, passaNoFiltroDeValor, type FiltroDeValor,
 } from '@/utils/futebol-score';
@@ -577,9 +577,17 @@ export default function FutebolOportunidades() {
       byDay.get(d)!.push(r);
     });
     const out: Record<string, number> = {};
-    // Conta o mesmo recorte que a lista abre por padrão (Alta e Média), senão o
-    // selo promete um número que a tela não mostra ao ser aberta.
-    byDay.forEach((rs, d) => { out[d] = rs.filter((o) => ehDestaque(o.faixa)).length; });
+    // Conta o mesmo recorte que a lista abre por padrão, e conta com a MESMA
+    // função que a lista usa — não com uma equivalente.
+    //
+    // `ehDestaque` era equivalente enquanto toda linha tinha faixa. Com a guarda
+    // de acesso a linha bloqueada chega com faixa nula, e aí as duas divergiram:
+    // o filtro deixa faixa nula passar (a linha aparece), `ehDestaque` não (o
+    // selo não conta). A barra dizia "hoje · 0" com oito linhas logo abaixo —
+    // dois números certos pela própria regra, mentindo juntos na mesma tela.
+    byDay.forEach((rs, d) => {
+      out[d] = rs.filter((o) => passaNoFiltroDeFaixas(FAIXAS_FILTRO_PADRAO, o.faixa)).length;
+    });
     // Registrada que o board não tem entra na conta, senão dia que só tem
     // registro apareceria zerado no seletor.
     // Uma vez por oportunidade, e não por envio: o mesmo pick mandado no
@@ -636,7 +644,11 @@ export default function FutebolOportunidades() {
   // A montagem da URL saiu daqui para `futebol-links.ts` (#344): esta tela era a
   // única que carregava a saída clicada, e a home e o painel abriam a tela do
   // jogo no desempate padrão. Com um lugar só, a próxima origem não esquece.
-  const key = (o: OppLike) => `${o.fixture_id}-${o.market}-${o.outcome}-${o.line_value}`;
+  // A linha bloqueada chega com mercado, saída e linha nulos, então a chave de
+  // todas elas no mesmo jogo seria a mesma — e chave repetida faz o React
+  // duplicar ou omitir irmãos, em silêncio. Nessas, a posição é o que distingue.
+  const key = (o: OppLike, i: number) =>
+    linhaBloqueada(o) ? `bloqueada-${i}` : `${o.fixture_id}-${o.market}-${o.outcome}-${o.line_value}`;
 
   const oppSteps = useMemo(
     () => makeFutebolOportunidadesSteps({ hasDayBar: !isLoading && days.length > 0, hasBoard: bestRows.length > 0 }),
@@ -801,11 +813,11 @@ export default function FutebolOportunidades() {
                 <div>Score ↓</div><div>Faixa</div><div>Aposta</div><div>Mercado</div>
                 <div className="text-right">Chance</div><div className="text-right">Odd</div><div className="text-right">Valor</div><div />
               </div>
-              {comValor.map((o) => {
+              {comValor.map((o, i) => {
                 const res = resultOf(o);
                 const g = placarDe(o);
                 return (
-                  <div key={key(o)}>
+                  <div key={key(o, i)}>
                     <OppRow o={o} to={hrefDaSaida(o.fixture_id, o)} locked={locked} result={res} homeGoals={g?.gh} awayGoals={g?.ga} />
                     {!locked && (
                       <div className="px-5 pb-2 -mt-0.5">
@@ -819,12 +831,12 @@ export default function FutebolOportunidades() {
 
             {/* Cards (mobile) */}
             <div className="md:hidden flex flex-col gap-2.5">
-              {comValor.map((o) => {
+              {comValor.map((o, i) => {
                 const res = resultOf(o);
                 const g = placarDe(o);
                 return (
                   <OppMobileCard
-                    key={key(o)}
+                    key={key(o, i)}
                     o={o}
                     to={hrefDaSaida(o.fixture_id, o)}
                     locked={locked}

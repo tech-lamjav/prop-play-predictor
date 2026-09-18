@@ -84,6 +84,22 @@ _Avoid_: Mercado desativado, mercado removido
 O aviso enviado no Telegram quando uma oportunidade é publicada no painel, para que o usuário possa vê-la antes do jogo.
 _Avoid_: Oportunidade, publicação no painel
 
+**Portão de acesso**:
+A checagem única, no banco, de se quem chamou tem acesso vigente ao futebol — assinante ou teste correndo. Vive em `futebol_acesso_do_chamador()` e é chamada por toda RPC que devolve saída do modelo. Não confundir com **porta de publicação** (Mercado oculto) nem com as **portas** de qualidade de dado: aquelas decidem se uma linha *nasce*, esta decide se *sai* para quem pediu.
+_Avoid_: Gate, porta de acesso, trava
+
+**Linha bloqueada**:
+A linha que chegou ao navegador com a saída do modelo anulada pelo portão — mercado, aposta, odd, chance, valor e Score vêm nulos, e jogo, horário e times vêm preenchidos. Não é erro nem lista vazia: é a forma que a oportunidade tem para quem não assina.
+_Avoid_: Linha borrada, linha travada, linha vazia
+
+**Valor fechado**:
+O estado da tela quando há oportunidade no jogo e a leitura não pode ser mostrada. A tela diz que existe e quantas são; não diz qual nem a que preço.
+_Avoid_: Sem valor, bloqueado, indisponível
+
+**Fato público de futebol**:
+O que qualquer site entrega de graça: quem joga contra quem, quando, em que competição e como terminou. É a régua que decide se uma RPC fica aberta — fechá-la não protege receita e esvazia a página de quem ainda não assinou.
+_Avoid_: Dado aberto, dado grátis
+
 **Status de alertas**:
 O estado persistente de alertas de publicação de quem já conectou o Telegram: ativo ou pausado. É uma informação discreta com acesso a gerenciamento, não um convite.
 _Avoid_: CTA de conexão, aviso importante

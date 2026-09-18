@@ -17,23 +17,3 @@ import type { FutebolValueBoardRow } from '@/services/futebol-data.service';
 export function linhaBloqueada(o: Pick<FutebolValueBoardRow, 'market'> | null | undefined): boolean {
   return o != null && o.market == null;
 }
-
-/**
- * Separa o que a tela pode desenhar do que ela só pode contar.
- *
- * Existe para a lista não ter que repetir o `filter` em cada ponto de render e,
- * principalmente, para nenhuma linha fechada escorregar para dentro de um
- * componente de valor: lá dentro `o.best_odd.toFixed(2)` estoura com nulo, e o
- * modo de falha é a tela em branco em vez do cadeado.
- */
-export function separarBloqueadas<T extends Pick<FutebolValueBoardRow, 'market'>>(
-  linhas: readonly T[],
-): { abertas: T[]; bloqueadas: number } {
-  const abertas: T[] = [];
-  let bloqueadas = 0;
-  for (const l of linhas) {
-    if (linhaBloqueada(l)) bloqueadas += 1;
-    else abertas.push(l);
-  }
-  return { abertas, bloqueadas };
-}

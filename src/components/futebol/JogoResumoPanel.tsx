@@ -282,8 +282,6 @@ export function JogoResumoPanel({
   //
   // A exceção do passado continua de pé no banco: linha de jogo encerrado vem
   // pelo histórico, que é passado por construção e não pede acesso.
-  // A camada de valor está fechada para esta linha. A exceção do passado
-  // continua: linha já liquidada é registro do que foi publicado, não aposta.
   const valorFechado = semAcesso && !desfecho;
   const bloqueadoSemLeitura = valorFechado && !best;
 
@@ -385,11 +383,15 @@ export function JogoResumoPanel({
               )}
             </div>
             <div className="text-center shrink-0">
+              {/* A contagem de premissas também é leitura do modelo, e sem o
+                  Score ela vira o número que sobra na tela. A faixa do confronto
+                  já esconde as duas sob bloqueio; aqui ficava à mostra, e uma
+                  das duas telas estava errada. */}
               <div className="tabular-nums text-[40px] font-bold leading-none tracking-[-0.04em]" style={{ color: '#fbbf24' }}>
-                {best ? best.score : nValem}
+                {valorFechado ? '—' : best ? best.score : nValem}
               </div>
               <div className="mt-1 text-[9px] uppercase tracking-[0.12em]" style={{ color: 'rgba(255,255,255,.5)' }}>
-                {best ? `Score · ${rotuloDaFaixa(best.faixa)}` : 'premissas a favor'}
+                {valorFechado ? 'de assinante' : best ? `Score · ${rotuloDaFaixa(best.faixa)}` : 'premissas a favor'}
               </div>
             </div>
           </div>
