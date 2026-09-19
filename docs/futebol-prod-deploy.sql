@@ -1387,7 +1387,11 @@ as $function$
   -- migration 101: kickoff no futuro lê o board; kickoff já passado lê a FOTO DO
   -- APITO no snapshot. migration 105: os avisos leem as colunas pen_* do mart.
   with v_src as (
-    select fixture_id, market, outcome, line_value, competition, season, edge,
+    -- ⚠️ `opportunity_key` NULA aqui, e isso é o que identifica o ramo do board
+    -- lá embaixo. O board não tem a coluna, e a linha dele está VIVA: a vantagem
+    -- corrente é a publicada agora, sem foto de nascimento nenhuma.
+    select null::text as opportunity_key,
+           fixture_id, market, outcome, line_value, competition, season, edge,
            pts_premissas, penalidades, score, faixa, score_versao, best_odd, best_book,
            avg_odd, n_casas, prob_justa_fechamento, valor_fonte, janela_usada,
            penalidades_especificas_pts, modelo_api_concorda,
@@ -1398,12 +1402,13 @@ as $function$
       and exists (select 1 from futebol.fact_fixtures fx
                    where fx.fixture_id = p_fixture_id and fx.kickoff_utc > (now() at time zone 'UTC'))
     union all
-    select fixture_id, market, outcome, line_value, competition, season, edge,
-           pts_premissas, penalidades, score, faixa, score_versao, best_odd, best_book,
-           avg_odd, n_casas, prob_justa_fechamento, valor_fonte, janela_usada,
-           penalidades_especificas_pts, modelo_api_concorda,
-           linha_sharp_confirma, pin_n_outcomes, is_half_line, dbt_loaded_at, premissas_sem_dado,
-           pen_odd_outlier, pen_poucas_casas, pen_odd_longshot, pen_odd_juice
+    select h.opportunity_key,
+           h.fixture_id, h.market, h.outcome, h.line_value, h.competition, h.season, h.edge,
+           h.pts_premissas, h.penalidades, h.score, h.faixa, h.score_versao, h.best_odd, h.best_book,
+           h.avg_odd, h.n_casas, h.prob_justa_fechamento, h.valor_fonte, h.janela_usada,
+           h.penalidades_especificas_pts, h.modelo_api_concorda,
+           h.linha_sharp_confirma, h.pin_n_outcomes, h.is_half_line, h.dbt_loaded_at, h.premissas_sem_dado,
+           h.pen_odd_outlier, h.pen_poucas_casas, h.pen_odd_longshot, h.pen_odd_juice
     from futebol.fact_value_opportunities_hist h
     where h.fixture_id = p_fixture_id
       and exists (select 1 from futebol.fact_fixtures fx
@@ -1412,14 +1417,40 @@ as $function$
                      and h.dbt_valid_from <= fx.kickoff_utc
                      and (h.dbt_valid_to is null or fx.kickoff_utc < h.dbt_valid_to))
   ), nascimento as (
-    -- A FOTO DE NASCIMENTO das linhas deste jogo. Chaveada pelas quatro colunas
-    -- que identificam a saída, e não por `opportunity_key`, porque `v_src` não a
-    -- carrega: ela vem do board no ramo de cima, e lá a coluna não existe.
-    select distinct on (h.market, h.outcome, h.line_value)
-      h.market, h.outcome, h.line_value, h.edge
+    -- A FOTO DE NASCIMENTO: a primeira versão VISÍVEL de cada oportunidade.
+    --
+    -- Visível, e não apenas a primeira: o snapshot grava o board, que é o
+    -- universo do que foi publicado — mercado escondido e linha abaixo do
+    -- limiar incluídos. A primeira linha do snapshot pode ser de um instante em
+    -- que ninguém podia ver aquilo, e foi assim que o Brentford +0,5 de 18/09
+    -- sumiu desta tela por uma vantagem de 12/09.
+    --
+    -- Nenhuma versão visível devolve NADA para esta chave, e o `left join` lá
+    -- embaixo transforma isso em NULO — que é o que diz ao front "nunca esteve
+    -- na tela". Nulo aqui é resposta, não falta de resposta.
+    --
+    -- Chaveada por `opportunity_key`, e não pelas colunas da saída: a saída que
+    -- sai do board e volta tem mais de uma oportunidade na vida, e juntá-las
+    -- numa foto só mistura a vida de duas. São 74 chaves com reativação em
+    -- produção.
+    select distinct on (h.opportunity_key)
+      h.opportunity_key, h.edge
     from futebol.fact_value_opportunities_hist h
+    left join public.futebol_mercados_ocultos mo on mo.market = h.market
+    left join public.futebol_limiar_valor lv on lv.market = h.market
     where h.fixture_id = p_fixture_id
-    order by h.market, h.outcome, h.line_value, h.dbt_valid_from asc, h.dbt_scd_id asc
+      -- O mercado estava na vitrine no instante desta versão.
+      and (mo.market is null
+           or h.dbt_valid_from < (mo.oculto_desde at time zone 'UTC')
+           or (mo.oculto_ate is not null
+               and h.dbt_valid_from >= (mo.oculto_ate at time zone 'UTC')))
+      -- E o limiar de valor ou ainda não vigia, ou a vantagem passa nele.
+      -- Vantagem nula não passa, pelo mesmo motivo do front: não saber o preço
+      -- de um mercado onde o preço decide não é motivo para mostrar.
+      and (lv.market is null
+           or h.dbt_valid_from < (lv.vigente_desde at time zone 'UTC')
+           or h.edge > lv.limiar::double precision)
+    order by h.opportunity_key, h.dbt_valid_from asc, h.dbt_scd_id asc
   )
   select v.market, v.outcome,
     (case when v.market = 'match_winner'
@@ -1441,11 +1472,12 @@ as $function$
     public.futebol_copy('aviso', v.market, case v.outcome when 'Home' then 'home' when 'Away' then 'away' else 'any' end, public.futebol_flags(to_jsonb(v), to_jsonb(p), to_jsonb(o), to_jsonb(ah), to_jsonb(bt), to_jsonb(dc))),
     (public.futebol_copy('contra', v.market, case v.outcome when 'Home' then 'home' when 'Away' then 'away' else 'any' end, public.futebol_flags(to_jsonb(v), to_jsonb(p), to_jsonb(o), to_jsonb(ah), to_jsonb(bt), to_jsonb(dc))))[1:3],
     v.premissas_sem_dado::int,
-    -- Jogo por começar: a linha está viva e a vantagem corrente é a publicada.
-    -- Jogo encerrado: a da foto de nascimento.
-    coalesce(n.edge, v.edge)
+    -- Jogo por começar (sem chave): a linha está viva e a vantagem corrente é a
+    -- publicada. Jogo encerrado (com chave): a da primeira versão visível, que
+    -- é NULA quando nunca houve nenhuma.
+    case when v.opportunity_key is null then v.edge else n.edge end
   from v_src v
-  left join nascimento n on n.market = v.market and n.outcome = v.outcome and n.line_value is not distinct from v.line_value
+  left join nascimento n on n.opportunity_key = v.opportunity_key
   left join futebol.int_futebol_premissas_1x2 p on v.market='match_winner' and p.fixture_id = v.fixture_id and p.outcome = v.outcome
   left join futebol.int_futebol_premissas_ou o on v.market='goals_over_under' and o.fixture_id = v.fixture_id and o.outcome = v.outcome and o.line_value is not distinct from v.line_value
   left join futebol.int_futebol_premissas_ah ah on v.market='asian_handicap' and ah.fixture_id = v.fixture_id and ah.outcome = v.outcome and ah.line_value is not distinct from v.line_value
@@ -2014,19 +2046,43 @@ as $function$
       and (h.dbt_valid_to is null or fx.kickoff_utc < h.dbt_valid_to)
     order by h.opportunity_key, h.dbt_valid_from desc
   ), nascimento as (
-    -- A FOTO DE NASCIMENTO: a primeira versão de cada oportunidade, com a
-    -- vantagem que ela tinha quando foi publicada e vista. `asc` é a única
-    -- diferença de ordem para o CTE acima; `dbt_scd_id` é o desempate
-    -- explícito que a 102 exige do DISTINCT ON.
+    -- A FOTO DE NASCIMENTO: a primeira versão VISÍVEL de cada oportunidade.
+    --
+    -- Visível, e não apenas a primeira: o snapshot grava o board, que é o
+    -- universo do que foi publicado — mercado escondido e linha abaixo do
+    -- limiar incluídos. A primeira linha do snapshot pode ser de um instante em
+    -- que ninguém podia ver aquilo, e foi assim que o Brentford +0,5 de 18/09
+    -- sumiu do detalhe do jogo por uma vantagem de 12/09.
+    --
+    -- Nenhuma versão visível devolve NADA para esta chave, e o `left join` lá
+    -- embaixo transforma isso em NULO — que é o que diz ao front "nunca esteve
+    -- na tela". Nulo aqui é resposta, não falta de resposta.
+    --
+    -- `asc` é a única diferença de ordem para o CTE acima; `dbt_scd_id` é o
+    -- desempate explícito que a 102 exige do DISTINCT ON, para o dia em que o
+    -- snapshot produzir duas versões com o mesmo `dbt_valid_from`.
     select distinct on (h.opportunity_key)
       h.opportunity_key, h.edge
     from futebol.fact_value_opportunities_hist h
     join futebol.fact_fixtures fx on fx.fixture_id = h.fixture_id
+    left join public.futebol_mercados_ocultos mo on mo.market = h.market
+    left join public.futebol_limiar_valor lv on lv.market = h.market
     where fx.kickoff_utc >= ((p_from::timestamp at time zone 'America/Sao_Paulo') at time zone 'UTC')
       and fx.kickoff_utc <  (((p_to + 1)::timestamp at time zone 'America/Sao_Paulo') at time zone 'UTC')
       and fx.kickoff_utc <  (now() at time zone 'UTC')
       -- Mesma regra do CTE de cima: encerrado, nao apenas comecado.
       and fx.status_short in ('FT', 'AET', 'PEN')
+      -- O mercado estava na vitrine no instante desta versão.
+      and (mo.market is null
+           or h.dbt_valid_from < (mo.oculto_desde at time zone 'UTC')
+           or (mo.oculto_ate is not null
+               and h.dbt_valid_from >= (mo.oculto_ate at time zone 'UTC')))
+      -- E o limiar de valor ou ainda não vigia, ou a vantagem passa nele.
+      -- Vantagem nula não passa, pelo mesmo motivo do front: não saber o preço
+      -- de um mercado onde o preço decide não é motivo para mostrar.
+      and (lv.market is null
+           or h.dbt_valid_from < (lv.vigente_desde at time zone 'UTC')
+           or h.edge > lv.limiar::double precision)
     order by h.opportunity_key, h.dbt_valid_from asc, h.dbt_scd_id asc
   )
   select v.fixture_id, f.home_team_id, f.away_team_id, f.home_team_name, f.away_team_name,

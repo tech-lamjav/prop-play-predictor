@@ -23,7 +23,11 @@
 import type { FutebolValueBoardRow } from '@/services/futebol-data.service';
 import { parseUtc, brtDateStr, brtDayOf, addDays } from '@/utils/futebol-datas';
 import { type MercadoOculto, mercadoOcultoNaData } from '@/utils/futebol-mercados-ocultos';
-import { cortadaNaData, type LimiarDeValor } from '@/utils/futebol-corte-de-valor';
+import {
+  cortadaNaData,
+  vantagemDePublicacao,
+  type LimiarDeValor,
+} from '@/utils/futebol-corte-de-valor';
 
 /** Quantos dias o Histórico navega para trás. */
 export const HISTORY_WINDOW_DAYS = 30;
@@ -102,9 +106,10 @@ export function mergeBoardAndHistory(
     if (mercadoOcultoNaData(r.market, r.kickoff_utc, vitrine, nowMs)) continue;
     // Pela vantagem de PUBLICAÇÃO, não pela do apito: a regra é que o que
     // apareceu no board continua aparecendo, e o que nunca apareceu some.
-    // `edge` é a leitura do apito e só entra se a de publicação não vier —
-    // histórico antigo, ou board servido por uma versão anterior da RPC.
-    if (cortadaNaData(r.market, r.edge_publicacao ?? r.edge, r.kickoff_utc, limiares, nowMs)) continue;
+    // `vantagemDePublicacao` é quem sabe distinguir "nunca apareceu" (nulo) de
+    // "este banco não sabe responder" (coluna ausente) — as duas chegavam aqui
+    // iguais, e a primeira voltava à tela pela vantagem do apito.
+    if (cortadaNaData(r.market, vantagemDePublicacao(r), r.kickoff_utc, limiares, nowMs)) continue;
     if (d < today) out.push(r);
     else if (d === today) hojeHist.set(opportunityKey(r), r);
     // d > today: a RPC não devolve; se um dia devolver, o board manda.

@@ -72,6 +72,38 @@ export function passaNoCorteDeValor(
 }
 
 /**
+ * A vantagem com que esta linha APARECEU para o assinante.
+ *
+ * Desde a migration 161, `edge_publicacao` é a vantagem da primeira versão
+ * VISÍVEL da oportunidade — e vem NULA quando nunca houve nenhuma. Nulo ali é
+ * resposta, não campo em branco: quer dizer "esta linha não chegou a aparecer
+ * para ninguém", e é o que a tira da tela.
+ *
+ * ⚠️ NULO e AUSENTE são coisas diferentes, e é por isso que esta função existe.
+ * O `edge_publicacao ?? edge` de antes lia o nulo como ausência e caía na
+ * vantagem do APITO, que pode ser ótima — e aí a linha que nunca esteve na
+ * vitrine voltava à tela como oportunidade. Ausente é outra coisa: é front novo
+ * contra banco anterior à 146, e ali a queda para `edge` continua certa, porque
+ * o banco velho não sabe responder a pergunta.
+ *
+ * ⚠️ A distinção é pelo VALOR, e não pela presença da chave. `'edge_publicacao'
+ * in linha` parece dizer a mesma coisa e não diz: qualquer objeto montado com a
+ * propriedade escrita — um teste, um `map` que copia campos — tem a chave
+ * presente com valor indefinido, e seria classificado como "nunca apareceu". O
+ * que chega do banco é JSON: coluna que não veio simplesmente não está no
+ * objeto e dá `undefined`; NULL do SQL chega como `null`.
+ *
+ * Mora aqui, e não nos dois chamadores, porque a mesma expressão escrita em
+ * dois arquivos já foi a forma deste defeito duas vezes nesta área.
+ */
+export function vantagemDePublicacao(linha: {
+  edge?: number | null;
+  edge_publicacao?: number | null;
+}): number | null | undefined {
+  return linha.edge_publicacao === undefined ? linha.edge : linha.edge_publicacao;
+}
+
+/**
  * Tira do conjunto as linhas que não passam no corte.
  *
  * Genérica em cima de `market` e `edge` pelo mesmo motivo do
@@ -111,10 +143,10 @@ export function separaNoCorteDeValor<
   const passam: T[] = [];
   const cortadas: T[] = [];
   for (const linha of linhas) {
-    // Pela vantagem de PUBLICAÇÃO quando ela vem (migration 146): depois do apito,
-    // board e detalhe do jogo devolvem a foto do apito, e cortar por ela esconde
-    // linha que apareceu na tela. `edge` é o que resta contra banco anterior à 146.
-    const passa = passaNoCorteDeValor(linha.market, linha.edge_publicacao ?? linha.edge, limiares);
+    // Pela vantagem de PUBLICAÇÃO: depois do apito, board e detalhe do jogo
+    // devolvem a foto do apito, e cortar por ela esconde linha que apareceu na
+    // tela. Ver `vantagemDePublicacao` para o que nulo e ausente significam.
+    const passa = passaNoCorteDeValor(linha.market, vantagemDePublicacao(linha), limiares);
     (passa ? passam : cortadas).push(linha);
   }
   return { passam, cortadas };

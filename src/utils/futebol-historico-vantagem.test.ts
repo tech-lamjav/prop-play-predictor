@@ -56,12 +56,25 @@ describe('o histórico e a vantagem que o assinante viu', () => {
     expect(fundido).toEqual([]);
   });
 
-  it('sem a vantagem de publicação, cai para a do apito', () => {
+  it('sem a COLUNA, cai para a vantagem do apito', () => {
     // Histórico anterior à migration 146, ou front novo contra banco velho: a
-    // régua antiga volta a valer, que é degradação e não regressão.
+    // coluna não vem, o valor chega `undefined`, e a régua antiga volta a
+    // valer. Degradação, não regressão.
     expect(mergeBoardAndHistory([], [linha(3, -0.025, undefined)], AGORA, [], VIGENTE)).toEqual([]);
-    expect(mergeBoardAndHistory([], [linha(4, -0.01, null)], AGORA, [], VIGENTE).map((r) => r.fixture_id))
-      .toEqual([4]);
+    expect(mergeBoardAndHistory([], [linha(6, -0.01, undefined)], AGORA, [], VIGENTE).map((r) => r.fixture_id))
+      .toEqual([6]);
+  });
+
+  it('⚠️ mas a vantagem NULA some, porque nula quer dizer que nunca apareceu', () => {
+    // MUDOU NA MIGRATION 161, e esta asserção era o contrário até ela.
+    //
+    // Antes, nulo só podia ser banco velho, e os dois casos caíam no apito.
+    // Agora o banco devolve nulo DE PROPÓSITO para a linha que nunca teve uma
+    // versão visível — mercado fora da vitrine naquele instante, ou vantagem
+    // abaixo do limiar a vida inteira. Cair no apito aqui devolveria à tela
+    // exatamente a linha que ninguém chegou a ver, que é o defeito que a 119
+    // fechou no grão do mercado e a 161 fecha no grão da linha.
+    expect(mergeBoardAndHistory([], [linha(4, -0.01, null)], AGORA, [], VIGENTE)).toEqual([]);
   });
 
   it('antes da vigência do limiar, nada é cortado por vantagem nenhuma', () => {
