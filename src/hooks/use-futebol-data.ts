@@ -2,7 +2,7 @@ import { useQuery, useQueries } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { brtToday } from '@/utils/futebol-datas';
-import { historyWindow } from '@/utils/futebol-history';
+import { HISTORY_WINDOW_DAYS, historyWindow } from '@/utils/futebol-history';
 import { ocultosAgora, type MercadoOculto } from '@/utils/futebol-mercados-ocultos';
 import { comPlacarFresco, idsSemFecho, type JogoComPlacar } from '@/utils/futebol-placar-fresco';
 import type { LimiarDeValor } from '@/utils/futebol-corte-de-valor';
@@ -340,8 +340,12 @@ export function useFutebolValueBoard() {
 }
 
 /**
- * O passado, na foto do apito. Janela fixa de 30 dias, que é o que o stepper
- * navega.
+ * O passado, na foto do apito.
+ *
+ * `dias` é quantos dias para trás, contando hoje. O padrão são os 30 que o
+ * stepper do painel navega; quem mostra um dia só pede um dia, porque a janela
+ * É o custo da consulta — a conta e os números medidos estão em
+ * `historyWindow`, no futebol-history.ts.
  *
  * ⚠️ `refetchInterval` de 5 minutos, e ele é ESSENCIAL, não higiene. A RPC corta
  * em `kickoff < now()` no BANCO (migration 102), então a linha de um jogo só
@@ -356,12 +360,12 @@ export function useFutebolValueBoard() {
  *
  * Ver migrations 101 e 102.
  */
-export function useFutebolValueHistory() {
+export function useFutebolValueHistory(dias = HISTORY_WINDOW_DAYS) {
   // Dia de BRASÍLIA, não UTC. A primeira versão disto usava `toISOString()`, que
   // dá a data em UTC: depois das 21h de Brasília o "hoje" já virava o dia
   // seguinte e a janela inteira andava um dia, escondendo o jogo da noite.
   const hoje = brtToday();
-  const { from, to } = historyWindow(hoje);
+  const { from, to } = historyWindow(hoje, dias);
   return useQuery<FutebolValueBoardRow[]>({
     queryKey: ['futebol', 'value-history', from, to],
     queryFn: () => futebolDataService.getValueHistory(from, to),

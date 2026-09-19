@@ -753,6 +753,9 @@ CREATE INDEX IF NOT EXISTS fact_value_opportunities_fixture_id_idx ON futebol.fa
 CREATE INDEX IF NOT EXISTS fact_value_opportunities_hist_fixture_id_idx ON futebol.fact_value_opportunities_hist USING btree (fixture_id);
 CREATE INDEX IF NOT EXISTS fact_value_opportunities_hist_opportunity_key_idx ON futebol.fact_value_opportunities_hist USING btree (opportunity_key);
 CREATE INDEX IF NOT EXISTS int_futebol_premissas_1x2_fixture_id_outcome_idx ON futebol.int_futebol_premissas_1x2 USING btree (fixture_id, outcome);
+CREATE INDEX IF NOT EXISTS int_futebol_premissas_ah_fixture_id_outcome_line_value_idx ON futebol.int_futebol_premissas_ah USING btree (fixture_id, outcome, line_value);
+CREATE INDEX IF NOT EXISTS int_futebol_premissas_btts_fixture_id_outcome_idx ON futebol.int_futebol_premissas_btts USING btree (fixture_id, outcome);
+CREATE INDEX IF NOT EXISTS int_futebol_premissas_dc_fixture_id_outcome_idx ON futebol.int_futebol_premissas_dc USING btree (fixture_id, outcome);
 CREATE INDEX IF NOT EXISTS int_futebol_premissas_ou_fixture_id_outcome_line_value_idx ON futebol.int_futebol_premissas_ou USING btree (fixture_id, outcome, line_value);
 
 -- ── 4. Helper(s) das RPCs (security definer) ─────────────────────────────────

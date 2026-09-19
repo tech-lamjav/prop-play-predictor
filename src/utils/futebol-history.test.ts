@@ -60,6 +60,14 @@ describe('historyWindow', () => {
   it('atravessa virada de mês sem quebrar', () => {
     expect(historyWindow('2026-03-01').from).toBe('2026-01-31');
   });
+
+  // A home pede UM dia, e é por isso que a janela virou parâmetro: 30 dias são
+  // ~40% do snapshot de oportunidades, o Postgres larga o índice e varre a
+  // tabela. Os números e o porquê estão no comentário de `historyWindow`.
+  it('aceita janela curta, e um dia é o próprio dia', () => {
+    expect(historyWindow('2026-08-18', 1)).toEqual({ from: '2026-08-18', to: '2026-08-18' });
+    expect(historyWindow('2026-08-18', 2).from).toBe('2026-08-17');
+  });
 });
 
 describe('mergeBoardAndHistory', () => {
