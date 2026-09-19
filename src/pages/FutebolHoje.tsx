@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Zap, ArrowRight, Check, AlertTriangle, Lock } from 'lucide-react';
 import { rotuloEmTitulo } from '@/utils/futebol-estado-da-premissa';
@@ -34,6 +34,16 @@ import { mergeBoardAndHistory } from '@/utils/futebol-history';
 import { selecionarJogosDaGrade } from '@/utils/futebol-grade-de-jogos';
 import { mercadoEstaOculto } from '@/utils/futebol-mercados-ocultos';
 import { hrefDaSaida } from '@/utils/futebol-links';
+import {
+  idDaOportunidade,
+  jogoClicado,
+  oportunidadeExibida,
+  propsDaOportunidade,
+} from '@/lib/analytics';
+import {
+  reiniciarImpressoes,
+  useImpressaoDeOportunidade,
+} from '@/hooks/use-impressao-de-oportunidade';
 import { oportunidadesDoDia, type OppLike } from '@/utils/futebol-registradas';
 import { estadoDosMotivos, explicacaoDaLeitura, type MotivoExibivel as Motivo } from '@/utils/futebol-motivos';
 import { ladoDaSaida } from '@/utils/futebol-evidencias';
@@ -100,7 +110,7 @@ function HeroStat({ label, value, dark, ajuda }: { label: string; value: string;
 
 // ── Hero: melhor oportunidade do dia — 3 colunas (pick · por quê · confiab). ─
 // Alta = gradiente forest (texto branco); Média = card claro com acento âmbar.
-function TopValueHero({ o, to, favor, contra, textoScore, carregandoMotivos = false }: { o: FutebolValueBoardRow; to: string; favor: Motivo[]; contra: Motivo[]; textoScore: string; carregandoMotivos?: boolean }) {
+function TopValueHero({ o, to, favor, contra, textoScore, carregandoMotivos = false, aoClicar }: { o: FutebolValueBoardRow; to: string; favor: Motivo[]; contra: Motivo[]; textoScore: string; carregandoMotivos?: boolean; aoClicar?: () => void }) {
   const pick = pickLabel(o, o.home_team_name, o.away_team_name);
   const ev = topEvidencia(o.evidencias);
   const d = true; // hero sempre no fundo forest (mockup); a faixa vai no selo, não na cor do card
@@ -158,7 +168,7 @@ function TopValueHero({ o, to, favor, contra, textoScore, carregandoMotivos = fa
             </span>
             <span className="opacity-70"><span className="hidden sm:inline">· </span>{fmtDayTime(o.kickoff_utc)}</span>
           </div>
-          <Link to={to} className={`h-11 px-5 mt-5 w-fit rounded-md text-[13px] font-semibold inline-flex items-center gap-2 ${d ? '' : 'bg-ink text-canvas hover:bg-ink-2'} transition`}
+          <Link to={to} onClick={aoClicar} className={`h-11 px-5 mt-5 w-fit rounded-md text-[13px] font-semibold inline-flex items-center gap-2 ${d ? '' : 'bg-ink text-canvas hover:bg-ink-2'} transition`}
             style={d ? { background: '#fbbf24', color: '#1a1d1a' } : undefined}>
             Abrir análise do jogo <ArrowRight className="w-4 h-4" />
           </Link>
@@ -269,16 +279,23 @@ function TopValueHero({ o, to, favor, contra, textoScore, carregandoMotivos = fa
 }
 
 // ── Card de oportunidade ───────────────────────────────────
-function OppCard({ o, to }: { o: FutebolValueBoardRow; to: string }) {
+function OppCard({ o, to, aoClicar, aoAparecer }: { o: FutebolValueBoardRow; to: string; aoClicar?: () => void; aoAparecer?: () => void }) {
   const pick = pickLabel(o, o.home_team_name, o.away_team_name);
   const chance = chancePct(o.prob_justa_fechamento);
+  // O gancho é chamado AQUI, e não no pai: hook não roda dentro de `.map`, e o
+  // que se observa é este cartão. O pai só diz o que fazer quando ele aparece.
+  const refDeImpressao = useImpressaoDeOportunidade({
+    chave: idDaOportunidade(o),
+    ativo: !!aoAparecer,
+    aoAparecer: aoAparecer ?? (() => {}),
+  });
   return (
     // `flex-col` + `h-full`, e não `block`: no grid os cartões já esticavam
     // para a mesma altura, mas o conteúdo parava onde acabava, e uma aposta que
     // quebra em duas linhas ("Mais de 2,5 gols" contra o nome de dois times
     // longos) empurrava só o botão dela. Com o botão em `mt-auto`, a fileira
     // inteira termina na mesma linha.
-    <Link to={to} className={`${CARD} group flex h-full flex-col p-4 text-left hover:shadow-sm hover:border-line-2 transition w-full`}>
+    <Link ref={refDeImpressao} to={to} onClick={aoClicar} className={`${CARD} group flex h-full flex-col p-4 text-left hover:shadow-sm hover:border-line-2 transition w-full`}>
       <div className="flex items-start justify-between gap-3">
         {/* A esquerda do topo é uma PILHA, e não uma linha, por causa do Score.
             O número de 26px deixa o bloco da direita com quase o dobro da
@@ -341,10 +358,10 @@ function OppCard({ o, to }: { o: FutebolValueBoardRow; to: string }) {
 }
 
 // ── Linha de jogo (rail) ───────────────────────────────────
-function GameRailRow({ f, best, to, locked }: { f: FutebolFixture & { competition?: string }; best: FutebolValueBoardRow | null; to: string; locked?: boolean }) {
+function GameRailRow({ f, best, to, locked, aoClicar }: { f: FutebolFixture & { competition?: string }; best: FutebolValueBoardRow | null; to: string; locked?: boolean; aoClicar?: () => void }) {
   const finished = isFinished(f.status_short);
   return (
-    <Link to={to} style={finished ? { background: 'var(--canvas-2)' } : undefined} className="w-full flex items-center gap-2.5 px-4 py-3 border-t border-line first:border-t-0 hover:bg-canvas-2 transition text-left">
+    <Link to={to} onClick={aoClicar} style={finished ? { background: 'var(--canvas-2)' } : undefined} className="w-full flex items-center gap-2.5 px-4 py-3 border-t border-line first:border-t-0 hover:bg-canvas-2 transition text-left">
       <span className={`w-10 text-[11px] font-semibold tabular-nums shrink-0 ${finished ? 'text-ink-3 uppercase tracking-wide' : 'text-ink-2'}`}>{finished ? 'fim' : fmtTime(f.kickoff_utc)}</span>
       <div className="flex items-center gap-1.5 min-w-0 flex-1">
         <Crest teamId={f.home_team_id} name={f.home_team_name} size={20} />
@@ -397,6 +414,10 @@ export default function FutebolHoje() {
   // conteúdo renderiza borrado, desborrando quando a resposta volta. Para quem
   // paga, isso é o mesmo defeito do card de motivos, num lugar diferente.
   const { data: access, isLoading: lAccess } = useFutebolAccess();
+  // Uma impressão por oportunidade a cada CARREGAMENTO da página. A memória
+  // vive no módulo do gancho, então quem a zera é a página ao montar — trocar
+  // o dia ou um filtro não conta de novo, mas voltar à tela conta.
+  useEffect(() => reiniciarImpressoes(), []);
   // A vitrine entra no gate: sem ela a lista renderiza sem filtro e o mercado
   // escondido aparece por um instante antes de sumir (#324).
   const loading = lFix || l3 || lHist || lReg || lVitrine || lAccess;
@@ -703,7 +724,25 @@ export default function FutebolHoje() {
             </div>
           </div>
         ) : heroOpp ? (
-          <TopValueHero o={heroOpp} favor={heroFavor} contra={heroContra} carregandoMotivos={carregandoMotivos} textoScore={textoScore} to={hrefDaSaida(heroOpp.fixture_id, heroOpp)} />
+          <TopValueHero
+            o={heroOpp}
+            favor={heroFavor}
+            contra={heroContra}
+            carregandoMotivos={carregandoMotivos}
+            textoScore={textoScore}
+            to={hrefDaSaida(heroOpp.fixture_id, heroOpp)}
+            aoClicar={() =>
+              jogoClicado({
+                game_id: heroOpp.fixture_id,
+                source: 'home_featured',
+                position: 0,
+                is_featured: true,
+                destination_path: hrefDaSaida(heroOpp.fixture_id, heroOpp),
+                competition: heroOpp.competition,
+                opportunity_id: idDaOportunidade(heroOpp),
+              })
+            }
+          />
         ) : (
           <div className={`${CARD} p-6 flex items-start gap-3`}>
             <Zap className="w-5 h-5 text-ink-3 mt-0.5 shrink-0" />
@@ -740,7 +779,33 @@ export default function FutebolHoje() {
               </div>
             ) : moreOpps.length > 0 ? (
               <div className="grid sm:grid-cols-2 gap-4">
-                {moreOpps.map((o) => <OppCard key={`${o.fixture_id}-${o.market}-${o.outcome}-${o.line_value}`} o={o} to={hrefDaSaida(o.fixture_id, o)} />)}
+                {moreOpps.map((o, i) => (
+                  <OppCard
+                    key={`${o.fixture_id}-${o.market}-${o.outcome}-${o.line_value}`}
+                    o={o}
+                    to={hrefDaSaida(o.fixture_id, o)}
+                    aoAparecer={() =>
+                      oportunidadeExibida(
+                        propsDaOportunidade(o, {
+                          source: 'home_games',
+                          subscription_status: access?.state ?? 'unknown',
+                          position: i,
+                        }),
+                      )
+                    }
+                    aoClicar={() =>
+                      jogoClicado({
+                        game_id: o.fixture_id,
+                        source: 'home_games',
+                        position: i,
+                        is_featured: false,
+                        destination_path: hrefDaSaida(o.fixture_id, o),
+                        competition: o.competition,
+                        opportunity_id: idDaOportunidade(o),
+                      })
+                    }
+                  />
+                ))}
               </div>
             ) : (
               <div className={`${CARD} p-6 text-center text-sm text-ink-3`}>Sem outras oportunidades relevantes agora.</div>
@@ -761,8 +826,26 @@ export default function FutebolHoje() {
               <Skeleton className="h-64 w-full bg-canvas-2 rounded-rebrand-md" />
             ) : gradeDeJogos.length > 0 ? (
               <div className={`${CARD} overflow-hidden`}>
-                {gradeDeJogos.map((f) => (
-                  <GameRailRow key={f.fixture_id} f={f} best={bestByFixture.get(f.fixture_id) ?? null} to={hrefDaSaida(f.fixture_id, bestByFixture.get(f.fixture_id))} locked={locked} />
+                {gradeDeJogos.map((f, i) => (
+                  <GameRailRow
+                    key={f.fixture_id}
+                    f={f}
+                    best={bestByFixture.get(f.fixture_id) ?? null}
+                    to={hrefDaSaida(f.fixture_id, bestByFixture.get(f.fixture_id))}
+                    locked={locked}
+                    aoClicar={() => {
+                      const melhor = bestByFixture.get(f.fixture_id);
+                      jogoClicado({
+                        game_id: f.fixture_id,
+                        source: 'home_games',
+                        position: i,
+                        is_featured: false,
+                        destination_path: hrefDaSaida(f.fixture_id, melhor),
+                        competition: f.competition ?? null,
+                        opportunity_id: melhor ? idDaOportunidade(melhor) : null,
+                      });
+                    }}
+                  />
                 ))}
               </div>
             ) : (

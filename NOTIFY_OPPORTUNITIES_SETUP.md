@@ -46,7 +46,20 @@ enviado — comportamento correto, não bug.
 
 ## Métricas (PostHog + banco)
 
-- `daily_opportunities_sent` {segment, picks_count, top_score}
-- `daily_opportunities_click` {destination} (disparado pelo `go`)
+- `daily_opportunities_sent` {segment, picks_count, top_score, delivery_id, batch_id,
+  campaign_id, campaign_type, opportunity_ids, sent_status, telegram_message_id}
+- `daily_opportunities_click` {destination, delivery_id, batch_id, link_id, campaign_type,
+  opportunity_id, segment} (disparado pelo `go`)
+- `telegram_opportunity_landing_opened` {delivery_id, batch_id, link_id, landing_path,
+  time_since_sent_ms, is_authenticated} (disparado pelo SITE, ao abrir pelo link)
 - Funil completo no banco: `opportunity_dispatch_state` (enviado) → `notification_clicks`
   (clicou) → `bets.channel` (registrou)
+
+**`delivery_id` é a chave que liga os três eventos.** Antes dela o funil se partia no
+meio: o `trace_id` do envio nascia uma vez por rodada do cron (o mesmo para centenas de
+pessoas) e o `go` gerava outro no clique — casar os dois só dava por horário, que é
+adivinhação. A chave é derivada de `campanha + dia BRT + user_id`, então é a MESMA em
+toda reexecução do cron no mesmo dia: reenvio não vira entrega nova no painel.
+
+`sent_status = success` significa **o Telegram aceitou o envio**, e nada mais. A API não
+dá confirmação de leitura nem de recebimento. Ver `docs/catalogo-de-eventos.md`.

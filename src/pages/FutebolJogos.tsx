@@ -21,6 +21,7 @@ import { groupBoardByFixture } from '@/utils/futebol-score';
 import { sufixoDeLeitura } from '@/utils/futebol-leitura';
 import { mergeBoardAndHistory } from '@/utils/futebol-history';
 import { hrefDaSaida } from '@/utils/futebol-links';
+import { idDaOportunidade, jogoClicado } from '@/lib/analytics';
 import { useNow } from '@/hooks/use-now';
 import { competitionLabel, sortCompetitions } from '@/utils/futebol-competitions';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
@@ -393,6 +394,17 @@ export default function FutebolJogos() {
                               // ao desempate padrão da tela do jogo (#344).
                               to={hrefDaSaida(f.fixture_id, bestByFixture.get(f.fixture_id))}
                               onClick={hasPanel ? () => abrirPainel(f) : undefined}
+                              aoClicar={() => {
+                                const melhor = bestByFixture.get(f.fixture_id);
+                                jogoClicado({
+                                  game_id: f.fixture_id,
+                                  source: 'games_list',
+                                  is_featured: false,
+                                  destination_path: hrefDaSaida(f.fixture_id, melhor),
+                                  competition: f.competition ?? null,
+                                  opportunity_id: melhor ? idDaOportunidade(melhor) : null,
+                                });
+                              }}
                               locked={isDemo ? false : !access?.unlocked}
                             />
                           ))}

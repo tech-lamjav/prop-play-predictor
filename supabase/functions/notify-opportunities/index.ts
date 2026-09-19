@@ -29,6 +29,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { generateTraceId, trackEvent } from "../shared/posthog.ts";
 import { esc } from "../shared/format.ts";
 import { trackedUrl } from "../shared/links.ts";
+import { chaveDeEntrega, chaveDoLink, chaveDoLote } from "../shared/atribuicao.ts";
 import { ehFaixaPublicavel } from "../shared/faixa.ts";
 import { carregarVitrine, filtrarPelaVitrine, ocultosAgora } from "../shared/mercados-ocultos.ts";
 import { carregarLimiaresDeValor, filtrarCorteDeValor } from "../shared/corte-de-valor.ts";
@@ -38,6 +39,10 @@ import { carregarBloqueados, enviarDm } from "../shared/telegram.ts";
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
 const CRON_SECRET = Deno.env.get("CRON_SECRET") || "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
+// A campanha do diário. Era OMITIDA no link, e o `go` caía no default de
+// retrocompatibilidade — o que funcionava, mas deixava o parâmetro invisível
+// para quem lê o código, e impedia carimbar `campaign_type` no evento.
+const CAMPANHA = "daily_opportunities";
 const SITE = "https://www.smartbetting.app";
 
 // O corte por número saiu na virada do Score de contexto (spec #301): 40 era
@@ -143,13 +148,24 @@ interface Recipient {
 // não muda a decisão. Ele vive na folha de mercado, onde o leitor já está
 // olhando premissa por premissa. Ver src/utils/futebol-sem-dado.ts.
 
-async function buildMessage(picks: BoardRow[], userId: string): Promise<string> {
+async function buildMessage(
+  picks: BoardRow[],
+  userId: string,
+  atribuicao: { deliveryId: string; batchId: string; sentAt: string; segment: string },
+): Promise<string> {
   const lines: string[] = [
     `⚽ <b>As oportunidades de hoje</b> · ${picks.length} ${picks.length === 1 ? "jogo" : "jogos"} com valor`,
     "",
   ];
   for (const p of picks) {
-    const jogoUrl = await trackedUrl(userId, `jogo-${p.fixture_id}`);
+    const destino = `jogo-${p.fixture_id}`;
+    const jogoUrl = await trackedUrl(userId, destino, CAMPANHA, {
+      deliveryId: atribuicao.deliveryId,
+      batchId: atribuicao.batchId,
+      linkId: await chaveDoLink(atribuicao.deliveryId, destino),
+      sentAt: atribuicao.sentAt,
+      segment: atribuicao.segment,
+    });
     const hora = brtHourMin(kickoffDate(p.kickoff_utc));
     const pick = pickLabel(p.market, p.outcome, p.line_value, p.home_team_name, p.away_team_name);
     const evidencia = p.evidencias?.length ? `\n✓ ${esc(p.evidencias[0])}` : "";
@@ -190,7 +206,7 @@ async function sendDaily(
   ctaUrl: string,
   ctaLabel: string,
   pickRows: any[],
-): Promise<"enviada" | "bloqueada"> {
+): Promise<{ desfecho: "enviada" | "bloqueada"; messageId: number | null }> {
   const r = await enviarDm(supabase, userId, {
     chat_id: chatId,
     text,
@@ -199,7 +215,7 @@ async function sendDaily(
     reply_markup: { inline_keyboard: [...pickRows, [{ text: ctaLabel, url: ctaUrl }]] },
   });
   if (r.desfecho === "falhou") throw new Error(r.erro);
-  return r.desfecho;
+  return { desfecho: r.desfecho, messageId: r.messageId ?? null };
 }
 
 serve(async (req) => {
@@ -342,10 +358,27 @@ serve(async (req) => {
         continue;
       }
       try {
-        const text = await buildMessage(picks, r.user_id);
+        // O lote do diário é o DIA: não há tabela de entregas aqui, e a rodada
+        // do cron é diária. Duas execuções no mesmo dia produzem a MESMA
+        // entrega, que é o que impede o reenvio de virar entrega nova no painel.
+        const batchId = await chaveDoLote(CAMPANHA, today);
+        const deliveryId = await chaveDeEntrega(CAMPANHA, today, r.user_id);
+        const sentAt = new Date().toISOString();
+        const text = await buildMessage(picks, r.user_id, {
+          deliveryId,
+          batchId,
+          sentAt,
+          segment: r.segment,
+        });
         const cta = ctaSpec(picks);
-        const ctaUrl = await trackedUrl(r.user_id, cta.dest);
-        const desfecho = await sendDaily(supabase, r.user_id, r.chat_id, text, ctaUrl, cta.label, pickButtonRows);
+        const ctaUrl = await trackedUrl(r.user_id, cta.dest, CAMPANHA, {
+          deliveryId,
+          batchId,
+          linkId: await chaveDoLink(deliveryId, cta.dest),
+          sentAt,
+          segment: r.segment,
+        });
+        const { desfecho, messageId } = await sendDaily(supabase, r.user_id, r.chat_id, text, ctaUrl, cta.label, pickButtonRows);
         // Bloqueou agora → pula sem tocar na cadência, pelo mesmo motivo.
         if (desfecho === "bloqueada") {
           bloqueados++;
@@ -363,8 +396,29 @@ serve(async (req) => {
         sent++;
         await trackEvent(
           "daily_opportunities_sent",
-          { segment: r.segment, picks_count: picks.length, top_score: picks[0].score, channel: "telegram" },
-          r.user_id, traceId
+          {
+            segment: r.segment,
+            picks_count: picks.length,
+            top_score: picks[0].score,
+            channel: "telegram",
+            delivery_id: deliveryId,
+            batch_id: batchId,
+            campaign_id: CAMPANHA,
+            campaign_type: CAMPANHA,
+            opportunity_ids: picks.map(
+              (p) => `${p.fixture_id}|${p.market}|${p.outcome}|${p.line_value ?? ""}`,
+            ),
+            // "aceito pelo Telegram", e não "lido" nem "recebido": a API não dá
+            // confirmação de leitura, e nomear assim convidaria a ler o número
+            // como audiência.
+            sent_status: "success",
+            telegram_message_id: messageId,
+          },
+          r.user_id,
+          // O `delivery_id` COMO trace. O `traceId` da rodada continua existindo
+          // para o log da execução, mas quem liga envio, clique e chegada é a
+          // entrega — o trace da rodada é o mesmo para centenas de pessoas.
+          deliveryId,
         ).catch(() => {});
       } catch (e) {
         errors.push(`${r.user_id}: ${(e as Error)?.message}`);
