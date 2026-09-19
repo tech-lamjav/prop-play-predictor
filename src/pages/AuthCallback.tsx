@@ -111,12 +111,17 @@ const AuthCallback = () => {
         null;
 
       if (isNewUser) {
-        const { error: userError } = await supabase.from("users").insert({
-          id: user.id,
-          email: user.email!,
-          name: displayName,
-          referred_by: referralCode,
-        });
+        //  pelo mesmo motivo do Auth.tsx: o gatilho da 164 já criou a
+        // linha com id e email quando a conta nasceu.
+        const { error: userError } = await supabase.from("users").upsert(
+          {
+            id: user.id,
+            email: user.email!,
+            name: displayName,
+            referred_by: referralCode,
+          },
+          { onConflict: "id" },
+        );
 
         if (userError) {
           console.error("Error creating user record:", userError);
