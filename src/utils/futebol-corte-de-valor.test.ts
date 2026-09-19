@@ -261,12 +261,44 @@ describe('o placar da vitrine respeita o corte de valor', () => {
     const linhas = [publicada(-0.05, '2026-09-16T10:00:00'), publicada(0.03, '2026-09-16T10:00:00')];
     expect(soAVitrine(linhas, [], AGORA, VIGENTE).map((l) => l.edge)).toEqual([0.03]);
   });
+
+  // ⚠️ OS CASOS ACIMA MONTAM A LINHA SEM `edge_publicacao`, e por isso caem no
+  // ramo de compatibilidade — eles provam a régua antiga, não a de hoje.
+  //
+  // Desde a migration 163 a RPC do placar devolve as duas colunas com papéis
+  // diferentes: `edge` é o preço EXIBIDO, que cai para o do registro mais antigo
+  // quando a linha nunca esteve visível, e `edge_publicacao` é a vantagem da
+  // ESTREIA, nula nesse caso. O recorte tem de olhar a segunda.
+  //
+  // Sem os dois casos abaixo, a correção inteira desta rodada ficava sem teste.
+  describe('e olha a vantagem de PUBLICAÇÃO, não o preço exibido', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const comEstreia = (edge: number | null, edgePublicacao: number | null, detectada: string) =>
+      ({ market: 'asian_handicap', edge, edge_publicacao: edgePublicacao, detectada_em: detectada }) as any;
+
+    it('⚠️ a linha que nunca apareceu SAI, mesmo com o preço de reserva bom', () => {
+      // O caso que o code review pegou: com o `coalesce` da 162, esta linha
+      // chega ao front com −1% no `edge` — o preço do registro mais antigo — e
+      // passaria no limiar. Mas ela nunca esteve na vitrine, e o board a derruba.
+      // Decidir pelo `edge` aqui mantinha no painel o que o board escondia.
+      const nuncaApareceu = comEstreia(-0.01, null, '2026-09-16T10:00:00');
+      expect(esteveNaVitrine(nuncaApareceu, [], AGORA, VIGENTE)).toBe(false);
+      expect(soAVitrine([nuncaApareceu], [], AGORA, VIGENTE)).toEqual([]);
+    });
+
+    it('e a que apareceu bem FICA, mesmo com o preço exibido ruim', () => {
+      // O espelho: estreou a −1%, o preço exibido hoje é pior, e ela continua
+      // tendo estado na tela.
+      const apareceu = comEstreia(-0.05, -0.01, '2026-09-16T10:00:00');
+      expect(esteveNaVitrine(apareceu, [], AGORA, VIGENTE)).toBe(true);
+    });
+  });
 });
 
 // ============================================================================
 // Nulo explícito é resposta: "esta linha nunca esteve na tela"
 // ============================================================================
-// A migration 161 fez `edge_publicacao` ser a vantagem da primeira versão
+// A migration 162 fez `edge_publicacao` ser a vantagem da primeira versão
 // VISÍVEL, e devolver NULO quando nunca houve nenhuma. Nulo ali não é campo em
 // branco: é o banco dizendo que a linha não chegou a aparecer para ninguém.
 //

@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -31,12 +31,55 @@ import { describe, expect, it } from 'vitest';
 // ============================================================================
 
 const RAIZ = resolve(__dirname, '../../..');
+// ⚠️ A 163 é a ÚLTIMA definição da função, e a última é a que vale: ela leva o
+// preço para a primeira versão visível. A 148 continua no repositório e continua
+// dizendo a regra antiga — apontar para ela aqui seria cobrar do banco uma regra
+// que ele não roda mais.
 const MIGRATION = resolve(
   RAIZ,
-  'supabase/migrations/20260917160000_148_placar_foto_de_nascimento.sql',
+  'supabase/migrations/20260919200000_163_placar_concorda_com_o_board.sql',
 );
 const SHAPE = resolve(RAIZ, 'docs/futebol-prod-deploy.sql');
 const SCRIPT = resolve(RAIZ, 'scripts/futebol-roi.mjs');
+
+/**
+ * TODAS as migrations concatenadas, na ordem em que o banco as aplica.
+ *
+ * ⚠️ ANCORAR EM NOME DE MIGRATION QUEBRA, e quebrou aqui. A primeira versão
+ * desta guarda apontava para `20260919120000_161_futebol_nascimento_visivel.sql`
+ * — o nome que o arquivo tinha ENQUANTO a branch dele existia. No merge ele foi
+ * re-carimbado para `20260919130000_162_...`, porque colidiu com a migration dos
+ * índices das premissas. A suíte local passou (o arquivo está na minha máquina)
+ * e o `validate` reprovou com ENOENT.
+ *
+ * Para a asserção das quatro cópias o nome não importa: o que importa é que a
+ * regra exista em algum lugar das migrations. Concatenar é o que sobrevive à
+ * próxima renumeração — e vai haver uma.
+ */
+const MIGRACOES = readdirSync(resolve(RAIZ, 'supabase/migrations'))
+  .filter((f) => f.endsWith('.sql'))
+  .sort()
+  .map((f) => readFileSync(resolve(RAIZ, 'supabase/migrations', f), 'utf8'))
+  .join('\n');
+
+/**
+ * O coração da regra de visibilidade, como ele tem de aparecer em TODA cópia.
+ *
+ * ⚠️ Esta constante fecha um buraco que o code review achou: as guardas
+ * afirmavam os CTEs pelo nome e pela forma, e ninguém comparava ESTE bloco. Uma
+ * mudança no `least` — inverter o `coalesce`, trocar o `>` por `>=`, perder o
+ * ramo da vigência — passava verde nas duas guardas ao mesmo tempo.
+ */
+const REGRA_DA_JANELA = [
+  'least(',
+  "coalesce(h.dbt_valid_to, 'infinity'::timestamp),",
+  'case when lv.market is null or h.edge > lv.limiar::double precision',
+  "then 'infinity'::timestamp",
+  "else (lv.vigente_desde at time zone 'UTC') end",
+  ') as fim',
+].join(' ');
+
+const semEspaco = (s: string) => s.replace(/\s+/g, ' ').trim();
 
 const FUNCAO = 'get_futebol_oportunidades_publicadas';
 
@@ -73,13 +116,26 @@ function cte(sql: string, nome: string, onde: string): string {
     .trim();
 }
 
-// Identidade e preço: a primeira versão DE TODAS. Sem data e sem nota.
+// Identidade e preço DE RESERVA: a primeira versão DE TODAS. Sem data e sem nota.
 const NASCIMENTO_ESPERADO = [
   'nascimento as ( select distinct on (h.opportunity_key)',
   'h.opportunity_key, h.fixture_id, h.market, h.outcome, h.line_value,',
   'h.best_odd, h.edge',
   'from futebol.fact_value_opportunities_hist h',
   'order by h.opportunity_key, h.dbt_valid_from asc, h.dbt_scd_id asc',
+].join(' ');
+
+// O PREÇO que vale: a primeira versão VISÍVEL (migration 163). Mesma regra da
+// 162, que fez o board e o detalhe do jogo julgarem por ela.
+const ESTREIA_ESPERADA = [
+  'estreia as ( select distinct on (j.opportunity_key)',
+  'j.opportunity_key, j.edge, j.best_odd',
+  'from janelas j',
+  'where j.dbt_valid_from < j.fim',
+  'and (j.escondido_de is null',
+  'or j.dbt_valid_from < j.escondido_de',
+  'or (j.escondido_ate is not null and j.fim > j.escondido_ate))',
+  'order by j.opportunity_key, j.dbt_valid_from asc, j.dbt_scd_id asc',
 ].join(' ');
 
 // Nota E DATA: a primeira versão da metodologia vigente.
@@ -104,19 +160,53 @@ const NOTA_ESPERADA = [
 function afirmaDirecao(sql: string, onde: string) {
   const corpo = corpoDaFuncao(sql, onde).replace(/--.*$/gm, '');
 
-  // Preço do nascimento; data e nota, da nota.
-  expect(corpo, onde).toMatch(/n\.best_odd,\s*n\.edge,/);
-  expect(corpo, onde).toMatch(/t\.dbt_valid_from,/);
-  expect(corpo, onde).toMatch(/t\.score::int,\s*t\.faixa,\s*t\.score_versao,/);
+  // ⚠️ O preço vem da ESTREIA, caindo para o nascimento quando não houve uma, e
+  // as duas colunas saem da MESMA linha.
+  //
+  // Dois `coalesce` independentes — como estava na primeira versão — devolvem a
+  // odd da estreia com a vantagem do nascimento quando a estreia tem odd e não
+  // tem vantagem. Isso é uma linha que nunca existiu em versão nenhuma.
+  expect(corpo, onde).toMatch(
+    /case when e\.opportunity_key is null then s\.best_odd\s+else e\.best_odd\s+end,/,
+  );
+  expect(corpo, onde).toMatch(
+    /case when e\.opportunity_key is null then s\.edge\s+else e\.edge\s+end,/,
+  );
+  expect(corpo, onde, ).not.toMatch(/coalesce\(e\.(best_odd|edge),/);
+
+  // ⚠️ E a vantagem da estreia CRUA, sem queda, numa coluna própria. É ela que
+  // responde "o assinante viu isto?", e é o recorte "Só a vitrine" que a lê.
+  // Sem ela, o front decidia pelo preço de reserva e mantinha na vitrine
+  // exatamente a linha que nunca esteve nela.
+  expect(corpo, onde).toMatch(/edge_publicacao double precision,/);
+  // ⚠️ Ancorado nos VIZINHOS, e não em quebra de linha. A primeira versão desta
+  // asserção procurava `\n\s*e.edge,\n`, e falhava com o SQL correto: o corpo
+  // chega aqui sem comentários, e o que sobra no lugar deles é espaço em branco
+  // que o padrão não previa. Âncora frágil reprova código certo.
+  expect(semEspaco(corpo), onde).toContain('else e.edge end, e.edge, s.score::int,');
+
+  expect(corpo, onde).toMatch(/left\s+join\s+estreia\s+e\s+on\s+e\.opportunity_key\s*=\s*s\.opportunity_key/);
+  // Data e nota continuam vindo da nota, e a identidade do nascimento.
+  expect(corpo, onde).toMatch(/s\.dbt_valid_from,/);
+  expect(corpo, onde).toMatch(/s\.score::int,\s*s\.faixa,\s*s\.score_versao,/);
   // A junção interna, que mantém fora quem nunca teve versão vigente.
   expect(corpo, onde).toMatch(/join\s+nota\s+t\s+on\s+t\.opportunity_key\s*=\s*n\.opportunity_key/);
+  // ⚠️ O recorte de período tem UM dono, e é ele que dirige o select.
+  expect(corpo, onde).toMatch(/from\s+selecionadas\s+s/);
+
+  // ⚠️ JUNÇÃO, e não `in (select ...)`. O `in` contra um CTE materializado vira
+  // semi-junção por hash e varre a tabela inteira do mesmo jeito — o comentário
+  // que dizia o contrário era falso, e o code review pegou. A junção na chave
+  // permite laço aninhado sobre o índice que já existe.
+  expect(corpo, onde).toMatch(/join selecionadas s on s\.opportunity_key = h\.opportunity_key/);
+  expect(corpo, onde).not.toMatch(/opportunity_key in \(select s\.opportunity_key/);
 }
 
 describe('a foto de nascimento do placar', () => {
-  // Aceite 1: a vantagem de nascimento passa a ser a mesma do histórico, que
-  // pega a primeira versão sem filtrar.
-  it('o preço vem da primeira versão de todas, sem filtro de metodologia', () => {
-    const nascimento = cte(readFileSync(MIGRATION, 'utf8'), 'nascimento', 'na migration 148');
+  // Aceite 1: a identidade e o preço DE RESERVA seguem na primeira versão de
+  // todas, sem filtro de metodologia.
+  it('a identidade vem da primeira versão de todas, sem filtro de metodologia', () => {
+    const nascimento = cte(readFileSync(MIGRATION, 'utf8'), 'nascimento', 'na migration 163');
 
     expect(nascimento).toBe(NASCIMENTO_ESPERADO);
     expect(nascimento).not.toContain('score_versao');
@@ -125,13 +215,22 @@ describe('a foto de nascimento do placar', () => {
   // Aceite 2: a nota continua restrita a `contexto_v1`. O filtro não era
   // bobagem — ele existe para não somar duas escalas.
   it('a nota e a data continuam vindo só da metodologia vigente', () => {
-    expect(cte(readFileSync(MIGRATION, 'utf8'), 'nota', 'na migration 148')).toBe(NOTA_ESPERADA);
+    expect(cte(readFileSync(MIGRATION, 'utf8'), 'nota', 'na migration 163')).toBe(NOTA_ESPERADA);
+  });
+
+  // ⚠️ Aceite 3, a razão desta migration: o PREÇO vem da primeira versão
+  // VISÍVEL, que é a mesma regra que a 162 deu ao board e ao detalhe do jogo.
+  // Sem isto, as duas telas dizem números diferentes sobre a mesma linha.
+  it('o preço vem da primeira versão VISÍVEL, como no board', () => {
+    expect(cte(readFileSync(MIGRATION, 'utf8'), 'estreia', 'na migration 163')).toBe(
+      ESTREIA_ESPERADA,
+    );
   });
 
   // As duas metades na MESMA linha: se alguém trocar os prefixos, a divergência
-  // volta sem que as duas afirmações acima percebam.
-  it('o select puxa preço do nascimento, e data e nota da nota', () => {
-    afirmaDirecao(readFileSync(MIGRATION, 'utf8'), 'na migration 148');
+  // volta sem que as afirmações acima percebam.
+  it('o select puxa preço da estreia, com queda, e data e nota da nota', () => {
+    afirmaDirecao(readFileSync(MIGRATION, 'utf8'), 'na migration 163');
   });
 
   // O shape file provisiona ambiente novo. Divergir dele é nascer com a versão
@@ -141,6 +240,7 @@ describe('a foto de nascimento do placar', () => {
 
     expect(cte(shape, 'nascimento', 'no shape file')).toBe(NASCIMENTO_ESPERADO);
     expect(cte(shape, 'nota', 'no shape file')).toBe(NOTA_ESPERADA);
+    expect(cte(shape, 'estreia', 'no shape file')).toBe(ESTREIA_ESPERADA);
     afirmaDirecao(shape, 'no shape file');
   });
 
@@ -155,5 +255,68 @@ describe('a foto de nascimento do placar', () => {
     expect(script).toMatch(/nota as \(\s*select distinct on \(h\.opportunity_key\)/);
     expect(script).toMatch(/h\.opportunity_key, h\.score, h\.faixa, h\.dbt_valid_from/);
     expect(script).toMatch(/join nota t on t\.opportunity_key = n\.opportunity_key/);
+  });
+
+  // ⚠️ E o script leva a ESTREIA junto, senão o terminal mede com um preço e a
+  // tela com outro — exatamente o que a ADR 0003 manda não deixar acontecer.
+  //
+  // O SQL dos dois não é idêntico de propósito: a RPC restringe a regra às
+  // chaves do período porque serve uma tela, e o script varre tudo porque já
+  // varre e roda fora do caminho de requisição. O que tem de bater é a REGRA.
+  it('o script leva a estreia junto, com a mesma regra de visibilidade', () => {
+    const script = readFileSync(SCRIPT, 'utf8');
+
+    expect(script).toMatch(/estreia as \(\s*select distinct on \(j\.opportunity_key\)/);
+    expect(script).toMatch(/j\.dbt_valid_from < j\.fim/);
+    expect(script).toMatch(/j\.escondido_ate is not null and j\.fim > j\.escondido_ate/);
+    expect(script).toMatch(/coalesce\(e\.best_odd, n\.best_odd\)/);
+  });
+});
+
+// ============================================================================
+// ⚠️ As QUATRO cópias da regra de visibilidade
+// ============================================================================
+// O code review achou o buraco: a guarda da 162 cobre as duas RPCs dela, esta
+// cobre as do placar, e NINGUÉM comparava o bloco que de fato decide. Mudar o
+// `least` passava verde nas duas ao mesmo tempo.
+//
+// A regra vive copiada de propósito — é a mesma dívida da cascata de evidências,
+// registrada em `docs/futebol-prod-deploy.md` — e o preço de aceitar a cópia é
+// manter uma guarda que alcance todas elas.
+// ============================================================================
+
+describe('a regra de visibilidade é a mesma nas quatro cópias', () => {
+  // ⚠️ As migrations entram CONCATENADAS, e não por nome de arquivo. O nome de
+  // uma migration muda no merge quando o número colide — já aconteceu duas vezes
+  // nesta área —, e guarda que depende do nome reprova código certo.
+  //
+  // Concatenadas, elas cobrem as DUAS cópias das RPCs do board e do detalhe do
+  // jogo mais a do placar. O arquivo de provisionamento e o script são
+  // conferidos à parte, porque não são migration.
+  it.each([
+    ['as migrations (board, detalhe do jogo e placar)', () => MIGRACOES],
+    ['arquivo de provisionamento', () => readFileSync(SHAPE, 'utf8')],
+    ['script de terminal', () => readFileSync(SCRIPT, 'utf8')],
+  ])('%s', (_nome, ler) => {
+    expect(semEspaco(ler())).toContain(REGRA_DA_JANELA);
+  });
+
+  it('e a regra aparece TRÊS vezes nas migrations, uma por RPC', () => {
+    // Contar é o que separa "existe em algum lugar" de "existe nas três". Sem
+    // isto, apagar a regra de uma RPC e deixá-la nas outras passava verde.
+    const ocorrencias = semEspaco(MIGRACOES).split(REGRA_DA_JANELA).length - 1;
+    expect(ocorrencias).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe('a migration 163 e o arquivo de provisionamento não se afastam', () => {
+  // O outro buraco do mesmo review: nada comparava a 162 com o provisionamento
+  // CORPO A CORPO, como a guarda da 162 já faz com as dela. O `selecionadas` —
+  // com o fuso de Brasília e o OU das duas datas — podia divergir entre os dois
+  // arquivos sem quebrar nada, e ambiente novo nasceria com outra regra.
+  it('o corpo da função é idêntico nos dois arquivos', () => {
+    expect(semEspaco(corpoDaFuncao(readFileSync(SHAPE, 'utf8'), 'no shape file'))).toBe(
+      semEspaco(corpoDaFuncao(readFileSync(MIGRATION, 'utf8'), 'na migration 163')),
+    );
   });
 });

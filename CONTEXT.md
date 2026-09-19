@@ -148,8 +148,14 @@ que é o que o assinante viu por último.
 mesma coisa: o snapshot grava o **board**, que é o universo e inclui mercado
 fora da **vitrine** e linha abaixo do limiar de valor. Uma oportunidade pode
 existir no snapshot dias antes de ter aparecido para alguém, e aí a foto de
-nascimento é a da estreia na tela, não a do registro mais antigo. Nunca tendo
-aparecido, ela não tem foto de nascimento — e é isso que a tira das telas.
+nascimento é a da estreia na tela, não a do registro mais antigo.
+
+Nunca tendo aparecido, ela **não tem** foto de nascimento — e as duas telas
+tratam isso de formas diferentes, de propósito. Nas telas do assinante a linha
+some, porque ali a pergunta é "isto é uma aposta". No **placar da metodologia**
+ela fica, com o preço do registro mais antigo, porque ali a pergunta é "como vai
+o método" — e o placar mostra o board inteiro, mercado oculto incluído, já que é
+com ele que se decide devolver um mercado à vitrine.
 _Avoid_: PIT, snapshot, primeiro registro do histórico, estado no apito, última odd
 
 **Liquidado**:

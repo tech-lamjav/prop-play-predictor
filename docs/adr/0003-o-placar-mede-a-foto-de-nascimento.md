@@ -37,6 +37,36 @@ nota respondem perguntas diferentes, e só a nota tem problema de escala.
 MESMA regra, e é por isso que ela está escrita aqui: mudar um lado sem o outro
 faz a tela e o terminal darem números diferentes de novo.
 
+## "Primeira versão" não é "primeira versão vista" (revisto em 19/09/2026, #491)
+
+A revisão acima ainda tratava "primeira versão de todas" como sinônimo de "com
+que preço isto apareceu". Não é, e o snapshot mostra por quê: ele grava o
+**board**, que é o universo do que foi publicado — mercado fora da **vitrine** e
+linha abaixo do limiar de valor incluídos. A primeira linha do snapshot pode ser
+de um trecho em que ninguém podia ver aquilo.
+
+Medido no caso que abriu a #491: a linha nasceu no snapshot em 12/09 com −2,96%,
+com o handicap ainda escondido, e só apareceu de verdade em 16/09, com −1,94% —
+que é o preço com que ela foi anunciada no Telegram.
+
+Passa a valer, nos dois lados:
+
+- **o preço** vem da primeira versão **visível**: aquela cuja vida cruza um
+  trecho em que o mercado estava na vitrine e o limiar de valor ou não vigia
+  ainda, ou a vantagem passava nele;
+- **a queda**, quando nunca houve versão visível, é para a primeira de todas, e
+  não para nulo. O placar devolve o board inteiro de propósito, e é com o mercado
+  escondido que se decide religá-lo — foi assim que o handicap voltou. Linha sem
+  preço não serve para essa decisão.
+
+A visibilidade aqui decide **qual preço**, e não **quem entra**. Quem entra
+continua sendo decidido na tela, pelo recorte "Só a vitrine".
+
+⚠️ **A odd continua sendo a recomendada, e não a do apito.** Decisão do PM em
+19/09/2026, e é o que separa esta tela do board: o board mostra o que se
+confirmou, o placar mede o que a gente recomendou, ao preço que a gente
+recomendou. Medir pela odd do apito seria medir uma aposta que ninguém fez.
+
 ## Consequências
 
 Existem duas séries legítimas e diferentes sobre os mesmos jogos, e cada tela diz

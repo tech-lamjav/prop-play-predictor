@@ -199,16 +199,25 @@ async function consultar(sql) {
 }
 
 /**
- * A foto de quando a oportunidade nasceu, de DUAS fontes (migration 148).
+ * A foto de quando a oportunidade nasceu, de TRÊS fontes.
  *
- * O preço vem da primeira versão de todas, porque "apareceu na tela" não tem
- * versão de metodologia e preço não mudou de escala. A nota e a data vêm da
- * primeira `contexto_v1`, porque a escala da NOTA mudou e somar as duas inventa
- * uma série que nunca existiu.
+ * A identidade vem da primeira versão de todas. A nota e a data vêm da primeira
+ * `contexto_v1`, porque a escala da NOTA mudou e somar as duas inventa uma série
+ * que nunca existiu.
+ *
+ * E o PREÇO vem da primeira versão VISÍVEL (migration 163), caindo para a
+ * primeira de todas quando nunca houve uma. O snapshot grava o board, que é o
+ * universo — mercado fora da vitrine e linha abaixo do limiar incluídos —, então
+ * a primeira linha dele pode ser de um trecho em que ninguém podia ver aquilo.
  *
  * ⚠️ Tem de casar com `get_futebol_oportunidades_publicadas`: o ADR 0003 diz que
  * o placar segue este script, e mudar só um lado faz a tela e o terminal darem
- * números diferentes justamente nas linhas que cruzam o cutover.
+ * números diferentes. A guarda é `placar-foto-de-nascimento.test.ts`.
+ *
+ * ⚠️ O SQL dos dois NÃO é idêntico, de propósito. A RPC restringe a regra de
+ * visibilidade às chaves do período, porque ela serve uma tela e a tabela é
+ * grande. Aqui não: o script já varre tudo e roda no terminal, fora do caminho
+ * de requisição. O que tem de bater é a REGRA, não o texto.
  */
 const SQL_BOARD = `
 with nascimento as (
@@ -224,15 +233,58 @@ nota as (
   from futebol.fact_value_opportunities_hist h
   where h.score_versao = 'contexto_v1'
   order by h.opportunity_key, h.dbt_valid_from asc, h.dbt_scd_id asc
+),
+janelas as (
+  select h.opportunity_key, h.best_odd, h.dbt_valid_from, h.dbt_scd_id,
+         (mo.oculto_desde at time zone 'UTC') as escondido_de,
+         (mo.oculto_ate   at time zone 'UTC') as escondido_ate,
+         least(
+           coalesce(h.dbt_valid_to, 'infinity'::timestamp),
+           case when lv.market is null or h.edge > lv.limiar::double precision
+                then 'infinity'::timestamp
+                else (lv.vigente_desde at time zone 'UTC') end
+         ) as fim
+  from futebol.fact_value_opportunities_hist h
+  left join public.futebol_mercados_ocultos mo on mo.market = h.market
+  left join public.futebol_limiar_valor lv on lv.market = h.market
+),
+estreia as (
+  select distinct on (j.opportunity_key)
+    j.opportunity_key, j.best_odd
+  from janelas j
+  where j.dbt_valid_from < j.fim
+    and (j.escondido_de is null
+         or j.dbt_valid_from < j.escondido_de
+         or (j.escondido_ate is not null and j.fim > j.escondido_ate))
+  order by j.opportunity_key, j.dbt_valid_from asc, j.dbt_scd_id asc
 )
 select n.opportunity_key, n.fixture_id, n.market, n.outcome, n.line_value,
-       n.best_odd, n.competition, t.score, t.faixa, t.dbt_valid_from,
+       coalesce(e.best_odd, n.best_odd) as best_odd,
+       n.competition, t.score, t.faixa, t.dbt_valid_from,
        f.status_short, f.goals_home, f.goals_away, f.kickoff_utc
 from nascimento n
 join nota t on t.opportunity_key = n.opportunity_key
 join futebol.fact_fixtures f on f.fixture_id = n.fixture_id
+left join estreia e on e.opportunity_key = n.opportunity_key
 `;
 
+/**
+ * O que foi ao Telegram, medido pela odd que foi ANUNCIADA.
+ *
+ * ⚠️ NÃO passa pela estreia, e isso é de propósito. `p.odds` é o preço que o
+ * daily escreveu na mensagem — a odd que a pessoa tinha na mão quando leu. Ela
+ * não é uma aproximação da odd da estreia: ela é a coisa que a estreia tenta
+ * reconstruir a partir do snapshot.
+ *
+ * Então são duas perguntas, e não duas respostas para a mesma:
+ *
+ *   · `--fonte=board` mede TODAS as oportunidades publicadas, pelo preço da
+ *     estreia, reconstruído do histórico;
+ *   · `--fonte=picks` mede SÓ o que foi anunciado, pelo preço anunciado.
+ *
+ * Quando as duas discordarem numa linha que foi ao Telegram, a de cima é a
+ * aproximação e esta é o registro. É por isso que ela fica fora do `coalesce`.
+ */
 const SQL_PICKS = `
 select p.fixture_id, p.market, p.outcome, p.line_value,
        p.odds as best_odd, p.score, p.faixa, p.sent_date as dbt_valid_from,

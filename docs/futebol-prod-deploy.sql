@@ -3689,7 +3689,11 @@ comment on view futebol.vw_premissas_acesas is
 -- derruba antes de recriar. A função tem um dia de vida e só o placar a chama.
 drop function if exists public.get_futebol_oportunidades_publicadas(date, date);
 
-create or replace function public.get_futebol_oportunidades_publicadas(
+-- ⚠️ DROP e CREATE, e não `create or replace`: o `returns table(...)` ganha uma
+-- coluna, e o Postgres recusa `create or replace` que altere o retorno tabular.
+drop function if exists public.get_futebol_oportunidades_publicadas(date, date);
+
+create function public.get_futebol_oportunidades_publicadas(
   p_de date,
   p_ate date
 )
@@ -3709,6 +3713,15 @@ returns table(
   line_value double precision,
   best_odd double precision,
   edge double precision,
+  -- A vantagem da ESTREIA, e NULA quando a linha nunca esteve visível. Mesmo
+  -- nome e mesmo significado de `get_futebol_value_board`, `..._value_history` e
+  -- `..._fixture_value` (migrations 146 e 162): nulo aqui é resposta, e quer
+  -- dizer "isto não chegou a aparecer para ninguém".
+  --
+  -- É coluna à parte, e não o próprio `edge`, porque as duas perguntas do painel
+  -- são diferentes: o recorte "Só a vitrine" pergunta o que o assinante VIU, e é
+  -- esta; o filtro de valor mínimo pergunta pelo preço EXIBIDO, e é o `edge`.
+  edge_publicacao double precision,
   score integer,
   faixa text,
   score_versao text,
@@ -3736,8 +3749,9 @@ begin
 
   return query
   with nascimento as (
-    -- SEM filtro de versão: identidade e PREÇO. "Apareceu na tela" não tem
-    -- versão de metodologia, e preço não mudou de escala (migration 148).
+    -- IDENTIDADE, e o preço de reserva. A primeira versão de todas, sem filtro
+    -- de versão: "apareceu na tela" não tem versão de metodologia, e preço não
+    -- mudou de escala (migration 148).
     select distinct on (h.opportunity_key)
       h.opportunity_key, h.fixture_id, h.market, h.outcome, h.line_value,
       h.best_odd, h.edge
@@ -3757,55 +3771,142 @@ begin
     from futebol.fact_value_opportunities_hist h
     where h.score_versao = 'contexto_v1'
     order by h.opportunity_key, h.dbt_valid_from asc, h.dbt_scd_id asc
+  ),
+  selecionadas as (
+    -- O RECORTE DE PERÍODO, em um lugar só, e a relação que dirige o select.
+    --
+    -- O dia é o de Brasília nos dois eixos, como em toda data que o produto
+    -- mostra. Em UTC, jogo das 21h de sábado cairia no domingo.
+    --
+    -- Junção INTERNA com a nota: quem nunca teve versão `contexto_v1` continua
+    -- fora, como antes da 148. A amostra não muda.
+    select n.opportunity_key, n.fixture_id, n.market, n.outcome, n.line_value,
+           n.best_odd, n.edge,
+           t.score, t.faixa, t.score_versao,
+           t.pts_premissas, t.penalidades, t.premissas_sem_dado,
+           t.modelo_api_concorda, t.linha_sharp_confirma,
+           t.pen_odd_outlier, t.pen_poucas_casas, t.pen_odd_longshot, t.pen_odd_juice,
+           t.dbt_valid_from,
+           f.competition, f.home_team_name, f.away_team_name,
+           f.kickoff_utc, f.status_short, f.goals_home, f.goals_away
+    from nascimento n
+    join nota t on t.opportunity_key = n.opportunity_key
+    join futebol.fact_fixtures f on f.fixture_id = n.fixture_id
+    where (f.kickoff_utc at time zone 'UTC' at time zone 'America/Sao_Paulo')::date
+            between p_de and p_ate
+       or (t.dbt_valid_from at time zone 'UTC' at time zone 'America/Sao_Paulo')::date
+            between p_de and p_ate
+  ),
+  janelas as (
+    -- A JANELA EM QUE CADA VERSÃO PÔDE SER VISTA. Mesma regra da 162, verbatim.
+    --
+    -- Uma versão do snapshot não é um instante: ela vale de `dbt_valid_from` até
+    -- `dbt_valid_to`. Perguntar se ela estava visível NO NASCIMENTO é a pergunta
+    -- errada — a versão do Brentford +0,5 nasceu em 15/09 com o handicap ainda
+    -- fora da vitrine, e ficou viva até 16/09 06h04, visível E acima do limiar
+    -- desde a volta do mercado, que é quando o assinante a viu.
+    --
+    -- `fim` é o fim da vida da versão, encurtado pela vigência do limiar quando
+    -- a vantagem NÃO passa nele: antes da vigência não havia limiar para
+    -- esconder coisa nenhuma.
+    --
+    -- ⚠️ JUNÇÃO, e não `in (select ...)`.
+    --
+    -- A primeira versão desta migration usava `in`, com um comentário afirmando
+    -- que sem ele o CTE varreria o snapshot inteiro. O comentário era FALSO, e o
+    -- code review pegou: `selecionadas` é referenciado duas vezes, então o
+    -- Postgres materializa o CTE, e o `in` contra um resultado materializado
+    -- vira semi-junção por hash — que varre `fact_value_opportunities_hist`
+    -- inteira do mesmo jeito.
+    --
+    -- A junção explícita na chave permite laço aninhado sobre
+    -- `fact_value_opportunities_hist_opportunity_key_idx`, que já existe.
+    --
+    -- ⚠️ E o mutante que "provava" a restrição só provava que havia texto. Uma
+    -- guarda de desempenho que confere string não guarda desempenho nenhum; o
+    -- que guarda é o `explain` no cabeçalho, e ele precisa ser rodado.
+    select h.opportunity_key, h.edge, h.best_odd, h.dbt_valid_from, h.dbt_scd_id,
+           (mo.oculto_desde at time zone 'UTC') as escondido_de,
+           (mo.oculto_ate   at time zone 'UTC') as escondido_ate,
+           least(
+             coalesce(h.dbt_valid_to, 'infinity'::timestamp),
+             case when lv.market is null or h.edge > lv.limiar::double precision
+                  then 'infinity'::timestamp
+                  else (lv.vigente_desde at time zone 'UTC') end
+           ) as fim
+    from futebol.fact_value_opportunities_hist h
+    join selecionadas s on s.opportunity_key = h.opportunity_key
+    left join public.futebol_mercados_ocultos mo on mo.market = h.market
+    left join public.futebol_limiar_valor lv on lv.market = h.market
+  ),
+  estreia as (
+    -- A ESTREIA: a primeira versão visível. Pode não existir, e aí o `left join`
+    -- lá embaixo devolve nulo e o preço cai para o da primeira de todas.
+    select distinct on (j.opportunity_key)
+      j.opportunity_key, j.edge, j.best_odd
+    from janelas j
+    -- A janela não pode ser vazia...
+    where j.dbt_valid_from < j.fim
+      -- ...e precisa cruzar algum trecho em que o mercado estava na vitrine: ou
+      -- ela começa antes de o mercado sair, ou ela ainda estava viva quando ele
+      -- voltou. Sem linha na vitrine, o mercado nunca saiu.
+      and (j.escondido_de is null
+           or j.dbt_valid_from < j.escondido_de
+           or (j.escondido_ate is not null and j.fim > j.escondido_ate))
+    order by j.opportunity_key, j.dbt_valid_from asc, j.dbt_scd_id asc
   )
   select
-    n.opportunity_key,
-    n.fixture_id,
-    f.competition,
-    f.home_team_name,
-    f.away_team_name,
-    f.kickoff_utc,
-    f.status_short,
-    f.goals_home::int,
-    f.goals_away::int,
-    t.dbt_valid_from,
-    n.market,
-    n.outcome,
-    n.line_value,
-    n.best_odd,
-    n.edge,
-    t.score::int,
-    t.faixa,
-    t.score_versao,
-    t.pts_premissas::int,
-    t.penalidades::int,
-    t.premissas_sem_dado::int,
-    t.modelo_api_concorda,
-    t.linha_sharp_confirma,
-    t.pen_odd_outlier,
-    t.pen_poucas_casas,
-    t.pen_odd_longshot,
-    t.pen_odd_juice,
+    s.opportunity_key,
+    s.fixture_id,
+    s.competition,
+    s.home_team_name,
+    s.away_team_name,
+    s.kickoff_utc,
+    s.status_short,
+    s.goals_home::int,
+    s.goals_away::int,
+    s.dbt_valid_from,
+    s.market,
+    s.outcome,
+    s.line_value,
+    -- O PREÇO DA ESTREIA, caindo para o da primeira de todas quando a linha
+    -- nunca esteve visível. É esta queda que faz o placar concordar com o board
+    -- sem que nenhuma linha suma do painel.
+    --
+    -- ⚠️ DA MESMA LINHA, e não dois `coalesce` independentes. Com dois, uma
+    -- estreia com odd gravada e vantagem nula devolvia a odd da estreia com a
+    -- vantagem do nascimento — uma linha que nunca existiu em versão nenhuma.
+    case when e.opportunity_key is null then s.best_odd else e.best_odd end,
+    case when e.opportunity_key is null then s.edge     else e.edge     end,
+    -- E a vantagem da estreia crua, sem queda: é ela que responde "o assinante
+    -- viu isto?". Nula quando não houve estreia, e nula também quando a estreia
+    -- não tem vantagem gravada — linha sem preço não passa no corte, que é a
+    -- mesma regra das outras três telas.
+    e.edge,
+    s.score::int,
+    s.faixa,
+    s.score_versao,
+    s.pts_premissas::int,
+    s.penalidades::int,
+    s.premissas_sem_dado::int,
+    s.modelo_api_concorda,
+    s.linha_sharp_confirma,
+    s.pen_odd_outlier,
+    s.pen_poucas_casas,
+    s.pen_odd_longshot,
+    s.pen_odd_juice,
     -- Left join, e não join: linha sem premissa casada chega com nulo em vez de
     -- desaparecer da conta. O casamento é 100% hoje, e o dia em que deixar de
     -- ser eu quero ver o buraco no denominador, não a linha sumindo.
     pa.acesas
-  from nascimento n
-  -- Junção INTERNA: quem nunca teve versão `contexto_v1` continua fora.
-  join nota t on t.opportunity_key = n.opportunity_key
-  join futebol.fact_fixtures f on f.fixture_id = n.fixture_id
+  from selecionadas s
+  left join estreia e on e.opportunity_key = s.opportunity_key
   left join futebol.vw_premissas_acesas pa
-    on pa.fixture_id = n.fixture_id
-   and pa.market = n.market
-   and pa.outcome = n.outcome
-   and pa.line_value is not distinct from n.line_value
-  -- O dia é o de Brasília nos dois eixos, como em toda data que o produto
-  -- mostra. Em UTC, jogo das 21h de sábado cairia no domingo.
-  where (f.kickoff_utc at time zone 'UTC' at time zone 'America/Sao_Paulo')::date
-          between p_de and p_ate
-     or (t.dbt_valid_from at time zone 'UTC' at time zone 'America/Sao_Paulo')::date
-          between p_de and p_ate
-  order by f.kickoff_utc desc, t.score desc;
+    on pa.fixture_id = s.fixture_id
+   and pa.market = s.market
+   and pa.outcome = s.outcome
+   and pa.line_value is not distinct from s.line_value
+  order by s.kickoff_utc desc, s.score desc;
 end;
 $function$;
 
