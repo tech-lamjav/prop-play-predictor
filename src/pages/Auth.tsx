@@ -187,7 +187,13 @@ const Auth = () => {
           whatsapp_number: whatsappNumber,
         };
 
-        const { error: userError } = await supabase.from('users').insert(userData);
+        // , e não : desde a migration 164 um gatilho cria a
+        // linha assim que a conta nasce, então quando chegamos aqui ela já
+        // existe e um insert falharia com chave duplicada. O gatilho grava só
+        // id e email; quem escreve nome, WhatsApp e indicação é este passo.
+        const { error: userError } = await supabase
+          .from('users')
+          .upsert(userData, { onConflict: 'id' });
 
         if (userError) {
           console.error('Error creating user record:', userError);

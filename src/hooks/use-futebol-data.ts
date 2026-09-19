@@ -121,8 +121,9 @@ export function useFutebolFixtureDays(from: string | null | undefined, to: strin
  * analítico que existe mesmo sem odd coletada, então não depende de preço.
  */
 export function useFutebolFixturePremissas(fixtureId: number | undefined) {
+  const quem = useChaveDoUsuario();
   return useQuery<FutebolFixturePremissas[]>({
-    queryKey: ['futebol', 'fixture-premissas', fixtureId],
+    queryKey: ['futebol', 'fixture-premissas', fixtureId, quem],
     queryFn: () => futebolDataService.getFixturePremissas(fixtureId as number),
     enabled: !!fixtureId,
     staleTime: 10 * 60 * 1000,
@@ -133,8 +134,9 @@ export function useFutebolFixturePremissas(fixtureId: number | undefined) {
 
 /** Desde quando cada saída está publicada, por oportunidade (issue #300). */
 export function useFutebolFixtureDisponibilidade(fixtureId: number | undefined) {
+  const quem = useChaveDoUsuario();
   return useQuery<FutebolFixtureDisponibilidade[]>({
-    queryKey: ['futebol', 'fixture-disponivel-desde', fixtureId],
+    queryKey: ['futebol', 'fixture-disponivel-desde', fixtureId, quem],
     queryFn: () => futebolDataService.getFixtureDisponibilidade(fixtureId as number),
     enabled: !!fixtureId,
     staleTime: 5 * 60 * 1000,
@@ -145,8 +147,9 @@ export function useFutebolFixtureDisponibilidade(fixtureId: number | undefined) 
 
 /** Motivos já agrupados pelo backend para qualquer saída cotada da Bancada. */
 export function useFutebolFixtureReasonContract(fixtureId: number | undefined) {
+  const quem = useChaveDoUsuario();
   return useQuery<FutebolFixtureReasonContractRow[]>({
-    queryKey: ['futebol', 'fixture-reason-contract', fixtureId],
+    queryKey: ['futebol', 'fixture-reason-contract', fixtureId, quem],
     queryFn: () => futebolDataService.getFixtureReasonContract(fixtureId as number),
     enabled: !!fixtureId,
     staleTime: 5 * 60 * 1000,
@@ -169,8 +172,9 @@ export function useFutebolFixtureNumeros(fixtureId: number | undefined) {
 
 /** O valor que cada premissa comparou, direto do mart (#464). Vazio é normal. */
 export function useFutebolFixtureInsumos(fixtureId: number | undefined) {
+  const quem = useChaveDoUsuario();
   return useQuery<FutebolFixtureInsumo[]>({
-    queryKey: ['futebol', 'fixture-insumos', fixtureId],
+    queryKey: ['futebol', 'fixture-insumos', fixtureId, quem],
     queryFn: () => futebolDataService.getFixtureInsumos(fixtureId as number),
     enabled: !!fixtureId,
     staleTime: 10 * 60 * 1000,
@@ -405,8 +409,9 @@ export function useFutebolValueHistory(dias = HISTORY_WINDOW_DAYS) {
  * quais dias tiveram alerta, inclusive os que o mart já não guarda. Ver 091.
  */
 export function useFutebolAlertedPicks() {
+  const quem = useChaveDoUsuario();
   return useQuery<FutebolAlertedPick[]>({
-    queryKey: ['futebol', 'alerted-picks'],
+    queryKey: ['futebol', 'alerted-picks', quem],
     queryFn: () => futebolDataService.getAlertedPicks(),
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
