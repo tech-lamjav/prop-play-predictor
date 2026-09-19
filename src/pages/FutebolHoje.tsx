@@ -5,6 +5,7 @@ import { rotuloEmTitulo } from '@/utils/futebol-estado-da-premissa';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Seo } from '@/components/Seo';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useFaixaDeAcesso } from '@/hooks/use-faixa-de-acesso';
 import { useFutebolFixturesMulti, useFutebolValueBoard, useFutebolValueHistory, useFutebolAlertedPicks, useFutebolFixtureReasonContract, useFutebolAccess, useVitrine, useFutebolCompetitions, useJogosComPlacarFresco } from '@/hooks/use-futebol-data';
 import FutebolDayStepper from '@/components/FutebolDayStepper';
 import { CartaoBloqueado, FutebolAccessBanner, ValorBloqueado } from '@/components/futebol/FutebolGate';
@@ -29,7 +30,7 @@ import { useDemoFutebolBoard } from '@/components/onboarding/demo/use-demo-futeb
 // Aritmética de fuso vem de um lugar só. As cópias locais que existiam aqui
 // eram idênticas às de futebol-datas.ts, e duas cópias da mesma conta de fuso é
 // como se erra fuso — foi por isso que Oportunidades removeu as dela no PR #259.
-import { SAO_PAULO_TZ, parseUtc, brtDateStr, brtDayOf, fmtTime, isFinished, addDays } from '@/utils/futebol-datas';
+import { formatadorDeData, SAO_PAULO_TZ, parseUtc, brtDateStr, brtDayOf, fmtTime, isFinished, addDays } from '@/utils/futebol-datas';
 import { mergeBoardAndHistory } from '@/utils/futebol-history';
 import { selecionarJogosDaGrade } from '@/utils/futebol-grade-de-jogos';
 import { mercadoEstaOculto } from '@/utils/futebol-mercados-ocultos';
@@ -46,11 +47,11 @@ const DAY_WINDOW = 8;
 function fmtDayTime(raw: string | null): string {
   const d = parseUtc(raw);
   if (!d) return '—';
-  const s = new Intl.DateTimeFormat('pt-BR', { timeZone: SAO_PAULO_TZ, weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(d);
+  const s = formatadorDeData('pt-BR', { timeZone: SAO_PAULO_TZ, weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(d);
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 function fmtTodayHeader(d: Date): string {
-  const s = new Intl.DateTimeFormat('pt-BR', { timeZone: SAO_PAULO_TZ, weekday: 'long', day: '2-digit', month: 'long' }).format(d);
+  const s = formatadorDeData('pt-BR', { timeZone: SAO_PAULO_TZ, weekday: 'long', day: '2-digit', month: 'long' }).format(d);
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 function crestInitials(name: string): string {
@@ -390,7 +391,16 @@ export default function FutebolHoje() {
   );
   const { data: allGames, isLoading: lFix } = useFutebolFixturesMulti(fixtureScopes);
   const { data: boardRows, isLoading: l3 } = useFutebolValueBoard();
-  const { data: histRows, isLoading: lHist } = useFutebolValueHistory();
+  // UM dia, não os 30 do painel. A régua desta tela só oferece hoje e os dias
+  // POR VIR (ver o memo `days` abaixo), e a RPC do histórico corta em
+  // `kickoff < now()` no banco: dia futuro não tem foto do apito, e dia passado
+  // a tela não mostra. Dos 30 dias que ela pedia, portanto, usava 1 — e os
+  // outros 29 eram 1,5 MB baixados para serem descartados, numa consulta que
+  // oscilava entre 0,9 e 4,4 segundos e às vezes estourava em HTTP 500.
+  //
+  // O painel de Oportunidades continua pedindo 30, e ali é legítimo: a régua
+  // dele navega o passado de verdade.
+  const { data: histRows, isLoading: lHist } = useFutebolValueHistory(1);
   const { data: alertedRaw, isLoading: lReg } = useFutebolAlertedPicks();
   const { vitrine, ocultos, limiares, isLoading: lVitrine } = useVitrine();
   // O acesso ENTRA no gate: enquanto ele não chega, `locked` é verdadeiro e o
@@ -406,6 +416,8 @@ export default function FutebolHoje() {
   // REAL, e não das linhas da própria demo — senão o tour anuncia a régua que
   // ele mesmo inventou, que era o defeito.
   const locked = isDemo ? false : !access?.unlocked;
+
+  const acessoDaFaixa = useFaixaDeAcesso(access);
 
   // O dia mora na URL: os atalhos daqui levam o contexto junto, e quem estava
   // vendo amanhã para de cair em hoje ao clicar em "Ver todas".
@@ -629,10 +641,22 @@ export default function FutebolHoje() {
           significa trocar de produto, não desfazer o último passo. */}
       <AnalyticsNav variant="rebrand" showBack backTo="/inicio" />
       <OnboardingTour tourId={FUTEBOL_TOUR_ID} steps={futebolSteps} run={futebolTour.run} onFinish={futebolTour.finish} />
-      {!loading && days.length > 0 && (
+      {/* A barra de datas era o MAIOR empurrão da tela: medimos 0,080 de CLS
+          nela sozinha. Ela nascia só depois das consultas, no alto de tudo, e
+          descia a página inteira de uma vez — por cima de quem já estava
+          lendo. É assim que se ganha um clique errado.
+
+          Agora a faixa existe desde a primeira pintura com a altura final
+          reservada: os 36px das pílulas (h-9) mais o respiro de 12px em cima e
+          embaixo (py-3). O conteúdo real entra dentro dela sem mover nada. */}
+      {(loading || days.length > 0) && (
         <div data-tour="futebol-datas" className="bg-white border-b border-line">
           <div className="max-w-[1480px] w-full mx-auto px-4 md:px-6 py-3">
-            <FutebolDayStepper days={days} value={selectedDay} onChange={setDay} counts={gamesByDay} />
+            {loading ? (
+              <Skeleton className="h-9 w-full max-w-[420px] rounded-full bg-canvas-2" />
+            ) : (
+              <FutebolDayStepper days={days} value={selectedDay} onChange={setDay} counts={gamesByDay} />
+            )}
           </div>
         </div>
       )}
@@ -644,7 +668,13 @@ export default function FutebolHoje() {
           <div className="md:col-span-5">
             <div className={`${LABEL} flex items-center gap-2`}>{isToday ? 'Hoje no futebol' : 'No futebol'}{isDemo && <DemoBadge />}</div>
             <h1 data-tour="futebol-hero" className="font-display text-3xl md:text-[40px] font-extrabold tracking-tight leading-none text-ink mt-1">{fmtTodayHeader(selectedDate)}</h1>
-            <p className="text-sm mt-2.5 text-ink-2">
+            {/* Duas linhas reservadas no celular. A frase começa em "Sem jogos
+                nesse dia" (uma linha) e vira "6 jogos · 4 oportunidades · 2 de
+                faixa Alta" (duas), e a diferença descia o raio-x e tudo o que
+                vem abaixo dele — dois empurrões de 0,023 por carregamento, um
+                para cada passada dos dados. No desktop a coluna é larga e a
+                frase nunca quebra, então lá não há altura a reservar. */}
+            <p className="text-sm mt-2.5 text-ink-2 min-h-10 md:min-h-0">
               {gameList.length > 0 ? (
                 <>
                   <span className="font-semibold text-ink">{gameList.length} jogo{gameList.length === 1 ? '' : 's'}</span>
@@ -683,7 +713,13 @@ export default function FutebolHoje() {
           </div>
         </div>
 
-        {!loading && <FutebolAccessBanner access={access} />}
+        {/* O SEGUNDO maior empurrão da tela: 0,060 de CLS. A faixa nascia
+            depois de TODAS as consultas e jogava o raio-x, o destaque e os
+            cartões para baixo, em cima de quem já estava lendo.
+
+            Quem decide o espaço dela agora é o gancho, na primeira pintura —
+            a regra e o porquê estão em use-faixa-de-acesso.ts. */}
+        <FutebolAccessBanner access={acessoDaFaixa} />
 
         {/* Hero / sem valor */}
         {loading ? (

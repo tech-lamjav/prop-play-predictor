@@ -2,7 +2,6 @@ import { createRoot } from 'react-dom/client'
 import { HelmetProvider } from 'react-helmet-async'
 import App from './App.tsx'
 import './index.css'
-import './lib/i18n'
 // Fonte do rebrand do Bolão — Inter Variable (UI + display).
 // Display usa peso alto + tracking apertado em vez de serif, mantendo coesão
 // com a identidade "data/profissional" do Smart Betting.

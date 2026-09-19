@@ -1,30 +1,31 @@
 import { useRef, useLayoutEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { formatadorDeData } from '@/utils/futebol-datas';
 
 const TZ = 'America/Sao_Paulo';
 
 function todayStr(): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  return formatadorDeData('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 }
 
 /** Rótulo amigável pra um dia (YYYY-MM-DD, BRT): Hoje / Amanhã / "Qui, 26/06". */
 function dayLabel(s: string): string {
   const t = todayStr();
   const base = new Date(`${t}T12:00:00Z`);
-  const tomorrow = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(base.getTime() + 864e5));
+  const tomorrow = formatadorDeData('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(base.getTime() + 864e5));
   if (s === t) return 'Hoje';
   if (s === tomorrow) return 'Amanhã';
   const d = new Date(`${s}T12:00:00Z`);
-  const str = new Intl.DateTimeFormat('pt-BR', { timeZone: TZ, weekday: 'short', day: '2-digit', month: '2-digit' }).format(d).replace('.', '');
+  const str = formatadorDeData('pt-BR', { timeZone: TZ, weekday: 'short', day: '2-digit', month: '2-digit' }).format(d).replace('.', '');
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
 /** Dia da semana curto (ter, qua…), número e mês curto, a partir de YYYY-MM-DD (BRT). */
 function dayParts(s: string): { wd: string; d: string; mon: string } {
   const date = new Date(`${s}T12:00:00Z`);
-  const wd = new Intl.DateTimeFormat('pt-BR', { timeZone: TZ, weekday: 'short' }).format(date).replace('.', '');
-  const d = new Intl.DateTimeFormat('pt-BR', { timeZone: TZ, day: '2-digit' }).format(date);
-  const mon = new Intl.DateTimeFormat('pt-BR', { timeZone: TZ, month: 'short' }).format(date).replace('.', '');
+  const wd = formatadorDeData('pt-BR', { timeZone: TZ, weekday: 'short' }).format(date).replace('.', '');
+  const d = formatadorDeData('pt-BR', { timeZone: TZ, day: '2-digit' }).format(date);
+  const mon = formatadorDeData('pt-BR', { timeZone: TZ, month: 'short' }).format(date).replace('.', '');
   return { wd, d, mon };
 }
 

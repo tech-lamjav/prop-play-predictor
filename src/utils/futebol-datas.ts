@@ -14,6 +14,36 @@
 export const SAO_PAULO_TZ = 'America/Sao_Paulo';
 
 /**
+ * Formatador de data reaproveitado, guardado pela combinação de idioma e opções.
+ *
+ * ⚠️ NUNCA escreva `new Intl.DateTimeFormat(...)` dentro de uma função que o
+ * módulo chama em laço — use esta. Construir um formatador custa ~216µs; reusá-lo
+ * custa ~3µs. São 66 vezes, medido neste projeto em 19/09/2026, num desktop —
+ * no celular a distância é maior.
+ *
+ * Não é detalhe de microssegundo. `brtDateStr` é chamada uma vez por jogo e uma
+ * vez por oportunidade, em vários laços a cada render: num sábado cheio, trocar
+ * de dia na régua travava a tela por 1,4 segundo, quase tudo gasto construindo
+ * milhares de vezes o mesmo formatador. É de onde vinha a interação de 2,8s que
+ * o PostHog media na home.
+ *
+ * O mapa não cresce sem limite: as opções vêm de literais no código, não de
+ * dado do usuário, e hoje são meia dúzia de combinações no módulo inteiro.
+ */
+const formatadores = new Map<string, Intl.DateTimeFormat>();
+export function formatadorDeData(
+  locale: string,
+  opcoes: Intl.DateTimeFormatOptions,
+): Intl.DateTimeFormat {
+  const chave = `${locale}|${JSON.stringify(opcoes)}`;
+  const guardado = formatadores.get(chave);
+  if (guardado) return guardado;
+  const novo = new Intl.DateTimeFormat(locale, opcoes);
+  formatadores.set(chave, novo);
+  return novo;
+}
+
+/**
  * Interpreta string do banco como UTC. Aceita data pura (`2026-08-01`), timestamp
  * sem fuso (`2026-08-01T00:30:00`), que é o formato de `kickoff_utc`, e a forma
  * crua com ESPAÇO no lugar do `T` (`2026-08-01 00:30:00`). Sem o `Z` forçado, o
@@ -36,15 +66,19 @@ export function parseUtc(raw: string | null | undefined): Date | null {
   return isNaN(d.getTime()) ? null : d;
 }
 
+// A função mais chamada do arquivo, e por isso a única com formatador próprio:
+// aqui nem o `JSON.stringify` da chave do mapa se justifica.
+const DIA_BRT = new Intl.DateTimeFormat('en-CA', {
+  // en-CA porque formata como YYYY-MM-DD, que é ordenável como string.
+  timeZone: SAO_PAULO_TZ,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+
 /** Dia do jogo em BRT no formato `YYYY-MM-DD`. Espelha `public.futebol_dia_brt`. */
 export function brtDateStr(d: Date): string {
-  // en-CA porque formata como YYYY-MM-DD, que é ordenável como string.
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: SAO_PAULO_TZ,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(d);
+  return DIA_BRT.format(d);
 }
 
 /** Dia BRT direto do kickoff cru do banco. Atalho do par parseUtc + brtDateStr. */
@@ -85,7 +119,7 @@ export function diasEntre(de: string, ate: string): number {
 export function fmtTime(raw: string | null | undefined): string {
   const d = parseUtc(raw);
   if (!d) return '';
-  return new Intl.DateTimeFormat('pt-BR', {
+  return formatadorDeData('pt-BR', {
     timeZone: SAO_PAULO_TZ,
     hour: '2-digit',
     minute: '2-digit',
@@ -102,7 +136,7 @@ export function fmtDayHeader(dayKey: string | null | undefined): string {
   // BRT (UTC−3), então o rótulo não escorrega pro dia vizinho.
   const d = new Date(`${dayKey}T12:00:00Z`);
   if (isNaN(d.getTime())) return '—';
-  const s = new Intl.DateTimeFormat('pt-BR', {
+  const s = formatadorDeData('pt-BR', {
     timeZone: SAO_PAULO_TZ,
     weekday: 'long',
     day: '2-digit',
@@ -122,7 +156,7 @@ export function fmtDayShort(dayKey: string | null | undefined, comAno = false): 
   if (!dayKey) return '—';
   const d = new Date(`${dayKey}T12:00:00Z`);
   if (isNaN(d.getTime())) return '—';
-  return new Intl.DateTimeFormat('pt-BR', {
+  return formatadorDeData('pt-BR', {
     timeZone: SAO_PAULO_TZ,
     day: '2-digit',
     month: 'short',
@@ -140,10 +174,10 @@ export function yearOf(dayKey: string | null | undefined): string | null {
 /** Rótulo curto pra régua de datas: `{ weekday: 'qua', day: '29/07' }`. */
 export function fmtDayChip(dayKey: string): { weekday: string; day: string } {
   const d = new Date(`${dayKey}T12:00:00Z`);
-  const weekday = new Intl.DateTimeFormat('pt-BR', { timeZone: SAO_PAULO_TZ, weekday: 'short' })
+  const weekday = formatadorDeData('pt-BR', { timeZone: SAO_PAULO_TZ, weekday: 'short' })
     .format(d)
     .replace('.', '');
-  const day = new Intl.DateTimeFormat('pt-BR', {
+  const day = formatadorDeData('pt-BR', {
     timeZone: SAO_PAULO_TZ,
     day: '2-digit',
     month: '2-digit',

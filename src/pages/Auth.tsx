@@ -13,6 +13,10 @@ import { toast } from "@/hooks/use-toast";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { OAUTH_REDIRECT_KEY, OAUTH_REFERRAL_KEY } from "@/lib/oauth-state";
 import { resolveHomePath } from "@/lib/post-login";
+// Inicializa o i18next. Ele era iniciado no main.tsx, e assim os 77 kB da
+// biblioteca viajavam no pacote de entrada de TODA pagina para servir estas
+// tres telas. Aqui ele carrega junto com quem traduz, e mais ninguem paga.
+import '@/lib/i18n';
 
 // lucide não tem ícones de marca; SVG oficial multicolor do Google inline.
 const GoogleIcon = () => (

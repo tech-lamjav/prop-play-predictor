@@ -1,4 +1,4 @@
-import type { FutebolValueBoardRow } from '@/services/futebol-data.service';
+import type { FutebolAccess, FutebolValueBoardRow } from '@/services/futebol-data.service';
 
 /**
  * A linha veio SEM o conteúdo de valor, porque quem pediu não tem acesso.
@@ -16,4 +16,21 @@ import type { FutebolValueBoardRow } from '@/services/futebol-data.service';
  */
 export function linhaBloqueada(o: Pick<FutebolValueBoardRow, 'market'> | null | undefined): boolean {
   return o != null && o.market == null;
+}
+
+/**
+ * A faixa de acesso aparece para este acesso?
+ *
+ * Durante o teste grátis (estado saudável) NÃO mostramos faixa — o chip do
+ * cabeçalho cuida disso. A faixa forte fica só pra expirado/deslogado, que é
+ * hora de agir.
+ *
+ * Mora aqui, e não dentro do componente, porque o `useFaixaDeAcesso` precisa da
+ * MESMA resposta para decidir se reserva o espaço dela antes de o banco
+ * responder. Com duas cópias da regra, a memória do gancho passaria a guardar
+ * uma decisão que a tela não toma mais no dia em que uma das duas mudasse.
+ */
+export function faixaDeAcessoAparece(access?: FutebolAccess | null): access is FutebolAccess {
+  if (!access) return false;
+  return access.state !== 'subscribed' && access.state !== 'trial';
 }

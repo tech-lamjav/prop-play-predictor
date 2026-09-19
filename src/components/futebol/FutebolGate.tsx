@@ -3,6 +3,7 @@ import { Lock, Sparkles } from 'lucide-react';
 import { useFutebolAccess } from '@/hooks/use-futebol-data';
 import type { FutebolAccess } from '@/services/futebol-data.service';
 import { tempoDeTeste } from './tempo-de-teste';
+import { faixaDeAcessoAparece } from '@/utils/futebol-bloqueio';
 
 /**
  * Reverse trial do Futebol (48 horas, sem cartão).
@@ -139,9 +140,7 @@ export function FutebolTrialChip() {
  */
 export function FutebolAccessBanner({ access, className = '' }: { access?: FutebolAccess; className?: string }) {
   const navigate = useNavigate();
-  // Durante o trial (estado saudável) NÃO mostramos faixa — o chip do cabeçalho
-  // cuida disso. A faixa forte fica só pra expirado/deslogado (hora de agir).
-  if (!access || access.state === 'subscribed' || access.state === 'trial') return null;
+  if (!faixaDeAcessoAparece(access)) return null;
 
   const expired = access.state === 'expired';
   return (

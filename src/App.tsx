@@ -8,10 +8,6 @@ import { ReferralProvider } from "@/components/ReferralProvider";
 import { BrowserRouter, Routes, Route, Outlet, Navigate } from "react-router-dom";
 import { BolaoLayout } from "@/components/bolao/BolaoLayout";
 import LandingEcossistema from "./pages/LandingEcossistema";
-import Landing from "./pages/Landing";
-import Auth from "./pages/Auth";
-import Picks from "./pages/Picks";
-import NBADashboard from "./pages/NBADashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PremiumRoute from "./components/PremiumRoute";
 import { PortaoDoSocio } from "./components/socios/PortaoDoSocio";
@@ -30,6 +26,25 @@ import { lazyWithRetry } from "./lib/lazy-with-retry";
 // cacheada tenta carregar chunk inexistente -> "Failed to fetch dynamically
 // imported module" -> tela branca). Helper força reload uma vez por sessão
 // pra pegar build novo.
+//
+// ⚠️ Antes de tornar uma página ansiosa de novo, saiba o que ela arrasta junto.
+// Cada import estático aqui em cima entra no PACOTE DE ENTRADA — o arquivo que
+// toda página baixa e interpreta antes do primeiro pixel, inclusive as que não
+// usam nada daquilo.
+//
+// Foi assim que o pacote chegou a 1,8 MB: o NBADashboard puxava o recharts pela
+// GameChart, o Picks puxava o vaul pelo ui/drawer, e o Futebol no celular
+// pagava por gráficos e gavetas que nunca desenha. As quatro abaixo são rotas
+// de detalhe ou de entrada fria — quem chega nelas pode esperar o pedaço
+// próprio, e todo o resto do produto deixa de pagar por elas.
+//
+// A landing do ecossistema ("/") continua ansiosa de propósito: é a porta de
+// entrada mais comum e mais fria, a única onde uma ida extra ao servidor
+// apareceria. A Auth ainda leva o i18next junto, que serve três telas ao todo.
+const Landing = lazyWithRetry(() => import("./pages/Landing"));
+const Auth = lazyWithRetry(() => import("./pages/Auth"));
+const Picks = lazyWithRetry(() => import("./pages/Picks"));
+const NBADashboard = lazyWithRetry(() => import("./pages/NBADashboard"));
 const Betinho = lazyWithRetry(() => import("./pages/Betinho"));
 const Onboarding = lazyWithRetry(() => import("./pages/Onboarding"));
 const Inicio = lazyWithRetry(() => import("./pages/Inicio"));

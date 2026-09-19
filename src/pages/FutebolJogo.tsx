@@ -23,7 +23,7 @@ import {
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
 import { escalacaoExibida, rotuloEscalacao } from '@/utils/futebol-escalacao';
 import { escalacaoDoTime, ultimoJogoDoTime } from '@/utils/futebol-escalacao-referencia';
-import { isFinished, isLive, brtDayOf, fmtDayShort } from '@/utils/futebol-datas';
+import { formatadorDeData, isFinished, isLive, brtDayOf, fmtDayShort } from '@/utils/futebol-datas';
 import { PARAMS_DA_SAIDA } from '@/utils/futebol-links';
 import type {
   FutebolEvent, FutebolFormResult, FutebolInjury, FutebolLineupPlayer, FutebolPlayerStat, FutebolTeamStats, FutebolFixtureValueRow, FutebolTeamProfile, Competition,
@@ -81,7 +81,7 @@ function fmtDataEHora(raw: string | null): { data: string; hora: string } {
   const d = new Date(/[Z]|[+-]\d{2}:?\d{2}$/.test(iso) ? iso : `${iso}Z`);
   if (isNaN(d.getTime())) return { data: raw, hora: '—' };
   const parte = (opcoes: Intl.DateTimeFormatOptions) =>
-    new Intl.DateTimeFormat('pt-BR', { timeZone: SAO_PAULO_TZ, ...opcoes }).format(d);
+    formatadorDeData('pt-BR', { timeZone: SAO_PAULO_TZ, ...opcoes }).format(d);
   return {
     data: parte({ day: '2-digit', month: '2-digit' }),
     hora: parte({ hour: '2-digit', minute: '2-digit' }),
@@ -92,7 +92,7 @@ function fmtDate(raw: string | null): string {
   if (!raw) return '—';
   const d = new Date(`${raw}T12:00:00Z`);
   if (isNaN(d.getTime())) return raw;
-  return new Intl.DateTimeFormat('pt-BR', { timeZone: SAO_PAULO_TZ, day: '2-digit', month: '2-digit', year: '2-digit' }).format(d);
+  return formatadorDeData('pt-BR', { timeZone: SAO_PAULO_TZ, day: '2-digit', month: '2-digit', year: '2-digit' }).format(d);
 }
 
 // Fases de mata-mata que a API manda em inglês. pt-BR sempre, inclusive aqui.

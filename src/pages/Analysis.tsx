@@ -22,6 +22,10 @@ import {
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { InjuryInsightsDashboard } from "@/components/injury-insights/InjuryInsightsDashboard";
 import type { InjuryInsight } from "@/types/sports";
+// Inicializa o i18next. Ele era iniciado no main.tsx, e assim os 77 kB da
+// biblioteca viajavam no pacote de entrada de TODA pagina para servir estas
+// tres telas. Aqui ele carrega junto com quem traduz, e mais ninguem paga.
+import '@/lib/i18n';
 
 // Mock data for the analysis page (keeping existing mock data for now)
 const mockMetrics = {

@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ChevronRight, AlertTriangle } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useFaixaDeAcesso } from '@/hooks/use-faixa-de-acesso';
 import { useFutebolValueBoard, useFutebolValueHistory, useFutebolAccess, useFutebolFixturesMulti, useFutebolAlertedPicks, useFutebolCompetitions, useVitrine, useFutebolPlacarFresco } from '@/hooks/use-futebol-data';
 import { useFutebolPublicationAlerts } from '@/hooks/use-futebol-publication-alerts';
 import FutebolDayStepper from '@/components/FutebolDayStepper';
@@ -286,6 +287,9 @@ export default function FutebolOportunidades() {
   const isLoading = lBoard || lVitrine;
   const { data: catalog } = useFutebolCompetitions();
   const { data: access } = useFutebolAccess();
+  // Mesma razão da home: a faixa nascia depois da resposta do banco e empurrava
+  // a lista inteira para baixo. O gancho responde na primeira pintura.
+  const acessoDaFaixa = useFaixaDeAcesso(access);
   const { data: publicationAlerts, acknowledgeOnboarding, isAcknowledging } = useFutebolPublicationAlerts();
   // No primeiro contato, o cartão explica a novidade sozinho. Depois de
   // dispensado, ele dá lugar ao status compacto para não repetir a mesma ideia,
@@ -816,7 +820,7 @@ export default function FutebolOportunidades() {
 
       <div className="max-w-[1480px] w-full mx-auto px-4 md:px-6 py-6 flex flex-col gap-4 flex-1">
         <DemoRibbon show={isDemo} />
-        <FutebolAccessBanner access={access} />
+        <FutebolAccessBanner access={acessoDaFaixa} />
         {publicationAlerts && (
           <>
             {showAlertCard && (

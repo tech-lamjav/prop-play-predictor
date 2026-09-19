@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import html2canvas from 'html2canvas';
+import { capturarEmPng } from '@/components/bolao/capturar-em-png';
 import { shareImage, shareImageToWhatsApp, downloadImage, SHARE_MESSAGES, type ShareResult } from '@/components/bolao/share-utils';
 
 interface UseRankingShareImageOptions {
@@ -40,15 +40,7 @@ export function useRankingShareImage(options: UseRankingShareImageOptions) {
   /** Captura o nó como PNG blob. Reusado por share e download. */
   const capture = useCallback(async (): Promise<{ blob: Blob; filename: string } | null> => {
     if (!node) return null;
-    const canvas = await html2canvas(node, {
-      backgroundColor: null,
-      scale: 2,
-      useCORS: true,
-      logging: false,
-    });
-    const blob: Blob | null = await new Promise((resolve) =>
-      canvas.toBlob((b) => resolve(b), 'image/png', 0.95)
-    );
+    const blob = await capturarEmPng(node);
     if (!blob) return null;
     const slug = filenameSlug ?? slugify(bolaoName);
     const filename = `ranking-${slug}${variant === 'stories' ? '-stories' : ''}.png`;
