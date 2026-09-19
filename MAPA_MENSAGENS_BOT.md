@@ -78,4 +78,9 @@ normal: 0 a 2. O silêncio é parte do produto.
   dias vazios reseta); copy celebra CONTROLE ("banca em dia"), nunca volume.
 - Toda mensagem tem evento no PostHog (enviada + clicada/corrigida) — a "taxa de
   incômodo" (mute + correções) é métrica acompanhável.
+- **As campanhas de oportunidade têm uma terceira perna: a CHEGADA.** Clicar e chegar
+  não são a mesma coisa — o `go` conta o clique e responde um 302 *antes* de o navegador
+  pedir a página, então todo abandono no meio do caminho vinha sendo contado como visita.
+  Quem liga as três é o `delivery_id`, que viaja no link e é devolvido ao site na URL de
+  destino. Catálogo completo em `docs/catalogo-de-eventos.md`.
 - Novas mensagens DEVEM entrar neste mapa antes de ir pra develop.

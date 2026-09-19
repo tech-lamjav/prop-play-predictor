@@ -55,7 +55,18 @@ type Banco = {
 
 export type Desfecho = "enviada" | "bloqueada" | "falhou";
 
-export type Resultado = { desfecho: Desfecho; erro?: string };
+export type Resultado = {
+  desfecho: Desfecho;
+  erro?: string;
+  /**
+   * O `message_id` que o Telegram devolve no envio aceito.
+   *
+   * Nulo quando não deu para ler o corpo da resposta — o envio continua válido,
+   * porque telemetria não pode transformar sucesso em falha. Ausente nos
+   * desfechos que não são "enviada", pelo motivo óbvio.
+   */
+  messageId?: number | null;
+};
 
 /** Quantos ids por página. O PostgREST corta em 1000 por padrão, calado. */
 const PAGINA = 1000;
@@ -127,7 +138,21 @@ export async function enviarDm(
     },
   );
 
-  if (res.ok) return { desfecho: "enviada" };
+  if (res.ok) {
+    // O `message_id` que o Telegram devolve. Era descartado: o corpo da
+    // resposta nunca era lido no caminho de sucesso, e com ele ia embora o
+    // único identificador que permite casar um evento nosso com a mensagem que
+    // de fato existe no aplicativo da pessoa.
+    //
+    // Embrulhado porque a leitura pode falhar (corpo já consumido, JSON torto)
+    // e um envio bem-sucedido NÃO pode virar falha por causa da telemetria.
+    try {
+      const corpo = await res.json() as { result?: { message_id?: number } };
+      return { desfecho: "enviada", messageId: corpo?.result?.message_id ?? null };
+    } catch {
+      return { desfecho: "enviada", messageId: null };
+    }
+  }
 
   const texto = await res.text();
 

@@ -12,6 +12,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { trackedUrl } from "../shared/links.ts";
+import { chaveDeEntrega, chaveDoLink, chaveDoLote } from "../shared/atribuicao.ts";
 import { generateTraceId, trackEvent } from "../shared/posthog.ts";
 import { logMessageRun } from "../shared/runs.ts";
 import {
@@ -92,12 +93,22 @@ function marketPt(market: string): string {
 async function buildMessage(
   opportunities: DeliveryOpportunity[],
   userId: string,
+  atribuicao: { deliveryId: string; batchId: string; sentAt: string },
 ): Promise<string> {
   const urls = new Map<string, string>();
   for (const opportunity of opportunities) {
+    const destino = opportunityDestination(opportunity);
     urls.set(
       opportunity.alert_id,
-      await trackedUrl(userId, opportunityDestination(opportunity), CAMPAIGN),
+      // `link_id` por DESTINO: a mensagem leva vários links, e sem ele os
+      // cliques seriam indistinguíveis dentro da mesma entrega — a pergunta
+      // "qual pick da mensagem funcionou" ficaria sem resposta.
+      await trackedUrl(userId, destino, CAMPAIGN, {
+        deliveryId: atribuicao.deliveryId,
+        batchId: atribuicao.batchId,
+        linkId: await chaveDoLink(atribuicao.deliveryId, destino),
+        sentAt: atribuicao.sentAt,
+      }),
     );
   }
   return publishedMessageText(opportunities, urls);
@@ -139,7 +150,7 @@ async function sendTelegram(
   text: string,
   cta: { label: string; url: string },
   registerRows: unknown[][],
-): Promise<"enviada" | "bloqueada"> {
+): Promise<{ desfecho: "enviada" | "bloqueada"; messageId: number | null }> {
   const r = await enviarDm(supabase, userId, {
     chat_id: chatId,
     text,
@@ -155,7 +166,9 @@ async function sendTelegram(
   if (r.desfecho === "falhou") {
     throw new Error(r.erro);
   }
-  return r.desfecho;
+  // O `message_id` sobe junto: ele identifica a mensagem que de fato existe no
+  // aplicativo da pessoa, e era descartado antes de chegar aqui.
+  return { desfecho: r.desfecho, messageId: r.messageId ?? null };
 }
 
 function payload(row: BoardRow & { key: string }) {
@@ -319,21 +332,38 @@ async function deliverPending(
       const pickByAlertId = new Map<string, string>(
         (picks ?? []).map((pick: any) => [pick.alert_id, pick.pick_id]),
       );
-      const text = await buildMessage(publicaveis, delivery.user_id);
-      const cta = publicaveis.length === 1
-        ? {
-          label: "Ver o porquê dessa pick →",
-          url: await trackedUrl(
-            delivery.user_id,
-            opportunityDestination(publicaveis[0]),
-            CAMPAIGN,
-          ),
-        }
-        : {
-          label: "Ver oportunidades no painel →",
-          url: await trackedUrl(delivery.user_id, "board", CAMPAIGN),
-        };
-      const desfecho = await sendTelegram(
+      // A corrente da atribuição. O lote JÁ EXISTE aqui — `batch_id` é coluna
+      // da tabela de entregas —, então ele é a semente natural, e a entrega sai
+      // dele mais a pessoa. Determinístico de propósito: `deliverPending`
+      // RETOMA entregas de rodadas anteriores, e com id aleatório a mesma
+      // tentativa lógica viraria duas entregas no painel.
+      const batchId = await chaveDoLote(CAMPAIGN, delivery.batch_id);
+      const deliveryId = await chaveDeEntrega(
+        CAMPAIGN,
+        delivery.batch_id,
+        delivery.user_id,
+      );
+      const sentAt = new Date().toISOString();
+      const text = await buildMessage(publicaveis, delivery.user_id, {
+        deliveryId,
+        batchId,
+        sentAt,
+      });
+      const destinoDoCta = publicaveis.length === 1
+        ? opportunityDestination(publicaveis[0])
+        : "board";
+      const cta = {
+        label: publicaveis.length === 1
+          ? "Ver o porquê dessa pick →"
+          : "Ver oportunidades no painel →",
+        url: await trackedUrl(delivery.user_id, destinoDoCta, CAMPAIGN, {
+          deliveryId,
+          batchId,
+          linkId: await chaveDoLink(deliveryId, destinoDoCta),
+          sentAt,
+        }),
+      };
+      const { desfecho, messageId } = await sendTelegram(
         supabase,
         delivery.user_id,
         delivery.chat_id,
@@ -377,9 +407,32 @@ async function deliverPending(
             ...publicaveis.map((opportunity) => opportunity.score),
           ),
           channel: "telegram",
+          // A corrente que liga envio, clique e chegada. O `delivery_id` é
+          // derivado do `batch_id` mais a pessoa — determinístico de propósito,
+          // porque `deliverPending` RETOMA entregas de rodadas anteriores: com
+          // um id aleatório, a mesma tentativa lógica viraria duas entregas no
+          // painel e toda taxa de clique cairia pela metade.
+          delivery_id: deliveryId,
+          batch_id: batchId,
+          campaign_id: CAMPAIGN,
+          campaign_type: CAMPAIGN,
+          // NULO de propósito, e não ausente: o alerta de publicação não tem
+          // segmento. Segmento é conceito do DIÁRIO — os grupos A e B da régua
+          // de reativação —, e aqui a entrega sai para quem ligou os alertas,
+          // sem recorte. Emitir nulo diz "não se aplica"; omitir a chave faria
+          // parecer esquecimento, e inventar um valor seria pior que os dois.
+          segment: null,
+          opportunity_ids: publicaveis.map((o) => opportunityDestination(o)),
+          // "aceito pelo Telegram", e não "lido" nem "recebido": a API não dá
+          // confirmação de leitura, e nomear assim convidaria a ler o número
+          // como audiência.
+          sent_status: "success",
+          telegram_message_id: messageId,
         },
         delivery.user_id,
-        traceId,
+        // O mesmo `delivery_id` como trace, para o clique e a chegada caírem
+        // na mesma corrente.
+        deliveryId,
       ).catch(() => {});
     } catch (cause) {
       const message = `${delivery.user_id}: ${

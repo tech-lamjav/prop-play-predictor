@@ -799,6 +799,7 @@ export function MotivosJogoPorJogo({
   lado,
   linha,
   saidaLabel,
+  aoExpandirPremissa,
 }: {
   /**
    * O mercado da saída. Necessário porque o critério é de mercado+slug, não do
@@ -818,6 +819,22 @@ export function MotivosJogoPorJogo({
   linha: number | null;
   /** A saída analisada, para o fechamento dizer a favor de quê. */
   saidaLabel: string;
+  /**
+   * Avisa que a pessoa abriu uma premissa para ver o jogo a jogo.
+   *
+   * Sobe por callback, e não vira captura aqui dentro, porque esta lista não
+   * sabe de qual JOGO ela é — recebe mercado, lado, linha e as premissas, e
+   * mais nada. Quem tem o `fixtureId` é a bancada, uma camada acima. Ler a
+   * rota daqui resolveria hoje e mentiria amanhã: o componente é montado em
+   * dois pontos diferentes.
+   *
+   * Opcional porque os testes do componente montam sem ele.
+   */
+  aoExpandirPremissa?: (
+    slug: string,
+    modo: 'favor' | 'contra',
+    quantidade: number,
+  ) => void;
 }) {
   const acesa = modo === 'favor';
   const itens = useMemo(
@@ -947,7 +964,18 @@ export function MotivosJogoPorJogo({
               story={story}
               prestacao={prestacao}
               aberta={aberta === p.slug}
-              onAlternar={() => setAberta(aberta === p.slug ? null : p.slug)}
+              onAlternar={() => {
+                const abrindo = aberta !== p.slug;
+                setAberta(abrindo ? p.slug : null);
+                // Só na ABERTURA. O mesmo cabeçalho fecha a premissa, e contar
+                // os dois sentidos com um evento chamado "expandiu" faria a
+                // métrica somar fechamentos — inflando o degrau do funil
+                // exatamente onde se quer medir interesse.
+                // A quantidade sai daqui porque é esta lista que a conhece: a
+                // bancada acima sabe o jogo, não quantos motivos sobraram
+                // depois do filtro de peso.
+                if (abrindo) aoExpandirPremissa?.(p.slug, modo, total);
+              }}
               saidaLabel={saidaLabel}
             />
           );

@@ -15,10 +15,43 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
 import { createClient } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/use-auth';
+import { useFutebolAccess } from '@/hooks/use-futebol-data';
 import { useUserUnit } from '@/hooks/use-user-unit';
 import { pickLabel, marketLabel } from '@/utils/futebol-score';
 import { competitionLabel } from '@/utils/futebol-competitions';
 import { atalhosDaUnidade, type FutebolBetDraft } from './registrar-aposta-utils';
+import {
+  apostaRegistrada,
+  ctaClicado,
+  propsDaOportunidade,
+  type OrigemDoJogo,
+  type SituacaoDeAssinatura,
+} from '@/lib/analytics';
+
+/**
+ * As propriedades da oportunidade que este rascunho representa.
+ *
+ * O rascunho é o único objeto que atravessa as cinco telas que abrem este
+ * modal, então é dele que a identidade sai — e não de cada chamador montando o
+ * seu jeito, que é como duas telas passam a mandar `opportunity_id` diferente
+ * para a mesma aposta.
+ */
+function oportunidadeDoDraft(
+  d: FutebolBetDraft,
+  source: OrigemDoJogo,
+  subscription_status: SituacaoDeAssinatura,
+) {
+  return propsDaOportunidade(
+    {
+      fixture_id: d.fixtureId,
+      market: d.market,
+      outcome: d.outcome,
+      line_value: d.lineValue,
+      competition: d.competition,
+    },
+    { source, subscription_status },
+  );
+}
 
 function kickoffDate(raw: string | null): string | null {
   if (!raw) return null;
@@ -31,9 +64,16 @@ const fmtBRL = (n: number) =>
   n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 export function RegistrarApostaModal({
-  open, onOpenChange, draft,
-}: { open: boolean; onOpenChange: (o: boolean) => void; draft: FutebolBetDraft | null }) {
+  open, onOpenChange, draft, origem = 'other',
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  draft: FutebolBetDraft | null;
+  /** De qual tela veio o registro. Ver `RegistrarApostaCTA`. */
+  origem?: OrigemDoJogo;
+}) {
   const { user } = useAuth();
+  const { data: acesso } = useFutebolAccess();
   const { config: unidade } = useUserUnit();
   const [stake, setStake] = useState('');
   const [odd, setOdd] = useState('');
@@ -112,6 +152,20 @@ export function RegistrarApostaModal({
       });
       if (err) throw err;
       setDone(true);
+      // Só depois do insert dar certo. Emitir junto do clique contaria como
+      // registrada a aposta que o banco recusou — e o funil passaria a mentir
+      // justamente no degrau que interessa.
+      //
+      // O nome do evento é o MESMO que o bot já emite. A web nunca emitiu nada
+      // aqui, então "registrou pela web" era invisível: o funil terminava no
+      // Telegram e a tela aparecia como se ninguém registrasse por ela.
+      apostaRegistrada({
+        ...oportunidadeDoDraft(draft, origem, acesso?.state ?? 'unknown'),
+        via: 'web_modal',
+        channel: 'web',
+        stake: stakeN,
+        odds: oddN,
+      });
     } catch {
       setError('Não foi possível registrar a aposta. Tente de novo.');
     } finally {
@@ -245,8 +299,18 @@ export function RegistrarApostaCTA({
   variant = 'footer',
   rotulo,
   larguraTotal = false,
+  origem = 'other',
 }: {
   draft: FutebolBetDraft;
+  /**
+   * De qual tela partiu o registro.
+   *
+   * Desce por prop e não é adivinhada pela rota porque o mesmo CTA aparece em
+   * cinco lugares — lista de oportunidades, painel da agenda, faixa da partida,
+   * folha do mercado e tela do jogo —, e dois deles convivem na MESMA rota.
+   * Adivinhar pela URL juntaria os dois num número só.
+   */
+  origem?: OrigemDoJogo;
   /** `ambar` é o botão sólido da faixa da partida e da folha do mercado. */
   variant?: 'footer' | 'text' | 'ambar';
   rotulo?: string;
@@ -258,7 +322,19 @@ export function RegistrarApostaCTA({
   larguraTotal?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const trigger = (e: React.MouseEvent) => { e.stopPropagation(); e.preventDefault(); setOpen(true); };
+  const { data: acesso } = useFutebolAccess();
+  const trigger = (e: React.MouseEvent) => {
+    e.stopPropagation(); e.preventDefault();
+    // A ação principal da oportunidade. Dispara na INTENÇÃO (abrir o modal), e
+    // não no salvamento — quem mede o salvamento é `opportunity_bet_registered`,
+    // lá dentro. A diferença entre os dois é o abandono no formulário, que é
+    // uma pergunta de produto por si só.
+    ctaClicado({
+      ...oportunidadeDoDraft(draft, origem, acesso?.state ?? 'unknown'),
+      action: 'register_bet',
+    });
+    setOpen(true);
+  };
 
   return (
     <>
@@ -292,7 +368,7 @@ export function RegistrarApostaCTA({
         </span>
       )}
 
-      <RegistrarApostaModal open={open} onOpenChange={setOpen} draft={draft} />
+      <RegistrarApostaModal open={open} onOpenChange={setOpen} draft={draft} origem={origem} />
     </>
   );
 }

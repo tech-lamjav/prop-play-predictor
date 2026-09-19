@@ -5,6 +5,7 @@ import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { FixtureRow } from '@/components/futebol/FixtureRow';
+import { idDaOportunidade, jogoClicado } from '@/lib/analytics';
 import { LigaCrest } from '@/components/futebol/LigaCrest';
 import { ReguaRodadas } from '@/components/futebol/ReguaRodadas';
 import { StandingsTable } from '@/components/futebol/StandingsTable';
@@ -314,7 +315,7 @@ export default function FutebolCampeonato() {
                   {sufixoDeLeitura(leituraCarregando, comLeitura)}
                 </span>
               </div>
-              {games.map((f) => (
+              {games.map((f, i) => (
                 <FixtureRow
                   key={f.fixture_id}
                   fixture={f}
@@ -324,6 +325,23 @@ export default function FutebolCampeonato() {
                   // Sem `onClick`: aqui não há painel, então o clique simples vai
                   // para o mesmo lugar que o do meio e o `<Link>` basta.
                   to={hrefDaSaida(f.fixture_id, bestByFixture.get(f.fixture_id))}
+                  aoClicar={() => {
+                    const melhor = bestByFixture.get(f.fixture_id);
+                    jogoClicado({
+                      game_id: f.fixture_id,
+                      source: 'games_list',
+                      // A posição dentro do dia, que é como esta tela agrupa.
+                      position: i,
+                      is_featured: false,
+                      destination_path: hrefDaSaida(f.fixture_id, melhor),
+                      // A competição vem da PÁGINA, e não da linha: aqui o tipo
+                      // é o `FutebolFixture` base, que não carrega o campo —
+                      // quem carrega é o `FutebolFixtureByDay` da agenda. E
+                      // nesta tela a liga é uma só, a da própria rota.
+                      competition,
+                      opportunity_id: melhor ? idDaOportunidade(melhor) : null,
+                    });
+                  }}
                 />
               ))}
             </div>

@@ -70,7 +70,18 @@ describe('o remetente compartilhado', () => {
     // 400 caracteres depois do `if`, e uma implementação que marcasse ANTES da
     // checagem — ou seja, em todo erro — passava verde do mesmo jeito.
     const fonte = norm(REMETENTE);
-    const sucesso = fonte.indexOf('if (res.ok) return { desfecho: "enviada" }');
+    // A âncora é o `if (res.ok)`, e não o retorno inteiro que ela abria.
+    //
+    // O caminho feliz deixou de caber numa linha quando o envio passou a LER o
+    // corpo da resposta para guardar o `message_id` do Telegram — que antes era
+    // descartado, e com ele o único identificador capaz de casar um evento
+    // nosso com a mensagem que existe no aplicativo da pessoa.
+    //
+    // O que este teste defende é a ORDEM — feliz, depois 403, depois a marca,
+    // depois o "falhou" —, e ela continua sendo verificada linha a linha abaixo.
+    // Amarrar a asserção ao formato exato do retorno transformava uma escolha
+    // de escrita em requisito, e foi o que quebrou aqui.
+    const sucesso = fonte.indexOf('if (res.ok) {');
     const checa403 = fonte.indexOf('if (res.status === 403)');
     const marca = fonte.indexOf('marcarBloqueado(supabase, userId)');
     const falhou = fonte.indexOf('desfecho: "falhou"');
