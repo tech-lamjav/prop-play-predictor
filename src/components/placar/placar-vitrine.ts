@@ -1,5 +1,9 @@
 import { mercadoOcultoNaData, ocultosAgora, type MercadoOculto } from '@/utils/futebol-mercados-ocultos';
-import { cortadaNaData, type LimiarDeValor } from '@/utils/futebol-corte-de-valor';
+import {
+  cortadaNaData,
+  vantagemDePublicacao,
+  type LimiarDeValor,
+} from '@/utils/futebol-corte-de-valor';
 import type { LinhaPublicada } from './placar-agregacao';
 
 // ============================================================================
@@ -41,7 +45,22 @@ export function esteveNaVitrine(
 ): boolean {
   return (
     !mercadoOcultoNaData(linha.market, linha.detectada_em, ocultos, agoraMs) &&
-    !cortadaNaData(linha.market, linha.edge, linha.detectada_em, limiares, agoraMs)
+    // ⚠️ Pela vantagem de PUBLICAÇÃO, e não pelo preço exibido. Desde a
+    // migration 162 o `edge` desta linha pode ser o preço de RESERVA — o da
+    // primeira versão do histórico — para uma linha que nunca esteve visível.
+    // Cortar por ele mantinha na vitrine exatamente o que nunca esteve nela,
+    // sempre que esse preço de reserva passasse no limiar.
+    //
+    // `vantagemDePublicacao` é quem distingue "nunca apareceu" (nulo) de "este
+    // banco não sabe responder" (coluna ausente), e é a mesma função que o board
+    // e o detalhe do jogo usam.
+    !cortadaNaData(
+      linha.market,
+      vantagemDePublicacao(linha),
+      linha.detectada_em,
+      limiares,
+      agoraMs,
+    )
   );
 }
 

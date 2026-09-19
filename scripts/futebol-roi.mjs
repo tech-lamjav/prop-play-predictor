@@ -268,6 +268,23 @@ join futebol.fact_fixtures f on f.fixture_id = n.fixture_id
 left join estreia e on e.opportunity_key = n.opportunity_key
 `;
 
+/**
+ * O que foi ao Telegram, medido pela odd que foi ANUNCIADA.
+ *
+ * ⚠️ NÃO passa pela estreia, e isso é de propósito. `p.odds` é o preço que o
+ * daily escreveu na mensagem — a odd que a pessoa tinha na mão quando leu. Ela
+ * não é uma aproximação da odd da estreia: ela é a coisa que a estreia tenta
+ * reconstruir a partir do snapshot.
+ *
+ * Então são duas perguntas, e não duas respostas para a mesma:
+ *
+ *   · `--fonte=board` mede TODAS as oportunidades publicadas, pelo preço da
+ *     estreia, reconstruído do histórico;
+ *   · `--fonte=picks` mede SÓ o que foi anunciado, pelo preço anunciado.
+ *
+ * Quando as duas discordarem numa linha que foi ao Telegram, a de cima é a
+ * aproximação e esta é o registro. É por isso que ela fica fora do `coalesce`.
+ */
 const SQL_PICKS = `
 select p.fixture_id, p.market, p.outcome, p.line_value,
        p.odds as best_odd, p.score, p.faixa, p.sent_date as dbt_valid_from,

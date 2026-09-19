@@ -84,7 +84,11 @@
 -- números diferentes. A guarda é `placar-foto-de-nascimento.test.ts`.
 -- ============================================================================
 
-create or replace function public.get_futebol_oportunidades_publicadas(
+-- ⚠️ DROP e CREATE, e não `create or replace`: o `returns table(...)` ganha uma
+-- coluna, e o Postgres recusa `create or replace` que altere o retorno tabular.
+drop function if exists public.get_futebol_oportunidades_publicadas(date, date);
+
+create function public.get_futebol_oportunidades_publicadas(
   p_de date,
   p_ate date
 )
@@ -104,6 +108,15 @@ returns table(
   line_value double precision,
   best_odd double precision,
   edge double precision,
+  -- A vantagem da ESTREIA, e NULA quando a linha nunca esteve visível. Mesmo
+  -- nome e mesmo significado de `get_futebol_value_board`, `..._value_history` e
+  -- `..._fixture_value` (migrations 146 e 161): nulo aqui é resposta, e quer
+  -- dizer "isto não chegou a aparecer para ninguém".
+  --
+  -- É coluna à parte, e não o próprio `edge`, porque as duas perguntas do painel
+  -- são diferentes: o recorte "Só a vitrine" pergunta o que o assinante VIU, e é
+  -- esta; o filtro de valor mínimo pergunta pelo preço EXIBIDO, e é o `edge`.
+  edge_publicacao double precision,
   score integer,
   faixa text,
   score_versao text,
@@ -192,8 +205,21 @@ begin
     -- a vantagem NÃO passa nele: antes da vigência não havia limiar para
     -- esconder coisa nenhuma.
     --
-    -- ⚠️ RESTRITO ÀS CHAVES DO PERÍODO. Sem o `in`, este CTE varre o snapshot
-    -- inteiro uma segunda vez.
+    -- ⚠️ JUNÇÃO, e não `in (select ...)`.
+    --
+    -- A primeira versão desta migration usava `in`, com um comentário afirmando
+    -- que sem ele o CTE varreria o snapshot inteiro. O comentário era FALSO, e o
+    -- code review pegou: `selecionadas` é referenciado duas vezes, então o
+    -- Postgres materializa o CTE, e o `in` contra um resultado materializado
+    -- vira semi-junção por hash — que varre `fact_value_opportunities_hist`
+    -- inteira do mesmo jeito.
+    --
+    -- A junção explícita na chave permite laço aninhado sobre
+    -- `fact_value_opportunities_hist_opportunity_key_idx`, que já existe.
+    --
+    -- ⚠️ E o mutante que "provava" a restrição só provava que havia texto. Uma
+    -- guarda de desempenho que confere string não guarda desempenho nenhum; o
+    -- que guarda é o `explain` no cabeçalho, e ele precisa ser rodado.
     select h.opportunity_key, h.edge, h.best_odd, h.dbt_valid_from, h.dbt_scd_id,
            (mo.oculto_desde at time zone 'UTC') as escondido_de,
            (mo.oculto_ate   at time zone 'UTC') as escondido_ate,
@@ -204,9 +230,9 @@ begin
                   else (lv.vigente_desde at time zone 'UTC') end
            ) as fim
     from futebol.fact_value_opportunities_hist h
+    join selecionadas s on s.opportunity_key = h.opportunity_key
     left join public.futebol_mercados_ocultos mo on mo.market = h.market
     left join public.futebol_limiar_valor lv on lv.market = h.market
-    where h.opportunity_key in (select s.opportunity_key from selecionadas s)
   ),
   estreia as (
     -- A ESTREIA: a primeira versão visível. Pode não existir, e aí o `left join`
@@ -239,10 +265,19 @@ begin
     s.outcome,
     s.line_value,
     -- O PREÇO DA ESTREIA, caindo para o da primeira de todas quando a linha
-    -- nunca esteve visível. É este `coalesce` que faz o placar concordar com o
-    -- board sem que nenhuma linha suma do painel.
-    coalesce(e.best_odd, s.best_odd),
-    coalesce(e.edge, s.edge),
+    -- nunca esteve visível. É esta queda que faz o placar concordar com o board
+    -- sem que nenhuma linha suma do painel.
+    --
+    -- ⚠️ DA MESMA LINHA, e não dois `coalesce` independentes. Com dois, uma
+    -- estreia com odd gravada e vantagem nula devolvia a odd da estreia com a
+    -- vantagem do nascimento — uma linha que nunca existiu em versão nenhuma.
+    case when e.opportunity_key is null then s.best_odd else e.best_odd end,
+    case when e.opportunity_key is null then s.edge     else e.edge     end,
+    -- E a vantagem da estreia crua, sem queda: é ela que responde "o assinante
+    -- viu isto?". Nula quando não houve estreia, e nula também quando a estreia
+    -- não tem vantagem gravada — linha sem preço não passa no corte, que é a
+    -- mesma regra das outras três telas.
+    e.edge,
     s.score::int,
     s.faixa,
     s.score_versao,
