@@ -470,6 +470,23 @@ export interface FutebolAccess {
   trial_ends_at: string | null;
 }
 
+/**
+ * O acesso de quem não está logado: o que a `get_futebol_access` devolve para
+ * uma sessão anônima, e o padrão de quando ela não devolve nada.
+ *
+ * Exportado porque o front também precisa dele ANTES de perguntar ao banco —
+ * ver `useFaixaDeAcesso`, que decide na primeira pintura se a faixa de convite
+ * ocupa espaço. Uma segunda cópia daquele lado sairia do lugar no dia em que
+ * este contrato mudasse.
+ */
+export const ACESSO_ANONIMO: FutebolAccess = {
+  state: 'anon',
+  unlocked: false,
+  days_left: null,
+  hours_left: null,
+  trial_ends_at: null,
+};
+
 export interface FutebolTeamSeason {
   form: string | null;
   played_total: number | null; played_home: number | null; played_away: number | null;
@@ -927,7 +944,7 @@ export const futebolDataService = {
     return withRetry(async () => {
       const { data, error } = await supabaseClient.rpc('get_futebol_access');
       if (error) throw error;
-      return (data || { state: 'anon', unlocked: false, days_left: null, hours_left: null, trial_ends_at: null }) as FutebolAccess;
+      return (data || ACESSO_ANONIMO) as FutebolAccess;
     });
   },
 

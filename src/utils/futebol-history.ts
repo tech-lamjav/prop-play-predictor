@@ -28,9 +28,29 @@ import { cortadaNaData, type LimiarDeValor } from '@/utils/futebol-corte-de-valo
 /** Quantos dias o Histórico navega para trás. */
 export const HISTORY_WINDOW_DAYS = 30;
 
-/** Janela padrão do Histórico: 30 dias contando hoje (hoje−29 … hoje). */
-export function historyWindow(today: string): { from: string; to: string } {
-  return { from: addDays(today, -(HISTORY_WINDOW_DAYS - 1)), to: today };
+/**
+ * Janela do Histórico, em dias contando hoje: `historyWindow(hoje)` dá os 30 do
+ * painel (hoje−29 … hoje), e `historyWindow(hoje, 1)` dá só hoje.
+ *
+ * ⚠️ O TAMANHO DA JANELA É O CUSTO DA CONSULTA, e não um detalhe de conforto.
+ * A `get_futebol_value_history` percorre o snapshot de oportunidades — todas as
+ * versões de todas as linhas —, e 30 dias são cerca de 40% dessa tabela: o
+ * Postgres desiste do índice e varre tudo. Medido no dev em 19/09/2026, com
+ * três rodadas alternadas de cada:
+ *
+ *   · 2 dias  → 198ms, 198ms, 199ms
+ *   · 30 dias → 879ms, 1.939ms, 4.397ms
+ *
+ * Repare menos no número e mais na VARIÂNCIA. A janela curta é constante; a
+ * longa oscila cinco vezes e piora sob carga, até estourar o tempo limite e
+ * voltar HTTP 500 — que foi o erro visto no console da home. Com cache frio, a
+ * de 30 dias chegou a 7,5 segundos, e esse é o preço que o primeiro visitante
+ * do dia paga.
+ *
+ * Então peça a janela que a tela usa, não a maior que possa servir.
+ */
+export function historyWindow(today: string, dias = HISTORY_WINDOW_DAYS): { from: string; to: string } {
+  return { from: addDays(today, -(dias - 1)), to: today };
 }
 
 type KeyParts = {

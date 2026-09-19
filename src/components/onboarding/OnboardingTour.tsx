@@ -1,77 +1,41 @@
-import { useRef } from 'react';
-import { Joyride, EVENTS, STATUS, type Step, type EventData } from 'react-joyride';
-import { usePostHog } from '@posthog/react';
-import OnboardingTooltip from './OnboardingTooltip';
+import { Suspense, useEffect, useState } from 'react';
+import { lazyWithRetry } from '@/lib/lazy-with-retry';
 
-type Props = {
-  /** Identificador do tour (vai nos eventos de PostHog e na persistência). */
-  tourId: string;
-  steps: Step[];
-  run: boolean;
-  /** Chamado uma vez quando o tour termina (concluído ou pulado). */
-  onFinish: () => void;
-};
+// O tipo vem do arquivo de baixo, que é quem define o contrato de verdade.
+// Duplicá-lo aqui deixaria o repasse de props escondendo qualquer divergência.
+import type { PropsDoTour } from './OnboardingTourJoyride';
 
-// Wrapper do react-joyride com o tooltip do design system e os eventos de
-// PostHog. Mantém o modo não-controlado (o Joyride cuida do avanço); só
-// observamos os eventos pra medir adesão e persistir a conclusão.
-export default function OnboardingTour({ tourId, steps, run, onFinish }: Props) {
-  const posthog = usePostHog();
-  const endedRef = useRef(false);
+const OnboardingTourJoyride = lazyWithRetry(() => import('./OnboardingTourJoyride'));
 
-  const handleEvent = (data: EventData) => {
-    const { type, status, index, step } = data;
+/**
+ * A ponte para o tour guiado, que só baixa a biblioteca quando o tour vai rodar.
+ *
+ * O `react-joyride` são 118 kB de código-fonte com as dependências (83 dele, 35
+ * do @gilbarbara/hooks, medidos por sourcemap no build de produção), e o
+ * `import` estático jogava tudo isso no pacote da página — em TODA visita, para
+ * uma peça que roda uma vez na vida do usuário e nunca mais. Na home do Futebol,
+ * era código de tour competindo por rede e processador com a lista de jogos que
+ * a pessoa abriu para ver.
+ *
+ * O `run` já chega falso na quase totalidade das visitas (quem já fez o tour, ou
+ * ainda está carregando os dados), então na prática ninguém baixa.
+ *
+ * ⚠️ Uma vez carregado, fica montado mesmo com `run` falso. Desmontar ao fim do
+ * tour tiraria o Joyride do ar no mesmo instante em que ele processa o evento de
+ * conclusão — e é esse evento que persiste "já viu" e alimenta o PostHog.
+ */
+export default function OnboardingTour(props: PropsDoTour) {
+  const [jaPrecisou, setJaPrecisou] = useState(false);
 
-    if (type === EVENTS.TOUR_START) {
-      endedRef.current = false;
-      posthog?.capture('onboarding_tour_started', { tour: tourId, steps: steps.length });
-      return;
-    }
+  useEffect(() => {
+    if (props.run) setJaPrecisou(true);
+  }, [props.run]);
 
-    if (type === EVENTS.TOOLTIP) {
-      posthog?.capture('onboarding_tour_step_viewed', {
-        tour: tourId,
-        index,
-        step_id: step?.id ?? String(index),
-      });
-      return;
-    }
-
-    const finished = status === STATUS.FINISHED;
-    const skipped = status === STATUS.SKIPPED;
-    if ((finished || skipped) && !endedRef.current) {
-      endedRef.current = true;
-      posthog?.capture(finished ? 'onboarding_tour_completed' : 'onboarding_tour_skipped', {
-        tour: tourId,
-        index,
-      });
-      onFinish();
-    }
-  };
+  if (!jaPrecisou) return null;
 
   return (
-    <Joyride
-      steps={steps}
-      run={run}
-      continuous
-      scrollToFirstStep
-      onEvent={handleEvent}
-      tooltipComponent={OnboardingTooltip}
-      locale={{ back: 'Voltar', close: 'Fechar', last: 'Entendi', next: 'Próximo', skip: 'Pular' }}
-      options={{
-        arrowColor: '#ffffff',
-        overlayColor: 'rgba(10, 31, 24, 0.55)',
-        spotlightRadius: 16,
-        spotlightPadding: 6,
-        // Compensa a nav sticky de DUAS faixas do rebrand (desktop 60+46≈106px,
-        // mobile 52+42≈94px) pra o alvo não parar atrás dela quando o tour rola
-        // a página — senão o spotlight de um passo `bottom` (barra de datas,
-        // raio-x) vaza por cima do cabeçalho.
-        scrollOffset: 120,
-        zIndex: 10_000,
-        skipBeacon: true,
-        buttons: ['back', 'skip', 'primary'],
-      }}
-    />
+    <Suspense fallback={null}>
+      <OnboardingTourJoyride {...props} />
+    </Suspense>
   );
 }

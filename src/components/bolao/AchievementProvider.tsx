@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import html2canvas from 'html2canvas';
+import { capturarEmPng } from '@/components/bolao/capturar-em-png';
 import { Trophy, Target, Medal, Star, Flame, Award, Share2 } from 'lucide-react';
 import { AchievementShareImage } from '@/components/bolao/AchievementShareImage';
 import { shareImage } from '@/components/bolao/share-utils';
@@ -125,15 +125,7 @@ const AchievementBadge: React.FC<{ def: AchievementDef }> = ({ def }) => {
     if (sharing || !captureRef.current) return;
     setSharing(true);
     try {
-      const canvas = await html2canvas(captureRef.current, {
-        backgroundColor: null,
-        scale: 2,
-        useCORS: true,
-        logging: false,
-      });
-      const blob: Blob | null = await new Promise(resolve =>
-        canvas.toBlob(b => resolve(b), 'image/png', 0.95)
-      );
+      const blob = await capturarEmPng(captureRef.current);
       if (!blob) return;
       await shareImage(blob, {
         filename: `conquista-${def.id}.png`,

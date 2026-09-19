@@ -13,6 +13,10 @@ import { toast } from "@/hooks/use-toast";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { OAUTH_REDIRECT_KEY, OAUTH_REFERRAL_KEY } from "@/lib/oauth-state";
 import { getRedirectTarget, resolveHomePath } from "@/lib/post-login";
+// ⚠️ Toda tela que traduz precisa desta linha: o i18next deixou de ser
+// iniciado no main.tsx para sair do pacote de entrada. O porquê está em
+// src/lib/i18n.ts.
+import '@/lib/i18n';
 
 // lucide não tem ícones de marca; SVG oficial multicolor do Google inline.
 const GoogleIcon = () => (
