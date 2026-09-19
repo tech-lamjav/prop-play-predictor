@@ -95,6 +95,17 @@ export function brtToday(): string {
 /** Soma dias a uma chave `YYYY-MM-DD` e devolve outra chave. Imune a fuso: usa meio-dia UTC. */
 export function addDays(dayKey: string, delta: number): string {
   const d = new Date(`${dayKey}T12:00:00Z`);
+  // ⚠️ Fala o que aconteceu, em vez de deixar o `toISOString` estourar um
+  // `RangeError: Invalid time value` sem dizer de onde veio.
+  //
+  // Custou uma investigação inteira: a tela de Oportunidades passava um dia
+  // `undefined` daqui para o board de exemplo no carregamento frio, e o que
+  // chegava ao console era só "Invalid time value" no meio de código
+  // minificado, com a página em branco. A chave errada é o fato interessante,
+  // e ela estava a uma linha de ser dita.
+  if (isNaN(d.getTime())) {
+    throw new RangeError(`addDays recebeu um dia ilegível: ${JSON.stringify(dayKey)}`);
+  }
   d.setUTCDate(d.getUTCDate() + delta);
   return d.toISOString().slice(0, 10);
 }

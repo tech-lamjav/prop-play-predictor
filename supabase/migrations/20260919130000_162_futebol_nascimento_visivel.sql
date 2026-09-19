@@ -1,5 +1,20 @@
 -- ============================================================================
--- 161 — a foto de nascimento passa a ser a primeira versão VISÍVEL
+-- 162 — a foto de nascimento passa a ser a primeira versão VISÍVEL
+-- ============================================================================
+-- ⚠️ RE-CARIMBADA de 20260919120000_161 para 20260919130000_162.
+--
+-- Ela colidiu: a migration dos índices das premissas, do PR #494, levou
+-- EXATAMENTE o mesmo carimbo e o mesmo número. O Supabase identifica a
+-- migration pelo CARIMBO, então para ele as duas eram a mesma versão.
+--
+-- A do #494 mergeou 15 minutos antes e gravou a versão 20260919120000. Quando
+-- esta subiu, o `db push` tentou gravar a mesma chave e o deploy morreu em
+-- "duplicate key value violates unique constraint schema_migrations_pkey".
+-- O front do #491 foi ao ar pela Vercel assim mesmo, e o banco ficou para trás.
+--
+-- Re-carimbamos ESTA, e não a outra, porque a outra JÁ APLICOU (dev e staging)
+-- e esta nunca aplicou em lugar nenhum. O conteúdo é CREATE OR REPLACE nas duas
+-- funções, sem DDL destrutivo, então aplicar agora chega no mesmo lugar.
 -- ============================================================================
 -- O incidente que esta migration fecha, porque ele volta se ninguém escrever:
 --
