@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ehOrigemDeFutebol,
   ONBOARDING_RETURN_FALLBACK,
+  ONBOARDING_SRC_LP_FUTEBOL,
+  onboardingFrom,
   onboardingHref,
   resolveOnboardingReturn,
 } from './onboarding-return';
@@ -49,5 +52,49 @@ describe('onboardingHref', () => {
 
   it('mantém o onboarding genérico quando não há retorno', () => {
     expect(onboardingHref('configuracoes')).toBe('/onboarding?src=configuracoes');
+  });
+});
+
+describe('ehOrigemDeFutebol', () => {
+  it('reconhece as três portas do futebol', () => {
+    expect(ehOrigemDeFutebol('alertas-futebol')).toBe(true);
+    expect(ehOrigemDeFutebol('lp-futebol')).toBe(true);
+    expect(ehOrigemDeFutebol('gate-futebol')).toBe(true);
+  });
+
+  it('não reconhece origem de fora do futebol, nem ausência de origem', () => {
+    expect(ehOrigemDeFutebol('signup')).toBe(false);
+    expect(ehOrigemDeFutebol('configuracoes')).toBe(false);
+    expect(ehOrigemDeFutebol(null)).toBe(false);
+    expect(ehOrigemDeFutebol(undefined)).toBe(false);
+    expect(ehOrigemDeFutebol('')).toBe(false);
+  });
+});
+
+describe('onboardingFrom', () => {
+  it('separa caminho e query, que é o formato do state.from do login', () => {
+    // Literal cru de propósito: comparar com a constante que está sob teste
+    // passaria verde mesmo se a rota mudasse.
+    expect(onboardingFrom(ONBOARDING_SRC_LP_FUTEBOL, '/futebol')).toEqual({
+      pathname: '/onboarding',
+      search: '?src=lp-futebol&return=%2Ffutebol',
+    });
+  });
+
+  it('sem retorno, leva só a origem', () => {
+    expect(onboardingFrom('configuracoes')).toEqual({
+      pathname: '/onboarding',
+      search: '?src=configuracoes',
+    });
+  });
+
+  // A garantia que importa: o destino que a landing manda tem que sobreviver à
+  // lista fechada do onboarding. Se alguém tirar /futebol da lista, este teste
+  // cai — e não a pessoa, calada, no hub.
+  it('o destino que a landing do futebol manda sobrevive à lista permitida', () => {
+    const { search } = onboardingFrom(ONBOARDING_SRC_LP_FUTEBOL, '/futebol');
+    const enviado = new URLSearchParams(search).get('return');
+    expect(resolveOnboardingReturn(enviado)).toBe('/futebol');
+    expect(resolveOnboardingReturn(enviado)).not.toBe(ONBOARDING_RETURN_FALLBACK);
   });
 });

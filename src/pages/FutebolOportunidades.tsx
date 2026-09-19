@@ -29,6 +29,17 @@ import {
 import { settleFutebol, resultBadge, resumoDoDia, type BetResult } from '@/utils/futebol-settlement';
 import { mercadoEstaOculto } from '@/utils/futebol-mercados-ocultos';
 import { hrefDaSaida } from '@/utils/futebol-links';
+import {
+  idDaOportunidade,
+  jogoClicado,
+  oportunidadeAberta,
+  oportunidadeExibida,
+  propsDaOportunidade,
+} from '@/lib/analytics';
+import {
+  reiniciarImpressoes,
+  useImpressaoDeOportunidade,
+} from '@/hooks/use-impressao-de-oportunidade';
 import { mergeBoardAndHistory, historyWindow, HISTORY_WINDOW_DAYS } from '@/utils/futebol-history';
 import { oppKey, oportunidadesDoDia, type OppLike } from '@/utils/futebol-registradas';
 import { parseUtc, brtDayOf, brtDateStr, fmtTime, isFinished, addDays } from '@/utils/futebol-datas';
@@ -96,12 +107,17 @@ function textoDoFiltroQueEsvaziou(escondidas: number, vazios: readonly string[])
 const GRID = 'grid grid-cols-[56px_64px_1fr_140px_64px_80px_72px_28px] gap-3 items-center';
 
 // Linha da tabela (desktop)
-function OppRow({ o, to, muted, locked, result, homeGoals, awayGoals }: {
+function OppRow({ o, to, muted, locked, result, homeGoals, awayGoals, aoClicar, aoAparecer }: {
   o: OppLike; to: string; muted?: boolean; locked?: boolean;
   result?: BetResult | null; homeGoals?: number | null; awayGoals?: number | null;
+  aoClicar?: () => void;
+  /** O que fazer quando o cartão de fato aparecer. Ver `useImpressaoDeOportunidade`. */
+  aoAparecer?: () => void;
 }) {
   const pick = pickLabel(o, o.home_team_name, o.away_team_name);
   const chance = chancePct(o.prob_justa_fechamento);
+  // Dentro do componente, e não no pai: hook não roda dentro de `.map`.
+  const refDeImpressao = useImpressaoDeOportunidade({ chave: idDaOportunidade(o), aoAparecer });
   const showLock = !!locked && !result; // histórico (com resultado) é sempre visível
   // `showLock` é o que a TELA sabe; `linhaBloqueada` é o que o BANCO já fez.
   // Desde a guarda de acesso a linha do board chega com as colunas nulas, e sem
@@ -112,7 +128,7 @@ function OppRow({ o, to, muted, locked, result, homeGoals, awayGoals }: {
   // chutar faixa (faixaWord de vazio diria "Baixa", que seria falso).
   const badgeCls = bloqueada || o.faixa == null ? 'bg-canvas-2 text-ink-3 border border-line' : faixaBadgeCls(o.faixa);
   return (
-    <Link to={to} className={`${GRID} w-full text-left px-5 py-3 border-t border-line hover:bg-canvas-2 transition ${muted ? 'opacity-60' : ''}`}>
+    <Link ref={refDeImpressao} to={to} onClick={aoClicar} className={`${GRID} w-full text-left px-5 py-3 border-t border-line hover:bg-canvas-2 transition ${muted ? 'opacity-60' : ''}`}>
       {/* Trava dos DOIS lados. O banco não devolve estes campos sem acesso, mas
           a tela não pode depender disso: se ela já sabe que não há acesso, não
           desenha a leitura nem que o dado venha. */}
@@ -166,18 +182,21 @@ function OppRow({ o, to, muted, locked, result, homeGoals, awayGoals }: {
 }
 
 // Card (mobile)
-function OppMobileCard({ o, to, locked, result, homeGoals, awayGoals, canRegister = false }: {
+function OppMobileCard({ o, to, locked, result, homeGoals, awayGoals, canRegister = false, aoClicar, aoAparecer }: {
   o: OppLike; to: string; locked?: boolean;
   result?: BetResult | null; homeGoals?: number | null; awayGoals?: number | null; canRegister?: boolean;
+  aoClicar?: () => void;
+  aoAparecer?: () => void;
 }) {
   const pick = pickLabel(o, o.home_team_name, o.away_team_name);
   const chance = chancePct(o.prob_justa_fechamento);
+  const refDeImpressao = useImpressaoDeOportunidade({ chave: idDaOportunidade(o), aoAparecer });
   const showLock = !!locked && !result;
   const bloqueada = showLock || linhaBloqueada(o);
   const hasScore = homeGoals != null && awayGoals != null;
   return (
-    <div className="w-full rounded-rebrand-md bg-white border border-line overflow-hidden">
-      <Link to={to} className="group block w-full text-left p-3.5">
+    <div ref={refDeImpressao} className="w-full rounded-rebrand-md bg-white border border-line overflow-hidden">
+      <Link to={to} onClick={aoClicar} className="group block w-full text-left p-3.5">
         <div className="flex items-start gap-3">
           <div className="flex items-center -space-x-1 shrink-0 pt-0.5">
             <Crest teamId={o.home_team_id} name={o.home_team_name} size={24} />
@@ -243,7 +262,7 @@ function OppMobileCard({ o, to, locked, result, homeGoals, awayGoals, canRegiste
       </Link>
       {canRegister && (
         <div className="px-3.5 pb-3.5 -mt-0.5">
-          <RegistrarApostaCTA variant="text" draft={draftFromBoardRow(o)} />
+          <RegistrarApostaCTA variant="text" draft={draftFromBoardRow(o)} origem="opportunities" />
         </div>
       )}
     </div>
@@ -290,6 +309,25 @@ export default function FutebolOportunidades() {
   // Mesma razão da home: a faixa nascia depois da resposta do banco e empurrava
   // a lista inteira para baixo. O gancho responde na primeira pintura.
   const acessoDaFaixa = useFaixaDeAcesso(access);
+  // Ver o comentário gêmeo em FutebolHoje: a memória das impressões é do
+  // módulo, e zerá-la é responsabilidade de quem monta a página.
+  useEffect(() => reiniciarImpressoes(), []);
+
+  /**
+   * As propriedades comuns de uma oportunidade DESTA tela.
+   *
+   * O bloco estava escrito quatro vezes no arquivo, idêntico, e cada cópia era
+   * uma chance de alguém carimbar a origem errada num dos quatro pontos — o
+   * tipo de divergência que não quebra nada e só aparece quando o funil não
+   * fecha. Origem e situação de assinatura são as mesmas para a tela inteira;
+   * o que muda de cartão para cartão é a linha e a posição.
+   */
+  const comunsDaLista = (o: OppLike, posicao: number) =>
+    propsDaOportunidade(o, {
+      source: 'opportunities',
+      subscription_status: access?.state ?? 'unknown',
+      position: posicao,
+    });
   const { data: publicationAlerts, acknowledgeOnboarding, isAcknowledging } = useFutebolPublicationAlerts();
   // No primeiro contato, o cartão explica a novidade sozinho. Depois de
   // dispensado, ele dá lugar ao status compacto para não repetir a mesma ideia,
@@ -884,10 +922,37 @@ export default function FutebolOportunidades() {
                 const g = placarDe(o);
                 return (
                   <div key={key(o, i)}>
-                    <OppRow o={o} to={hrefDaSaida(o.fixture_id, o)} locked={locked} result={res} homeGoals={g?.gh} awayGoals={g?.ga} />
+                    <OppRow
+                      o={o}
+                      to={hrefDaSaida(o.fixture_id, o)}
+                      locked={locked}
+                      result={res}
+                      homeGoals={g?.gh}
+                      awayGoals={g?.ga}
+                      aoAparecer={() => oportunidadeExibida(comunsDaLista(o, i))}
+                      aoClicar={() => {
+                        const comuns = comunsDaLista(o, i);
+                        const destino = hrefDaSaida(o.fixture_id, o);
+                        // DOIS eventos, de propósito. `opportunity_opened` é o
+                        // degrau do funil da oportunidade; `futebol_game_clicked`
+                        // é o da navegação entre telas, e responde "de onde veio
+                        // quem abriu este jogo". Emitir só um deixaria um dos
+                        // dois funis cego neste ponto.
+                        oportunidadeAberta({ ...comuns, open_mode: 'card', destination_path: destino });
+                        jogoClicado({
+                          game_id: o.fixture_id,
+                          source: 'opportunities',
+                          position: i,
+                          is_featured: false,
+                          destination_path: destino,
+                          competition: o.competition,
+                          opportunity_id: idDaOportunidade(o),
+                        });
+                      }}
+                    />
                     {!locked && (
                       <div className="px-5 pb-2 -mt-0.5">
-                        <RegistrarApostaCTA variant="text" draft={draftFromBoardRow(o)} />
+                        <RegistrarApostaCTA variant="text" draft={draftFromBoardRow(o)} origem="opportunities" />
                       </div>
                     )}
                   </div>
@@ -910,6 +975,21 @@ export default function FutebolOportunidades() {
                     homeGoals={g?.gh}
                     awayGoals={g?.ga}
                     canRegister={!locked}
+                    aoAparecer={() => oportunidadeExibida(comunsDaLista(o, i))}
+                    aoClicar={() => {
+                      const comuns = comunsDaLista(o, i);
+                      const destino = hrefDaSaida(o.fixture_id, o);
+                      oportunidadeAberta({ ...comuns, open_mode: 'card', destination_path: destino });
+                      jogoClicado({
+                        game_id: o.fixture_id,
+                        source: 'opportunities',
+                        position: i,
+                        is_featured: false,
+                        destination_path: destino,
+                        competition: o.competition,
+                        opportunity_id: idDaOportunidade(o),
+                      });
+                    }}
                   />
                 );
               })}

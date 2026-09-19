@@ -228,7 +228,15 @@ describe('o botão leva para o checkout, e o clique é medido', () => {
   it('o destino assinar existe no redirecionador e aponta para o checkout', () => {
     // `/futebol/comecar` é a landing de aquisição, e a CTA dela é começar de
     // graça — o contrário do que esta mensagem foi decidida para fazer.
-    expect(go).toContain('if (dest === "assinar") return `${SITE}/futebol/assinar?${utm}`');
+    // Afirmado pelo DESTINO, e não pela forma de montar a query.
+    //
+    // A asserção antiga exigia a interpolação `?${utm}` literal. Ela morreu
+    // quando o redirecionador passou a montar a URL com `URLSearchParams`, para
+    // carregar a atribuição da campanha (delivery_id, batch_id, link_id) até o
+    // site. O que esta guarda existe para proteger é outra coisa: que `assinar`
+    // leve ao CHECKOUT e não a `/futebol/comecar`, cuja CTA é começar de graça —
+    // o contrário do que esta mensagem foi decidida para fazer. Isso segue de pé.
+    expect(go).toContain('if (dest === "assinar") return `${SITE}/futebol/assinar?');
     expect(borda).not.toContain('futebol/comecar');
   });
 

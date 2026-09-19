@@ -346,6 +346,17 @@ async function handleCallbackQuery(
         via: "unit_button",
         channel: "telegram",
         source,
+        // O jogo, que faltava: sem ele o registro pelo bot não casa com o
+        // funil da tela, que identifica tudo por jogo e oportunidade.
+        //
+        // ⚠️ `opportunity_id` NÃO sai daqui, e não é esquecimento. A chave
+        // canônica é `fixture|mercado|saída|linha`, e `daily_opportunity_picks`
+        // (migration 085) guarda `betting_market` como texto e a saída dentro
+        // de `bet_description`, em texto livre. Montar a chave exigiria
+        // estruturar saída e linha na tabela — migration, não instrumentação.
+        game_id: pick.fixture_id ?? null,
+        market: pick.betting_market ?? null,
+        competition: pick.league ?? null,
       },
       user.id,
       traceId,

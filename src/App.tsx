@@ -15,6 +15,8 @@ import { ROTA_DO_CRM, ROTA_DOS_SOCIOS } from "./components/socios/crm-vocabulari
 import { FichaAntiga } from "./components/socios/FichaAntiga";
 import { ROTA_DO_PLACAR } from "./components/placar/placar-vocabulario";
 import { PostHogPageView } from "./components/PostHogPageView";
+import { ChegadaDoTelegram } from "./components/ChegadaDoTelegram";
+import { IdentidadeAnalytics } from "./components/IdentidadeAnalytics";
 import { CrossSellManager } from "./components/crosssell/CrossSellManager";
 import { EnvironmentBanner } from "./components/EnvironmentBanner";
 import Footer from "./components/Footer";
@@ -119,6 +121,12 @@ const App = () => (
       <BrowserRouter>
         <EnvironmentBanner />
         <PostHogPageView />
+        {/* Telemetria de sessão: identidade e atribuição do Telegram. Vizinhos
+            do PostHogPageView de propósito — os três são componentes-sentinela,
+            montam uma vez e não desenham nada, e precisam estar DENTRO do
+            BrowserRouter porque leem a rota. */}
+        <IdentidadeAnalytics />
+        <ChegadaDoTelegram />
         <CrossSellManager />
         <Suspense fallback={<LazyFallback />}>
           <Routes>

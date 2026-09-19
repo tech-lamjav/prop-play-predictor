@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useScrollDepthPixel } from "@/hooks/use-scroll-depth-pixel";
 import { PlayCircle, ArrowRight, CheckCircle2, XCircle, ChevronRight } from "lucide-react";
 import { getFutebolTeamLogoUrl } from "@/utils/futebol-logos";
+import { onboardingFrom, ONBOARDING_SRC_LP_FUTEBOL } from "@/utils/onboarding-return";
 
 // ============================================================
 // FutebolLP — landing page pública do módulo de Futebol (Aposta de Valor).
@@ -126,7 +127,12 @@ const FutebolLP = () => {
   const comValor = OPPS.filter((o) => o.faixa !== "Baixa");
   const semValor = OPPS.filter((o) => o.faixa === "Baixa");
 
-  const goAuth = () => navigate("/auth");
+  // Quem se cadastra por aqui passa pelo onboarding e termina no futebol, não
+  // no hub: a landing é de futebol, e o hub era uma tela a mais no caminho.
+  const goAuth = () =>
+    navigate("/auth", {
+      state: { from: onboardingFrom(ONBOARDING_SRC_LP_FUTEBOL, "/futebol") },
+    });
   const goProduct = () => navigate("/futebol");
 
   const FAQ: FaqItem[] = [

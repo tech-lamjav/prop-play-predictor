@@ -35,6 +35,7 @@ export function FixtureRow({
   selected = false,
   to,
   onClick,
+  aoClicar,
   locked = false,
 }: {
   fixture: FutebolFixture;
@@ -69,6 +70,19 @@ export function FixtureRow({
    * refazer à mão o que ele já faria.
    */
   onClick?: () => void;
+  /**
+   * Avisa que a linha foi clicada, em QUALQUER forma de clique.
+   *
+   * Separado do `onClick` de propósito, e a diferença importa. O `onClick` só
+   * roda no clique simples — ele passa por `interceptarCliqueSimples`, que sai
+   * do caminho no clique do meio e no Ctrl+clique para não matar a aba nova. E
+   * há tela que nem passa `onClick` (a de campeonato, que não tem painel).
+   *
+   * Pendurar a telemetria no `onClick` perderia, então, todo abrir-em-nova-aba
+   * e a tela de campeonato inteira — e o número sairia menor que a realidade
+   * sem ninguém desconfiar, que é o pior tipo de erro de medição.
+   */
+  aoClicar?: () => void;
   /**
    * Sem acesso à camada de valor (nem assinatura, nem teste grátis vivo).
    *
@@ -125,7 +139,25 @@ export function FixtureRow({
   return (
     <Link
       to={to}
-      onClick={onClick && interceptarCliqueSimples(onClick)}
+      onClick={(e) => {
+        // A telemetria vem primeiro e sem condição: ela mede o CLIQUE, e o
+        // clique já aconteceu, decida o intercepto o que decidir depois.
+        aoClicar?.();
+        if (onClick) interceptarCliqueSimples(onClick)(e);
+      }}
+      // O botão do MEIO não passa por `onClick`.
+      //
+      // O `click` do DOM cobre o botão esquerdo — com ou sem Ctrl, Shift, Alt —
+      // mas o do meio dispara `auxclick`, um evento separado. Sem esta linha, o
+      // "abrir em nova aba" com a rodinha, que é justamente o caminho que a
+      // #341 preservou de propósito nesta linha, não seria medido: o número
+      // sairia menor que a realidade e ninguém desconfiaria.
+      //
+      // Só a telemetria, e nada do intercepto: o clique do meio tem de
+      // continuar abrindo a aba nova, que é o pedido explícito do usuário.
+      onAuxClick={(e) => {
+        if (e.button === 1) aoClicar?.();
+      }}
       aria-current={selected ? 'true' : undefined}
       className="w-full text-left px-3 sm:px-4 py-2.5 flex items-center gap-2.5 sm:gap-3.5 transition"
       style={{
