@@ -31,6 +31,27 @@ export function passaNoCorteDeValor(
   return typeof edge === "number" && Number.isFinite(edge) && edge > entrada.limiar;
 }
 
+/**
+ * Cópia de `vantagemDePublicacao` do painel, onde está o comentário inteiro.
+ *
+ * ⚠️ TRÊS ESTADOS, e a diferença entre dois deles é o vazamento que este
+ * arquivo existe para impedir. Desde a migration 161 `edge_publicacao` vem
+ * NULA de propósito para a linha que nunca teve versão visível — mercado fora
+ * da vitrine, ou vantagem abaixo do limiar a vida inteira. Cair no apito nesse
+ * caso manda na DM exatamente a linha que a tela esconde.
+ *
+ * AUSENTE (ou indefinida) é outra coisa: banco anterior à 146, que não sabe
+ * responder a pergunta. Ali a queda para `edge` continua certa.
+ *
+ * Por isso a distinção é pelo VALOR, e não pela presença da chave.
+ */
+export function vantagemDePublicacao(linha: {
+  edge?: number | null;
+  edge_publicacao?: number | null;
+}): number | null | undefined {
+  return linha.edge_publicacao === undefined ? linha.edge : linha.edge_publicacao;
+}
+
 export function filtrarCorteDeValor<
   T extends { market: string; edge?: number | null; edge_publicacao?: number | null },
 >(
@@ -38,11 +59,11 @@ export function filtrarCorteDeValor<
   limiares: readonly { market: string; limiar: number }[],
 ): T[] {
   if (!limiares.length) return [...linhas];
-  // Pela vantagem de PUBLICAÇÃO quando ela vem (migration 146): depois do apito,
-  // board e detalhe do jogo devolvem a foto do apito, e cortar por ela esconde
-  // linha que apareceu na tela. `edge` é o que resta contra banco anterior à 146.
+  // Pela vantagem de PUBLICAÇÃO: depois do apito, board e detalhe do jogo
+  // devolvem a foto do apito, e cortar por ela esconde linha que apareceu na
+  // tela. Ver `vantagemDePublicacao` para o que nulo e ausente significam.
   return linhas.filter((linha) =>
-    passaNoCorteDeValor(linha.market, linha.edge_publicacao ?? linha.edge, limiares),
+    passaNoCorteDeValor(linha.market, vantagemDePublicacao(linha), limiares),
   );
 }
 
