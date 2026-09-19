@@ -1416,12 +1416,40 @@ as $function$
                      and fx.kickoff_utc <= (now() at time zone 'UTC')
                      and h.dbt_valid_from <= fx.kickoff_utc
                      and (h.dbt_valid_to is null or fx.kickoff_utc < h.dbt_valid_to))
+  ), janelas as (
+    -- A JANELA EM QUE CADA VERSÃO PÔDE SER VISTA.
+    --
+    -- Uma versão do snapshot não é um instante: ela vale de `dbt_valid_from` até
+    -- `dbt_valid_to`. Perguntar se ela estava visível NO NASCIMENTO é a pergunta
+    -- errada, e foi o primeiro defeito desta migration: a versão do Brentford
+    -- +0,5 nasceu em 15/09 com o handicap ainda fora da vitrine, e ficou viva
+    -- até 16/09 06h04 — visível E acima do limiar desde a volta do mercado, que
+    -- é exatamente quando o assinante a viu e o daily a enviou.
+    --
+    -- `fim` é o fim da vida da versão, encurtado pela vigência do limiar quando
+    -- a vantagem NÃO passa nele: antes da vigência não havia limiar para
+    -- esconder coisa nenhuma. Vantagem nula não passa, pelo mesmo motivo do
+    -- front: não saber o preço de um mercado onde o preço decide não é motivo
+    -- para mostrar.
+    select h.opportunity_key, h.edge, h.dbt_valid_from, h.dbt_scd_id,
+           (mo.oculto_desde at time zone 'UTC') as escondido_de,
+           (mo.oculto_ate   at time zone 'UTC') as escondido_ate,
+           least(
+             coalesce(h.dbt_valid_to, 'infinity'::timestamp),
+             case when lv.market is null or h.edge > lv.limiar::double precision
+                  then 'infinity'::timestamp
+                  else (lv.vigente_desde at time zone 'UTC') end
+           ) as fim
+    from futebol.fact_value_opportunities_hist h
+    left join public.futebol_mercados_ocultos mo on mo.market = h.market
+    left join public.futebol_limiar_valor lv on lv.market = h.market
+    where h.fixture_id = p_fixture_id
   ), nascimento as (
     -- A FOTO DE NASCIMENTO: a primeira versão VISÍVEL de cada oportunidade.
     --
     -- Visível, e não apenas a primeira: o snapshot grava o board, que é o
     -- universo do que foi publicado — mercado escondido e linha abaixo do
-    -- limiar incluídos. A primeira linha do snapshot pode ser de um instante em
+    -- limiar incluídos. A primeira linha do snapshot pode ser de um trecho em
     -- que ninguém podia ver aquilo, e foi assim que o Brentford +0,5 de 18/09
     -- sumiu desta tela por uma vantagem de 12/09.
     --
@@ -1433,24 +1461,18 @@ as $function$
     -- sai do board e volta tem mais de uma oportunidade na vida, e juntá-las
     -- numa foto só mistura a vida de duas. São 74 chaves com reativação em
     -- produção.
-    select distinct on (h.opportunity_key)
-      h.opportunity_key, h.edge
-    from futebol.fact_value_opportunities_hist h
-    left join public.futebol_mercados_ocultos mo on mo.market = h.market
-    left join public.futebol_limiar_valor lv on lv.market = h.market
-    where h.fixture_id = p_fixture_id
-      -- O mercado estava na vitrine no instante desta versão.
-      and (mo.market is null
-           or h.dbt_valid_from < (mo.oculto_desde at time zone 'UTC')
-           or (mo.oculto_ate is not null
-               and h.dbt_valid_from >= (mo.oculto_ate at time zone 'UTC')))
-      -- E o limiar de valor ou ainda não vigia, ou a vantagem passa nele.
-      -- Vantagem nula não passa, pelo mesmo motivo do front: não saber o preço
-      -- de um mercado onde o preço decide não é motivo para mostrar.
-      and (lv.market is null
-           or h.dbt_valid_from < (lv.vigente_desde at time zone 'UTC')
-           or h.edge > lv.limiar::double precision)
-    order by h.opportunity_key, h.dbt_valid_from asc, h.dbt_scd_id asc
+    select distinct on (j.opportunity_key)
+      j.opportunity_key, j.edge
+    from janelas j
+    -- A janela não pode ser vazia...
+    where j.dbt_valid_from < j.fim
+      -- ...e precisa cruzar algum trecho em que o mercado estava na vitrine: ou
+      -- ela começa antes de o mercado sair, ou ela ainda estava viva quando ele
+      -- voltou. Sem linha na vitrine, o mercado nunca saiu.
+      and (j.escondido_de is null
+           or j.dbt_valid_from < j.escondido_de
+           or (j.escondido_ate is not null and j.fim > j.escondido_ate))
+    order by j.opportunity_key, j.dbt_valid_from asc, j.dbt_scd_id asc
   )
   select v.market, v.outcome,
     (case when v.market = 'match_winner'
@@ -2045,24 +2067,30 @@ as $function$
       and h.dbt_valid_from <= fx.kickoff_utc
       and (h.dbt_valid_to is null or fx.kickoff_utc < h.dbt_valid_to)
     order by h.opportunity_key, h.dbt_valid_from desc
-  ), nascimento as (
-    -- A FOTO DE NASCIMENTO: a primeira versão VISÍVEL de cada oportunidade.
+  ), janelas as (
+    -- A JANELA EM QUE CADA VERSÃO PÔDE SER VISTA.
     --
-    -- Visível, e não apenas a primeira: o snapshot grava o board, que é o
-    -- universo do que foi publicado — mercado escondido e linha abaixo do
-    -- limiar incluídos. A primeira linha do snapshot pode ser de um instante em
-    -- que ninguém podia ver aquilo, e foi assim que o Brentford +0,5 de 18/09
-    -- sumiu do detalhe do jogo por uma vantagem de 12/09.
+    -- Uma versão do snapshot não é um instante: ela vale de `dbt_valid_from` até
+    -- `dbt_valid_to`. Perguntar se ela estava visível NO NASCIMENTO é a pergunta
+    -- errada, e foi o primeiro defeito desta migration: a versão do Brentford
+    -- +0,5 nasceu em 15/09 com o handicap ainda fora da vitrine, e ficou viva
+    -- até 16/09 06h04 — visível E acima do limiar desde a volta do mercado, que
+    -- é exatamente quando o assinante a viu e o daily a enviou.
     --
-    -- Nenhuma versão visível devolve NADA para esta chave, e o `left join` lá
-    -- embaixo transforma isso em NULO — que é o que diz ao front "nunca esteve
-    -- na tela". Nulo aqui é resposta, não falta de resposta.
-    --
-    -- `asc` é a única diferença de ordem para o CTE acima; `dbt_scd_id` é o
-    -- desempate explícito que a 102 exige do DISTINCT ON, para o dia em que o
-    -- snapshot produzir duas versões com o mesmo `dbt_valid_from`.
-    select distinct on (h.opportunity_key)
-      h.opportunity_key, h.edge
+    -- `fim` é o fim da vida da versão, encurtado pela vigência do limiar quando
+    -- a vantagem NÃO passa nele: antes da vigência não havia limiar para
+    -- esconder coisa nenhuma. Vantagem nula não passa, pelo mesmo motivo do
+    -- front: não saber o preço de um mercado onde o preço decide não é motivo
+    -- para mostrar.
+    select h.opportunity_key, h.edge, h.dbt_valid_from, h.dbt_scd_id,
+           (mo.oculto_desde at time zone 'UTC') as escondido_de,
+           (mo.oculto_ate   at time zone 'UTC') as escondido_ate,
+           least(
+             coalesce(h.dbt_valid_to, 'infinity'::timestamp),
+             case when lv.market is null or h.edge > lv.limiar::double precision
+                  then 'infinity'::timestamp
+                  else (lv.vigente_desde at time zone 'UTC') end
+           ) as fim
     from futebol.fact_value_opportunities_hist h
     join futebol.fact_fixtures fx on fx.fixture_id = h.fixture_id
     left join public.futebol_mercados_ocultos mo on mo.market = h.market
@@ -2072,18 +2100,34 @@ as $function$
       and fx.kickoff_utc <  (now() at time zone 'UTC')
       -- Mesma regra do CTE de cima: encerrado, nao apenas comecado.
       and fx.status_short in ('FT', 'AET', 'PEN')
-      -- O mercado estava na vitrine no instante desta versão.
-      and (mo.market is null
-           or h.dbt_valid_from < (mo.oculto_desde at time zone 'UTC')
-           or (mo.oculto_ate is not null
-               and h.dbt_valid_from >= (mo.oculto_ate at time zone 'UTC')))
-      -- E o limiar de valor ou ainda não vigia, ou a vantagem passa nele.
-      -- Vantagem nula não passa, pelo mesmo motivo do front: não saber o preço
-      -- de um mercado onde o preço decide não é motivo para mostrar.
-      and (lv.market is null
-           or h.dbt_valid_from < (lv.vigente_desde at time zone 'UTC')
-           or h.edge > lv.limiar::double precision)
-    order by h.opportunity_key, h.dbt_valid_from asc, h.dbt_scd_id asc
+  ), nascimento as (
+    -- A FOTO DE NASCIMENTO: a primeira versão VISÍVEL de cada oportunidade.
+    --
+    -- Visível, e não apenas a primeira: o snapshot grava o board, que é o
+    -- universo do que foi publicado — mercado escondido e linha abaixo do
+    -- limiar incluídos. A primeira linha do snapshot pode ser de um trecho em
+    -- que ninguém podia ver aquilo, e foi assim que o Brentford +0,5 de 18/09
+    -- sumiu do detalhe do jogo por uma vantagem de 12/09.
+    --
+    -- Nenhuma versão visível devolve NADA para esta chave, e o `left join` lá
+    -- embaixo transforma isso em NULO — que é o que diz ao front "nunca esteve
+    -- na tela". Nulo aqui é resposta, não falta de resposta.
+    --
+    -- `asc` é a ordem da estreia; `dbt_scd_id` é o desempate explícito que a 102
+    -- exige do DISTINCT ON, para o dia em que o snapshot produzir duas versões
+    -- com o mesmo `dbt_valid_from`.
+    select distinct on (j.opportunity_key)
+      j.opportunity_key, j.edge
+    from janelas j
+    -- A janela não pode ser vazia...
+    where j.dbt_valid_from < j.fim
+      -- ...e precisa cruzar algum trecho em que o mercado estava na vitrine: ou
+      -- ela começa antes de o mercado sair, ou ela ainda estava viva quando ele
+      -- voltou. Sem linha na vitrine, o mercado nunca saiu.
+      and (j.escondido_de is null
+           or j.dbt_valid_from < j.escondido_de
+           or (j.escondido_ate is not null and j.fim > j.escondido_ate))
+    order by j.opportunity_key, j.dbt_valid_from asc, j.dbt_scd_id asc
   )
   select v.fixture_id, f.home_team_id, f.away_team_id, f.home_team_name, f.away_team_name,
     f.competition, f.kickoff_utc, f.status_short,
