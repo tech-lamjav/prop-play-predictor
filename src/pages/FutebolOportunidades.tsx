@@ -474,10 +474,26 @@ export default function FutebolOportunidades() {
     });
     return [...set].sort();
   }, [allRows, fixtures, registradasAll, agora, hoje]);
-  // Default: hoje se houver; senão o próximo dia futuro; senão o último disponível.
+  // Default: hoje se houver; senão o próximo dia futuro; senão o último
+  // disponível; senão HOJE.
+  //
+  // ⚠️ O último `?? hoje` não é cinto de segurança: sem ele esta tela QUEBRA no
+  // carregamento frio. Com `days` vazio — que é o estado de toda primeira
+  // pintura, antes de board, histórico e agenda voltarem —, o
+  // `days[days.length - 1]` é `days[-1]`, ou seja `undefined`. Esse `undefined`
+  // descia até o `useDemoFutebolBoard` lá embaixo, que monta o exemplo no dia
+  // pedido e faz `addDays(dia, 1)` para o jogo das 21h; `new Date("undefinedT…")`
+  // é data inválida, e o `toISOString` estoura `RangeError: Invalid time value`
+  // DENTRO do render. Sem ErrorBoundary no caminho, a página inteira some.
+  //
+  // Quem entrava por /futebol e navegava até aqui não via nada: o board já
+  // estava em cache, `days` vinha cheio na primeira pintura. Quebrava só quem
+  // abria o endereço direto ou apertava F5 — e por isso passou despercebido.
+  //
+  // A home já resolvia assim (`days[0] ?? todayStr`); esta tela ficou para trás.
   const selectedDay = (day && days.includes(day))
     ? day
-    : (days.includes(hoje) ? hoje : (days.find((d) => d >= hoje) ?? days[days.length - 1]));
+    : (days.includes(hoje) ? hoje : (days.find((d) => d >= hoje) ?? days[days.length - 1] ?? hoje));
   const isPastDay = !!selectedDay && selectedDay < hoje;
   const isFutureDay = !!selectedDay && selectedDay > hoje;
 
