@@ -507,7 +507,18 @@ export default function FutebolOportunidades() {
 
   const compsOnDay = useMemo(() => {
     const s = new Set<string>();
-    allRows.forEach((r) => { if (brtDayOf(r.kickoff_utc) === selectedDay) s.add(r.competition); });
+    // ⚠️ O `&& r.competition` não é asseio: sem ele esta tela QUEBRA para quem
+    // não tem acesso. A guarda `futebol_acesso_do_chamador` devolve a linha com
+    // as colunas nulas, e a `competition` vem no pacote — conferido no board de
+    // homologação, 416 linhas de 416 com `competition: null` para chamador
+    // anônimo. O `null` entrava no conjunto e o `sortCompetitions` estourava no
+    // `a.localeCompare(b)`, derrubando a árvore inteira.
+    //
+    // O tipo diz `string` e mente: `FutebolValueBoardRow` descreve a linha
+    // ABERTA. É o mesmo motivo do `linhaBloqueada` existir para o `market`.
+    //
+    // A linha de baixo já protegia com `&& a.league`; esta ficou para trás.
+    allRows.forEach((r) => { if (brtDayOf(r.kickoff_utc) === selectedDay && r.competition) s.add(r.competition); });
     registradasAll.forEach((a) => { if (a.game_day === selectedDay && a.league) s.add(a.league); });
     return s;
   }, [allRows, selectedDay, registradasAll]);
