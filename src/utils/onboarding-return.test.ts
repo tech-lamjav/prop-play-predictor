@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ONBOARDING_PATH,
   ONBOARDING_RETURN_FALLBACK,
+  ONBOARDING_SRC_LP_FUTEBOL,
+  onboardingFrom,
   onboardingHref,
   resolveOnboardingReturn,
 } from './onboarding-return';
@@ -49,5 +52,31 @@ describe('onboardingHref', () => {
 
   it('mantém o onboarding genérico quando não há retorno', () => {
     expect(onboardingHref('configuracoes')).toBe('/onboarding?src=configuracoes');
+  });
+});
+
+describe('onboardingFrom', () => {
+  it('separa caminho e query, que é o formato do state.from do login', () => {
+    expect(onboardingFrom(ONBOARDING_SRC_LP_FUTEBOL, '/futebol')).toEqual({
+      pathname: ONBOARDING_PATH,
+      search: '?src=lp-futebol&return=%2Ffutebol',
+    });
+  });
+
+  it('sem retorno, leva só a origem', () => {
+    expect(onboardingFrom('configuracoes')).toEqual({
+      pathname: ONBOARDING_PATH,
+      search: '?src=configuracoes',
+    });
+  });
+
+  // A garantia que importa: o destino que a landing manda tem que sobreviver à
+  // lista fechada do onboarding. Se alguém tirar /futebol da lista, este teste
+  // cai — e não a pessoa, calada, no hub.
+  it('o destino que a landing do futebol manda sobrevive à lista permitida', () => {
+    const { search } = onboardingFrom(ONBOARDING_SRC_LP_FUTEBOL, '/futebol');
+    const enviado = new URLSearchParams(search).get('return');
+    expect(resolveOnboardingReturn(enviado)).toBe('/futebol');
+    expect(resolveOnboardingReturn(enviado)).not.toBe(ONBOARDING_RETURN_FALLBACK);
   });
 });

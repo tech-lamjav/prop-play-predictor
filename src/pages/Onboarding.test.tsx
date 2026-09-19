@@ -72,6 +72,22 @@ describe('Onboarding', () => {
     expect(await screen.findByText(/assim que ela entra no painel/i)).toBeInTheDocument();
   });
 
+  it('vindo da landing do futebol, a introdução é a do alerta, não a genérica', async () => {
+    // O lead da landing chegou pela oportunidade, igual a quem clicou no alerta:
+    // abrir com "seu assistente de apostas" responderia outra pergunta.
+    renderOnboarding('?src=lp-futebol&return=%2Ffutebol');
+
+    expect(await screen.findByText('Alertas de oportunidades')).toBeInTheDocument();
+    expect(screen.getByText(/Receba as novas oportunidades no/i)).toBeInTheDocument();
+  });
+
+  it('vindo da landing do futebol, o aviso de oportunidade nova abre os benefícios', async () => {
+    renderOnboarding('?src=lp-futebol&return=%2Ffutebol');
+
+    const titulos = (await screen.findAllByRole('heading', { level: 3 })).map((h) => h.textContent);
+    expect(titulos).toEqual(['Cada oportunidade nova, na hora', 'Registra pelo print', 'Seu ROI de verdade']);
+  });
+
   it('sem origem, a ordem dos benefícios continua a de sempre', async () => {
     renderOnboarding();
 
