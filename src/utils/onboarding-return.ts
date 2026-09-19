@@ -17,6 +17,33 @@ const ALLOWED_RETURNS: readonly string[] = [
 /** Origem que troca a introdução do onboarding para o contexto de alertas. */
 export const ONBOARDING_SRC_ALERTAS_FUTEBOL = 'alertas-futebol';
 
+/** Origem de quem se cadastrou vindo de uma landing page do futebol. */
+export const ONBOARDING_SRC_LP_FUTEBOL = 'lp-futebol';
+
+/** Origem de quem se cadastrou a partir do próprio módulo de futebol (o gate). */
+export const ONBOARDING_SRC_GATE_FUTEBOL = 'gate-futebol';
+
+export const ONBOARDING_PATH = '/onboarding';
+
+/**
+ * As origens que chegaram pelo futebol.
+ *
+ * Todas veem a introdução do alerta, e não a genérica: a pessoa chegou pela
+ * oportunidade, e abrir com "registra sua aposta pelo print" responde outra
+ * pergunta. São etiquetas separadas de propósito, mesmo levando à mesma tela —
+ * o funil precisa distinguir quem veio de uma landing de quem já estava dentro
+ * do produto, e juntar as duas numa etiqueta só apagaria essa diferença.
+ */
+const ORIGENS_DE_FUTEBOL: readonly string[] = [
+  ONBOARDING_SRC_ALERTAS_FUTEBOL,
+  ONBOARDING_SRC_LP_FUTEBOL,
+  ONBOARDING_SRC_GATE_FUTEBOL,
+];
+
+export function ehOrigemDeFutebol(src: string | null | undefined): boolean {
+  return typeof src === 'string' && ORIGENS_DE_FUTEBOL.includes(src);
+}
+
 export function resolveOnboardingReturn(raw: string | null | undefined): string {
   if (typeof raw !== 'string') return ONBOARDING_RETURN_FALLBACK;
 
@@ -30,8 +57,24 @@ export function resolveOnboardingReturn(raw: string | null | undefined): string 
   return ALLOWED_RETURNS.includes(path) ? path : ONBOARDING_RETURN_FALLBACK;
 }
 
-export function onboardingHref(src: string, returnTo?: string): string {
+/**
+ * O mesmo destino no formato que a tela de login espera em `state.from`.
+ *
+ * A landing manda quem clicou no CTA para `/auth` dizendo de onde veio, e o
+ * cadastro devolve `pathname + search`. Por isso a origem e o destino viajam
+ * na `search`: sem ela a pessoa termina o onboarding na rota padrão, que é o
+ * hub, e não no produto de onde ela veio.
+ */
+export function onboardingFrom(
+  src: string,
+  returnTo?: string,
+): { pathname: string; search: string } {
   const params = new URLSearchParams({ src });
   if (returnTo) params.set('return', returnTo);
-  return `/onboarding?${params.toString()}`;
+  return { pathname: ONBOARDING_PATH, search: `?${params.toString()}` };
+}
+
+export function onboardingHref(src: string, returnTo?: string): string {
+  const { pathname, search } = onboardingFrom(src, returnTo);
+  return pathname + search;
 }

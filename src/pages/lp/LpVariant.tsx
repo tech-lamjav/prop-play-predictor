@@ -16,6 +16,7 @@ import { lpFaqSchema } from "@/components/lp/lp-faq-data";
 import { LpOferta } from "@/components/lp/LpOferta";
 import { LpStickyCta } from "@/components/lp/LpStickyCta";
 import { findVariant, type LpBloco, type LpVariant as LpVariantConfig } from "./variants";
+import { onboardingFrom, ONBOARDING_SRC_LP_FUTEBOL } from "@/utils/onboarding-return";
 
 // ============================================================
 // Página única que renderiza qualquer LP de teste (/lp/:slug).
@@ -61,8 +62,13 @@ function LpConteudo({ variant }: { variant: LpVariantConfig }) {
 
   /**
    * Cadastro e o reverse trial do Futebol libera as 48 horas no primeiro acesso.
-   * O destino é o próprio produto, não a página de assinatura: quem clicou num
-   * CTA de teste grátis não pode cair num botão de pagamento desabilitado.
+   * O destino final continua sendo o próprio produto, não a página de
+   * assinatura: quem clicou num CTA de teste grátis não pode cair num botão de
+   * pagamento desabilitado.
+   *
+   * O caminho até lá passa pelo onboarding. Antes ia direto para `/futebol`, e
+   * o efeito colateral era que ninguém vindo destas LPs conectava o Telegram —
+   * ou seja, a turma de tráfego pago nunca recebia alerta de oportunidade.
    */
   const onCta = (posicao: string) => {
     posthog?.capture("lp_cta_click", {
@@ -70,7 +76,9 @@ function LpConteudo({ variant }: { variant: LpVariantConfig }) {
       gancho: variant.gancho,
       posicao,
     });
-    navigate("/auth", { state: { from: { pathname: "/futebol" } } });
+    navigate("/auth", {
+      state: { from: onboardingFrom(ONBOARDING_SRC_LP_FUTEBOL, "/futebol") },
+    });
   };
 
   const renderBloco = (bloco: LpBloco) => {

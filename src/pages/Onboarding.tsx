@@ -21,7 +21,7 @@ import AnalyticsNav from '../components/AnalyticsNav';
 import { telegramBotUsername } from '../config/environment';
 import { createClient } from '../integrations/supabase/client';
 import {
-  ONBOARDING_SRC_ALERTAS_FUTEBOL,
+  ehOrigemDeFutebol,
   resolveOnboardingReturn,
 } from '../utils/onboarding-return';
 
@@ -65,9 +65,10 @@ const ALERTAS_DE_OPORTUNIDADE = {
 /**
  * A ordem dos benefícios muda com a porta de entrada.
  *
- * Quem chega de Oportunidades clicou por causa do alerta: começar por "registra
- * pelo print" faz a primeira linha da página responder outra pergunta, e o
- * motivo dele aparecer só em terceiro lugar. Para todo o resto, a ordem antiga
+ * Quem chega pelo futebol veio pela oportunidade — seja pelo alerta em
+ * Oportunidades, seja por uma landing do módulo: começar por "registra pelo
+ * print" faz a primeira linha da página responder outra pergunta, e o motivo
+ * dele aparecer só em terceiro lugar. Para todo o resto, a ordem antiga
  * continua — lá a entrada é o registro mesmo.
  */
 function beneficios(paraAlertas: boolean) {
@@ -290,7 +291,10 @@ export default function Onboarding() {
   // Origem e destino chegam pela URL. O destino passa pela lista de rotas
   // permitidas: um valor inválido vira a rota segura, nunca um redirect aberto.
   const returnTo = resolveOnboardingReturn(searchParams.get('return'));
-  const fromOportunidades = searchParams.get('src') === ONBOARDING_SRC_ALERTAS_FUTEBOL;
+  // Mais de uma porta leva à mesma introdução: o alerta em Oportunidades, as
+  // landings do futebol e o gate dentro do próprio módulo. A lista de origens
+  // mora junto das constantes, em onboarding-return.
+  const veioDoFutebol = ehOrigemDeFutebol(searchParams.get('src'));
   const supabase = createClient();
 
   const [userId, setUserId] = useState<string | null>(null);
@@ -425,21 +429,21 @@ export default function Onboarding() {
               esquerda passa da altura da tela, o gancho encosta no cabeçalho. */}
           <div className="order-1 px-6 pt-10 sm:px-10 lg:col-start-1 lg:row-start-1 lg:self-end lg:px-16 lg:pt-12">
             <div className="mx-auto max-w-md lg:mx-0">
-              {/* Quem chega de Oportunidades já sabe o que quer: a introdução
-                  fala do alerta que o trouxe. Os benefícios abaixo e a mecânica
-                  de conexão continuam iguais para todo mundo. */}
+              {/* Quem chega pelo futebol já sabe o que quer: a introdução fala
+                  do alerta que o trouxe. Os benefícios abaixo e a mecânica de
+                  conexão continuam iguais para todo mundo. */}
               <div className="mb-3 text-[12px] font-semibold uppercase tracking-[0.18em] text-forest">
-                {fromOportunidades ? 'Alertas de oportunidades' : 'Conheça o Betinho'}
+                {veioDoFutebol ? 'Alertas de oportunidades' : 'Conheça o Betinho'}
               </div>
               <h1 className="mb-4 font-display text-[32px] font-extrabold leading-[1.08] tracking-tight text-ink lg:text-[42px]">
-                {fromOportunidades ? (
+                {veioDoFutebol ? (
                   <>Receba as novas oportunidades no <span className="text-amber">Telegram.</span></>
                 ) : (
                   <>Seu assistente de apostas, direto no <span className="text-amber">Telegram.</span></>
                 )}
               </h1>
               <p className="text-[15px] leading-relaxed text-ink-2">
-                {fromOportunidades
+                {veioDoFutebol
                   ? 'Conecte o Telegram e o Betinho te avisa quando uma oportunidade nova entrar no painel, antes do jogo começar. Você pode pausar os alertas quando quiser.'
                   : 'Você manda a aposta por print ou texto e o Betinho registra sozinho. Ele calcula seu ROI de verdade e ainda te avisa das oportunidades do dia, no chat onde você já conversa.'}
               </p>
@@ -452,7 +456,7 @@ export default function Onboarding() {
             <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-amber/10" aria-hidden />
             <div className="pointer-events-none absolute -left-16 bottom-10 h-64 w-64 rounded-full bg-white/5" aria-hidden />
             <div className="relative z-10 flex w-full justify-center">
-              <BetinhoCarousel paraAlertas={fromOportunidades} />
+              <BetinhoCarousel paraAlertas={veioDoFutebol} />
             </div>
           </div>
 
@@ -460,7 +464,7 @@ export default function Onboarding() {
           <div className="order-3 px-6 pb-12 sm:px-10 lg:col-start-1 lg:row-start-2 lg:self-start lg:px-16 lg:pt-6 lg:pb-20">
             <div className="mx-auto max-w-md lg:mx-0">
               <div className="mb-7 space-y-3.5">
-                {beneficios(fromOportunidades).map(({ icon: Icon, title, description }) => (
+                {beneficios(veioDoFutebol).map(({ icon: Icon, title, description }) => (
                   <div key={title} className="flex items-start gap-3.5">
                     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-forest-tint">
                       <Icon className="h-4 w-4 text-forest" />
@@ -532,7 +536,7 @@ export default function Onboarding() {
             </div>
             <h1 className="text-xl font-bold text-ink mb-2">Conectado!</h1>
             <p className="text-[14px] text-ink-2 mb-8 max-w-sm mx-auto">
-              {fromOportunidades
+              {veioDoFutebol
                 ? 'Os alertas de novas oportunidades já estão ligados. Você pode pausá-los quando quiser, no site ou pelo Telegram.'
                 : 'O Betinho já te mandou uma mensagem no Telegram. Manda sua primeira aposta pra ele por lá (print ou texto) quando quiser.'}
             </p>
