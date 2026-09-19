@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { renderHook } from '@testing-library/react';
-import { ACESSO_ANONIMO, useFaixaDeAcesso } from './use-faixa-de-acesso';
-import type { FutebolAccess } from '@/services/futebol-data.service';
+import { esquecerFaixaDeAcesso, useFaixaDeAcesso } from './use-faixa-de-acesso';
+import { ACESSO_ANONIMO, type FutebolAccess } from '@/services/futebol-data.service';
 
 // ============================================================================
 // A faixa de acesso decide o espaço dela NA PRIMEIRA PINTURA
@@ -50,6 +50,18 @@ describe('useFaixaDeAcesso', () => {
 
   it('depois de ver um expirado, a faixa volta a ser reservada', () => {
     renderHook(() => useFaixaDeAcesso(expirado));
+    const { result } = renderHook(() => useFaixaDeAcesso(undefined));
+    expect(result.current).toEqual(ACESSO_ANONIMO);
+  });
+
+  // O buraco que a revisão achou: num navegador que já teve sessão de
+  // assinante, quem sai da conta e volta NÃO tinha o espaço reservado — a
+  // faixa nascia depois do banco e empurrava a página, que é o defeito que
+  // este gancho existe para consertar, na população que ele deveria servir.
+  // Quem fecha isso é o `signOut`, em use-auth.ts.
+  it('depois do logout, o deslogado volta a ter o convite reservado', () => {
+    renderHook(() => useFaixaDeAcesso(assinante));
+    esquecerFaixaDeAcesso();
     const { result } = renderHook(() => useFaixaDeAcesso(undefined));
     expect(result.current).toEqual(ACESSO_ANONIMO);
   });

@@ -4,6 +4,16 @@ import { formatadorDeData } from '@/utils/futebol-datas';
 
 const TZ = 'America/Sao_Paulo';
 
+/**
+ * A altura das pílulas de dia, e por tabela a da régua inteira.
+ *
+ * Exportada porque a FutebolHoje reserva o espaço desta barra desde a primeira
+ * pintura, com um esqueleto desta mesma altura — é o que impede a página de
+ * descer 61px quando a agenda chega. Se este número virar outro aqui e lá não,
+ * o empurrão volta em silêncio, sem teste que acuse.
+ */
+export const ALTURA_DA_PILULA = 'h-9';
+
 function todayStr(): string {
   return formatadorDeData('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 }
@@ -79,7 +89,7 @@ export default function FutebolDayStepper({
               type="button"
               onClick={() => onChange(s)}
               title={dayLabel(s)}
-              className={`flex items-center gap-2 rounded-full px-3 h-9 shrink-0 border transition ${
+              className={`flex items-center gap-2 rounded-full px-3 ${ALTURA_DA_PILULA} shrink-0 border transition ${
                 active
                   ? 'bg-forest text-canvas border-forest'
                   : isToday

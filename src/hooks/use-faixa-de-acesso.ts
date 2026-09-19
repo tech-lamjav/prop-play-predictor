@@ -1,21 +1,25 @@
 import { useEffect, useState } from 'react';
 import { faixaDeAcessoAparece } from '@/utils/futebol-bloqueio';
-import type { FutebolAccess } from '@/services/futebol-data.service';
+import { ACESSO_ANONIMO, type FutebolAccess } from '@/services/futebol-data.service';
 
 const CHAVE = 'futebol:faixa-de-acesso';
 
 /**
- * O acesso de quem não está logado, antes de perguntar ao banco. É a mesma
- * resposta que o `get_futebol_access` dá para uma sessão anônima — o padrão
- * está em futebol-data.service.ts, no `getAccess`.
+ * Esquece o que sabíamos sobre esta pessoa. Chamado ao sair da conta.
+ *
+ * É o que torna verdadeira a invariante de que este arquivo depende: sem
+ * resposta guardada, também não há sessão guardada. Sem isto, o navegador de um
+ * ex-assinante seguia dizendo "esconde" depois do logout, e o deslogado — que
+ * DEVE ver o convite — voltava a receber a faixa empurrando a página, que é o
+ * defeito que este arquivo existe para consertar.
  */
-export const ACESSO_ANONIMO: FutebolAccess = {
-  state: 'anon',
-  unlocked: false,
-  days_left: null,
-  hours_left: null,
-  trial_ends_at: null,
-};
+export function esquecerFaixaDeAcesso() {
+  try {
+    localStorage.removeItem(CHAVE);
+  } catch {
+    // Armazenamento bloqueado: não havia o que esquecer.
+  }
+}
 
 function leu(): boolean | null {
   try {

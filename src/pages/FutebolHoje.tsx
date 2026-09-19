@@ -7,7 +7,7 @@ import { Seo } from '@/components/Seo';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFaixaDeAcesso } from '@/hooks/use-faixa-de-acesso';
 import { useFutebolFixturesMulti, useFutebolValueBoard, useFutebolValueHistory, useFutebolAlertedPicks, useFutebolFixtureReasonContract, useFutebolAccess, useVitrine, useFutebolCompetitions, useJogosComPlacarFresco } from '@/hooks/use-futebol-data';
-import FutebolDayStepper from '@/components/FutebolDayStepper';
+import FutebolDayStepper, { ALTURA_DA_PILULA } from '@/components/FutebolDayStepper';
 import { CartaoBloqueado, FutebolAccessBanner, ValorBloqueado } from '@/components/futebol/FutebolGate';
 import { linhaBloqueada } from '@/utils/futebol-bloqueio';
 import { AjudaCampo } from '@/components/futebol/AjudaCampo';
@@ -391,16 +391,24 @@ export default function FutebolHoje() {
   );
   const { data: allGames, isLoading: lFix } = useFutebolFixturesMulti(fixtureScopes);
   const { data: boardRows, isLoading: l3 } = useFutebolValueBoard();
-  // UM dia, não os 30 do painel. A régua desta tela só oferece hoje e os dias
-  // POR VIR (ver o memo `days` abaixo), e a RPC do histórico corta em
+  // DOIS dias, não os 30 do painel. A régua desta tela só oferece hoje e os
+  // dias POR VIR (ver o memo `days` abaixo), e a RPC do histórico corta em
   // `kickoff < now()` no banco: dia futuro não tem foto do apito, e dia passado
   // a tela não mostra. Dos 30 dias que ela pedia, portanto, usava 1 — e os
   // outros 29 eram 1,5 MB baixados para serem descartados, numa consulta que
   // oscilava entre 0,9 e 4,4 segundos e às vezes estourava em HTTP 500.
   //
+  // ⚠️ E por que 2, se ela usa 1? Por causa da MEIA-NOITE. O `brtToday()` que
+  // monta a janela lê o relógio de verdade, enquanto a fusão do
+  // `mergeBoardAndHistory` anda pelo `useNow`, de minuto em minuto. Na virada
+  // do dia existe uma janela de até 60 segundos em que a consulta já pede D+1 e
+  // a tela ainda pensa em D — e, como o board já expurgou o jogo encerrado, as
+  // oportunidades de D ficariam sem fonte nenhuma. Pedir ontem junto custa o
+  // mesmo (foram 198ms nas duas medições) e fecha o buraco.
+  //
   // O painel de Oportunidades continua pedindo 30, e ali é legítimo: a régua
   // dele navega o passado de verdade.
-  const { data: histRows, isLoading: lHist } = useFutebolValueHistory(1);
+  const { data: histRows, isLoading: lHist } = useFutebolValueHistory(2);
   const { data: alertedRaw, isLoading: lReg } = useFutebolAlertedPicks();
   const { vitrine, ocultos, limiares, isLoading: lVitrine } = useVitrine();
   // O acesso ENTRA no gate: enquanto ele não chega, `locked` é verdadeiro e o
@@ -630,8 +638,11 @@ export default function FutebolHoje() {
   }, [allGames]);
 
   const futebolSteps = useMemo(
-    () => makeFutebolSteps({ hasDayBar: !loading && days.length > 0 }),
-    [loading, days.length],
+    // A barra segue a agenda (`lFix`), não o carregamento da tela inteira —
+    // ver o comentário dela lá embaixo. O tour precisa da mesma condição, senão
+    // ele aponta para um alvo que não está lá.
+    () => makeFutebolSteps({ hasDayBar: !lFix && days.length > 0 }),
+    [lFix, days.length],
   );
 
   return (
@@ -647,13 +658,25 @@ export default function FutebolHoje() {
           lendo. É assim que se ganha um clique errado.
 
           Agora a faixa existe desde a primeira pintura com a altura final
-          reservada: os 36px das pílulas (h-9) mais o respiro de 12px em cima e
-          embaixo (py-3). O conteúdo real entra dentro dela sem mover nada. */}
-      {(loading || days.length > 0) && (
+          reservada: a altura das pílulas (ALTURA_DA_PILULA, do próprio stepper)
+          mais o respiro de 12px em cima e
+          embaixo (py-3). O conteúdo real entra dentro dela sem mover nada.
+
+          A espera é `lFix`, e não o `loading` da tela inteira, porque tudo o
+          que a barra mostra — os dias, o dia escolhido, a contagem por dia —
+          sai de `allGames` e de mais nada. Esperar o board e o histórico
+          deixaria a régua travada por causa de consultas que ela não usa.
+
+          ⚠️ Num dia sem jogo NENHUM nas ligas do painel, `days` fica vazio e a
+          faixa reservada some quando a agenda chega — um empurrão de 61px para
+          CIMA. É troca consciente: o empurrão de antes era garantido, em toda
+          visita; este só acontece num dia em que a tela também não tem mais
+          nada para mostrar. */}
+      {(lFix || days.length > 0) && (
         <div data-tour="futebol-datas" className="bg-white border-b border-line">
           <div className="max-w-[1480px] w-full mx-auto px-4 md:px-6 py-3">
-            {loading ? (
-              <Skeleton className="h-9 w-full max-w-[420px] rounded-full bg-canvas-2" />
+            {lFix ? (
+              <Skeleton className={`${ALTURA_DA_PILULA} w-full max-w-[420px] rounded-full bg-canvas-2`} />
             ) : (
               <FutebolDayStepper days={days} value={selectedDay} onChange={setDay} counts={gamesByDay} />
             )}
@@ -713,12 +736,10 @@ export default function FutebolHoje() {
           </div>
         </div>
 
-        {/* O SEGUNDO maior empurrão da tela: 0,060 de CLS. A faixa nascia
-            depois de TODAS as consultas e jogava o raio-x, o destaque e os
-            cartões para baixo, em cima de quem já estava lendo.
-
-            Quem decide o espaço dela agora é o gancho, na primeira pintura —
-            a regra e o porquê estão em use-faixa-de-acesso.ts. */}
+        {/* Ela nascia depois de TODAS as consultas e jogava o raio-x, o
+            destaque e os cartões para baixo, em cima de quem já estava lendo.
+            Quem decide o espaço dela agora é o gancho, na primeira pintura: a
+            regra, o número medido e o porquê estão em use-faixa-de-acesso.ts. */}
         <FutebolAccessBanner access={acessoDaFaixa} />
 
         {/* Hero / sem valor */}

@@ -140,7 +140,7 @@ export function FutebolTrialChip() {
  */
 export function FutebolAccessBanner({ access, className = '' }: { access?: FutebolAccess; className?: string }) {
   const navigate = useNavigate();
-  if (!faixaDeAcessoAparece(access)) return null;
+  if (!access || !faixaDeAcessoAparece(access)) return null;
 
   const expired = access.state === 'expired';
   return (

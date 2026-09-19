@@ -8,9 +8,9 @@ import { Label } from "@/components/ui/label";
 import { CheckCircle, ArrowLeft } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { LanguageToggle } from "@/components/LanguageToggle";
-// Inicializa o i18next. Ele era iniciado no main.tsx, e assim os 77 kB da
-// biblioteca viajavam no pacote de entrada de TODA pagina para servir estas
-// tres telas. Aqui ele carrega junto com quem traduz, e mais ninguem paga.
+// ⚠️ Toda tela que traduz precisa desta linha: o i18next deixou de ser
+// iniciado no main.tsx para sair do pacote de entrada. O porquê está em
+// src/lib/i18n.ts.
 import '@/lib/i18n';
 
 const Waitlist = () => {

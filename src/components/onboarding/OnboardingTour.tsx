@@ -1,26 +1,21 @@
 import { Suspense, useEffect, useState } from 'react';
-import type { Step } from 'react-joyride';
 import { lazyWithRetry } from '@/lib/lazy-with-retry';
 
-const OnboardingTourJoyride = lazyWithRetry(() => import('./OnboardingTourJoyride'));
+// O tipo vem do arquivo de baixo, que é quem define o contrato de verdade.
+// Duplicá-lo aqui deixaria o repasse de props escondendo qualquer divergência.
+import type { PropsDoTour } from './OnboardingTourJoyride';
 
-type Props = {
-  /** Identificador do tour (vai nos eventos de PostHog e na persistência). */
-  tourId: string;
-  steps: Step[];
-  run: boolean;
-  /** Chamado uma vez quando o tour termina (concluído ou pulado). */
-  onFinish: () => void;
-};
+const OnboardingTourJoyride = lazyWithRetry(() => import('./OnboardingTourJoyride'));
 
 /**
  * A ponte para o tour guiado, que só baixa a biblioteca quando o tour vai rodar.
  *
- * O `react-joyride` são ~120 kB com as dependências dele, e o `import` estático
- * jogava tudo isso no pacote da página — em TODA visita, para uma peça que roda
- * uma vez na vida do usuário e nunca mais. Na home do Futebol, isso era código
- * de tour competindo por rede e processador com a lista de jogos que a pessoa
- * abriu para ver.
+ * O `react-joyride` são 118 kB de código-fonte com as dependências (83 dele, 35
+ * do @gilbarbara/hooks, medidos por sourcemap no build de produção), e o
+ * `import` estático jogava tudo isso no pacote da página — em TODA visita, para
+ * uma peça que roda uma vez na vida do usuário e nunca mais. Na home do Futebol,
+ * era código de tour competindo por rede e processador com a lista de jogos que
+ * a pessoa abriu para ver.
  *
  * O `run` já chega falso na quase totalidade das visitas (quem já fez o tour, ou
  * ainda está carregando os dados), então na prática ninguém baixa.
@@ -29,7 +24,7 @@ type Props = {
  * tour tiraria o Joyride do ar no mesmo instante em que ele processa o evento de
  * conclusão — e é esse evento que persiste "já viu" e alimenta o PostHog.
  */
-export default function OnboardingTour(props: Props) {
+export default function OnboardingTour(props: PropsDoTour) {
   const [jaPrecisou, setJaPrecisou] = useState(false);
 
   useEffect(() => {

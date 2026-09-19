@@ -30,7 +30,7 @@ export function linhaBloqueada(o: Pick<FutebolValueBoardRow, 'market'> | null | 
  * responder. Com duas cópias da regra, a memória do gancho passaria a guardar
  * uma decisão que a tela não toma mais no dia em que uma das duas mudasse.
  */
-export function faixaDeAcessoAparece(access?: FutebolAccess | null): access is FutebolAccess {
+export function faixaDeAcessoAparece(access?: FutebolAccess | null): boolean {
   if (!access) return false;
   return access.state !== 'subscribed' && access.state !== 'trial';
 }

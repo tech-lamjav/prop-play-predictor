@@ -3,7 +3,7 @@ import { Joyride, EVENTS, STATUS, type Step, type EventData } from 'react-joyrid
 import { usePostHog } from '@posthog/react';
 import OnboardingTooltip from './OnboardingTooltip';
 
-type Props = {
+export type PropsDoTour = {
   /** Identificador do tour (vai nos eventos de PostHog e na persistência). */
   tourId: string;
   steps: Step[];
@@ -20,7 +20,7 @@ type Props = {
 // Wrapper do react-joyride com o tooltip do design system e os eventos de
 // PostHog. Mantém o modo não-controlado (o Joyride cuida do avanço); só
 // observamos os eventos pra medir adesão e persistir a conclusão.
-export default function OnboardingTourJoyride({ tourId, steps, run, onFinish }: Props) {
+export default function OnboardingTourJoyride({ tourId, steps, run, onFinish }: PropsDoTour) {
   const posthog = usePostHog();
   const endedRef = useRef(false);
 

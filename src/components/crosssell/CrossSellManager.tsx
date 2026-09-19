@@ -6,7 +6,7 @@ import { useCrossSellFutebol } from '@/hooks/use-crosssell-futebol';
 import { FutebolTeaserModal } from './FutebolTeaserModal';
 import { lazyWithRetry } from '@/lib/lazy-with-retry';
 
-// O carrossel traz o embla (~47 kB) junto. Ele é a SEGUNDA etapa do cross-sell:
+// O carrossel traz o embla (47 kB de fonte, medido por sourcemap) junto. Ele é a SEGUNDA etapa do cross-sell:
 // só chega aqui quem viu o teaser e clicou nele — uma fração pequena, e nunca
 // em /futebol, que está na lista bloqueada logo abaixo. Não há razão para todo
 // mundo baixar o carrossel na primeira pintura de toda página.
@@ -63,10 +63,10 @@ export const CrossSellManager: React.FC = () => {
   const { isOpen, dismiss } = useCrossSellFutebol({ enabled, force: forced });
 
   const [stage, setStage] = useState<Stage>('closed');
-  // Uma vez baixado, o carrossel FICA montado — mesmo fechado. Desmontá-lo ao
+  // Uma vez pedido, o carrossel FICA montado — mesmo fechado. Desmontá-lo ao
   // fechar cortaria a animação de saída do Dialog, que hoje existe: quem fecha
   // é o `open` falso, e o Radix precisa seguir na árvore para animar a saída.
-  const [carrosselBaixado, setCarrosselBaixado] = useState(false);
+  const [carrosselJaPrecisou, setCarrosselJaPrecisou] = useState(false);
   // Opt-out escolhido no teaser, aplicado ao fechar em qualquer etapa.
   const [optOut, setOptOut] = useState(false);
 
@@ -82,7 +82,7 @@ export const CrossSellManager: React.FC = () => {
 
   const handleTeaserCta = (dontShowAgain: boolean) => {
     setOptOut(dontShowAgain);
-    setCarrosselBaixado(true);
+    setCarrosselJaPrecisou(true);
     posthog?.capture('crosssell_futebol_preview_open');
     setStage('preview');
   };
@@ -100,7 +100,7 @@ export const CrossSellManager: React.FC = () => {
         onDismiss={closeAll}
         onCta={handleTeaserCta}
       />
-      {carrosselBaixado && (
+      {carrosselJaPrecisou && (
         <Suspense fallback={null}>
           <FutebolPreviewCarousel
             open={stage === 'preview'}
