@@ -121,10 +121,24 @@ export function competitionLabel(slug: string | null | undefined): string {
 }
 
 /** Ordena uma lista de slugs pela ordem canônica (desconhecidos ao fim, alfabético). */
-export function sortCompetitions(slugs: string[]): string[] {
+export function sortCompetitions(slugs: readonly (string | null | undefined)[]): string[] {
   const rank = (s: string) => {
     const i = ALL_COMPETITIONS.indexOf(s);
     return i < 0 ? Number.MAX_SAFE_INTEGER : i;
   };
-  return [...slugs].sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+  // ⚠️ O `filter` existe porque um nulo aqui derrubava A TELA INTEIRA.
+  //
+  // Em 19/09/2026 a lista de Oportunidades voltava em branco para quem não tem
+  // acesso: a guarda do banco devolve a linha com as colunas nulas — 416 de 416
+  // no board de homologação —, a `competition` vinha junto, e o
+  // `a.localeCompare(b)` estourava dentro do `sort`. Erro em render desmonta a
+  // árvore, então o que era uma liga faltando na lista de filtros virou página
+  // inexistente.
+  //
+  // A origem foi corrigida em FutebolOportunidades, e é lá que ela deve ser
+  // corrigida de novo se voltar. Isto aqui é a rede: esta função é exportada e
+  // chamada de mais de um lugar, e o tipo do board MENTE (declara `string` e
+  // entrega `null` para o chamador sem acesso). Numa tela onde já há cadeado em
+  // tudo, sumir uma liga do filtro é defeito pequeno; sumir a tela é incidente.
+  return slugs.filter((s): s is string => !!s).sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
 }
