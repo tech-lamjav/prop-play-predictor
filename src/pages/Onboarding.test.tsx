@@ -73,8 +73,9 @@ describe('Onboarding', () => {
   });
 
   it('vindo da landing do futebol, a introdução é a do alerta, não a genérica', async () => {
-    // O lead da landing chegou pela oportunidade, igual a quem clicou no alerta:
-    // abrir com "seu assistente de apostas" responderia outra pergunta.
+    // Quem vem da landing do futebol chegou pela oportunidade, igual a quem
+    // clicou no alerta: abrir com "seu assistente de apostas" responderia
+    // outra pergunta.
     renderOnboarding('?src=lp-futebol&return=%2Ffutebol');
 
     expect(await screen.findByText('Alertas de oportunidades')).toBeInTheDocument();

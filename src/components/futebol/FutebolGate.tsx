@@ -3,6 +3,18 @@ import { Lock, Sparkles } from 'lucide-react';
 import { useFutebolAccess } from '@/hooks/use-futebol-data';
 import type { FutebolAccess } from '@/services/futebol-data.service';
 import { tempoDeTeste } from './tempo-de-teste';
+import { onboardingFrom, ONBOARDING_SRC_GATE_FUTEBOL } from '@/utils/onboarding-return';
+
+/**
+ * Quem se cadastra a partir de uma tela do futebol termina no futebol, não no
+ * hub — o destino viaja junto com a ida para o cadastro.
+ *
+ * Sem isto, quem entrava pelo "Espiar sem login" da landing e criava conta aqui
+ * dentro caía no hub, que é justamente o atrito que as landings deixaram de ter.
+ */
+const IR_PRO_CADASTRO = {
+  state: { from: onboardingFrom(ONBOARDING_SRC_GATE_FUTEBOL, '/futebol') },
+} as const;
 
 /**
  * Reverse trial do Futebol (48 horas, sem cartão).
@@ -121,7 +133,7 @@ export function FutebolTrialChip() {
   const expired = access.state === 'expired';
   return (
     <button
-      onClick={() => navigate(expired ? '/futebol/assinar' : '/auth')}
+      onClick={() => (expired ? navigate('/futebol/assinar') : navigate('/auth', IR_PRO_CADASTRO))}
       className="hidden sm:inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-[11px] font-bold bg-forest text-canvas hover:bg-forest-2 transition"
     >
       {expired ? <Lock className="w-3 h-3" /> : <Sparkles className="w-3 h-3" />}
@@ -158,7 +170,7 @@ export function FutebolAccessBanner({ access, className = '' }: { access?: Futeb
         </div>
       </div>
       <button
-        onClick={() => navigate(expired ? '/futebol/assinar' : '/auth')}
+        onClick={() => (expired ? navigate('/futebol/assinar') : navigate('/auth', IR_PRO_CADASTRO))}
         className="shrink-0 inline-flex items-center justify-center gap-1.5 rounded-rebrand-sm bg-forest text-canvas text-[12px] font-bold px-4 h-9 hover:bg-forest-2 transition"
       >
         {expired ? 'Assinar Futebol' : 'Criar conta grátis'}

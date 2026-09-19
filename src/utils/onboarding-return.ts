@@ -20,7 +20,29 @@ export const ONBOARDING_SRC_ALERTAS_FUTEBOL = 'alertas-futebol';
 /** Origem de quem se cadastrou vindo de uma landing page do futebol. */
 export const ONBOARDING_SRC_LP_FUTEBOL = 'lp-futebol';
 
+/** Origem de quem se cadastrou a partir do próprio módulo de futebol (o gate). */
+export const ONBOARDING_SRC_GATE_FUTEBOL = 'gate-futebol';
+
 export const ONBOARDING_PATH = '/onboarding';
+
+/**
+ * As origens que chegaram pelo futebol.
+ *
+ * Todas veem a introdução do alerta, e não a genérica: a pessoa chegou pela
+ * oportunidade, e abrir com "registra sua aposta pelo print" responde outra
+ * pergunta. São etiquetas separadas de propósito, mesmo levando à mesma tela —
+ * o funil precisa distinguir quem veio de uma landing de quem já estava dentro
+ * do produto, e juntar as duas numa etiqueta só apagaria essa diferença.
+ */
+const ORIGENS_DE_FUTEBOL: readonly string[] = [
+  ONBOARDING_SRC_ALERTAS_FUTEBOL,
+  ONBOARDING_SRC_LP_FUTEBOL,
+  ONBOARDING_SRC_GATE_FUTEBOL,
+];
+
+export function ehOrigemDeFutebol(src: string | null | undefined): boolean {
+  return typeof src === 'string' && ORIGENS_DE_FUTEBOL.includes(src);
+}
 
 export function resolveOnboardingReturn(raw: string | null | undefined): string {
   if (typeof raw !== 'string') return ONBOARDING_RETURN_FALLBACK;

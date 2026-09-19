@@ -21,8 +21,7 @@ import AnalyticsNav from '../components/AnalyticsNav';
 import { telegramBotUsername } from '../config/environment';
 import { createClient } from '../integrations/supabase/client';
 import {
-  ONBOARDING_SRC_ALERTAS_FUTEBOL,
-  ONBOARDING_SRC_LP_FUTEBOL,
+  ehOrigemDeFutebol,
   resolveOnboardingReturn,
 } from '../utils/onboarding-return';
 
@@ -292,13 +291,10 @@ export default function Onboarding() {
   // Origem e destino chegam pela URL. O destino passa pela lista de rotas
   // permitidas: um valor inválido vira a rota segura, nunca um redirect aberto.
   const returnTo = resolveOnboardingReturn(searchParams.get('return'));
-  // Duas portas levam à mesma introdução: o alerta em Oportunidades e o
-  // cadastro vindo de uma landing do futebol. Nos dois casos a pessoa chegou
-  // pelo futebol, e o que ela quer ouvir primeiro é o alerta de oportunidade —
-  // não "registra sua aposta pelo print", que responde outra pergunta.
-  const src = searchParams.get('src');
-  const veioDoFutebol =
-    src === ONBOARDING_SRC_ALERTAS_FUTEBOL || src === ONBOARDING_SRC_LP_FUTEBOL;
+  // Mais de uma porta leva à mesma introdução: o alerta em Oportunidades, as
+  // landings do futebol e o gate dentro do próprio módulo. A lista de origens
+  // mora junto das constantes, em onboarding-return.
+  const veioDoFutebol = ehOrigemDeFutebol(searchParams.get('src'));
   const supabase = createClient();
 
   const [userId, setUserId] = useState<string | null>(null);

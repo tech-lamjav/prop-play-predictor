@@ -11,6 +11,18 @@ import type { createClient } from '@/integrations/supabase/client';
  * cadastro novo NÃO passa por aqui: vai direto pro /onboarding. E o /inicio
  * não re-gateia (quem pulou o onboarding ainda alcança o hub nesta sessão).
  */
+export async function resolveHomePath(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+): Promise<string> {
+  const { data } = await supabase
+    .from('users')
+    .select('telegram_chat_id')
+    .eq('id', userId)
+    .maybeSingle();
+  return data?.telegram_chat_id ? '/inicio' : '/onboarding';
+}
+
 /**
  * Determina pra onde redirecionar o user após login/signup bem-sucedido.
  *
@@ -19,7 +31,7 @@ import type { createClient } from '@/integrations/supabase/client';
  *    dependem disso (BolaoLP `/bolao/comecar` passa `state.from`, e as landings
  *    do futebol passam o onboarding com o destino na query).
  * 2. Senão, usa o `fallback` que o chamador passar. Login manda o resultado do
- *    `resolveHomePath` (/inicio ou /onboarding); cadastro manda
+ *    `resolveHomePath` acima (/inicio ou /onboarding); cadastro manda
  *    `/onboarding?src=signup`.
  *
  * Bug histórico que esta função corrige: `handleSignUp` ignorava
@@ -27,7 +39,7 @@ import type { createClient } from '@/integrations/supabase/client';
  * via signup caía no onboarding em vez do bolão.
  *
  * Mora aqui, e não dentro da tela de login, porque é decisão de roteamento
- * pós-login como o `resolveHomePath` abaixo — e porque lá dentro ela era
+ * pós-login como o `resolveHomePath` acima — e porque lá dentro ela era
  * privada e ninguém conseguia testá-la.
  */
 export function getRedirectTarget(
@@ -45,16 +57,4 @@ export function getRedirectTarget(
     return from.pathname + (from.search || '');
   }
   return fallback;
-}
-
-export async function resolveHomePath(
-  supabase: ReturnType<typeof createClient>,
-  userId: string,
-): Promise<string> {
-  const { data } = await supabase
-    .from('users')
-    .select('telegram_chat_id')
-    .eq('id', userId)
-    .maybeSingle();
-  return data?.telegram_chat_id ? '/inicio' : '/onboarding';
 }

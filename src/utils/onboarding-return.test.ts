@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  ONBOARDING_PATH,
+  ehOrigemDeFutebol,
   ONBOARDING_RETURN_FALLBACK,
   ONBOARDING_SRC_LP_FUTEBOL,
   onboardingFrom,
@@ -55,17 +55,35 @@ describe('onboardingHref', () => {
   });
 });
 
+describe('ehOrigemDeFutebol', () => {
+  it('reconhece as três portas do futebol', () => {
+    expect(ehOrigemDeFutebol('alertas-futebol')).toBe(true);
+    expect(ehOrigemDeFutebol('lp-futebol')).toBe(true);
+    expect(ehOrigemDeFutebol('gate-futebol')).toBe(true);
+  });
+
+  it('não reconhece origem de fora do futebol, nem ausência de origem', () => {
+    expect(ehOrigemDeFutebol('signup')).toBe(false);
+    expect(ehOrigemDeFutebol('configuracoes')).toBe(false);
+    expect(ehOrigemDeFutebol(null)).toBe(false);
+    expect(ehOrigemDeFutebol(undefined)).toBe(false);
+    expect(ehOrigemDeFutebol('')).toBe(false);
+  });
+});
+
 describe('onboardingFrom', () => {
   it('separa caminho e query, que é o formato do state.from do login', () => {
+    // Literal cru de propósito: comparar com a constante que está sob teste
+    // passaria verde mesmo se a rota mudasse.
     expect(onboardingFrom(ONBOARDING_SRC_LP_FUTEBOL, '/futebol')).toEqual({
-      pathname: ONBOARDING_PATH,
+      pathname: '/onboarding',
       search: '?src=lp-futebol&return=%2Ffutebol',
     });
   });
 
   it('sem retorno, leva só a origem', () => {
     expect(onboardingFrom('configuracoes')).toEqual({
-      pathname: ONBOARDING_PATH,
+      pathname: '/onboarding',
       search: '?src=configuracoes',
     });
   });
