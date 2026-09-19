@@ -26,8 +26,13 @@ import { resolve } from 'node:path';
 
 const RAIZ = resolve(__dirname, '../..');
 const SHAPE = readFileSync(resolve(RAIZ, 'docs/futebol-prod-deploy.sql'), 'utf8');
+// ⚠️ O nome mudou de `20260919120000_161` para `20260919130000_162`: a migration
+// foi re-carimbada porque colidia, no carimbo E no número, com a dos índices das
+// premissas — e o Supabase identifica migration pelo carimbo, então o deploy da
+// develop morria em `duplicate key`. O porquê está no cabeçalho do próprio
+// arquivo. Este teste foi quem acusou a renomeação, que é o papel dele.
 const MIGRATION = readFileSync(
-  resolve(RAIZ, 'supabase/migrations/20260919120000_161_futebol_nascimento_visivel.sql'),
+  resolve(RAIZ, 'supabase/migrations/20260919130000_162_futebol_nascimento_visivel.sql'),
   'utf8',
 );
 
