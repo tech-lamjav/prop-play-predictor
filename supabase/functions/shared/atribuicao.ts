@@ -85,6 +85,36 @@ export async function chaveDoLink(deliveryId: string, destino: string): Promise<
   return await digestCurto(`link:${deliveryId}:${destino}`);
 }
 
+/**
+ * As campanhas que o redirecionador reconhece.
+ *
+ * É a MESMA lista que o `go` usa para escolher o nome do evento de clique. Uma
+ * campanha fora dela cai no evento de resumo semanal por engano — e, no
+ * `campaign_type`, um valor solto cria uma fatia nova em todo gráfico que
+ * quebra por campanha, até o gráfico ficar ilegível.
+ */
+export const CAMPANHAS = [
+  "daily_opportunities",
+  "published_opportunities",
+  "weekly_summary",
+] as const;
+
+export type Campanha = (typeof CAMPANHAS)[number] | "other";
+
+/**
+ * A campanha, validada. Fora da lista vira `other`.
+ *
+ * O `c=` da URL é texto CRU vindo de fora: qualquer um pode montar um link do
+ * `go` com a campanha que quiser. Sem esta porta, esse texto entrava direto no
+ * `campaign_type` do evento.
+ */
+export function campanhaValida(valor: string | null | undefined): Campanha {
+  if (!valor) return "other";
+  return (CAMPANHAS as readonly string[]).includes(valor)
+    ? (valor as Campanha)
+    : "other";
+}
+
 /** Tudo o que descreve uma entrega, para viajar junto. */
 export type Atribuicao = {
   deliveryId: string;

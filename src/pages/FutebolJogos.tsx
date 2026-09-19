@@ -383,7 +383,7 @@ export default function FutebolJogos() {
                           </span>
                         </div>
                         {!recolhido &&
-                          jogos.map((f) => (
+                          jogos.map((f, i) => (
                             <FixtureRow
                               key={f.fixture_id}
                               fixture={f}
@@ -399,6 +399,9 @@ export default function FutebolJogos() {
                                 jogoClicado({
                                   game_id: f.fixture_id,
                                   source: 'games_list',
+                                  // A posição DENTRO do grupo da competição,
+                                  // que é como a agenda se apresenta na tela.
+                                  position: i,
                                   is_featured: false,
                                   destination_path: hrefDaSaida(f.fixture_id, melhor),
                                   competition: f.competition ?? null,

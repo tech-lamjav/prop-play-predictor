@@ -284,11 +284,7 @@ function OppCard({ o, to, aoClicar, aoAparecer }: { o: FutebolValueBoardRow; to:
   const chance = chancePct(o.prob_justa_fechamento);
   // O gancho é chamado AQUI, e não no pai: hook não roda dentro de `.map`, e o
   // que se observa é este cartão. O pai só diz o que fazer quando ele aparece.
-  const refDeImpressao = useImpressaoDeOportunidade({
-    chave: idDaOportunidade(o),
-    ativo: !!aoAparecer,
-    aoAparecer: aoAparecer ?? (() => {}),
-  });
+  const refDeImpressao = useImpressaoDeOportunidade({ chave: idDaOportunidade(o), aoAparecer });
   return (
     // `flex-col` + `h-full`, e não `block`: no grid os cartões já esticavam
     // para a mesma altura, mas o conteúdo parava onde acabava, e uma aposta que

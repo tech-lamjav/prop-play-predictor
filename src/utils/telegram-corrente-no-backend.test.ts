@@ -111,6 +111,41 @@ describe('o redirecionador fecha a corrente', () => {
     expect(GO).toContain('link_id: atribuicao?.linkId');
   });
 
+  it('a campanha passa por validação antes de virar propriedade', () => {
+    // O `c=` é texto CRU da URL: qualquer um monta um link do `go` com a
+    // campanha que quiser. Sem a porta, esse texto entrava direto no
+    // `campaign_type` e criava uma fatia nova em todo gráfico que quebra por
+    // campanha — até o gráfico ficar ilegível.
+    expect(GO).toContain('campaign_type: campanhaValida(campaign)');
+    expect(ATRIBUICAO).toContain('export function campanhaValida');
+  });
+});
+
+describe('o registro de aposta pelo bot', () => {
+  const CALLBACKS = ler('supabase/functions/telegram-webhook/callbacks.ts');
+  const WEBHOOK = ler('supabase/functions/telegram-webhook/index.ts');
+
+  for (const [nome, fonte] of [
+    ['o botão de unidade', CALLBACKS],
+    ['a resposta livre', WEBHOOK],
+  ] as const) {
+    it(`${nome} diz de qual JOGO era a aposta`, () => {
+      // Sem isto, o registro pelo bot não casa com o funil da tela, que
+      // identifica tudo por jogo e oportunidade.
+      expect(fonte).toContain('game_id: pick.fixture_id');
+    });
+  }
+
+  it('e NÃO inventa `opportunity_id` no bot', () => {
+    // Afirmado pela AUSÊNCIA, de propósito. A chave canônica é
+    // `fixture|mercado|saída|linha`, e `daily_opportunity_picks` guarda a saída
+    // dentro de `bet_description`, em texto livre — não há de onde montá-la.
+    // Quando alguém estruturar saída e linha na tabela, este teste falha, e é
+    // para falhar: é o lembrete de fechar a lacuna e apagar esta exceção.
+    expect(CALLBACKS).not.toContain('opportunity_id:');
+    expect(WEBHOOK).not.toContain('opportunity_id:');
+  });
+
   it('repassa a atribuição ao site, senão a chegada não tem o que reportar', () => {
     expect(GO).toContain('paramsDaAtribuicao');
     expect(GO).toContain('utm_medium');

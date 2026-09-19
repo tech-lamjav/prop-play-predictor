@@ -416,6 +416,12 @@ async function deliverPending(
           batch_id: batchId,
           campaign_id: CAMPAIGN,
           campaign_type: CAMPAIGN,
+          // NULO de propósito, e não ausente: o alerta de publicação não tem
+          // segmento. Segmento é conceito do DIÁRIO — os grupos A e B da régua
+          // de reativação —, e aqui a entrega sai para quem ligou os alertas,
+          // sem recorte. Emitir nulo diz "não se aplica"; omitir a chave faria
+          // parecer esquecimento, e inventar um valor seria pior que os dois.
+          segment: null,
           opportunity_ids: publicaveis.map((o) => opportunityDestination(o)),
           // "aceito pelo Telegram", e não "lido" nem "recebido": a API não dá
           // confirmação de leitura, e nomear assim convidaria a ler o número

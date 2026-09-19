@@ -48,10 +48,17 @@ export function jaFoiImpressa(chave: string): boolean {
 export type OpcoesDeImpressao = {
   /** `opportunity_id` — a chave da deduplicação. */
   chave: string;
-  /** Falso enquanto não há o que medir (lista carregando, cartão bloqueado). */
+  /**
+   * Falso enquanto não há o que medir (lista carregando, cartão bloqueado).
+   *
+   * Opcional, e por padrão ligado: quem não passa `aoAparecer` já está dizendo
+   * que não quer medir, e exigir os dois obrigava todo chamador a escrever
+   * `{ ativo: !!aoAparecer, aoAparecer: aoAparecer ?? (() => {}) }` — uma
+   * cerimônia que apareceu três vezes idêntica e denunciava a API torta.
+   */
   ativo?: boolean;
-  /** Chamado uma única vez, quando a régua fecha. */
-  aoAparecer: () => void;
+  /** Chamado uma única vez, quando a régua fecha. Sem ele, não se mede nada. */
+  aoAparecer?: () => void;
 };
 
 /**
@@ -66,10 +73,13 @@ export function useImpressaoDeOportunidade({
   ativo = true,
   aoAparecer,
 }: OpcoesDeImpressao) {
+  // Medir exige as duas coisas: alguém interessado no resultado e permissão
+  // para medir. Derivar aqui é o que dispensa a cerimônia no chamador.
+  const ligado = ativo && !!aoAparecer;
   // O callback mais recente, sem entrar nas dependências do efeito: ele nasce
   // novo a cada render do pai, e se estivesse nas dependências o observador
   // seria desmontado e remontado a cada render — perdendo o cronômetro no meio.
-  const aoAparecerRef = useRef(aoAparecer);
+  const aoAparecerRef = useRef<(() => void) | undefined>(aoAparecer);
   useEffect(() => {
     aoAparecerRef.current = aoAparecer;
   }, [aoAparecer]);
@@ -91,7 +101,7 @@ export function useImpressaoDeOportunidade({
   return useCallback(
     (el: HTMLElement | null) => {
       limpar();
-      if (!el || !ativo || !chave) return;
+      if (!el || !ligado || !chave) return;
       if (jaImpressas.has(chave)) return;
       // jsdom e navegadores antigos não têm o observador. Sem ele não há como
       // saber se apareceu, e o certo é não contar — inventar a impressão seria
@@ -102,7 +112,27 @@ export function useImpressaoDeOportunidade({
         (entradas) => {
           const e = entradas[0];
           if (!e) return;
-          if (e.isIntersecting && e.intersectionRatio >= FRACAO_VISIVEL) {
+
+          // ── Metade do CARTÃO, ou metade da TELA ──────────────────────────
+          //
+          // A proporção do observador é sempre relativa ao próprio elemento, e
+          // isso cria um buraco: um cartão MAIS ALTO que a janela nunca atinge
+          // 0,5 de si mesmo, por mais que ocupe a tela inteira. No celular o
+          // `OppMobileCard` chega perto disso, e o efeito seria impressão que
+          // NUNCA dispara — o pior tipo de falha de medição, porque o número
+          // simplesmente não existe e ninguém desconfia.
+          //
+          // Então a régua tem duas portas: metade do cartão visível, OU metade
+          // da altura da janela preenchida por ele. Quem é pequeno passa pela
+          // primeira; quem é grande, pela segunda.
+          const alturaVisivel = e.intersectionRect?.height ?? 0;
+          const alturaDaJanela = typeof window !== 'undefined' ? window.innerHeight : 0;
+          const cobreATela =
+            alturaDaJanela > 0 && alturaVisivel >= alturaDaJanela * FRACAO_VISIVEL;
+          const apareceu =
+            e.isIntersecting && (e.intersectionRatio >= FRACAO_VISIVEL || cobreATela);
+
+          if (apareceu) {
             if (timerRef.current != null) return;
             timerRef.current = window.setTimeout(() => {
               timerRef.current = null;
@@ -111,7 +141,7 @@ export function useImpressaoDeOportunidade({
               // de celular no DOM), e ambos venceriam o cronômetro.
               if (jaImpressas.has(chave)) return;
               jaImpressas.add(chave);
-              aoAparecerRef.current();
+              aoAparecerRef.current?.();
               limpar();
             }, PERMANENCIA_MS);
           } else if (timerRef.current != null) {
@@ -121,11 +151,15 @@ export function useImpressaoDeOportunidade({
             timerRef.current = null;
           }
         },
-        { threshold: [FRACAO_VISIVEL] },
+        // Vários limiares, e não só 0,5: o observador só REPORTA quando cruza um
+        // limiar declarado. Com um limiar único, o cartão alto — que nunca
+        // chega a 0,5 de si mesmo — não geraria notificação nenhuma, e a porta
+        // da "metade da tela" acima nunca chegaria a ser avaliada.
+        { threshold: [0, 0.25, FRACAO_VISIVEL, 0.75, 1] },
       );
       obs.observe(el);
       observadorRef.current = obs;
     },
-    [chave, ativo, limpar],
+    [chave, ligado, limpar],
   );
 }

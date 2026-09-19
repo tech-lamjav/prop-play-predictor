@@ -150,8 +150,9 @@ export function jogoClicado(props: {
  * Uma oportunidade de fato exibida.
  *
  * Não é "o componente renderizou": a lista monta linha que nunca chega à
- * dobra. Quem decide é o observador de visibilidade (`useImpressaoDaOportunidade`),
- * com a régua de metade do cartão visível por cerca de um segundo.
+ * dobra. Quem decide é o observador de visibilidade
+ * (`useImpressaoDeOportunidade`), com a régua de metade do cartão — ou metade
+ * da tela, para o cartão alto — por cerca de um segundo.
  */
 export function oportunidadeExibida(props: PropsComunsDaOportunidade): void {
   capturar(EVENTOS.oportunidadeExibida, props);
@@ -235,5 +236,3 @@ export function chegadaDoTelegram(props: {
 }): void {
   capturar(EVENTOS.chegadaDoTelegram, props);
 }
-
-export type { SituacaoDeAssinatura };

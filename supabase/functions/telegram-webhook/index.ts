@@ -635,6 +635,13 @@ serve(async (req) => {
                   via: isReply ? "force_reply" : "bare_number",
                   channel: "telegram",
                   source,
+                  // O jogo, que faltava — ver o comentário gêmeo no
+                  // callbacks.ts, inclusive sobre por que `opportunity_id`
+                  // NÃO sai daqui (a tabela não guarda saída nem linha
+                  // estruturadas; montá-la exigiria migration).
+                  game_id: pick.fixture_id ?? null,
+                  market: pick.betting_market ?? null,
+                  competition: pick.league ?? null,
                 },
                 user.id,
                 traceId,

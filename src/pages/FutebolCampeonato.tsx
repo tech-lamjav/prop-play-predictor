@@ -315,7 +315,7 @@ export default function FutebolCampeonato() {
                   {sufixoDeLeitura(leituraCarregando, comLeitura)}
                 </span>
               </div>
-              {games.map((f) => (
+              {games.map((f, i) => (
                 <FixtureRow
                   key={f.fixture_id}
                   fixture={f}
@@ -330,6 +330,8 @@ export default function FutebolCampeonato() {
                     jogoClicado({
                       game_id: f.fixture_id,
                       source: 'games_list',
+                      // A posição dentro do dia, que é como esta tela agrupa.
+                      position: i,
                       is_featured: false,
                       destination_path: hrefDaSaida(f.fixture_id, melhor),
                       // A competição vem da PÁGINA, e não da linha: aqui o tipo

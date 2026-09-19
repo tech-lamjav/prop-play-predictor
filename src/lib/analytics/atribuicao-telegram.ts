@@ -166,17 +166,49 @@ export function atribuicaoGuardada(
 }
 
 /**
- * Marca que a chegada já virou evento.
+ * Encerra a atribuição: apaga o conteúdo e guarda só a lápide.
  *
- * A atribuição CONTINUA guardada depois disso, de propósito: ela ainda precisa
- * etiquetar a oportunidade que a pessoa abrir em seguida. O que esta marca
- * impede é o segundo `telegram_opportunity_landing_opened` — que aconteceria no
- * retorno do `/auth/callback`, quando a mesma atribuição é reencontrada.
+ * "Limpar depois do uso" tem de ser literal — atribuição que sobrevive ao seu
+ * propósito é exatamente o que credita ao Telegram uma visita futura que o
+ * Telegram não causou. Então tudo vai embora: campanha, segmento, horário de
+ * envio, identidade da oportunidade.
+ *
+ * O que FICA é só `delivery_id` mais a marca, e fica por um motivo específico:
+ * os parâmetros continuam na barra de endereço. Apagar o registro inteiro faria
+ * a próxima montagem do componente reler a mesma URL e contar a mesma chegada
+ * de novo — e a viagem do login passa por três rotas. A lápide é o que responde
+ * "esta entrega já foi contada" sem guardar nada que possa contaminar.
+ *
+ * Uma versão anterior mantinha o payload completo, com a justificativa de que
+ * ele ainda etiquetaria a oportunidade aberta em seguida. Essa etiquetagem
+ * nunca foi implementada: era estado guardado para um fim inexistente.
  */
-export function marcarChegadaDisparada(): void {
+export function encerrarAtribuicao(): void {
   const g = ler();
   if (!g) return;
-  gravar({ ...g, chegada_disparada: true });
+  gravar({
+    ...vazia(g.delivery_id),
+    guardada_em: g.guardada_em,
+    chegada_disparada: true,
+  });
+}
+
+/** Uma atribuição sem conteúdo: só a identidade da entrega. */
+function vazia(deliveryId: string): AtribuicaoDoTelegram {
+  return {
+    delivery_id: deliveryId,
+    batch_id: null,
+    link_id: null,
+    campaign_id: null,
+    campaign_type: null,
+    opportunity_id: null,
+    segment: null,
+    sent_at: null,
+    utm_source: null,
+    utm_medium: null,
+    utm_campaign: null,
+    utm_content: null,
+  };
 }
 
 /**

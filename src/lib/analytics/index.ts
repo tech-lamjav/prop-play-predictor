@@ -56,7 +56,7 @@ export {
   tempoDesdeOEnvioMs,
   guardarAtribuicao,
   atribuicaoGuardada,
-  marcarChegadaDisparada,
+  encerrarAtribuicao,
   limparAtribuicao,
   chegadaAReportar,
   type AtribuicaoDoTelegram,

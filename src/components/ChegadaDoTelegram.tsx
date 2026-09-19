@@ -5,7 +5,7 @@ import {
   TIPOS_DE_CAMPANHA,
   chegadaAReportar,
   chegadaDoTelegram,
-  marcarChegadaDisparada,
+  encerrarAtribuicao,
   tempoDesdeOEnvioMs,
   valorControlado,
 } from '@/lib/analytics';
@@ -53,7 +53,11 @@ export const ChegadaDoTelegram = () => {
     if (!a) return;
 
     jaDisparou.current = true;
-    marcarChegadaDisparada();
+    // Encerra ANTES de capturar: o conteúdo da atribuição já está no objeto
+    // `a`, e apagá-lo do armazenamento aqui é o que garante que ele não
+    // sobreviva ao seu propósito nem que uma falha na captura deixe a
+    // atribuição viva para contaminar a visita seguinte.
+    encerrarAtribuicao();
 
     chegadaDoTelegram({
       delivery_id: a.delivery_id,

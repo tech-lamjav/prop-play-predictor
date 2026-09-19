@@ -145,6 +145,19 @@ export function FixtureRow({
         aoClicar?.();
         if (onClick) interceptarCliqueSimples(onClick)(e);
       }}
+      // O botão do MEIO não passa por `onClick`.
+      //
+      // O `click` do DOM cobre o botão esquerdo — com ou sem Ctrl, Shift, Alt —
+      // mas o do meio dispara `auxclick`, um evento separado. Sem esta linha, o
+      // "abrir em nova aba" com a rodinha, que é justamente o caminho que a
+      // #341 preservou de propósito nesta linha, não seria medido: o número
+      // sairia menor que a realidade e ninguém desconfiaria.
+      //
+      // Só a telemetria, e nada do intercepto: o clique do meio tem de
+      // continuar abrindo a aba nova, que é o pedido explícito do usuário.
+      onAuxClick={(e) => {
+        if (e.button === 1) aoClicar?.();
+      }}
       aria-current={selected ? 'true' : undefined}
       className="w-full text-left px-3 sm:px-4 py-2.5 flex items-center gap-2.5 sm:gap-3.5 transition"
       style={{

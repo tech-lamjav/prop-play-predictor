@@ -37,7 +37,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { generateTraceId, trackEvent } from "../shared/posthog.ts";
-import { oportunidadeDoDestino, paramsDaAtribuicao } from "../shared/atribuicao.ts";
+import {
+  campanhaValida,
+  oportunidadeDoDestino,
+  paramsDaAtribuicao,
+} from "../shared/atribuicao.ts";
 
 const CRON_SECRET = Deno.env.get("CRON_SECRET") || "";
 const SITE = "https://www.smartbetting.app";
@@ -180,8 +184,16 @@ serve(async (req) => {
           delivery_id: atribuicao?.deliveryId ?? null,
           batch_id: atribuicao?.batchId ?? null,
           link_id: atribuicao?.linkId ?? null,
+          // O `c=` é texto CRU da URL: qualquer um monta um link do `go` com a
+          // campanha que quiser. `campaign_type` passa pela porta; `campaign_id`
+          // guarda o valor como veio, para o caso de alguém precisar investigar
+          // um link estranho sem o dado já ter sido normalizado.
+          //
+          // ⚠️ O domínio NÃO tem instância de campanha: não existe tabela de
+          // campanhas com id próprio. Quem identifica a rodada específica é o
+          // `batch_id`. `campaign_id` aqui é o slug, e está documentado assim.
           campaign_id: campaign,
-          campaign_type: campaign,
+          campaign_type: campanhaValida(campaign),
           opportunity_id: oportunidadeDoDestino(d),
           segment: atribuicao?.segment ?? null,
         },

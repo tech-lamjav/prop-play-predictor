@@ -42,13 +42,20 @@ class ObservadorFalso {
     this.desconectado = true;
   }
 
-  /** Simula o elemento entrando (ou saindo) da tela. */
-  emitir(fracao: number) {
+  /**
+   * Simula o elemento entrando (ou saindo) da tela.
+   *
+   * `alturaVisivel` existe para o cartão ALTO: a régua tem duas portas, e a
+   * segunda olha quantos pixels do cartão ocupam a janela, não que fração dele
+   * está visível.
+   */
+  emitir(fracao: number, alturaVisivel = 0) {
     this.callback(
       [
         {
           isIntersecting: fracao > 0,
           intersectionRatio: fracao,
+          intersectionRect: { height: alturaVisivel } as DOMRectReadOnly,
         } as IntersectionObserverEntry,
       ],
       this as unknown as IntersectionObserver,
@@ -120,11 +127,48 @@ describe('a régua dos dois lados', () => {
     expect(aoAparecer).toHaveBeenCalledTimes(1);
   });
 
-  it('observa no limiar de metade do cartão', () => {
+  it('declara vários limiares, e não só a metade', () => {
+    // O observador só NOTIFICA ao cruzar um limiar declarado. Com `[0.5]`
+    // sozinho, o cartão mais alto que a janela — que nunca chega a 0,5 de si
+    // mesmo — não geraria notificação nenhuma, e a segunda porta da régua
+    // (metade da TELA) nunca chegaria a ser avaliada.
     const { result } = montar('1|m|Home|', vi.fn());
     result.current(document.createElement('div'));
 
-    expect(ObservadorFalso.ultimo!.opcoes?.threshold).toEqual([FRACAO_VISIVEL]);
+    const limiares = ObservadorFalso.ultimo!.opcoes?.threshold as number[];
+    expect(limiares).toContain(FRACAO_VISIVEL);
+    expect(limiares.length).toBeGreaterThan(1);
+  });
+
+  it('cartão MAIS ALTO que a tela também conta', () => {
+    // O defeito que a revisão pegou: a proporção do observador é sempre
+    // relativa ao próprio elemento, então um cartão de 1200px numa janela de
+    // 800px nunca atinge 0,5 de si mesmo — por mais que ocupe a tela inteira.
+    // A impressão simplesmente NUNCA disparava, em silêncio. Risco real no
+    // cartão de celular da lista de oportunidades.
+    const aoAparecer = vi.fn();
+    const { result } = montar('1|m|Home|', aoAparecer);
+    result.current(document.createElement('div'));
+
+    // 40% do cartão visível — abaixo da régua —, mas esses 40% são 480px numa
+    // janela de 768px (o padrão do jsdom), ou seja, mais da metade da tela.
+    ObservadorFalso.ultimo!.emitir(0.4, 480);
+    vi.advanceTimersByTime(PERMANENCIA_MS);
+
+    expect(aoAparecer).toHaveBeenCalledTimes(1);
+  });
+
+  it('mas um pedacinho na borda continua não contando', () => {
+    // A segunda porta não pode virar uma porta escancarada: pouca área E
+    // poucos pixels seguem sendo passagem, não leitura.
+    const aoAparecer = vi.fn();
+    const { result } = montar('1|m|Home|', aoAparecer);
+    result.current(document.createElement('div'));
+
+    ObservadorFalso.ultimo!.emitir(0.1, 40);
+    vi.advanceTimersByTime(PERMANENCIA_MS);
+
+    expect(aoAparecer).not.toHaveBeenCalled();
   });
 });
 
@@ -211,6 +255,18 @@ describe('quando não dá para saber', () => {
     const aoAparecer = vi.fn();
     const { result } = renderHook(() =>
       useImpressaoDeOportunidade({ chave: '1|m|Home|', ativo: false, aoAparecer }),
+    );
+    result.current(document.createElement('div'));
+
+    expect(ObservadorFalso.ultimo).toBeNull();
+  });
+
+  it('sem `aoAparecer`, não observa: ninguém quer o resultado', () => {
+    // Quem não passa o retorno já está dizendo que não quer medir. Antes, o
+    // chamador tinha de dizer isso DUAS vezes — `ativo: !!aoAparecer` mais um
+    // `aoAparecer ?? (() => {})` —, cerimônia que apareceu três vezes idêntica.
+    const { result } = renderHook(() =>
+      useImpressaoDeOportunidade({ chave: '1|m|Home|' }),
     );
     result.current(document.createElement('div'));
 

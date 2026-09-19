@@ -116,11 +116,7 @@ function OppRow({ o, to, muted, locked, result, homeGoals, awayGoals, aoClicar, 
   const pick = pickLabel(o, o.home_team_name, o.away_team_name);
   const chance = chancePct(o.prob_justa_fechamento);
   // Dentro do componente, e não no pai: hook não roda dentro de `.map`.
-  const refDeImpressao = useImpressaoDeOportunidade({
-    chave: idDaOportunidade(o),
-    ativo: !!aoAparecer,
-    aoAparecer: aoAparecer ?? (() => {}),
-  });
+  const refDeImpressao = useImpressaoDeOportunidade({ chave: idDaOportunidade(o), aoAparecer });
   const showLock = !!locked && !result; // histórico (com resultado) é sempre visível
   // `showLock` é o que a TELA sabe; `linhaBloqueada` é o que o BANCO já fez.
   // Desde a guarda de acesso a linha do board chega com as colunas nulas, e sem
@@ -193,11 +189,7 @@ function OppMobileCard({ o, to, locked, result, homeGoals, awayGoals, canRegiste
 }) {
   const pick = pickLabel(o, o.home_team_name, o.away_team_name);
   const chance = chancePct(o.prob_justa_fechamento);
-  const refDeImpressao = useImpressaoDeOportunidade({
-    chave: idDaOportunidade(o),
-    ativo: !!aoAparecer,
-    aoAparecer: aoAparecer ?? (() => {}),
-  });
+  const refDeImpressao = useImpressaoDeOportunidade({ chave: idDaOportunidade(o), aoAparecer });
   const showLock = !!locked && !result;
   const bloqueada = showLock || linhaBloqueada(o);
   const hasScore = homeGoals != null && awayGoals != null;
@@ -316,6 +308,22 @@ export default function FutebolOportunidades() {
   // Ver o comentário gêmeo em FutebolHoje: a memória das impressões é do
   // módulo, e zerá-la é responsabilidade de quem monta a página.
   useEffect(() => reiniciarImpressoes(), []);
+
+  /**
+   * As propriedades comuns de uma oportunidade DESTA tela.
+   *
+   * O bloco estava escrito quatro vezes no arquivo, idêntico, e cada cópia era
+   * uma chance de alguém carimbar a origem errada num dos quatro pontos — o
+   * tipo de divergência que não quebra nada e só aparece quando o funil não
+   * fecha. Origem e situação de assinatura são as mesmas para a tela inteira;
+   * o que muda de cartão para cartão é a linha e a posição.
+   */
+  const comunsDaLista = (o: OppLike, posicao: number) =>
+    propsDaOportunidade(o, {
+      source: 'opportunities',
+      subscription_status: access?.state ?? 'unknown',
+      position: posicao,
+    });
   const { data: publicationAlerts, acknowledgeOnboarding, isAcknowledging } = useFutebolPublicationAlerts();
   // No primeiro contato, o cartão explica a novidade sozinho. Depois de
   // dispensado, ele dá lugar ao status compacto para não repetir a mesma ideia,
@@ -917,21 +925,9 @@ export default function FutebolOportunidades() {
                       result={res}
                       homeGoals={g?.gh}
                       awayGoals={g?.ga}
-                      aoAparecer={() =>
-                        oportunidadeExibida(
-                          propsDaOportunidade(o, {
-                            source: 'opportunities',
-                            subscription_status: access?.state ?? 'unknown',
-                            position: i,
-                          }),
-                        )
-                      }
+                      aoAparecer={() => oportunidadeExibida(comunsDaLista(o, i))}
                       aoClicar={() => {
-                        const comuns = propsDaOportunidade(o, {
-                          source: 'opportunities',
-                          subscription_status: access?.state ?? 'unknown',
-                          position: i,
-                        });
+                        const comuns = comunsDaLista(o, i);
                         const destino = hrefDaSaida(o.fixture_id, o);
                         // DOIS eventos, de propósito. `opportunity_opened` é o
                         // degrau do funil da oportunidade; `futebol_game_clicked`
@@ -975,21 +971,9 @@ export default function FutebolOportunidades() {
                     homeGoals={g?.gh}
                     awayGoals={g?.ga}
                     canRegister={!locked}
-                    aoAparecer={() =>
-                      oportunidadeExibida(
-                        propsDaOportunidade(o, {
-                          source: 'opportunities',
-                          subscription_status: access?.state ?? 'unknown',
-                          position: i,
-                        }),
-                      )
-                    }
+                    aoAparecer={() => oportunidadeExibida(comunsDaLista(o, i))}
                     aoClicar={() => {
-                      const comuns = propsDaOportunidade(o, {
-                        source: 'opportunities',
-                        subscription_status: access?.state ?? 'unknown',
-                        position: i,
-                      });
+                      const comuns = comunsDaLista(o, i);
                       const destino = hrefDaSaida(o.fixture_id, o);
                       oportunidadeAberta({ ...comuns, open_mode: 'card', destination_path: destino });
                       jogoClicado({

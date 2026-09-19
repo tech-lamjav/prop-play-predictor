@@ -3,10 +3,10 @@ import {
   VALIDADE_MS,
   atribuicaoGuardada,
   chegadaAReportar,
+  encerrarAtribuicao,
   guardarAtribuicao,
   lerAtribuicaoDaUrl,
   limparAtribuicao,
-  marcarChegadaDisparada,
   tempoDesdeOEnvioMs,
 } from './atribuicao-telegram';
 
@@ -131,7 +131,7 @@ describe('chegadaAReportar — uma vez por abertura do link', () => {
 
   it('a mesma URL remontando não reporta de novo', () => {
     chegadaAReportar(URL_COMPLETA, 1000);
-    marcarChegadaDisparada();
+    encerrarAtribuicao();
 
     // Voltar pelo histórico, trocar de aba, StrictMode montando o efeito duas
     // vezes — tudo isso reencontra a MESMA entrega.
@@ -149,14 +149,14 @@ describe('chegadaAReportar — uma vez por abertura do link', () => {
 
   it('depois de reportada, a volta do login não reporta segunda vez', () => {
     chegadaAReportar(URL_COMPLETA, 1000);
-    marcarChegadaDisparada();
+    encerrarAtribuicao();
 
     expect(chegadaAReportar('', 5000)).toBeNull();
   });
 
   it('entrega NOVA reporta de novo, mesmo com uma anterior guardada', () => {
     chegadaAReportar(URL_COMPLETA, 1000);
-    marcarChegadaDisparada();
+    encerrarAtribuicao();
 
     const outra = chegadaAReportar('?delivery_id=d2&batch_id=b2', 2000);
     expect(outra?.delivery_id).toBe('d2');
@@ -167,12 +167,33 @@ describe('chegadaAReportar — uma vez por abertura do link', () => {
     expect(chegadaAReportar('?foo=bar', 1000)).toBeNull();
   });
 
-  it('a atribuição CONTINUA guardada depois de reportada', () => {
-    // De propósito: ela ainda precisa etiquetar a oportunidade que a pessoa
-    // abrir em seguida. O que a marca impede é o segundo evento de CHEGADA.
+  it('encerrar APAGA o conteúdo e deixa só a lápide', () => {
+    // "Limpar depois do uso" tem de ser literal: atribuição que sobrevive ao
+    // próprio propósito é o que credita ao Telegram uma visita futura que o
+    // Telegram não causou.
+    //
+    // A versão anterior guardava o payload inteiro, com a justificativa de que
+    // ele ainda etiquetaria a oportunidade aberta em seguida. Essa etiquetagem
+    // nunca foi construída: era estado vivo para um fim inexistente.
     chegadaAReportar(URL_COMPLETA, 1000);
-    marcarChegadaDisparada();
+    encerrarAtribuicao();
+
+    const g = atribuicaoGuardada(2000);
+    expect(g?.campaign_type).toBeNull();
+    expect(g?.opportunity_id).toBeNull();
+    expect(g?.segment).toBeNull();
+    expect(g?.sent_at).toBeNull();
+    expect(g?.utm_source).toBeNull();
+  });
+
+  it('a lápide fica, e é ela que impede a contagem dupla', () => {
+    // Os parâmetros continuam na barra de endereço. Apagar o registro INTEIRO
+    // faria a próxima montagem reler a mesma URL e contar de novo — e a viagem
+    // do login passa por três rotas.
+    chegadaAReportar(URL_COMPLETA, 1000);
+    encerrarAtribuicao();
 
     expect(atribuicaoGuardada(2000)?.delivery_id).toBe('d1');
+    expect(chegadaAReportar(URL_COMPLETA, 2000)).toBeNull();
   });
 });

@@ -726,8 +726,10 @@ export function BancadaMercados({
         },
         { source: 'other', subscription_status: acesso?.state ?? 'unknown' },
       ),
-      // O vocabulário do domínio, e não "contra": o que o backend agrupa do
-      // outro lado são premissas do PRÓPRIO lado que não atingiram o corte.
+      // "Contra" É verbete do CONTEXT.md, e o valor emitido usa a definição
+      // dele: premissa do PRÓPRIO lado da saída que não atingiu o corte — e
+      // não sinal para o lado oposto. O nome longo é o que impede a leitura
+      // errada lá no painel, onde ninguém tem o glossário à mão.
       reason_type: modo === 'favor' ? 'a_favor' : 'nao_atingiu_o_corte',
       reason_count: quantidade,
       premissa: slug,

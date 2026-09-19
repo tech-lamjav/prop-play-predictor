@@ -165,3 +165,17 @@ visita de ontem é pior que não creditar nada.
 - **`signed_in` / `signed_up` continuam mandando `email`** na propriedade, como
   sempre mandaram. Não foram tocados para não quebrar painel existente — a
   decisão de limpar é de produto, não desta camada.
+- **O `opportunity_bet_registered` do BOT não carrega `opportunity_id`.** Ele
+  ganhou `game_id`, `market` e `competition`, mas não a chave canônica — e isso
+  é limitação do domínio, não esquecimento. A chave é
+  `fixture|mercado|saída|linha`, e a tabela `daily_opportunity_picks`
+  (migration 085) guarda `betting_market` como texto e a saída dentro de
+  `bet_description`, em texto livre: não há `outcome` nem `line_value`
+  estruturados de onde montá-la. Fechar essa lacuna exige **migration** para
+  estruturar saída e linha na tabela — trabalho de modelagem, não de
+  instrumentação. Até lá, o funil "aposta registrada" costura por `game_id` no
+  bot e por `opportunity_id` na web.
+- **`campaign_id` é o slug da campanha, igual ao `campaign_type`.** O domínio
+  não tem instância de campanha: não existe tabela de campanhas com id próprio.
+  Quem identifica a rodada específica é o `batch_id`. O campo existe porque a
+  spec o pede, e fica documentado assim para ninguém procurar um id que não há.
