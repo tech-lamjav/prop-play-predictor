@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -31,22 +31,36 @@ import { describe, expect, it } from 'vitest';
 // ============================================================================
 
 const RAIZ = resolve(__dirname, '../../..');
-// ⚠️ A 162 é a ÚLTIMA definição da função, e a última é a que vale: ela leva o
+// ⚠️ A 163 é a ÚLTIMA definição da função, e a última é a que vale: ela leva o
 // preço para a primeira versão visível. A 148 continua no repositório e continua
 // dizendo a regra antiga — apontar para ela aqui seria cobrar do banco uma regra
 // que ele não roda mais.
 const MIGRATION = resolve(
   RAIZ,
-  'supabase/migrations/20260919180000_162_placar_concorda_com_o_board.sql',
+  'supabase/migrations/20260919200000_163_placar_concorda_com_o_board.sql',
 );
 const SHAPE = resolve(RAIZ, 'docs/futebol-prod-deploy.sql');
 const SCRIPT = resolve(RAIZ, 'scripts/futebol-roi.mjs');
-// A migration que deu a regra de visibilidade ao board e ao detalhe do jogo. Ela
-// entra aqui só para a asserção das QUATRO cópias, abaixo.
-const MIGRATION_161 = resolve(
-  RAIZ,
-  'supabase/migrations/20260919120000_161_futebol_nascimento_visivel.sql',
-);
+
+/**
+ * TODAS as migrations concatenadas, na ordem em que o banco as aplica.
+ *
+ * ⚠️ ANCORAR EM NOME DE MIGRATION QUEBRA, e quebrou aqui. A primeira versão
+ * desta guarda apontava para `20260919120000_161_futebol_nascimento_visivel.sql`
+ * — o nome que o arquivo tinha ENQUANTO a branch dele existia. No merge ele foi
+ * re-carimbado para `20260919130000_162_...`, porque colidiu com a migration dos
+ * índices das premissas. A suíte local passou (o arquivo está na minha máquina)
+ * e o `validate` reprovou com ENOENT.
+ *
+ * Para a asserção das quatro cópias o nome não importa: o que importa é que a
+ * regra exista em algum lugar das migrations. Concatenar é o que sobrevive à
+ * próxima renumeração — e vai haver uma.
+ */
+const MIGRACOES = readdirSync(resolve(RAIZ, 'supabase/migrations'))
+  .filter((f) => f.endsWith('.sql'))
+  .sort()
+  .map((f) => readFileSync(resolve(RAIZ, 'supabase/migrations', f), 'utf8'))
+  .join('\n');
 
 /**
  * O coração da regra de visibilidade, como ele tem de aparecer em TODA cópia.
@@ -111,8 +125,8 @@ const NASCIMENTO_ESPERADO = [
   'order by h.opportunity_key, h.dbt_valid_from asc, h.dbt_scd_id asc',
 ].join(' ');
 
-// O PREÇO que vale: a primeira versão VISÍVEL (migration 162). Mesma regra da
-// 161, que fez o board e o detalhe do jogo julgarem por ela.
+// O PREÇO que vale: a primeira versão VISÍVEL (migration 163). Mesma regra da
+// 162, que fez o board e o detalhe do jogo julgarem por ela.
 const ESTREIA_ESPERADA = [
   'estreia as ( select distinct on (j.opportunity_key)',
   'j.opportunity_key, j.edge, j.best_odd',
@@ -192,7 +206,7 @@ describe('a foto de nascimento do placar', () => {
   // Aceite 1: a identidade e o preço DE RESERVA seguem na primeira versão de
   // todas, sem filtro de metodologia.
   it('a identidade vem da primeira versão de todas, sem filtro de metodologia', () => {
-    const nascimento = cte(readFileSync(MIGRATION, 'utf8'), 'nascimento', 'na migration 162');
+    const nascimento = cte(readFileSync(MIGRATION, 'utf8'), 'nascimento', 'na migration 163');
 
     expect(nascimento).toBe(NASCIMENTO_ESPERADO);
     expect(nascimento).not.toContain('score_versao');
@@ -201,14 +215,14 @@ describe('a foto de nascimento do placar', () => {
   // Aceite 2: a nota continua restrita a `contexto_v1`. O filtro não era
   // bobagem — ele existe para não somar duas escalas.
   it('a nota e a data continuam vindo só da metodologia vigente', () => {
-    expect(cte(readFileSync(MIGRATION, 'utf8'), 'nota', 'na migration 162')).toBe(NOTA_ESPERADA);
+    expect(cte(readFileSync(MIGRATION, 'utf8'), 'nota', 'na migration 163')).toBe(NOTA_ESPERADA);
   });
 
   // ⚠️ Aceite 3, a razão desta migration: o PREÇO vem da primeira versão
-  // VISÍVEL, que é a mesma regra que a 161 deu ao board e ao detalhe do jogo.
+  // VISÍVEL, que é a mesma regra que a 162 deu ao board e ao detalhe do jogo.
   // Sem isto, as duas telas dizem números diferentes sobre a mesma linha.
   it('o preço vem da primeira versão VISÍVEL, como no board', () => {
-    expect(cte(readFileSync(MIGRATION, 'utf8'), 'estreia', 'na migration 162')).toBe(
+    expect(cte(readFileSync(MIGRATION, 'utf8'), 'estreia', 'na migration 163')).toBe(
       ESTREIA_ESPERADA,
     );
   });
@@ -216,7 +230,7 @@ describe('a foto de nascimento do placar', () => {
   // As duas metades na MESMA linha: se alguém trocar os prefixos, a divergência
   // volta sem que as afirmações acima percebam.
   it('o select puxa preço da estreia, com queda, e data e nota da nota', () => {
-    afirmaDirecao(readFileSync(MIGRATION, 'utf8'), 'na migration 162');
+    afirmaDirecao(readFileSync(MIGRATION, 'utf8'), 'na migration 163');
   });
 
   // O shape file provisiona ambiente novo. Divergir dele é nascer com a versão
@@ -262,7 +276,7 @@ describe('a foto de nascimento do placar', () => {
 // ============================================================================
 // ⚠️ As QUATRO cópias da regra de visibilidade
 // ============================================================================
-// O code review achou o buraco: a guarda da 161 cobre as duas RPCs dela, esta
+// O code review achou o buraco: a guarda da 162 cobre as duas RPCs dela, esta
 // cobre as do placar, e NINGUÉM comparava o bloco que de fato decide. Mudar o
 // `least` passava verde nas duas ao mesmo tempo.
 //
@@ -272,24 +286,37 @@ describe('a foto de nascimento do placar', () => {
 // ============================================================================
 
 describe('a regra de visibilidade é a mesma nas quatro cópias', () => {
+  // ⚠️ As migrations entram CONCATENADAS, e não por nome de arquivo. O nome de
+  // uma migration muda no merge quando o número colide — já aconteceu duas vezes
+  // nesta área —, e guarda que depende do nome reprova código certo.
+  //
+  // Concatenadas, elas cobrem as DUAS cópias das RPCs do board e do detalhe do
+  // jogo mais a do placar. O arquivo de provisionamento e o script são
+  // conferidos à parte, porque não são migration.
   it.each([
-    ['migration 161 (board e detalhe do jogo)', MIGRATION_161],
-    ['migration 162 (placar)', MIGRATION],
-    ['arquivo de provisionamento', SHAPE],
-    ['script de terminal', SCRIPT],
-  ])('%s', (_nome, arquivo) => {
-    expect(semEspaco(readFileSync(arquivo, 'utf8'))).toContain(REGRA_DA_JANELA);
+    ['as migrations (board, detalhe do jogo e placar)', () => MIGRACOES],
+    ['arquivo de provisionamento', () => readFileSync(SHAPE, 'utf8')],
+    ['script de terminal', () => readFileSync(SCRIPT, 'utf8')],
+  ])('%s', (_nome, ler) => {
+    expect(semEspaco(ler())).toContain(REGRA_DA_JANELA);
+  });
+
+  it('e a regra aparece TRÊS vezes nas migrations, uma por RPC', () => {
+    // Contar é o que separa "existe em algum lugar" de "existe nas três". Sem
+    // isto, apagar a regra de uma RPC e deixá-la nas outras passava verde.
+    const ocorrencias = semEspaco(MIGRACOES).split(REGRA_DA_JANELA).length - 1;
+    expect(ocorrencias).toBeGreaterThanOrEqual(3);
   });
 });
 
-describe('a migration 162 e o arquivo de provisionamento não se afastam', () => {
+describe('a migration 163 e o arquivo de provisionamento não se afastam', () => {
   // O outro buraco do mesmo review: nada comparava a 162 com o provisionamento
-  // CORPO A CORPO, como a guarda da 161 já faz com as dela. O `selecionadas` —
+  // CORPO A CORPO, como a guarda da 162 já faz com as dela. O `selecionadas` —
   // com o fuso de Brasília e o OU das duas datas — podia divergir entre os dois
   // arquivos sem quebrar nada, e ambiente novo nasceria com outra regra.
   it('o corpo da função é idêntico nos dois arquivos', () => {
     expect(semEspaco(corpoDaFuncao(readFileSync(SHAPE, 'utf8'), 'no shape file'))).toBe(
-      semEspaco(corpoDaFuncao(readFileSync(MIGRATION, 'utf8'), 'na migration 162')),
+      semEspaco(corpoDaFuncao(readFileSync(MIGRATION, 'utf8'), 'na migration 163')),
     );
   });
 });

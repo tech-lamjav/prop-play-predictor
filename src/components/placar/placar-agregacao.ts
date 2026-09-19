@@ -46,7 +46,7 @@ export type LinhaPublicada = {
   edge: number | null;
   /**
    * A vantagem com que a linha APARECEU para o assinante, e `null` quando ela
-   * nunca apareceu (migration 162).
+   * nunca apareceu (migration 163).
    *
    * ⚠️ Não é o mesmo que `edge`, e a diferença é o recorte "Só a vitrine": ele
    * pergunta o que o assinante VIU, e a resposta é esta. Usar `edge` ali mantinha

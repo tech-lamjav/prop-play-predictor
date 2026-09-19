@@ -1,15 +1,26 @@
 -- ============================================================================
--- 162 — o placar dos sócios usa a mesma foto de nascimento que o board
+-- 163 — o placar dos sócios usa a mesma foto de nascimento que o board
 -- ============================================================================
--- A 161 mudou a vantagem de publicação do board e do detalhe do jogo: ela passou
+-- ⚠️ RE-CARIMBADA de 20260919180000_162 para 20260919200000_163.
+--
+-- O número 162 foi tomado enquanto esta branch existia: a migration do PR #491
+-- foi ela própria re-carimbada para 20260919130000_162 no merge, depois de
+-- colidir com a dos índices das premissas do PR #494. O Supabase identifica a
+-- migration pelo CARIMBO, e carimbo repetido mata o deploy com
+-- "duplicate key value violates unique constraint schema_migrations_pkey".
+--
+-- Conferir o número antes de criar não protege: a colisão nasce entre o momento
+-- de criar e o de mergear. A defesa é abrir o PR cedo, e conferir de novo agora.
+-- ============================================================================
+-- A 162 mudou a vantagem de publicação do board e do detalhe do jogo: ela passou
 -- a ser a da primeira versão VISÍVEL de cada oportunidade, e não a da primeira
 -- que existe no snapshot. O placar dos sócios ficou para trás, e por isso as
 -- duas telas voltaram a discordar — do jeito que a #436 já tinha corrigido uma
 -- vez, e pelo mesmo motivo.
 --
--- No caso que originou a 161 (jogo 1557408, Brentford +0,5):
+-- No caso que originou a 162 (jogo 1557408, Brentford +0,5):
 --
---   · board e detalhe, depois da 161 ....... −1,94%, aparece
+--   · board e detalhe, depois da 162 ....... −1,94%, aparece
 --   · placar dos sócios, sem esta migration . −2,96%, não aparece
 --
 -- −2,96% é a vantagem de 12/09, quando o handicap ainda estava fora da vitrine e
@@ -20,7 +31,7 @@
 --
 -- O PREÇO — `best_odd` e `edge` — passa a vir da primeira versão VISÍVEL, com
 -- queda para a primeira de todas quando não houve nenhuma. A regra de
--- visibilidade é a mesma da 161, verbatim.
+-- visibilidade é a mesma da 162, verbatim.
 --
 -- ⚠️ POR QUE QUEDA, E NÃO NULO. No board, a linha que nunca esteve visível some,
 -- e é o que se quer. Aqui não: o placar devolve o board INTEIRO, mercado oculto
@@ -110,7 +121,7 @@ returns table(
   edge double precision,
   -- A vantagem da ESTREIA, e NULA quando a linha nunca esteve visível. Mesmo
   -- nome e mesmo significado de `get_futebol_value_board`, `..._value_history` e
-  -- `..._fixture_value` (migrations 146 e 161): nulo aqui é resposta, e quer
+  -- `..._fixture_value` (migrations 146 e 162): nulo aqui é resposta, e quer
   -- dizer "isto não chegou a aparecer para ninguém".
   --
   -- É coluna à parte, e não o próprio `edge`, porque as duas perguntas do painel
@@ -193,7 +204,7 @@ begin
             between p_de and p_ate
   ),
   janelas as (
-    -- A JANELA EM QUE CADA VERSÃO PÔDE SER VISTA. Mesma regra da 161, verbatim.
+    -- A JANELA EM QUE CADA VERSÃO PÔDE SER VISTA. Mesma regra da 162, verbatim.
     --
     -- Uma versão do snapshot não é um instante: ela vale de `dbt_valid_from` até
     -- `dbt_valid_to`. Perguntar se ela estava visível NO NASCIMENTO é a pergunta
@@ -306,4 +317,4 @@ end;
 $function$;
 
 comment on function public.get_futebol_oportunidades_publicadas(date, date) is
-  'Foto de nascimento das oportunidades publicadas no periodo, com o placar do jogo e as premissas acesas. O PRECO vem da primeira versao VISIVEL (migration 162), caindo para a primeira de todas quando nunca houve versao visivel; a nota e a data vem da primeira contexto_v1 (migration 148). Insumo do placar da metodologia. Restrita a socio: devolve o board inteiro, inclusive mercado oculto.';
+  'Foto de nascimento das oportunidades publicadas no periodo, com o placar do jogo e as premissas acesas. O PRECO vem da primeira versao VISIVEL (migration 163), caindo para a primeira de todas quando nunca houve versao visivel; a nota e a data vem da primeira contexto_v1 (migration 148). Insumo do placar da metodologia. Restrita a socio: devolve o board inteiro, inclusive mercado oculto.';

@@ -205,7 +205,7 @@ async function consultar(sql) {
  * `contexto_v1`, porque a escala da NOTA mudou e somar as duas inventa uma série
  * que nunca existiu.
  *
- * E o PREÇO vem da primeira versão VISÍVEL (migration 162), caindo para a
+ * E o PREÇO vem da primeira versão VISÍVEL (migration 163), caindo para a
  * primeira de todas quando nunca houve uma. O snapshot grava o board, que é o
  * universo — mercado fora da vitrine e linha abaixo do limiar incluídos —, então
  * a primeira linha dele pode ser de um trecho em que ninguém podia ver aquilo.

@@ -3715,7 +3715,7 @@ returns table(
   edge double precision,
   -- A vantagem da ESTREIA, e NULA quando a linha nunca esteve visível. Mesmo
   -- nome e mesmo significado de `get_futebol_value_board`, `..._value_history` e
-  -- `..._fixture_value` (migrations 146 e 161): nulo aqui é resposta, e quer
+  -- `..._fixture_value` (migrations 146 e 162): nulo aqui é resposta, e quer
   -- dizer "isto não chegou a aparecer para ninguém".
   --
   -- É coluna à parte, e não o próprio `edge`, porque as duas perguntas do painel
@@ -3798,7 +3798,7 @@ begin
             between p_de and p_ate
   ),
   janelas as (
-    -- A JANELA EM QUE CADA VERSÃO PÔDE SER VISTA. Mesma regra da 161, verbatim.
+    -- A JANELA EM QUE CADA VERSÃO PÔDE SER VISTA. Mesma regra da 162, verbatim.
     --
     -- Uma versão do snapshot não é um instante: ela vale de `dbt_valid_from` até
     -- `dbt_valid_to`. Perguntar se ela estava visível NO NASCIMENTO é a pergunta

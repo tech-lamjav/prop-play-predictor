@@ -46,7 +46,7 @@ export function esteveNaVitrine(
   return (
     !mercadoOcultoNaData(linha.market, linha.detectada_em, ocultos, agoraMs) &&
     // ⚠️ Pela vantagem de PUBLICAÇÃO, e não pelo preço exibido. Desde a
-    // migration 162 o `edge` desta linha pode ser o preço de RESERVA — o da
+    // migration 163 o `edge` desta linha pode ser o preço de RESERVA — o da
     // primeira versão do histórico — para uma linha que nunca esteve visível.
     // Cortar por ele mantinha na vitrine exatamente o que nunca esteve nela,
     // sempre que esse preço de reserva passasse no limiar.
