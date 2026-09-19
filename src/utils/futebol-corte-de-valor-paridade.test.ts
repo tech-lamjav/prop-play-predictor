@@ -44,6 +44,66 @@ describe('as duas cópias do corte concordam', () => {
   });
 });
 
+// ============================================================================
+// ⚠️ A guarda era CEGA para a coluna de publicação
+// ============================================================================
+// Até aqui, toda linha montada por este arquivo tinha só `market` e `edge`.
+// `edge_publicacao` estava SEMPRE ausente, então as duas cópias concordavam à
+// toa — e concordariam mesmo se uma delas mudasse de regra.
+//
+// Foi exatamente o que aconteceu na migration 161: o painel passou a tratar
+// `edge_publicacao` nula como "esta linha nunca esteve na tela", a cópia das
+// notificações ficou no contrato antigo, e este arquivo passou verde. O
+// vazamento que ele existe para impedir é esse mesmo: a linha some da tela e
+// chega no celular.
+//
+// Os casos abaixo exercitam os três estados da coluna, que é o que faltava.
+// ============================================================================
+
+type LinhaComPublicacao = { market: string; edge?: number | null; edge_publicacao?: number | null };
+
+const COM_PUBLICACAO: [string, LinhaComPublicacao][] = [
+  [
+    'nunca apareceu: publicação NULA, apito bom',
+    { market: 'asian_handicap', edge: 0.05, edge_publicacao: null },
+  ],
+  [
+    'apareceu bem: publicação boa, apito ruim',
+    { market: 'asian_handicap', edge: -0.05, edge_publicacao: -0.01 },
+  ],
+  [
+    'apareceu mal: publicação ruim, apito bom',
+    { market: 'asian_handicap', edge: 0.05, edge_publicacao: -0.05 },
+  ],
+  [
+    'banco velho: coluna AUSENTE, cai no apito',
+    { market: 'asian_handicap', edge: -0.05 },
+  ],
+  [
+    'coluna presente e indefinida: mesma coisa que ausente',
+    { market: 'asian_handicap', edge: -0.05, edge_publicacao: undefined },
+  ],
+  [
+    'mercado sem limiar passa em qualquer combinação',
+    { market: 'goals_over_under', edge: -0.3, edge_publicacao: null },
+  ],
+];
+
+describe('as duas cópias concordam sobre a vantagem de PUBLICAÇÃO', () => {
+  it.each(COM_PUBLICACAO)('filtrarCorteDeValor · %s', (_nome, linha) => {
+    expect(notificacao.filtrarCorteDeValor([linha], CORTE)).toEqual(
+      painel.filtrarCorteDeValor([linha], CORTE),
+    );
+  });
+
+  it('e concordam com as seis de uma vez, que é como a fila chega', () => {
+    const linhas = COM_PUBLICACAO.map(([, linha], i) => ({ ...linha, fixture_id: i }));
+    expect(notificacao.filtrarCorteDeValor(linhas, CORTE)).toEqual(
+      painel.filtrarCorteDeValor(linhas, CORTE),
+    );
+  });
+});
+
 describe('o fallback do corte é o mesmo dos dois lados', () => {
   it('CORTE_FALLBACK bate', () => {
     expect([...notificacao.CORTE_FALLBACK]).toEqual([...painel.CORTE_FALLBACK]);
