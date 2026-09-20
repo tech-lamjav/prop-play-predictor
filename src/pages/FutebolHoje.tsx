@@ -33,7 +33,6 @@ import { useDemoFutebolBoard } from '@/components/onboarding/demo/use-demo-futeb
 import { formatadorDeData, SAO_PAULO_TZ, parseUtc, brtDateStr, brtDayOf, fmtTime, isFinished, addDays } from '@/utils/futebol-datas';
 import { mergeBoardAndHistory } from '@/utils/futebol-history';
 import { selecionarJogosDaGrade } from '@/utils/futebol-grade-de-jogos';
-import { mercadoEstaOculto } from '@/utils/futebol-mercados-ocultos';
 import { hrefDaSaida } from '@/utils/futebol-links';
 import {
   idDaOportunidade,
@@ -423,7 +422,10 @@ export default function FutebolHoje() {
   // dele navega o passado de verdade.
   const { data: histRows, isLoading: lHist } = useFutebolValueHistory(2);
   const { data: alertedRaw, isLoading: lReg } = useFutebolAlertedPicks();
-  const { vitrine, ocultos, limiares, isLoading: lVitrine } = useVitrine();
+  // `ocultos` — a lista de mercados fora da vitrine HOJE — saiu daqui com a
+  // #490: quem filtra a registrada agora é `oportunidadesDoDia`, pela vitrine
+  // COM DATA. A home não tem mais uso para a versão sem data.
+  const { vitrine, limiares, isLoading: lVitrine } = useVitrine();
   // O acesso ENTRA no gate: enquanto ele não chega, `locked` é verdadeiro e o
   // conteúdo renderiza borrado, desborrando quando a resposta volta. Para quem
   // paga, isso é o mesmo defeito do card de motivos, num lugar diferente.
@@ -499,9 +501,14 @@ export default function FutebolHoje() {
   const registradasAll = useMemo(
     () =>
       (alertedRaw ?? []).filter(
-        (a) => !!a.market && !!a.outcome && !mercadoEstaOculto(a.market, ocultos),
+        // ⚠️ O filtro de mercado oculto SAIU daqui (#490). Ele era a regra do
+        // PRESENTE, sem data, e agora `oportunidadesDoDia` aplica a versão com
+        // data — a mesma que o board e o histórico usam. Manter os dois deixaria
+        // duas metades da mesma regra em arquivos diferentes, que é o defeito
+        // que esta função foi criada para matar.
+        (a) => !!a.market && !!a.outcome,
       ),
-    [alertedRaw, ocultos],
+    [alertedRaw],
   );
   const fixturePorId = useMemo(() => {
     const m = new Map<number, FutebolFixture>();
@@ -518,8 +525,15 @@ export default function FutebolHoje() {
       registradas: registradasAll,
       dia: selectedDay,
       fixturePorId,
+      // A registrada passa pelas mesmas regras do board e do histórico (#490),
+      // avaliadas na data do ENVIO. Vai nas DUAS telas: esta função existe para
+      // a home e o painel mostrarem a mesma lista, e passar só numa delas as
+      // faria divergir de novo.
+      vitrine,
+      limiares,
+      agoraMs: agora,
     }),
-    [valueRows, selectedDay, registradasAll, fixturePorId],
+    [valueRows, selectedDay, registradasAll, fixturePorId, vitrine, limiares, agora],
   );
 
   // A demonstração herda a escala do produto (#333). A janela passada aqui é a

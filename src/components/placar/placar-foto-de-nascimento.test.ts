@@ -301,11 +301,46 @@ describe('a regra de visibilidade é a mesma nas quatro cópias', () => {
     expect(semEspaco(ler())).toContain(REGRA_DA_JANELA);
   });
 
-  it('e a regra aparece TRÊS vezes nas migrations, uma por RPC', () => {
-    // Contar é o que separa "existe em algum lugar" de "existe nas três". Sem
-    // isto, apagar a regra de uma RPC e deixá-la nas outras passava verde.
-    const ocorrencias = semEspaco(MIGRACOES).split(REGRA_DA_JANELA).length - 1;
-    expect(ocorrencias).toBeGreaterThanOrEqual(3);
+  it('⚠️ e aparece UMA VEZ POR RPC que a declara, nem mais nem menos', () => {
+    // ⚠️ ESTA ASSERÇÃO JÁ NASCEU FROUXA, e o code review do #501 pegou: ela
+    // dizia `>= 3` com o comentário afirmando "três, uma por RPC". Quando a
+    // quarta cópia entrou, apagar uma continuou passando verde — que é
+    // exatamente o que o contador existia para impedir.
+    //
+    // O número não pode ser fixo: ele muda toda vez que uma migration redefine
+    // uma dessas RPCs. Contar quantas RPCs declaram a regra e exigir igualdade
+    // com as ocorrências é o que sobrevive à próxima.
+    const RPCS_COM_A_REGRA = [
+      'get_futebol_value_history',
+      'get_futebol_fixture_value',
+      'get_futebol_oportunidades_publicadas',
+    ];
+    const texto = semEspaco(MIGRACOES);
+    const ocorrencias = texto.split(REGRA_DA_JANELA).length - 1;
+    const declaram = RPCS_COM_A_REGRA.filter((rpc) =>
+      new RegExp(`create (?:or replace )?function public\\.${rpc}`, 'i').test(texto),
+    ).length;
+
+    expect(declaram, 'nem toda RPC da lista existe nas migrations').toBe(
+      RPCS_COM_A_REGRA.length,
+    );
+    // Uma cópia por REDEFINIÇÃO: a migration que define e as que a redefinem
+    // depois carregam a regra cada uma. O que não pode é sobrar RPC sem cópia.
+    expect(ocorrencias, 'cópias da regra a menos do que RPCs que a declaram').toBeGreaterThanOrEqual(
+      declaram,
+    );
+    // E o teto: mais cópias do que redefinições é texto órfão, que ninguém roda
+    // e que diverge em silêncio.
+    const redefinicoes = RPCS_COM_A_REGRA.reduce(
+      (n, rpc) =>
+        n +
+        (texto.match(new RegExp(`create (?:or replace )?function public\\.${rpc}`, 'gi')) ?? [])
+          .length,
+      0,
+    );
+    expect(ocorrencias, 'cópias da regra a mais do que redefinições').toBeLessThanOrEqual(
+      redefinicoes,
+    );
   });
 });
 
