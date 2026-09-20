@@ -623,6 +623,21 @@ export default function FutebolHoje() {
   const textoScore = textoDoScore(escalaDeExibicao(dayRows));
   const moreOpps = oppsByFixture.filter((o) => o !== heroOpp && ehDestaque(o.faixa)).slice(0, 4);
   const nOpps = isDemo ? demoBoard.length : dayRows.length;
+  // Quantas o dia tem que a home NÃO mostra.
+  //
+  // A home corta em quatro (`slice(0, 4)`) e, até aqui, cortava em silêncio: um
+  // dia com dezessete oportunidades mostrava quatro cartões e um "Ver todas"
+  // que não dava motivo nenhum pra ser clicado. Quem olhava os quatro saía com
+  // a sensação de ter visto o que havia.
+  //
+  // O hero também conta — ele é uma oportunidade do dia ocupando a tela acima,
+  // e esquecê-lo aqui faria a chamada prometer uma a mais do que existe.
+  //
+  // `Math.max(0, …)` porque `nOpps` e `moreOpps` vêm de fontes diferentes:
+  // `nOpps` é a contagem do dia e `moreOpps` já passou pelo filtro de destaque.
+  // Nada garante que a subtração não fique negativa, e "Ver as -2 restantes" é
+  // pior que não convidar.
+  const nRestantes = Math.max(0, nOpps - moreOpps.length - (heroOpp ? 1 : 0));
   // O placar do coletor entra AQUI, no recorte do dia — e não na lista inteira
   // (issue #479). `allGames` é a temporada de treze ligas: perguntar por ela
   // arrastaria todo jogo adiado desde janeiro, e foi para tapar esse buraco que
@@ -814,11 +829,67 @@ export default function FutebolHoje() {
           <div data-tour="futebol-oportunidades" className="md:col-span-8 min-w-0">
             <div className="flex items-end justify-between mb-3">
               <div>
-                <div className={LABEL}>Mais oportunidades</div>
-                <div className="text-lg font-bold tracking-tight text-ink mt-0.5">Por confiabilidade</div>
+                {/* A hierarquia estava invertida: o negrito era "Por
+                    confiabilidade" — o CRITÉRIO DE ORDENAÇÃO — e o número, que
+                    é o que faz alguém querer ver o resto, não aparecia em lugar
+                    nenhum. Ninguém clica em critério de ordenação. O critério
+                    desceu pro sobretítulo, que é o lugar dele, e o negrito
+                    passou a contar quantas o dia tem.
+
+                    Sem acesso, `nOpps` continua contando (o board devolve as
+                    linhas com as colunas nulas), então o número segue honesto
+                    no bloqueio — é ele que mostra que há produto ali dentro. */}
+                {/* ⚠️ CELULAR PRIMEIRO: é de onde vem a maior parte dos leads,
+                    e foi lá que a primeira versão quebrou. O sobretítulo tem
+                    caixa alta com `tracking` de 0.16em — ele ocupa MUITO mais
+                    largura do que o número de letras sugere, e "Ordenadas por
+                    confiabilidade" virava duas linhas sozinho. "Por
+                    confiabilidade" diz a mesma coisa e cabe em uma. */}
+                <div className={LABEL}>Por confiabilidade</div>
+                {/* `whitespace-nowrap` é o que garante a linha única prometida.
+                    O que costumava estourar era o sufixo do dia: com ele, o
+                    título ficava largo demais pro celular. Ele agora só aparece
+                    a partir de `sm`, onde há largura sobrando — no celular o
+                    seletor de dia fica logo acima, então "hoje" ali era
+                    repetição que custava uma linha. */}
+                <div className="text-lg font-bold tracking-tight text-ink mt-0.5 whitespace-nowrap">
+                  {loading || nOpps === 0 ? (
+                    'Mais oportunidades'
+                  ) : (
+                    <>
+                      {nOpps} oportunidade{nOpps === 1 ? '' : 's'}
+                      <span className="hidden sm:inline"> {isToday ? 'hoje' : 'nesse dia'}</span>
+                    </>
+                  )}
+                </div>
               </div>
-              <Link to={comDia('/futebol/oportunidades', selectedDay)} className="text-[12px] font-semibold inline-flex items-center gap-1 text-forest hover:text-forest-2">
-                Ver todas <ArrowRight className="w-3.5 h-3.5" />
+              {/* O convite ganhou corpo: fundo, contorno e altura, nos mesmos
+                  tokens `forest` que a tela já usa — nenhuma cor nova entrou.
+
+                  E ganhou MOTIVO. "Ver todas" não diz o que se ganha clicando;
+                  "Ver as N restantes" diz que existe coisa que a home não
+                  mostrou. Quando não sobra nenhuma, a frase volta a ser a
+                  genérica: prometer "as 0 restantes" seria pior que não
+                  convidar.
+
+                  No bloqueio a contagem sai da frase de propósito — a faixa do
+                  topo já leva pra assinatura, e convidar alguém a "ver as 13
+                  restantes" que ele não pode abrir é promessa vazia. */}
+              <Link
+                to={comDia('/futebol/oportunidades', selectedDay)}
+                className="shrink-0 inline-flex items-center gap-1.5 rounded-rebrand-sm border border-forest/30 bg-forest/[0.08] text-forest hover:bg-forest hover:text-canvas hover:border-forest transition text-[12px] font-bold px-3 h-9"
+              >
+                {/* No celular só "Ver todas": o botão fica AO LADO do título e
+                    cada caractere aqui é largura roubada de lá. Era isto, mais
+                    que o tamanho da fonte, que quebrava o título em duas
+                    linhas. O motivo — o número que sobrou — não se perde: ele
+                    aparece inteiro na chamada do fim da grade, que no celular é
+                    larga e vem logo depois dos quatro cartões. */}
+                <span className="sm:hidden">Ver todas</span>
+                <span className="hidden sm:inline">
+                  {!locked && nRestantes > 0 ? `Ver as ${nRestantes} restantes` : 'Ver todas'}
+                </span>
+                <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
             {loading ? (
@@ -862,6 +933,24 @@ export default function FutebolHoje() {
               </div>
             ) : (
               <div className={`${CARD} p-6 text-center text-sm text-ink-3`}>Sem outras oportunidades relevantes agora.</div>
+            )}
+
+            {/* Segunda chamada, no fim da grade.
+                Quem rolou os quatro cartões inteiros é quem tem MAIS intenção
+                na tela — e, até aqui, não encontrava nada ali: a única saída
+                pra lista ficava lá em cima, já fora do campo de visão.
+
+                Só aparece quando há sobra de verdade e a pessoa tem acesso.
+                Repetir a chamada quando não sobrou nada seria insistir sem ter
+                o que oferecer. */}
+            {!loading && !locked && nRestantes > 0 && moreOpps.length > 0 && (
+              <Link
+                to={comDia('/futebol/oportunidades', selectedDay)}
+                className="mt-4 flex items-center justify-center gap-1.5 rounded-rebrand-md border border-dashed border-forest/40 bg-forest/[0.04] text-forest hover:bg-forest/[0.09] transition text-[13px] font-bold h-11"
+              >
+                Ver as {nRestantes} oportunidade{nRestantes === 1 ? '' : 's'} restante{nRestantes === 1 ? '' : 's'}
+                <ArrowRight className="w-4 h-4" />
+              </Link>
             )}
           </div>
 
