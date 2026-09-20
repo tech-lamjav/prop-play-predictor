@@ -621,8 +621,23 @@ export default function FutebolHoje() {
   }, [heroOpp, contratoMotivos]);
   // A escala da janela, e não a da linha: a registrada não declara versão.
   const textoScore = textoDoScore(escalaDeExibicao(dayRows));
-  const moreOpps = oppsByFixture.filter((o) => o !== heroOpp && ehDestaque(o.faixa)).slice(0, 4);
+  // A população que a home exibe E que a tela de Oportunidades lista por
+  // padrão: faixa Alta ou Média, com número. É ela que manda na conta do
+  // convite — nunca o total do dia.
+  const emDestaque = oppsByFixture.filter((o) => ehDestaque(o.faixa));
+  const moreOpps = emDestaque.filter((o) => o !== heroOpp).slice(0, 4);
   const nOpps = isDemo ? demoBoard.length : dayRows.length;
+  // A grade mostra menos do que existe?
+  //
+  // Só isto — e não QUANTAS faltam. A versão anterior anunciava um "restantes"
+  // calculado por subtração, e ele nunca batia com o número do título: eram
+  // duas frases, lado a lado, com números diferentes sobre a mesma lista.
+  // Título e convite agora dizem o MESMO número, o tamanho da lista que o
+  // destino abre, e a subtração deixou de ter para que existir.
+  //
+  // O que sobrou é a guarda: não convidar para uma lista que já está inteira
+  // na tela. O destaque conta, porque ele também é uma das `emDestaque`.
+  const haMaisQueAGrade = emDestaque.length > moreOpps.length + (heroOpp ? 1 : 0);
   // O placar do coletor entra AQUI, no recorte do dia — e não na lista inteira
   // (issue #479). `allGames` é a temporada de treze ligas: perguntar por ela
   // arrastaria todo jogo adiado desde janeiro, e foi para tapar esse buraco que
@@ -644,8 +659,9 @@ export default function FutebolHoje() {
   );
   const alta = oppsByFixture.filter((o) => faixaTone(o.faixa) === 'alta').length;
   // melhor valor entre as oportunidades realmente exibidas, não o edge bruto de longshots
-  const surfaced = oppsByFixture.filter((o) => ehDestaque(o.faixa));
-  const melhorValor = surfaced.length ? Math.round(Math.max(...surfaced.map((o) => o.edge)) * 100) : null;
+  // (`emDestaque`, derivada junto com a conta do convite: eram dois filtros
+  // idênticos no mesmo arquivo, e dois filtros idênticos acabam divergindo.)
+  const melhorValor = emDestaque.length ? Math.round(Math.max(...emDestaque.map((o) => o.edge)) * 100) : null;
 
   // contagem de jogos por dia (BRT) — pros chips do stepper
   const gamesByDay = useMemo(() => {
@@ -813,12 +829,88 @@ export default function FutebolHoje() {
         <div className="grid md:grid-cols-12 gap-6">
           <div data-tour="futebol-oportunidades" className="md:col-span-8 min-w-0">
             <div className="flex items-end justify-between mb-3">
-              <div>
-                <div className={LABEL}>Mais oportunidades</div>
-                <div className="text-lg font-bold tracking-tight text-ink mt-0.5">Por confiabilidade</div>
+              {/* `min-w-0`: item de flex não encolhe abaixo do próprio
+                  conteúdo sem isto, e o título aqui dentro é `truncate`. Os
+                  dois só funcionam juntos — sem este, uma fonte de navegador
+                  ampliada empurraria a linha para fora e traria de volta a
+                  rolagem lateral que o comentário do grid acima registra como
+                  bug antigo. */}
+              <div className="min-w-0">
+                {/* A hierarquia estava invertida: o negrito era "Por
+                    confiabilidade" — o CRITÉRIO DE ORDENAÇÃO — e o número, que
+                    é o que faz alguém querer ver o resto, não aparecia em lugar
+                    nenhum. Ninguém clica em critério de ordenação. O critério
+                    desceu pro sobretítulo, que é o lugar dele, e o negrito
+                    passou a contar quantas o dia tem.
+
+                    Sem acesso, `nOpps` continua contando (o board devolve as
+                    linhas com as colunas nulas), então o número segue honesto
+                    no bloqueio — é ele que mostra que há produto ali dentro. */}
+                {/* ⚠️ CELULAR PRIMEIRO: é de onde vem a maior parte dos leads,
+                    e foi lá que a primeira versão quebrou. O sobretítulo tem
+                    caixa alta com `tracking` de 0.16em — ele ocupa MUITO mais
+                    largura do que o número de letras sugere, e "Ordenadas por
+                    confiabilidade" virava duas linhas sozinho. "Por
+                    confiabilidade" diz a mesma coisa e cabe em uma. */}
+                <div className={LABEL}>Por confiabilidade</div>
+                {/* `truncate` é o que garante a linha única prometida — e não
+                    um `whitespace-nowrap` solto, que segura a linha mas deixa o
+                    texto transbordar em vez de cortar.
+
+                    O que costumava estourar era o sufixo do dia: com ele, o
+                    título ficava largo demais pro celular. Ele agora só aparece
+                    a partir de `sm`, onde há largura sobrando — no celular o
+                    seletor de dia fica logo acima, então "hoje" ali era
+                    repetição que custava uma linha. */}
+                {/* ⚠️ `nOpps` AQUI É DELIBERADO: é o mesmo número do KPI
+                    "Oportunidades" no topo desta tela. As duas superfícies
+                    falam da mesma coisa — pelo glossário, Oportunidade é a
+                    candidata aprovada para publicação — e divergir delas é
+                    fazer a página se contradizer sozinha.
+
+                    ⚠️ E É POR ISSO QUE O CONVITE AO LADO NÃO LEVA NÚMERO.
+                    A lista do destino nasce filtrada por faixa Alta ou Média
+                    (`FAIXAS_FILTRO_PADRAO`, em `useState`, sem ler a URL), e
+                    por isso mostra MENOS que `nOpps`. Um botão dizendo "Ver
+                    todas as 331" abriria uma tela com 154 — a promessa
+                    quebrada que o review já pegou uma vez aqui.
+
+                    Quem quiser pôr número no botão precisa antes fazer o link
+                    carregar o filtro, senão o defeito volta. */}
+                <div className="text-lg font-bold tracking-tight text-ink mt-0.5 truncate">
+                  {loading || nOpps === 0 ? (
+                    'Mais oportunidades'
+                  ) : (
+                    <>
+                      {nOpps} oportunidade{nOpps === 1 ? '' : 's'}
+                      <span className="hidden sm:inline"> {isToday ? 'hoje' : 'nesse dia'}</span>
+                    </>
+                  )}
+                </div>
               </div>
-              <Link to={comDia('/futebol/oportunidades', selectedDay)} className="text-[12px] font-semibold inline-flex items-center gap-1 text-forest hover:text-forest-2">
-                Ver todas <ArrowRight className="w-3.5 h-3.5" />
+              {/* O convite ganhou corpo: fundo, contorno e altura, nos mesmos
+                  tokens `forest` que a tela já usa — nenhuma cor nova entrou.
+
+                  O motivo de clicar não está mais na copy do botão, e sim no
+                  número grande ao lado: a grade mostra quatro cartões sob um
+                  título que anuncia centenas. O peso do botão é o que resolve a
+                  discrição original — ele era texto de 12px e passava batido.
+
+                  Sem acesso o convite continua igual, e é de propósito: a lista
+                  do destino mostra os mesmos cadeados que esta home mostra, e a
+                  faixa do topo é quem vende. Esconder o caminho apagaria de
+                  quem ainda não assina que existe produto ali dentro — que é o
+                  contrário do que o bloqueio desta tela faz. */}
+              <Link
+                to={comDia('/futebol/oportunidades', selectedDay)}
+                className="shrink-0 inline-flex items-center gap-1.5 rounded-rebrand-md border border-forest/30 bg-forest/[0.08] text-forest hover:bg-forest hover:text-canvas hover:border-forest transition text-[12px] font-bold px-3 h-11"
+              >
+                {/* Copy curta também serve ao celular: o botão fica AO LADO do
+                    título, e cada caractere aqui é largura roubada de lá. Era
+                    isso, mais que o tamanho da fonte, que quebrava o título em
+                    duas linhas na primeira versão. */}
+                Ver todas
+                <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
             {loading ? (
@@ -862,6 +954,27 @@ export default function FutebolHoje() {
               </div>
             ) : (
               <div className={`${CARD} p-6 text-center text-sm text-ink-3`}>Sem outras oportunidades relevantes agora.</div>
+            )}
+
+            {/* Segunda chamada, no fim da grade.
+                Quem rolou os quatro cartões inteiros é quem tem MAIS intenção
+                na tela — e, até aqui, não encontrava nada ali: a única saída
+                pra lista ficava lá em cima, já fora do campo de visão.
+
+                Só aparece quando a grade mostra menos do que existe. Convidar
+                para uma lista que já está inteira na tela é insistir sem ter o
+                que oferecer — e o `moreOpps.length > 0` que havia aqui era
+                contraditório: escondia a chamada justamente quando a grade caía
+                no estado vazio, que é quando o caminho para a lista importa
+                mais. */}
+            {!loading && haMaisQueAGrade && (
+              <Link
+                to={comDia('/futebol/oportunidades', selectedDay)}
+                className="mt-4 flex items-center justify-center gap-1.5 rounded-rebrand-md border border-dashed border-forest/40 bg-forest/[0.04] text-forest hover:bg-forest/[0.09] transition text-[13px] font-bold h-11"
+              >
+                Ver todas as oportunidades {isToday ? 'de hoje' : 'do dia'}
+                <ArrowRight className="w-4 h-4" />
+              </Link>
             )}
           </div>
 
