@@ -57,6 +57,143 @@ function doBoard(over: Partial<OppLike> = {}): OppLike {
 
 const semFixtures = new Map<number, FutebolFixture>();
 
+// ============================================================================
+// ⚠️ A registrada passa pelas MESMAS regras que o resto da lista (#490)
+// ============================================================================
+// A lista do dia tem três fontes: o board, o histórico e o registro do que o
+// daily enviou. As duas primeiras passam pela vitrine e pelo corte de valor. A
+// terceira não passava por nada: ela entrava copiando os números do envio.
+//
+// Foi por essa porta que o Fiorentina × Napoli apareceu na tela de
+// Oportunidades com odd 2.00 e vantagem −6,2%, enquanto o detalhe do jogo
+// mostrava outra coisa. Os números do cartão eram os de um envio de 13/09 para
+// um jogo de 20/09 — uma odd de sete dias antes, exibida como se fosse a atual.
+//
+// ⚠️ O EIXO AQUI É O ENVIO, e não o kickoff, por três motivos:
+//
+//   · é o que a #490 pede: "avaliados na data do envio e com a vantagem do
+//     envio". A registrada não tem foto de nascimento; o que ela tem é a do
+//     envio;
+//   · `sent_at` e `edge` existem sempre na registrada. `kickoff_utc` vem NULO
+//     quando a liga está fora da lista fixa do board, e filtrar por ele
+//     derrubaria justamente essas linhas — que os testes de liga fora da lista,
+//     mais abaixo, existem para proteger;
+//   · e o passado não se reescreve: antes da vigência do limiar não havia corte
+//     para esconder nada, então a linha fica.
+//
+// O board e o histórico continuam julgando pelo kickoff. Essa diferença de eixo
+// é conhecida e tem ticket próprio; alinhá-la aqui seria mudar duas coisas ao
+// mesmo tempo.
+// ============================================================================
+
+describe('a registrada passa pelo corte e pela vitrine', () => {
+  const LIMIAR = [
+    { market: 'asian_handicap', limiar: -0.02, vigenteDesde: '2026-08-20T00:00:00Z' },
+  ];
+  const dohandicap = (over: Partial<FutebolAlertedPick> = {}) =>
+    registrada({ market: 'asian_handicap', outcome: 'Home', line_value: -0.5, ...over });
+
+  it('⚠️ a registrada cortada pelo limiar na data do envio NÃO entra', () => {
+    // O caso do Napoli: enviada com vantagem abaixo do limiar que já vigia.
+    const cortada = dohandicap({ edge: -0.062, sent_at: '2026-08-29T11:00:00Z' });
+
+    const lista = oportunidadesDoDia({
+      doBoard: [],
+      registradas: [cortada],
+      dia: '2026-08-29',
+      fixturePorId: semFixtures,
+      vitrine: [],
+      limiares: LIMIAR,
+    });
+
+    expect(lista).toEqual([]);
+  });
+
+  it('e a que passa no limiar continua entrando', () => {
+    const passa = dohandicap({ edge: -0.01, sent_at: '2026-08-29T11:00:00Z' });
+
+    const lista = oportunidadesDoDia({
+      doBoard: [],
+      registradas: [passa],
+      dia: '2026-08-29',
+      fixturePorId: semFixtures,
+      vitrine: [],
+      limiares: LIMIAR,
+    });
+
+    expect(lista).toHaveLength(1);
+  });
+
+  it('⚠️ a enviada ANTES da vigência fica, porque ali não havia corte', () => {
+    // Não se reescreve o passado: o assinante viu e pode ter apostado.
+    const antes = dohandicap({ edge: -0.062, sent_at: '2026-08-10T11:00:00Z' });
+
+    const lista = oportunidadesDoDia({
+      doBoard: [],
+      registradas: [antes],
+      dia: '2026-08-29',
+      fixturePorId: semFixtures,
+      vitrine: [],
+      limiares: LIMIAR,
+    });
+
+    expect(lista).toHaveLength(1);
+  });
+
+  it('⚠️ a de mercado fora da vitrine na data do envio NÃO entra', () => {
+    const escondido = dohandicap({ edge: 0.05, sent_at: '2026-08-29T11:00:00Z' });
+
+    const lista = oportunidadesDoDia({
+      doBoard: [],
+      registradas: [escondido],
+      dia: '2026-08-29',
+      fixturePorId: semFixtures,
+      vitrine: [{ market: 'asian_handicap', ocultoDesde: '2026-08-01T00:00:00Z', ocultoAte: null }],
+      limiares: [],
+    });
+
+    expect(lista).toEqual([]);
+  });
+
+  it('e o mercado que já tinha voltado à vitrine entra', () => {
+    const voltou = dohandicap({ edge: 0.05, sent_at: '2026-08-29T11:00:00Z' });
+
+    const lista = oportunidadesDoDia({
+      doBoard: [],
+      registradas: [voltou],
+      dia: '2026-08-29',
+      fixturePorId: semFixtures,
+      vitrine: [
+        {
+          market: 'asian_handicap',
+          ocultoDesde: '2026-08-01T00:00:00Z',
+          ocultoAte: '2026-08-20T00:00:00Z',
+        },
+      ],
+      limiares: [],
+    });
+
+    expect(lista).toHaveLength(1);
+  });
+
+  it('sem vitrine e sem limiar, nada muda — a lista é a de antes', () => {
+    // A regra só age quando há regra. Sem isso, esta entrega teria mudado o
+    // comportamento de todo mundo que chama sem os dois novos argumentos.
+    const qualquer = dohandicap({ edge: -0.5, sent_at: '2026-08-29T11:00:00Z' });
+
+    const lista = oportunidadesDoDia({
+      doBoard: [],
+      registradas: [qualquer],
+      dia: '2026-08-29',
+      fixturePorId: semFixtures,
+      vitrine: [],
+      limiares: [],
+    });
+
+    expect(lista).toHaveLength(1);
+  });
+});
+
 describe('oportunidadesDoDia', () => {
   it('soma a registrada que o board não tem mais', () => {
     // O bug que originou este módulo: num sábado de seis oportunidades a home

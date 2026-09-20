@@ -538,8 +538,13 @@ export default function FutebolOportunidades() {
       registradas: registradasAll,
       dia: selectedDay,
       fixturePorId: fixtureMap,
+      // A registrada passa pelas mesmas regras do board e do histórico (#490),
+      // avaliadas na data do ENVIO — a única foto que ela tem.
+      vitrine,
+      limiares,
+      agoraMs: agora,
     }),
-    [allRows, selectedDay, registradasAll, fixtureMap],
+    [allRows, selectedDay, registradasAll, fixtureMap, vitrine, limiares, agora],
   );
 
   // ── O placar fresco ───────────────────────────────────────────────────────

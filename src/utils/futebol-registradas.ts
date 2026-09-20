@@ -5,6 +5,8 @@ import type {
 } from '@/services/futebol-data.service';
 import { opportunityKey } from '@/utils/futebol-history';
 import { brtDayOf } from '@/utils/futebol-datas';
+import { mercadoOcultoNaData, type MercadoOculto } from '@/utils/futebol-mercados-ocultos';
+import { cortadaNaData, type LimiarDeValor } from '@/utils/futebol-corte-de-valor';
 
 /**
  * A lista de oportunidades de um dia, como as telas a montam.
@@ -99,11 +101,33 @@ export function oportunidadesDoDia({
   registradas,
   dia,
   fixturePorId,
+  vitrine = [],
+  limiares = [],
+  agoraMs = Date.now(),
 }: {
   doBoard: OppLike[];
   registradas: readonly FutebolAlertedPick[];
   dia: string;
   fixturePorId: Map<number, FutebolFixture>;
+  /**
+   * A vitrine e o limiar de valor, para a REGISTRADA passar pelas mesmas regras
+   * que o board e o histórico já passam (#490).
+   *
+   * ⚠️ O board chega aqui JÁ FILTRADO — `getValueBoard` e `mergeBoardAndHistory`
+   * cuidam dele. Estes dois argumentos servem só à terceira fonte, que entrava
+   * sem regra nenhuma: ela copiava os números do envio e a tela os mostrava como
+   * se fossem de agora.
+   *
+   * Foi por essa porta que o Fiorentina × Napoli apareceu na lista com odd 2.00
+   * e vantagem −6,2% — números de um envio de 13/09 para um jogo de 20/09 —
+   * enquanto o detalhe do jogo mostrava outra coisa.
+   *
+   * ⚠️ VAZIO POR PADRÃO, e isso é deliberado: sem regra configurada, nada é
+   * cortado, e quem chamar sem os dois continua vendo a lista de antes.
+   */
+  vitrine?: readonly MercadoOculto[];
+  limiares?: readonly LimiarDeValor[];
+  agoraMs?: number;
 }): OppLike[] {
   // ⚠️ O DIA É DECIDIDO AQUI, e não por quem chama.
   //
@@ -149,6 +173,27 @@ export function oportunidadesDoDia({
   const soRegistradas: OppLike[] = [];
   for (const a of porEnvio) {
     if (a.game_day !== dia) continue;
+    // ⚠️ AS MESMAS DUAS REGRAS DO RESTO DA LISTA, no eixo do ENVIO (#490).
+    //
+    // O eixo é o envio, e não o kickoff, por três motivos:
+    //
+    //   · é a única foto que a registrada tem. Ela não tem nascimento: tem o
+    //     instante em que foi anunciada, e é com aquele preço que o assinante
+    //     pôde apostar;
+    //   · `sent_at` e `edge` existem sempre; `kickoff_utc` vem NULO quando a
+    //     liga está fora da lista fixa do board, e filtrar por ele derrubaria
+    //     justamente essas linhas;
+    //   · e o passado não se reescreve: antes da vigência do limiar não havia
+    //     corte para esconder nada, então a linha fica. `cortadaNaData` e
+    //     `mercadoOcultoNaData` já sabem disso — a data é argumento delas.
+    //
+    // O board e o histórico continuam julgando pelo kickoff. A diferença de
+    // eixo é conhecida, tem ticket próprio, e alinhá-la aqui seria mudar duas
+    // coisas ao mesmo tempo.
+    if (a.market != null) {
+      if (mercadoOcultoNaData(a.market, a.sent_at, vitrine, agoraMs)) continue;
+      if (cortadaNaData(a.market, a.edge, a.sent_at, limiares, agoraMs)) continue;
+    }
     const chave = oppKey(a.fixture_id, a.market, a.outcome, a.line_value);
     // Dedup contra o board E contra as outras registradas. A segunda parte
     // faltava: o mesmo pick enviado em dias diferentes vira uma linha por envio
