@@ -27,7 +27,6 @@ import {
   ESTADOS_DO_JOGO, passaNoFiltroDeEstado, type EstadoDoJogo,
 } from '@/utils/futebol-score';
 import { settleFutebol, resultBadge, resumoDoDia, type BetResult } from '@/utils/futebol-settlement';
-import { mercadoEstaOculto } from '@/utils/futebol-mercados-ocultos';
 import { hrefDaSaida } from '@/utils/futebol-links';
 import {
   idDaOportunidade,
@@ -302,7 +301,11 @@ export default function FutebolOportunidades() {
   // sem filtro e o mercado escondido aparece por um instante antes de sumir. O
   // board já vem filtrado do service, mas a fusão com o histórico e os picks
   // registrados reabrem o dia corrente.
-  const { vitrine, ocultos, limiares, isLoading: lVitrine } = useVitrine();
+  // `ocultos` — a lista de mercados fora da vitrine HOJE — saiu daqui com a
+  // #490, como saiu da home: quem filtra a registrada agora é
+  // `oportunidadesDoDia`, pela vitrine COM DATA. Esta tela não tem mais uso
+  // para a versão sem data.
+  const { vitrine, limiares, isLoading: lVitrine } = useVitrine();
   const isLoading = lBoard || lVitrine;
   const { data: catalog } = useFutebolCompetitions();
   const { data: access } = useFutebolAccess();
@@ -432,16 +435,21 @@ export default function FutebolOportunidades() {
   const registradasAll = useMemo(
     () =>
       (alertedRaw ?? []).filter(
-        (a) =>
-          !!a.market &&
-          !!a.outcome &&
-          // A vitrine (#324) vale de hoje para a frente. Dia passado é registro
-          // do que foi enviado e visto, e some-lo reescreveria o que o
-          // assinante recebeu. Sem este corte, um Handicap alertado ANTES de o
-          // mercado sair da vitrine voltava como linha do painel de hoje.
-          (a.game_day < hoje || !mercadoEstaOculto(a.market, ocultos)),
+        // ⚠️ O filtro de mercado oculto SAIU daqui (#490), como saiu da home.
+        //
+        // Ele era a regra do PRESENTE, sem data, e agora `oportunidadesDoDia`
+        // aplica a versão COM DATA — a mesma que o board e o histórico usam,
+        // avaliada no instante do envio. Ela cobre o que este filtro cobria: um
+        // handicap alertado ANTES de o mercado sair da vitrine continua
+        // entrando, porque no envio ele estava na tela.
+        //
+        // Tirar de uma tela e deixer na outra foi o defeito que o code review
+        // pegou nesta mesma entrega: as duas passaram a aplicar regras
+        // diferentes, que é exatamente o que `oportunidadesDoDia` existe para
+        // impedir.
+        (a) => !!a.market && !!a.outcome,
       ),
-    [alertedRaw, hoje, ocultos]
+    [alertedRaw]
   );
 
   // Dias no stepper: dias COM oportunidade (board = passado + presente) + dias

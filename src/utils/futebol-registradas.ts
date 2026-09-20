@@ -101,9 +101,9 @@ export function oportunidadesDoDia({
   registradas,
   dia,
   fixturePorId,
-  vitrine = [],
-  limiares = [],
-  agoraMs = Date.now(),
+  vitrine,
+  limiares,
+  agoraMs,
 }: {
   doBoard: OppLike[];
   registradas: readonly FutebolAlertedPick[];
@@ -122,12 +122,25 @@ export function oportunidadesDoDia({
    * e vantagem −6,2% — números de um envio de 13/09 para um jogo de 20/09 —
    * enquanto o detalhe do jogo mostrava outra coisa.
    *
-   * ⚠️ VAZIO POR PADRÃO, e isso é deliberado: sem regra configurada, nada é
-   * cortado, e quem chamar sem os dois continua vendo a lista de antes.
+   * ⚠️ OBRIGATÓRIOS, e não opcionais com padrão.
+   *
+   * São DOIS donos desta lista — a home e o painel —, e a função existe
+   * justamente para os dois mostrarem a mesma coisa. Um parâmetro que dá para
+   * esquecer é a forma exata do defeito que ela deveria impedir: um lado passa
+   * a responder diferente do outro, sem erro nenhum aparecer.
+   *
+   * Isso não é teoria. Na primeira versão desta entrega eles eram opcionais, e
+   * o defeito nasceu dentro dela: o filtro sem data saiu da home e FICOU no
+   * painel, e as duas telas passaram a aplicar regras de mercado diferentes. O
+   * code review pegou. A mesma lição está escrita em `crm-receita.ts`, com o
+   * mesmo motivo, por ter vazado duas vezes lá.
+   *
+   * Escrito, quem chamar tem que responder. Lista vazia é uma resposta — "não
+   * há regra configurada" —, e é diferente de esquecer.
    */
-  vitrine?: readonly MercadoOculto[];
-  limiares?: readonly LimiarDeValor[];
-  agoraMs?: number;
+  vitrine: readonly MercadoOculto[];
+  limiares: readonly LimiarDeValor[];
+  agoraMs: number;
 }): OppLike[] {
   // ⚠️ O DIA É DECIDIDO AQUI, e não por quem chama.
   //
@@ -190,17 +203,55 @@ export function oportunidadesDoDia({
     // O board e o histórico continuam julgando pelo kickoff. A diferença de
     // eixo é conhecida, tem ticket próprio, e alinhá-la aqui seria mudar duas
     // coisas ao mesmo tempo.
-    if (a.market != null) {
-      if (mercadoOcultoNaData(a.market, a.sent_at, vitrine, agoraMs)) continue;
-      if (cortadaNaData(a.market, a.edge, a.sent_at, limiares, agoraMs)) continue;
-    }
     const chave = oppKey(a.fixture_id, a.market, a.outcome, a.line_value);
     // Dedup contra o board E contra as outras registradas. A segunda parte
     // faltava: o mesmo pick enviado em dias diferentes vira uma linha por envio
     // na origem, e a lista mostrava a oportunidade repetida — sempre no topo,
     // porque o Score é o mesmo em todas as cópias.
     if (jaNaLista.has(chave)) continue;
+
+    // ⚠️ A CHAVE É CONSUMIDA ANTES DAS REGRAS, e a ordem é o ponto.
+    //
+    // Quem representa a oportunidade é o PRIMEIRO envio — é a decisão que o
+    // `porEnvio` acima implementa, e é a foto com que ela foi anunciada. Se ele
+    // não passa, a oportunidade não passa.
+    //
+    // Na primeira versão desta entrega as regras rodavam antes de marcar a
+    // chave, e a cortada não bloqueava as outras: com dois envios da mesma
+    // saída — o antigo cortado, o seguinte passando —, a linha voltava pela
+    // segunda porta, com os números do envio POSTERIOR. Duas decisões escritas
+    // de uma vez, "fica o mais antigo" e "o pick que deixou de ser oportunidade
+    // some". O code review pegou.
     jaNaLista.add(chave);
+
+    // AS MESMAS DUAS REGRAS DO RESTO DA LISTA, no eixo do ENVIO (#490).
+    //
+    // O eixo é o envio, e não o kickoff, por três motivos:
+    //
+    //   · é a única foto que a registrada tem. Ela não tem nascimento: tem o
+    //     instante em que foi anunciada, e é com aquele preço que o assinante
+    //     pôde apostar;
+    //   · `sent_at` e `edge` existem sempre; `kickoff_utc` vem NULO quando a
+    //     liga está fora da lista fixa do board, e filtrar por ele derrubaria
+    //     justamente essas linhas;
+    //   · e o passado não se reescreve: antes da vigência do limiar não havia
+    //     corte para esconder nada. `cortadaNaData` já sabe disso.
+    //
+    // ⚠️ SEM MERCADO, NÃO ENTRA. Antes havia uma guarda `a.market != null` em
+    // volta das duas regras, que fazia essa linha PULAR os dois filtros. Uma
+    // linha que não dá para avaliar contra a vitrine nem contra o limiar é uma
+    // linha sobre a qual não se pode afirmar que esteve na tela.
+    //
+    // ⚠️ NO ESCURO — vitrine ou limiar sem data, quando a leitura do banco
+    // falha — as duas regras valem "de hoje em diante". Como `sent_at` é quase
+    // sempre passado, a registrada quase nunca é cortada ali, enquanto o board
+    // aplica o `CORTE_FALLBACK` inteiro. A degradação é assimétrica, e fica
+    // registrada: fechar isso é mudar o que "escuro" significa para uma foto do
+    // passado, que é outra decisão.
+    if (a.market == null) continue;
+    if (mercadoOcultoNaData(a.market, a.sent_at, vitrine, agoraMs)) continue;
+    if (cortadaNaData(a.market, a.edge, a.sent_at, limiares, agoraMs)) continue;
+
     soRegistradas.push(oppFromAlerted(a, fixturePorId.get(a.fixture_id)));
   }
 

@@ -57,6 +57,29 @@ function doBoard(over: Partial<OppLike> = {}): OppLike {
 
 const semFixtures = new Map<number, FutebolFixture>();
 
+/**
+ * Chama `oportunidadesDoDia` preenchendo o que o teste não disser.
+ *
+ * ⚠️ O padrão mora AQUI, e não na função. Lá os três são obrigatórios de
+ * propósito: são dois donos da mesma lista, e parâmetro esquecível já fez as
+ * duas telas divergirem dentro desta própria entrega.
+ *
+ * Num teste a preocupação é outra — cada caso diz só o que ele está afirmando,
+ * e o resto some do texto. Quem quiser regra passa regra; quem não passa está
+ * dizendo "sem regra configurada", que é uma resposta e não um esquecimento.
+ */
+function montarLista(
+  args: Omit<Parameters<typeof oportunidadesDoDia>[0], 'vitrine' | 'limiares' | 'agoraMs'> &
+    Partial<Pick<Parameters<typeof oportunidadesDoDia>[0], 'vitrine' | 'limiares' | 'agoraMs'>>,
+): OppLike[] {
+  return oportunidadesDoDia({
+    vitrine: [],
+    limiares: [],
+    agoraMs: Date.parse('2026-08-30T12:00:00Z'),
+    ...args,
+  });
+}
+
 // ============================================================================
 // ⚠️ A registrada passa pelas MESMAS regras que o resto da lista (#490)
 // ============================================================================
@@ -97,7 +120,7 @@ describe('a registrada passa pelo corte e pela vitrine', () => {
     // O caso do Napoli: enviada com vantagem abaixo do limiar que já vigia.
     const cortada = dohandicap({ edge: -0.062, sent_at: '2026-08-29T11:00:00Z' });
 
-    const lista = oportunidadesDoDia({
+    const lista = montarLista({
       doBoard: [],
       registradas: [cortada],
       dia: '2026-08-29',
@@ -112,7 +135,7 @@ describe('a registrada passa pelo corte e pela vitrine', () => {
   it('e a que passa no limiar continua entrando', () => {
     const passa = dohandicap({ edge: -0.01, sent_at: '2026-08-29T11:00:00Z' });
 
-    const lista = oportunidadesDoDia({
+    const lista = montarLista({
       doBoard: [],
       registradas: [passa],
       dia: '2026-08-29',
@@ -128,7 +151,7 @@ describe('a registrada passa pelo corte e pela vitrine', () => {
     // Não se reescreve o passado: o assinante viu e pode ter apostado.
     const antes = dohandicap({ edge: -0.062, sent_at: '2026-08-10T11:00:00Z' });
 
-    const lista = oportunidadesDoDia({
+    const lista = montarLista({
       doBoard: [],
       registradas: [antes],
       dia: '2026-08-29',
@@ -143,7 +166,7 @@ describe('a registrada passa pelo corte e pela vitrine', () => {
   it('⚠️ a de mercado fora da vitrine na data do envio NÃO entra', () => {
     const escondido = dohandicap({ edge: 0.05, sent_at: '2026-08-29T11:00:00Z' });
 
-    const lista = oportunidadesDoDia({
+    const lista = montarLista({
       doBoard: [],
       registradas: [escondido],
       dia: '2026-08-29',
@@ -158,7 +181,7 @@ describe('a registrada passa pelo corte e pela vitrine', () => {
   it('e o mercado que já tinha voltado à vitrine entra', () => {
     const voltou = dohandicap({ edge: 0.05, sent_at: '2026-08-29T11:00:00Z' });
 
-    const lista = oportunidadesDoDia({
+    const lista = montarLista({
       doBoard: [],
       registradas: [voltou],
       dia: '2026-08-29',
@@ -176,12 +199,86 @@ describe('a registrada passa pelo corte e pela vitrine', () => {
     expect(lista).toHaveLength(1);
   });
 
+  it('⚠️ a cortada CONSOME a chave: um envio posterior não a ressuscita', () => {
+    // O defeito que o code review achou: a regra rodava ANTES de marcar a
+    // chave, então a registrada cortada não bloqueava as outras. Com dois
+    // envios da mesma saída — o mais antigo cortado, o segundo passando —, a
+    // linha voltava pela segunda porta, com os números do envio POSTERIOR.
+    //
+    // Isso contraria as duas decisões que já estavam escritas: "fica o MAIS
+    // ANTIGO, que é a foto de nascimento", e "o pick que deixou de ser
+    // oportunidade some do painel". Quem representa a oportunidade é o primeiro
+    // envio; se ele foi cortado, a oportunidade foi cortada.
+    const cortadaAntiga = dohandicap({ edge: -0.062, sent_at: '2026-08-29T09:00:00Z' });
+    const boaDepois = dohandicap({ edge: -0.01, sent_at: '2026-08-29T15:00:00Z' });
+
+    const lista = montarLista({
+      doBoard: [],
+      registradas: [cortadaAntiga, boaDepois],
+      dia: '2026-08-29',
+      fixturePorId: semFixtures,
+      vitrine: [],
+      limiares: LIMIAR,
+      agoraMs: Date.parse('2026-08-30T12:00:00Z'),
+    });
+
+    expect(lista).toEqual([]);
+  });
+
+  it('a que passa entra com o Score, a faixa e a vantagem DO ENVIO', () => {
+    // Quinto critério da #490, e o único que tinha ficado sem teste: os testes
+    // anteriores só contavam linhas. Contar não prova que os números certos
+    // atravessaram.
+    const passa = dohandicap({
+      edge: -0.01,
+      score: 77,
+      faixa: 'media',
+      odds: 1.95,
+      sent_at: '2026-08-29T11:00:00Z',
+    });
+
+    const [linha] = montarLista({
+      doBoard: [],
+      registradas: [passa],
+      dia: '2026-08-29',
+      fixturePorId: semFixtures,
+      vitrine: [],
+      limiares: LIMIAR,
+      agoraMs: Date.parse('2026-08-30T12:00:00Z'),
+    });
+
+    expect(linha.score).toBe(77);
+    expect(linha.faixa).toBe('media');
+    expect(linha.edge).toBe(-0.01);
+    expect(linha.best_odd).toBe(1.95);
+  });
+
+  it('⚠️ a registrada SEM mercado não entra: não dá para avaliá-la', () => {
+    // A guarda era `a.market != null` em volta das duas regras, o que fazia a
+    // linha sem mercado PULAR os dois filtros. O critério da #490 não abre
+    // exceção — e uma linha que não dá para avaliar contra a vitrine nem contra
+    // o limiar é uma linha sobre a qual não se pode afirmar que esteve na tela.
+    const semMercado = registrada({ market: null, sent_at: '2026-08-29T11:00:00Z' });
+
+    const lista = montarLista({
+      doBoard: [],
+      registradas: [semMercado],
+      dia: '2026-08-29',
+      fixturePorId: semFixtures,
+      vitrine: [],
+      limiares: LIMIAR,
+      agoraMs: Date.parse('2026-08-30T12:00:00Z'),
+    });
+
+    expect(lista).toEqual([]);
+  });
+
   it('sem vitrine e sem limiar, nada muda — a lista é a de antes', () => {
     // A regra só age quando há regra. Sem isso, esta entrega teria mudado o
     // comportamento de todo mundo que chama sem os dois novos argumentos.
     const qualquer = dohandicap({ edge: -0.5, sent_at: '2026-08-29T11:00:00Z' });
 
-    const lista = oportunidadesDoDia({
+    const lista = montarLista({
       doBoard: [],
       registradas: [qualquer],
       dia: '2026-08-29',
@@ -198,7 +295,7 @@ describe('oportunidadesDoDia', () => {
   it('soma a registrada que o board não tem mais', () => {
     // O bug que originou este módulo: num sábado de seis oportunidades a home
     // mostrava três, porque só a outra tela somava as registradas.
-    const lista = oportunidadesDoDia({
+    const lista = montarLista({
       doBoard: [doBoard()],
       registradas: [registrada({ fixture_id: 2, match_description: 'Sport × Goiás' })],
       dia: '2026-08-29',
@@ -210,7 +307,7 @@ describe('oportunidadesDoDia', () => {
   });
 
   it('não duplica a oportunidade que já está no board', () => {
-    const lista = oportunidadesDoDia({
+    const lista = montarLista({
       doBoard: [doBoard()],
       registradas: [registrada()],
       dia: '2026-08-29',
@@ -223,7 +320,7 @@ describe('oportunidadesDoDia', () => {
   it('a mesma partida com outra aposta entra como linha própria', () => {
     // A chave é jogo + mercado + saída + linha: dois palpites no mesmo jogo são
     // duas oportunidades, e colapsá-los esconderia uma.
-    const lista = oportunidadesDoDia({
+    const lista = montarLista({
       doBoard: [doBoard()],
       registradas: [registrada({ market: 'over_under', outcome: 'Over', line_value: 2.5 })],
       dia: '2026-08-29',
@@ -234,7 +331,7 @@ describe('oportunidadesDoDia', () => {
   });
 
   it('registrada de outro dia fica de fora', () => {
-    const lista = oportunidadesDoDia({
+    const lista = montarLista({
       doBoard: [],
       registradas: [registrada({ game_day: '2026-08-28' })],
       dia: '2026-08-29',
@@ -341,7 +438,7 @@ describe('oportunidade registrada em liga fora da lista fixa', () => {
   });
 
   it('a linha registrada entra no dia mesmo em liga que o board não trouxe', () => {
-    const doDia = oportunidadesDoDia({
+    const doDia = montarLista({
       doBoard: [],
       registradas: [strasbourg],
       dia: '2026-08-29',
@@ -420,7 +517,7 @@ describe('a lista do dia', () => {
     // kickoff em UTC cai em 18/09 e o jogo é da noite de 17 em Brasília. Ele NÃO
     // prova nada sobre jogo ao vivo — a função não lê status, e o `2H` abaixo é
     // só contexto do caso real.
-    const lista = oportunidadesDoDia({
+    const lista = montarLista({
       doBoard: [jogoDaNoite(), doBoard({ fixture_id: 99, kickoff_utc: '2026-09-12T22:00:00Z' })],
       registradas: [],
       dia: '2026-09-12',
@@ -433,7 +530,7 @@ describe('a lista do dia', () => {
 
   it('e no dia do jogo ela entra', () => {
     // A contraprova: sem ela, o teste acima passaria com uma lista sempre vazia.
-    const lista = oportunidadesDoDia({
+    const lista = montarLista({
       doBoard: [jogoDaNoite()],
       registradas: [],
       dia: HOJE,
@@ -467,7 +564,7 @@ describe('a lista do dia', () => {
     // idênticos e passaria com qualquer sobrevivente. A escolha é a foto de
     // nascimento — o anúncio mais antigo —, e a lista chega fora de ordem de
     // propósito, senão o teste passaria mesmo sem a ordenação.
-    const lista = oportunidadesDoDia({
+    const lista = montarLista({
       doBoard: [],
       registradas: [
         envio('2026-09-17T13:00:00Z', 1.7),
@@ -486,7 +583,7 @@ describe('a lista do dia', () => {
     // A contraprova da dedup: a chave inclui mercado, saída e linha. Menos de
     // 3,5 e menos de 2,5 são apostas distintas, e colapsá-las seria esconder uma
     // oportunidade — defeito pior do que o que este PR conserta.
-    const lista = oportunidadesDoDia({
+    const lista = montarLista({
       doBoard: [],
       registradas: [
         envio('2026-09-17T13:00:00Z', 1.5),
@@ -502,7 +599,7 @@ describe('a lista do dia', () => {
   it('e o board continua ganhando da registrada, quando são a mesma', () => {
     // Regra que já existia e não pode se perder no conserto: a linha do board
     // tem número vivo; a registrada é o retrato do envio.
-    const lista = oportunidadesDoDia({
+    const lista = montarLista({
       doBoard: [jogoDaNoite()],
       registradas: [
         registrada({
@@ -525,7 +622,7 @@ describe('a lista do dia', () => {
     // A dedup das registradas não bastava: o board e o histórico entram na mesma
     // lista, e a fusão pode trazer a mesma chave duas vezes. Uma chave repetida
     // aqui é uma `key` repetida no React — ver o teste abaixo.
-    const lista = oportunidadesDoDia({
+    const lista = montarLista({
       doBoard: [jogoDaNoite(), jogoDaNoite({ best_odd: 1.6 })],
       registradas: [],
       dia: HOJE,
@@ -546,7 +643,7 @@ describe('a lista do dia', () => {
     // DOM — o "Menos de 3,5" do Torque aparecendo no dia 16, e mais uma cópia a
     // cada ida e volta. O estado do React estava certo o tempo todo; quem
     // mentia era a tela, e por isso procurar no dado não achava nada.
-    const lista = oportunidadesDoDia({
+    const lista = montarLista({
       doBoard: [jogoDaNoite(), jogoDaNoite({ best_odd: 1.6 })],
       registradas: [
         envio('2026-09-12T07:40:00Z', 1.5),
