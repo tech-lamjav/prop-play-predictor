@@ -621,23 +621,24 @@ export default function FutebolHoje() {
   }, [heroOpp, contratoMotivos]);
   // A escala da janela, e não a da linha: a registrada não declara versão.
   const textoScore = textoDoScore(escalaDeExibicao(dayRows));
-  const moreOpps = oppsByFixture.filter((o) => o !== heroOpp && ehDestaque(o.faixa)).slice(0, 4);
+  // A população que a home exibe E que a tela de Oportunidades lista por
+  // padrão: faixa Alta ou Média, com número. É ela que manda na conta do
+  // convite — nunca o total do dia.
+  const emDestaque = oppsByFixture.filter((o) => ehDestaque(o.faixa));
+  const moreOpps = emDestaque.filter((o) => o !== heroOpp).slice(0, 4);
   const nOpps = isDemo ? demoBoard.length : dayRows.length;
-  // Quantas o dia tem que a home NÃO mostra.
+  // Quantas ficaram de fora DA MESMA lista que o convite abre.
   //
-  // A home corta em quatro (`slice(0, 4)`) e, até aqui, cortava em silêncio: um
-  // dia com dezessete oportunidades mostrava quatro cartões e um "Ver todas"
-  // que não dava motivo nenhum pra ser clicado. Quem olhava os quatro saía com
-  // a sensação de ter visto o que havia.
+  // A primeira versão subtraía de `nOpps`, que é o dia inteiro — faixa Baixa e
+  // linhas antigas sem número incluídas. Só que o destino nasce filtrando por
+  // Alta e Média (`FAIXAS_FILTRO_PADRAO`, travado em teste). Num dia com 1 Alta
+  // e 12 Baixas o convite prometia "as 12 restantes" e abria uma lista com UMA
+  // linha — a que a pessoa acabara de ver. Promessa quebrada em CTA queima
+  // confiança de um jeito que clique nenhum paga de volta.
   //
-  // O hero também conta — ele é uma oportunidade do dia ocupando a tela acima,
-  // e esquecê-lo aqui faria a chamada prometer uma a mais do que existe.
-  //
-  // `Math.max(0, …)` porque `nOpps` e `moreOpps` vêm de fontes diferentes:
-  // `nOpps` é a contagem do dia e `moreOpps` já passou pelo filtro de destaque.
-  // Nada garante que a subtração não fique negativa, e "Ver as -2 restantes" é
-  // pior que não convidar.
-  const nRestantes = Math.max(0, nOpps - moreOpps.length - (heroOpp ? 1 : 0));
+  // O destaque entra na subtração: ele é uma das `emDestaque`, ocupando a tela
+  // logo acima. Esquecê-lo faria o convite prometer uma a mais do que existe.
+  const nRestantes = Math.max(0, emDestaque.length - moreOpps.length - (heroOpp ? 1 : 0));
   // O placar do coletor entra AQUI, no recorte do dia — e não na lista inteira
   // (issue #479). `allGames` é a temporada de treze ligas: perguntar por ela
   // arrastaria todo jogo adiado desde janeiro, e foi para tapar esse buraco que
@@ -659,8 +660,9 @@ export default function FutebolHoje() {
   );
   const alta = oppsByFixture.filter((o) => faixaTone(o.faixa) === 'alta').length;
   // melhor valor entre as oportunidades realmente exibidas, não o edge bruto de longshots
-  const surfaced = oppsByFixture.filter((o) => ehDestaque(o.faixa));
-  const melhorValor = surfaced.length ? Math.round(Math.max(...surfaced.map((o) => o.edge)) * 100) : null;
+  // (`emDestaque`, derivada junto com a conta do convite: eram dois filtros
+  // idênticos no mesmo arquivo, e dois filtros idênticos acabam divergindo.)
+  const melhorValor = emDestaque.length ? Math.round(Math.max(...emDestaque.map((o) => o.edge)) * 100) : null;
 
   // contagem de jogos por dia (BRT) — pros chips do stepper
   const gamesByDay = useMemo(() => {
@@ -828,7 +830,13 @@ export default function FutebolHoje() {
         <div className="grid md:grid-cols-12 gap-6">
           <div data-tour="futebol-oportunidades" className="md:col-span-8 min-w-0">
             <div className="flex items-end justify-between mb-3">
-              <div>
+              {/* `min-w-0`: item de flex não encolhe abaixo do próprio
+                  conteúdo sem isto, e o título aqui dentro é `truncate`. Os
+                  dois só funcionam juntos — sem este, uma fonte de navegador
+                  ampliada empurraria a linha para fora e traria de volta a
+                  rolagem lateral que o comentário do grid acima registra como
+                  bug antigo. */}
+              <div className="min-w-0">
                 {/* A hierarquia estava invertida: o negrito era "Por
                     confiabilidade" — o CRITÉRIO DE ORDENAÇÃO — e o número, que
                     é o que faz alguém querer ver o resto, não aparecia em lugar
@@ -846,13 +854,16 @@ export default function FutebolHoje() {
                     confiabilidade" virava duas linhas sozinho. "Por
                     confiabilidade" diz a mesma coisa e cabe em uma. */}
                 <div className={LABEL}>Por confiabilidade</div>
-                {/* `whitespace-nowrap` é o que garante a linha única prometida.
+                {/* `truncate` é o que garante a linha única prometida — e não
+                    um `whitespace-nowrap` solto, que segura a linha mas deixa o
+                    texto transbordar em vez de cortar.
+
                     O que costumava estourar era o sufixo do dia: com ele, o
                     título ficava largo demais pro celular. Ele agora só aparece
                     a partir de `sm`, onde há largura sobrando — no celular o
                     seletor de dia fica logo acima, então "hoje" ali era
                     repetição que custava uma linha. */}
-                <div className="text-lg font-bold tracking-tight text-ink mt-0.5 whitespace-nowrap">
+                <div className="text-lg font-bold tracking-tight text-ink mt-0.5 truncate">
                   {loading || nOpps === 0 ? (
                     'Mais oportunidades'
                   ) : (
@@ -872,12 +883,14 @@ export default function FutebolHoje() {
                   genérica: prometer "as 0 restantes" seria pior que não
                   convidar.
 
-                  No bloqueio a contagem sai da frase de propósito — a faixa do
-                  topo já leva pra assinatura, e convidar alguém a "ver as 13
-                  restantes" que ele não pode abrir é promessa vazia. */}
+                  Sem acesso o convite continua igual, e é de propósito: a lista
+                  do destino mostra os mesmos cadeados que esta home mostra, e a
+                  faixa do topo é quem vende. Esconder o caminho apagaria de
+                  quem ainda não assina que existe produto ali dentro — que é o
+                  contrário do que o bloqueio desta tela faz. */}
               <Link
                 to={comDia('/futebol/oportunidades', selectedDay)}
-                className="shrink-0 inline-flex items-center gap-1.5 rounded-rebrand-sm border border-forest/30 bg-forest/[0.08] text-forest hover:bg-forest hover:text-canvas hover:border-forest transition text-[12px] font-bold px-3 h-9"
+                className="shrink-0 inline-flex items-center gap-1.5 rounded-rebrand-md border border-forest/30 bg-forest/[0.08] text-forest hover:bg-forest hover:text-canvas hover:border-forest transition text-[12px] font-bold px-3 h-11"
               >
                 {/* No celular só "Ver todas": o botão fica AO LADO do título e
                     cada caractere aqui é largura roubada de lá. Era isto, mais
@@ -887,7 +900,7 @@ export default function FutebolHoje() {
                     larga e vem logo depois dos quatro cartões. */}
                 <span className="sm:hidden">Ver todas</span>
                 <span className="hidden sm:inline">
-                  {!locked && nRestantes > 0 ? `Ver as ${nRestantes} restantes` : 'Ver todas'}
+                  {nRestantes > 0 ? `Ver as ${nRestantes} restantes` : 'Ver todas'}
                 </span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
@@ -940,10 +953,12 @@ export default function FutebolHoje() {
                 na tela — e, até aqui, não encontrava nada ali: a única saída
                 pra lista ficava lá em cima, já fora do campo de visão.
 
-                Só aparece quando há sobra de verdade e a pessoa tem acesso.
-                Repetir a chamada quando não sobrou nada seria insistir sem ter
-                o que oferecer. */}
-            {!loading && !locked && nRestantes > 0 && moreOpps.length > 0 && (
+                Só aparece quando há sobra de verdade. Repetir a chamada quando
+                não sobrou nada seria insistir sem ter o que oferecer — e o
+                `moreOpps.length > 0` que havia aqui era contraditório: ele
+                escondia a chamada justamente quando a grade caía no estado
+                vazio, que é quando o caminho para a lista importa mais. */}
+            {!loading && nRestantes > 0 && (
               <Link
                 to={comDia('/futebol/oportunidades', selectedDay)}
                 className="mt-4 flex items-center justify-center gap-1.5 rounded-rebrand-md border border-dashed border-forest/40 bg-forest/[0.04] text-forest hover:bg-forest/[0.09] transition text-[13px] font-bold h-11"
