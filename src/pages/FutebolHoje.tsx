@@ -627,18 +627,17 @@ export default function FutebolHoje() {
   const emDestaque = oppsByFixture.filter((o) => ehDestaque(o.faixa));
   const moreOpps = emDestaque.filter((o) => o !== heroOpp).slice(0, 4);
   const nOpps = isDemo ? demoBoard.length : dayRows.length;
-  // Quantas ficaram de fora DA MESMA lista que o convite abre.
+  // A grade mostra menos do que existe?
   //
-  // A primeira versão subtraía de `nOpps`, que é o dia inteiro — faixa Baixa e
-  // linhas antigas sem número incluídas. Só que o destino nasce filtrando por
-  // Alta e Média (`FAIXAS_FILTRO_PADRAO`, travado em teste). Num dia com 1 Alta
-  // e 12 Baixas o convite prometia "as 12 restantes" e abria uma lista com UMA
-  // linha — a que a pessoa acabara de ver. Promessa quebrada em CTA queima
-  // confiança de um jeito que clique nenhum paga de volta.
+  // Só isto — e não QUANTAS faltam. A versão anterior anunciava um "restantes"
+  // calculado por subtração, e ele nunca batia com o número do título: eram
+  // duas frases, lado a lado, com números diferentes sobre a mesma lista.
+  // Título e convite agora dizem o MESMO número, o tamanho da lista que o
+  // destino abre, e a subtração deixou de ter para que existir.
   //
-  // O destaque entra na subtração: ele é uma das `emDestaque`, ocupando a tela
-  // logo acima. Esquecê-lo faria o convite prometer uma a mais do que existe.
-  const nRestantes = Math.max(0, emDestaque.length - moreOpps.length - (heroOpp ? 1 : 0));
+  // O que sobrou é a guarda: não convidar para uma lista que já está inteira
+  // na tela. O destaque conta, porque ele também é uma das `emDestaque`.
+  const haMaisQueAGrade = emDestaque.length > moreOpps.length + (heroOpp ? 1 : 0);
   // O placar do coletor entra AQUI, no recorte do dia — e não na lista inteira
   // (issue #479). `allGames` é a temporada de treze ligas: perguntar por ela
   // arrastaria todo jogo adiado desde janeiro, e foi para tapar esse buraco que
@@ -863,6 +862,21 @@ export default function FutebolHoje() {
                     a partir de `sm`, onde há largura sobrando — no celular o
                     seletor de dia fica logo acima, então "hoje" ali era
                     repetição que custava uma linha. */}
+                {/* ⚠️ `nOpps` AQUI É DELIBERADO: é o mesmo número do KPI
+                    "Oportunidades" no topo desta tela. As duas superfícies
+                    falam da mesma coisa — pelo glossário, Oportunidade é a
+                    candidata aprovada para publicação — e divergir delas é
+                    fazer a página se contradizer sozinha.
+
+                    ⚠️ E É POR ISSO QUE O CONVITE AO LADO NÃO LEVA NÚMERO.
+                    A lista do destino nasce filtrada por faixa Alta ou Média
+                    (`FAIXAS_FILTRO_PADRAO`, em `useState`, sem ler a URL), e
+                    por isso mostra MENOS que `nOpps`. Um botão dizendo "Ver
+                    todas as 331" abriria uma tela com 154 — a promessa
+                    quebrada que o review já pegou uma vez aqui.
+
+                    Quem quiser pôr número no botão precisa antes fazer o link
+                    carregar o filtro, senão o defeito volta. */}
                 <div className="text-lg font-bold tracking-tight text-ink mt-0.5 truncate">
                   {loading || nOpps === 0 ? (
                     'Mais oportunidades'
@@ -877,11 +891,10 @@ export default function FutebolHoje() {
               {/* O convite ganhou corpo: fundo, contorno e altura, nos mesmos
                   tokens `forest` que a tela já usa — nenhuma cor nova entrou.
 
-                  E ganhou MOTIVO. "Ver todas" não diz o que se ganha clicando;
-                  "Ver as N restantes" diz que existe coisa que a home não
-                  mostrou. Quando não sobra nenhuma, a frase volta a ser a
-                  genérica: prometer "as 0 restantes" seria pior que não
-                  convidar.
+                  O motivo de clicar não está mais na copy do botão, e sim no
+                  número grande ao lado: a grade mostra quatro cartões sob um
+                  título que anuncia centenas. O peso do botão é o que resolve a
+                  discrição original — ele era texto de 12px e passava batido.
 
                   Sem acesso o convite continua igual, e é de propósito: a lista
                   do destino mostra os mesmos cadeados que esta home mostra, e a
@@ -892,16 +905,11 @@ export default function FutebolHoje() {
                 to={comDia('/futebol/oportunidades', selectedDay)}
                 className="shrink-0 inline-flex items-center gap-1.5 rounded-rebrand-md border border-forest/30 bg-forest/[0.08] text-forest hover:bg-forest hover:text-canvas hover:border-forest transition text-[12px] font-bold px-3 h-11"
               >
-                {/* No celular só "Ver todas": o botão fica AO LADO do título e
-                    cada caractere aqui é largura roubada de lá. Era isto, mais
-                    que o tamanho da fonte, que quebrava o título em duas
-                    linhas. O motivo — o número que sobrou — não se perde: ele
-                    aparece inteiro na chamada do fim da grade, que no celular é
-                    larga e vem logo depois dos quatro cartões. */}
-                <span className="sm:hidden">Ver todas</span>
-                <span className="hidden sm:inline">
-                  {nRestantes > 0 ? `Ver as ${nRestantes} restantes` : 'Ver todas'}
-                </span>
+                {/* Copy curta também serve ao celular: o botão fica AO LADO do
+                    título, e cada caractere aqui é largura roubada de lá. Era
+                    isso, mais que o tamanho da fonte, que quebrava o título em
+                    duas linhas na primeira versão. */}
+                Ver todas
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
@@ -953,17 +961,18 @@ export default function FutebolHoje() {
                 na tela — e, até aqui, não encontrava nada ali: a única saída
                 pra lista ficava lá em cima, já fora do campo de visão.
 
-                Só aparece quando há sobra de verdade. Repetir a chamada quando
-                não sobrou nada seria insistir sem ter o que oferecer — e o
-                `moreOpps.length > 0` que havia aqui era contraditório: ele
-                escondia a chamada justamente quando a grade caía no estado
-                vazio, que é quando o caminho para a lista importa mais. */}
-            {!loading && nRestantes > 0 && (
+                Só aparece quando a grade mostra menos do que existe. Convidar
+                para uma lista que já está inteira na tela é insistir sem ter o
+                que oferecer — e o `moreOpps.length > 0` que havia aqui era
+                contraditório: escondia a chamada justamente quando a grade caía
+                no estado vazio, que é quando o caminho para a lista importa
+                mais. */}
+            {!loading && haMaisQueAGrade && (
               <Link
                 to={comDia('/futebol/oportunidades', selectedDay)}
                 className="mt-4 flex items-center justify-center gap-1.5 rounded-rebrand-md border border-dashed border-forest/40 bg-forest/[0.04] text-forest hover:bg-forest/[0.09] transition text-[13px] font-bold h-11"
               >
-                Ver as {nRestantes} oportunidade{nRestantes === 1 ? '' : 's'} restante{nRestantes === 1 ? '' : 's'}
+                Ver todas as oportunidades {isToday ? 'de hoje' : 'do dia'}
                 <ArrowRight className="w-4 h-4" />
               </Link>
             )}
