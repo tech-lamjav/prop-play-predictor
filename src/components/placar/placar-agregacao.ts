@@ -38,7 +38,26 @@ export type LinhaPublicada = {
   outcome: string;
   line_value: number | null;
   best_odd: number | null;
+  /**
+   * O preço EXIBIDO: a vantagem da estreia, caindo para a da primeira versão do
+   * histórico quando a linha nunca esteve visível. É o número que a tela mostra
+   * e que o filtro de valor mínimo usa.
+   */
   edge: number | null;
+  /**
+   * A vantagem com que a linha APARECEU para o assinante, e `null` quando ela
+   * nunca apareceu (migration 163).
+   *
+   * ⚠️ Não é o mesmo que `edge`, e a diferença é o recorte "Só a vitrine": ele
+   * pergunta o que o assinante VIU, e a resposta é esta. Usar `edge` ali mantinha
+   * na vitrine a linha que nunca esteve nela, porque o preço de reserva podia
+   * passar no limiar — e aí o painel dizia uma coisa e o board dizia outra.
+   *
+   * Mesma semântica de `FutebolValueBoardRow.edge_publicacao`: nulo é resposta,
+   * ausente é banco anterior à 162. Quem sabe distinguir é
+   * `vantagemDePublicacao`.
+   */
+  edge_publicacao?: number | null;
   score: number;
   faixa: string | null;
   score_versao: string;

@@ -72,6 +72,23 @@ describe('Onboarding', () => {
     expect(await screen.findByText(/assim que ela entra no painel/i)).toBeInTheDocument();
   });
 
+  it('vindo da landing do futebol, a introdução é a do alerta, não a genérica', async () => {
+    // Quem vem da landing do futebol chegou pela oportunidade, igual a quem
+    // clicou no alerta: abrir com "seu assistente de apostas" responderia
+    // outra pergunta.
+    renderOnboarding('?src=lp-futebol&return=%2Ffutebol');
+
+    expect(await screen.findByText('Alertas de oportunidades')).toBeInTheDocument();
+    expect(screen.getByText(/Receba as novas oportunidades no/i)).toBeInTheDocument();
+  });
+
+  it('vindo da landing do futebol, o aviso de oportunidade nova abre os benefícios', async () => {
+    renderOnboarding('?src=lp-futebol&return=%2Ffutebol');
+
+    const titulos = (await screen.findAllByRole('heading', { level: 3 })).map((h) => h.textContent);
+    expect(titulos).toEqual(['Cada oportunidade nova, na hora', 'Registra pelo print', 'Seu ROI de verdade']);
+  });
+
   it('sem origem, a ordem dos benefícios continua a de sempre', async () => {
     renderOnboarding();
 
@@ -100,6 +117,27 @@ describe('Onboarding', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: 'Pular por agora' }));
     expect(mocks.navigate).toHaveBeenCalledWith('/futebol/oportunidades');
+  });
+
+  it('vindo da landing do futebol, pular também termina no futebol', async () => {
+    // O cenário que falhou num teste manual: veio da LP, pulou o onboarding e
+    // precisava cair no produto. As três saídas do onboarding usam o mesmo
+    // destino, então pular não é um caminho à parte — mas isso não estava
+    // provado com a origem que as landings do futebol mandam.
+    renderOnboarding('?src=lp-futebol&return=%2Ffutebol');
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Pular por agora' }));
+    expect(mocks.navigate).toHaveBeenCalledWith('/futebol');
+  });
+
+  it('sem instrução na URL, pular cai no hub — é o padrão, não um defeito', async () => {
+    // O contraste do teste acima: quem abre o cadastro sem passar por um CTA de
+    // landing não tem destino nenhum pendurado, e o hub é a resposta certa.
+    // Fica escrito para ninguém ler este comportamento como regressão.
+    renderOnboarding('?src=signup');
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Pular por agora' }));
+    expect(mocks.navigate).toHaveBeenCalledWith('/inicio');
   });
 
   it('destino de retorno inválido cai na rota segura', async () => {

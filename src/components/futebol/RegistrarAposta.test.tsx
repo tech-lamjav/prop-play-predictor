@@ -25,8 +25,17 @@ import type { FutebolBetDraft } from './registrar-aposta-utils';
 vi.mock('@/hooks/use-auth', () => ({ useAuth: () => ({ user: { id: 'user-1' } }) }));
 vi.mock('@/hooks/use-user-unit', () => ({ useUserUnit: () => ({ config: { unit_value: 10 } }) }));
 vi.mock('@/integrations/supabase/client', () => ({ createClient: () => ({ from: () => ({ insert: async () => ({ error: null }) }) }) }));
+// O modal passou a ler o acesso ao futebol para carimbar `subscription_status`
+// na telemetria. O dublê é do GANCHO, e não do cliente do Supabase: pelo
+// caminho real, `use-futebol-data` puxa `futebol-data.service`, que importa o
+// export `supabase` — um símbolo que o dublê acima não tem e que o teste não
+// deveria precisar conhecer para testar um formulário.
+vi.mock('@/hooks/use-futebol-data', () => ({
+  useFutebolAccess: () => ({ data: { state: 'subscribed', unlocked: true } }),
+}));
 
 const draft = (): FutebolBetDraft => ({
+  fixtureId: 1191,
   homeName: 'Lyon',
   awayName: 'Auxerre',
   competition: 'ligue_1',

@@ -139,11 +139,24 @@ assim", e nunca é a medida da metodologia: quando ela está ligada, a tela diz.
 _Avoid_: Stake, gestão de banca, placar real
 
 **Foto de nascimento**:
-O primeiro registro de uma oportunidade no histórico — a odd, a nota e a faixa
-com que ela foi publicada e alertada. É o que o placar mede, porque é sobre
-essa régua que a decisão foi tomada. Diferente do estado dela no apito, que é o
-que o assinante viu por último.
-_Avoid_: PIT, snapshot, estado no apito, última odd
+A primeira versão **visível** de uma oportunidade no histórico — a odd, a nota e
+a faixa com que ela apareceu para o assinante. É o que o placar mede, porque é
+sobre essa régua que a decisão foi tomada. Diferente do estado dela no apito,
+que é o que o assinante viu por último.
+
+"Visível" é o que a separa do primeiro registro do snapshot, e os dois não são a
+mesma coisa: o snapshot grava o **board**, que é o universo e inclui mercado
+fora da **vitrine** e linha abaixo do limiar de valor. Uma oportunidade pode
+existir no snapshot dias antes de ter aparecido para alguém, e aí a foto de
+nascimento é a da estreia na tela, não a do registro mais antigo.
+
+Nunca tendo aparecido, ela **não tem** foto de nascimento — e as duas telas
+tratam isso de formas diferentes, de propósito. Nas telas do assinante a linha
+some, porque ali a pergunta é "isto é uma aposta". No **placar da metodologia**
+ela fica, com o preço do registro mais antigo, porque ali a pergunta é "como vai
+o método" — e o placar mostra o board inteiro, mercado oculto incluído, já que é
+com ele que se decide devolver um mercado à vitrine.
+_Avoid_: PIT, snapshot, primeiro registro do histórico, estado no apito, última odd
 
 **Liquidado**:
 A oportunidade cujo jogo terminou e recebeu veredito pela regra de liquidação:

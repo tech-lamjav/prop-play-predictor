@@ -261,4 +261,97 @@ describe('o placar da vitrine respeita o corte de valor', () => {
     const linhas = [publicada(-0.05, '2026-09-16T10:00:00'), publicada(0.03, '2026-09-16T10:00:00')];
     expect(soAVitrine(linhas, [], AGORA, VIGENTE).map((l) => l.edge)).toEqual([0.03]);
   });
+
+  // ⚠️ OS CASOS ACIMA MONTAM A LINHA SEM `edge_publicacao`, e por isso caem no
+  // ramo de compatibilidade — eles provam a régua antiga, não a de hoje.
+  //
+  // Desde a migration 163 a RPC do placar devolve as duas colunas com papéis
+  // diferentes: `edge` é o preço EXIBIDO, que cai para o do registro mais antigo
+  // quando a linha nunca esteve visível, e `edge_publicacao` é a vantagem da
+  // ESTREIA, nula nesse caso. O recorte tem de olhar a segunda.
+  //
+  // Sem os dois casos abaixo, a correção inteira desta rodada ficava sem teste.
+  describe('e olha a vantagem de PUBLICAÇÃO, não o preço exibido', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const comEstreia = (edge: number | null, edgePublicacao: number | null, detectada: string) =>
+      ({ market: 'asian_handicap', edge, edge_publicacao: edgePublicacao, detectada_em: detectada }) as any;
+
+    it('⚠️ a linha que nunca apareceu SAI, mesmo com o preço de reserva bom', () => {
+      // O caso que o code review pegou: com o `coalesce` da 162, esta linha
+      // chega ao front com −1% no `edge` — o preço do registro mais antigo — e
+      // passaria no limiar. Mas ela nunca esteve na vitrine, e o board a derruba.
+      // Decidir pelo `edge` aqui mantinha no painel o que o board escondia.
+      const nuncaApareceu = comEstreia(-0.01, null, '2026-09-16T10:00:00');
+      expect(esteveNaVitrine(nuncaApareceu, [], AGORA, VIGENTE)).toBe(false);
+      expect(soAVitrine([nuncaApareceu], [], AGORA, VIGENTE)).toEqual([]);
+    });
+
+    it('e a que apareceu bem FICA, mesmo com o preço exibido ruim', () => {
+      // O espelho: estreou a −1%, o preço exibido hoje é pior, e ela continua
+      // tendo estado na tela.
+      const apareceu = comEstreia(-0.05, -0.01, '2026-09-16T10:00:00');
+      expect(esteveNaVitrine(apareceu, [], AGORA, VIGENTE)).toBe(true);
+    });
+  });
+});
+
+// ============================================================================
+// Nulo explícito é resposta: "esta linha nunca esteve na tela"
+// ============================================================================
+// A migration 162 fez `edge_publicacao` ser a vantagem da primeira versão
+// VISÍVEL, e devolver NULO quando nunca houve nenhuma. Nulo ali não é campo em
+// branco: é o banco dizendo que a linha não chegou a aparecer para ninguém.
+//
+// O `?? edge` de antes lia esse nulo como ausência e caía na vantagem do APITO —
+// que pode ser ótima. O efeito era mostrar como oportunidade justamente a linha
+// que nunca esteve na vitrine, que é o defeito que a 119 e a 145 fecharam no
+// grão do mercado e este fecha no grão da linha.
+//
+// A distinção é entre campo AUSENTE e campo NULO, e as duas coisas existem de
+// verdade: ausente é front novo contra banco anterior à 146, e ali a queda para
+// `edge` continua certa.
+// ============================================================================
+
+describe('vantagem de publicação nula é diferente de ausente', () => {
+  const VIGENTE: LimiarDeValor[] = [
+    { market: 'asian_handicap', limiar: -0.02, vigenteDesde: '2026-09-15T00:00:00Z' },
+  ];
+  const AGORA = Date.parse('2026-09-20T15:00:00Z');
+
+  it('separaNoCorteDeValor corta o nulo explícito, mesmo com o apito bom', () => {
+    const nuncaApareceu = { market: 'asian_handicap', edge: 0.05, edge_publicacao: null };
+    expect(separaNoCorteDeValor([nuncaApareceu], CORTE).cortadas).toEqual([nuncaApareceu]);
+    expect(separaNoCorteDeValor([nuncaApareceu], CORTE).passam).toEqual([]);
+  });
+
+  it('filtrarCorteDeValor idem, porque os dois saem da mesma conta', () => {
+    const nuncaApareceu = { market: 'asian_handicap', edge: 0.05, edge_publicacao: null };
+    expect(filtrarCorteDeValor([nuncaApareceu], CORTE)).toEqual([]);
+  });
+
+  it('⚠️ e o campo AUSENTE continua caindo no apito', () => {
+    // Banco anterior à 146 não tem a coluna. Tratar ausência como nulo aqui
+    // esvaziaria a tela inteira contra um banco velho, que é regressão e não
+    // correção.
+    const semColuna = { market: 'asian_handicap', edge: 0.05 };
+    expect(filtrarCorteDeValor([semColuna], CORTE)).toEqual([semColuna]);
+  });
+
+  it('o histórico derruba a linha que nunca apareceu, a partir da vigência', () => {
+    const nuncaApareceu = {
+      ...linhaDoBoard('asian_handicap', '2026-09-17T18:00:00', 0.05, 5),
+      edge_publicacao: null,
+    };
+    expect(mergeBoardAndHistory([], [nuncaApareceu], AGORA, [], VIGENTE)).toEqual([]);
+  });
+
+  it('e a mantém antes da vigência, porque ali não havia limiar para escondê-la', () => {
+    // A data continua mandando: antes da vigência o limiar não existia, então
+    // nada foi escondido por ele, e apagar a linha reescreveria o passado.
+    const antes = {
+      ...linhaDoBoard('asian_handicap', '2026-09-10T18:00:00', 0.05, 6),
+      edge_publicacao: null,
+    };
+    expect(mergeBoardAndHistory([], [antes], AGORA, [], VIGENTE)).toHaveLength(1);
+  });
 });

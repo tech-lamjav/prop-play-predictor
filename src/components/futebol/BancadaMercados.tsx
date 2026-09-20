@@ -29,6 +29,8 @@ import {
 } from '@/utils/futebol-premissas';
 import { ladoDaSaida } from '@/utils/futebol-evidencias';
 import { MotivosJogoPorJogo } from './MotivosJogoPorJogo';
+import { motivosExpandidos, propsDaOportunidade } from '@/lib/analytics';
+import { useFutebolAccess } from '@/hooks/use-futebol-data';
 import { avisoSemDado } from '@/utils/futebol-sem-dado';
 import { valueDoCandidato, resumoDosMercados, mesmaLinha, saidaCortada, passaNaLeitura, leituraDaFolha, saidaQueAbreAFolha, type SaidaPreferida } from '@/utils/futebol-leitura';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -273,6 +275,10 @@ export function BancadaMercados({
   // O valor que o modelo comparou (#464). Vazio é normal: o funil é append-only
   // e jogo gravado antes do deploy não tem insumo medido.
   const { data: insumos } = useFutebolFixtureInsumos(jogo.fixtureId);
+  // Só para a telemetria: `subscription_status` é propriedade comum de todo
+  // evento de oportunidade, e sem ela não dá para separar o funil de quem tem
+  // acesso do de quem está vendo a tela borrada — que são funis diferentes.
+  const { data: acesso } = useFutebolAccess();
   const { data: injuries } = useFutebolFixtureInjuries(jogo.fixtureId);
   const { data: oddsRows } = useFutebolFixtureOdds(jogo.fixtureId);
   const {
@@ -690,6 +696,45 @@ export function BancadaMercados({
   }
 
   const pickAtual = labelDe(principal);
+
+  /**
+   * A pessoa abriu uma premissa para ver o jogo a jogo.
+   *
+   * Mora aqui, e não dentro da lista de motivos, porque a lista não sabe de
+   * qual JOGO ela é — recebe mercado, lado, linha e as premissas, e mais nada.
+   * Quem tem o `fixtureId` é esta bancada.
+   *
+   * `source: 'other'` é o valor honesto: a lista de origens descreve de onde
+   * partiu o clique que abriu um JOGO, e aqui a pessoa já está dentro dele há
+   * vários cliques. Carimbar 'opportunities' ou 'games_list' seria afirmar um
+   * caminho que este componente não presenciou.
+   */
+  const aoExpandirPremissa = (
+    slug: string,
+    modo: 'favor' | 'contra',
+    quantidade: number,
+  ) => {
+    if (!principal) return;
+    motivosExpandidos({
+      ...propsDaOportunidade(
+        {
+          fixture_id: jogo.fixtureId,
+          market: mercado.slug,
+          outcome: principal.outcome,
+          line_value: linha,
+          competition: jogo.competition,
+        },
+        { source: 'other', subscription_status: acesso?.state ?? 'unknown' },
+      ),
+      // "Contra" É verbete do CONTEXT.md, e o valor emitido usa a definição
+      // dele: premissa do PRÓPRIO lado da saída que não atingiu o corte — e
+      // não sinal para o lado oposto. O nome longo é o que impede a leitura
+      // errada lá no painel, onde ninguém tem o glossário à mão.
+      reason_type: modo === 'favor' ? 'a_favor' : 'nao_atingiu_o_corte',
+      reason_count: quantidade,
+      premissa: slug,
+    });
+  };
   /**
    * Todos os rótulos que o título pode assumir NESTE mercado.
    *
@@ -717,6 +762,7 @@ export function BancadaMercados({
     principal && !jogoJaComecou && !locked ? (
       <RegistrarApostaCTA
         draft={{
+          fixtureId: jogo.fixtureId,
           homeName: jogo.home,
           awayName: jogo.away,
           competition: jogo.competition,
@@ -1413,6 +1459,7 @@ export function BancadaMercados({
             lado={ladoPrincipal}
             linha={linha}
             saidaLabel={pickAtual}
+            aoExpandirPremissa={aoExpandirPremissa}
           />
         ) : (
           <MotivosJogoPorJogo
@@ -1426,6 +1473,7 @@ export function BancadaMercados({
             lado={ladoPrincipal}
             linha={linha}
             saidaLabel={pickAtual}
+            aoExpandirPremissa={aoExpandirPremissa}
           />
         )}
 

@@ -3,6 +3,15 @@
 import type { FutebolValueBoardRow } from '@/services/futebol-data.service';
 
 interface FutebolBetDraftBase {
+  /**
+   * O jogo da aposta.
+   *
+   * Entrou para a telemetria: sem ele o registro feito pela web não consegue
+   * dizer DE QUAL oportunidade veio, e o funil "abriu → registrou" fica sem a
+   * ponta final. O rascunho já tinha times, competição, mercado, saída e linha
+   * — tudo menos o identificador que o domínio usa.
+   */
+  fixtureId: number;
   homeName: string;
   awayName: string;
   competition: string;
@@ -39,11 +48,12 @@ export function atalhosDaUnidade(unitValue: number | null | undefined): AtalhoDe
  */
 type DraftSource = Pick<
   FutebolValueBoardRow,
-  'home_team_name' | 'away_team_name' | 'competition' | 'kickoff_utc' | 'market' | 'outcome' | 'line_value' | 'best_odd'
+  'fixture_id' | 'home_team_name' | 'away_team_name' | 'competition' | 'kickoff_utc' | 'market' | 'outcome' | 'line_value' | 'best_odd'
 >;
 
 export function draftFromBoardRow(o: DraftSource): FutebolBetDraft {
   return {
+    fixtureId: o.fixture_id,
     homeName: o.home_team_name,
     awayName: o.away_team_name,
     competition: o.competition,

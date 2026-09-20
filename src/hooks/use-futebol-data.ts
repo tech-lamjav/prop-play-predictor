@@ -2,7 +2,7 @@ import { useQuery, useQueries } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { brtToday } from '@/utils/futebol-datas';
-import { historyWindow } from '@/utils/futebol-history';
+import { HISTORY_WINDOW_DAYS, historyWindow } from '@/utils/futebol-history';
 import { ocultosAgora, type MercadoOculto } from '@/utils/futebol-mercados-ocultos';
 import { comPlacarFresco, idsSemFecho, type JogoComPlacar } from '@/utils/futebol-placar-fresco';
 import type { LimiarDeValor } from '@/utils/futebol-corte-de-valor';
@@ -47,6 +47,25 @@ import {
  * O RPC inicia o relógio no 1º acesso logado e devolve o estado atual.
  * Key por usuário pra refazer ao logar/deslogar.
  */
+/**
+ * Quem está perguntando, para entrar na chave de cache.
+ *
+ * ⚠️ TODA consulta que o banco fecha por acesso precisa disto na chave. As
+ * RPCs guardadas por `futebol_acesso_do_chamador` devolvem a linha com as
+ * colunas nulas para quem não tem acesso, e o React Query não sabe que a
+ * resposta dependia de QUEM perguntou: sem o usuário na chave, a cópia
+ * buscada antes do login segue servindo depois dele.
+ *
+ * Foi assim que quem criava conta via o chip do cabeçalho dizer "Teste · 48h"
+ * — porque `get_futebol_access` já era keyed por usuário e refazia — com a
+ * lista inteira cadeada ao lado, porque o board não era. Duas respostas do
+ * mesmo banco discordando na mesma tela, até o cache vencer em 5 minutos.
+ */
+function useChaveDoUsuario(): string {
+  const { user } = useAuth();
+  return user?.id ?? 'anon';
+}
+
 export function useFutebolAccess() {
   const { user } = useAuth();
   return useQuery<FutebolAccess>({
@@ -102,8 +121,9 @@ export function useFutebolFixtureDays(from: string | null | undefined, to: strin
  * analítico que existe mesmo sem odd coletada, então não depende de preço.
  */
 export function useFutebolFixturePremissas(fixtureId: number | undefined) {
+  const quem = useChaveDoUsuario();
   return useQuery<FutebolFixturePremissas[]>({
-    queryKey: ['futebol', 'fixture-premissas', fixtureId],
+    queryKey: ['futebol', 'fixture-premissas', fixtureId, quem],
     queryFn: () => futebolDataService.getFixturePremissas(fixtureId as number),
     enabled: !!fixtureId,
     staleTime: 10 * 60 * 1000,
@@ -114,8 +134,9 @@ export function useFutebolFixturePremissas(fixtureId: number | undefined) {
 
 /** Desde quando cada saída está publicada, por oportunidade (issue #300). */
 export function useFutebolFixtureDisponibilidade(fixtureId: number | undefined) {
+  const quem = useChaveDoUsuario();
   return useQuery<FutebolFixtureDisponibilidade[]>({
-    queryKey: ['futebol', 'fixture-disponivel-desde', fixtureId],
+    queryKey: ['futebol', 'fixture-disponivel-desde', fixtureId, quem],
     queryFn: () => futebolDataService.getFixtureDisponibilidade(fixtureId as number),
     enabled: !!fixtureId,
     staleTime: 5 * 60 * 1000,
@@ -126,8 +147,9 @@ export function useFutebolFixtureDisponibilidade(fixtureId: number | undefined) 
 
 /** Motivos já agrupados pelo backend para qualquer saída cotada da Bancada. */
 export function useFutebolFixtureReasonContract(fixtureId: number | undefined) {
+  const quem = useChaveDoUsuario();
   return useQuery<FutebolFixtureReasonContractRow[]>({
-    queryKey: ['futebol', 'fixture-reason-contract', fixtureId],
+    queryKey: ['futebol', 'fixture-reason-contract', fixtureId, quem],
     queryFn: () => futebolDataService.getFixtureReasonContract(fixtureId as number),
     enabled: !!fixtureId,
     staleTime: 5 * 60 * 1000,
@@ -150,8 +172,9 @@ export function useFutebolFixtureNumeros(fixtureId: number | undefined) {
 
 /** O valor que cada premissa comparou, direto do mart (#464). Vazio é normal. */
 export function useFutebolFixtureInsumos(fixtureId: number | undefined) {
+  const quem = useChaveDoUsuario();
   return useQuery<FutebolFixtureInsumo[]>({
-    queryKey: ['futebol', 'fixture-insumos', fixtureId],
+    queryKey: ['futebol', 'fixture-insumos', fixtureId, quem],
     queryFn: () => futebolDataService.getFixtureInsumos(fixtureId as number),
     enabled: !!fixtureId,
     staleTime: 10 * 60 * 1000,
@@ -298,8 +321,9 @@ export function useFutebolMatchupTendencies(
 }
 
 export function useFutebolFixtureOdds(fixtureId: number | undefined) {
+  const quem = useChaveDoUsuario();
   return useQuery<FutebolOddsRow[]>({
-    queryKey: ['futebol', 'odds', fixtureId],
+    queryKey: ['futebol', 'odds', fixtureId, quem],
     queryFn: () => futebolDataService.getFixtureOdds(fixtureId as number),
     enabled: !!fixtureId,
     staleTime: 5 * 60 * 1000,
@@ -309,8 +333,9 @@ export function useFutebolFixtureOdds(fixtureId: number | undefined) {
 }
 
 export function useFutebolFixturePrediction(fixtureId: number | undefined) {
+  const quem = useChaveDoUsuario();
   return useQuery<FutebolPrediction | null>({
-    queryKey: ['futebol', 'prediction', fixtureId],
+    queryKey: ['futebol', 'prediction', fixtureId, quem],
     queryFn: () => futebolDataService.getFixturePrediction(fixtureId as number),
     enabled: !!fixtureId,
     staleTime: 5 * 60 * 1000,
@@ -320,8 +345,9 @@ export function useFutebolFixturePrediction(fixtureId: number | undefined) {
 }
 
 export function useFutebolOddsBoard() {
+  const quem = useChaveDoUsuario();
   return useQuery<FutebolOddsBoardRow[]>({
-    queryKey: ['futebol', 'odds-board'],
+    queryKey: ['futebol', 'odds-board', quem],
     queryFn: () => futebolDataService.getOddsBoard(),
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
@@ -330,8 +356,9 @@ export function useFutebolOddsBoard() {
 }
 
 export function useFutebolValueBoard() {
+  const quem = useChaveDoUsuario();
   return useQuery<FutebolValueBoardRow[]>({
-    queryKey: ['futebol', 'value-board'],
+    queryKey: ['futebol', 'value-board', quem],
     queryFn: () => futebolDataService.getValueBoard(),
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
@@ -340,8 +367,12 @@ export function useFutebolValueBoard() {
 }
 
 /**
- * O passado, na foto do apito. Janela fixa de 30 dias, que é o que o stepper
- * navega.
+ * O passado, na foto do apito.
+ *
+ * `dias` é quantos dias para trás, contando hoje. O padrão são os 30 que o
+ * stepper do painel navega; quem mostra um dia só pede um dia, porque a janela
+ * É o custo da consulta — a conta e os números medidos estão em
+ * `historyWindow`, no futebol-history.ts.
  *
  * ⚠️ `refetchInterval` de 5 minutos, e ele é ESSENCIAL, não higiene. A RPC corta
  * em `kickoff < now()` no BANCO (migration 102), então a linha de um jogo só
@@ -356,12 +387,12 @@ export function useFutebolValueBoard() {
  *
  * Ver migrations 101 e 102.
  */
-export function useFutebolValueHistory() {
+export function useFutebolValueHistory(dias = HISTORY_WINDOW_DAYS) {
   // Dia de BRASÍLIA, não UTC. A primeira versão disto usava `toISOString()`, que
   // dá a data em UTC: depois das 21h de Brasília o "hoje" já virava o dia
   // seguinte e a janela inteira andava um dia, escondendo o jogo da noite.
   const hoje = brtToday();
-  const { from, to } = historyWindow(hoje);
+  const { from, to } = historyWindow(hoje, dias);
   return useQuery<FutebolValueBoardRow[]>({
     queryKey: ['futebol', 'value-history', from, to],
     queryFn: () => futebolDataService.getValueHistory(from, to),
@@ -378,8 +409,9 @@ export function useFutebolValueHistory() {
  * quais dias tiveram alerta, inclusive os que o mart já não guarda. Ver 091.
  */
 export function useFutebolAlertedPicks() {
+  const quem = useChaveDoUsuario();
   return useQuery<FutebolAlertedPick[]>({
-    queryKey: ['futebol', 'alerted-picks'],
+    queryKey: ['futebol', 'alerted-picks', quem],
     queryFn: () => futebolDataService.getAlertedPicks(),
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
@@ -440,8 +472,8 @@ export function useJogosComPlacarFresco<T extends JogoComPlacar>(
   return useMemo(() => comPlacarFresco(lista, data), [lista, data]);
 }
 
-const opcoesDoValorDoJogo = (fixtureId: number | undefined) => ({
-  queryKey: ['futebol', 'fixture-value', fixtureId] as const,
+const opcoesDoValorDoJogo = (fixtureId: number | undefined, quem: string) => ({
+  queryKey: ['futebol', 'fixture-value', fixtureId, quem] as const,
   queryFn: () => futebolDataService.getFixtureValue(fixtureId as number),
   enabled: !!fixtureId,
   staleTime: 5 * 60 * 1000,
@@ -450,8 +482,9 @@ const opcoesDoValorDoJogo = (fixtureId: number | undefined) => ({
 });
 
 export function useFutebolFixtureValue(fixtureId: number | undefined) {
+  const quem = useChaveDoUsuario();
   return useQuery<FutebolFixtureValueComCortadas, Error, FutebolFixtureValueRow[]>({
-    ...opcoesDoValorDoJogo(fixtureId),
+    ...opcoesDoValorDoJogo(fixtureId, quem),
     select: (d) => d.linhas,
   });
 }
@@ -468,8 +501,9 @@ export function useFutebolFixtureValue(fixtureId: number | undefined) {
  * exibir: a lista não carrega Score nem vantagem.
  */
 export function useFutebolFixtureCortadas(fixtureId: number | undefined) {
+  const quem = useChaveDoUsuario();
   return useQuery<FutebolFixtureValueComCortadas, Error, Saida[]>({
-    ...opcoesDoValorDoJogo(fixtureId),
+    ...opcoesDoValorDoJogo(fixtureId, quem),
     select: (d) => d.cortadas,
   });
 }

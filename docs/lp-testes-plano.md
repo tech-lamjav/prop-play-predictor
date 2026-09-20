@@ -126,7 +126,10 @@ Antes disso, `/futebol/assinar` mostra o botão "Pagamento via PIX em breve" des
 hoje o cara não consegue pagar nem se quiser.
 
 Por isso o CTA das quatro LPs virou o teste grátis de 7 dias, que funciona ponta a ponta: cadastro,
-o reverse trial libera tudo e o destino é `/futebol`, o produto em si. O preço aparece como o que
+o reverse trial libera tudo e o destino final é `/futebol`, o produto em si. O caminho até lá passa
+pelo onboarding do Betinho, que termina na home do futebol: antes ia direto ao produto, e o efeito
+colateral era que ninguém vindo destas LPs conectava o Telegram, ou seja, a turma de tráfego pago
+nunca recebia alerta de oportunidade. O preço aparece como o que
 vem depois do teste, não como cobrança imediata. Quando o gateway entrar, é trocar o objeto `CTA`
 em `variants.ts` e o fecho da oferta.
 

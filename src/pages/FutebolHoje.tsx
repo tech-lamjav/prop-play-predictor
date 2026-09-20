@@ -1,12 +1,13 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Zap, ArrowRight, Check, AlertTriangle, Lock } from 'lucide-react';
 import { rotuloEmTitulo } from '@/utils/futebol-estado-da-premissa';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Seo } from '@/components/Seo';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useFaixaDeAcesso } from '@/hooks/use-faixa-de-acesso';
 import { useFutebolFixturesMulti, useFutebolValueBoard, useFutebolValueHistory, useFutebolAlertedPicks, useFutebolFixtureReasonContract, useFutebolAccess, useVitrine, useFutebolCompetitions, useJogosComPlacarFresco } from '@/hooks/use-futebol-data';
-import FutebolDayStepper from '@/components/FutebolDayStepper';
+import FutebolDayStepper, { ALTURA_DA_PILULA } from '@/components/FutebolDayStepper';
 import { CartaoBloqueado, FutebolAccessBanner, ValorBloqueado } from '@/components/futebol/FutebolGate';
 import { linhaBloqueada } from '@/utils/futebol-bloqueio';
 import { AjudaCampo } from '@/components/futebol/AjudaCampo';
@@ -29,11 +30,20 @@ import { useDemoFutebolBoard } from '@/components/onboarding/demo/use-demo-futeb
 // Aritmética de fuso vem de um lugar só. As cópias locais que existiam aqui
 // eram idênticas às de futebol-datas.ts, e duas cópias da mesma conta de fuso é
 // como se erra fuso — foi por isso que Oportunidades removeu as dela no PR #259.
-import { SAO_PAULO_TZ, parseUtc, brtDateStr, brtDayOf, fmtTime, isFinished, addDays } from '@/utils/futebol-datas';
+import { formatadorDeData, SAO_PAULO_TZ, parseUtc, brtDateStr, brtDayOf, fmtTime, isFinished, addDays } from '@/utils/futebol-datas';
 import { mergeBoardAndHistory } from '@/utils/futebol-history';
 import { selecionarJogosDaGrade } from '@/utils/futebol-grade-de-jogos';
-import { mercadoEstaOculto } from '@/utils/futebol-mercados-ocultos';
 import { hrefDaSaida } from '@/utils/futebol-links';
+import {
+  idDaOportunidade,
+  jogoClicado,
+  oportunidadeExibida,
+  propsDaOportunidade,
+} from '@/lib/analytics';
+import {
+  reiniciarImpressoes,
+  useImpressaoDeOportunidade,
+} from '@/hooks/use-impressao-de-oportunidade';
 import { oportunidadesDoDia, type OppLike } from '@/utils/futebol-registradas';
 import { estadoDosMotivos, explicacaoDaLeitura, type MotivoExibivel as Motivo } from '@/utils/futebol-motivos';
 import { ladoDaSaida } from '@/utils/futebol-evidencias';
@@ -46,11 +56,11 @@ const DAY_WINDOW = 8;
 function fmtDayTime(raw: string | null): string {
   const d = parseUtc(raw);
   if (!d) return '—';
-  const s = new Intl.DateTimeFormat('pt-BR', { timeZone: SAO_PAULO_TZ, weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(d);
+  const s = formatadorDeData('pt-BR', { timeZone: SAO_PAULO_TZ, weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(d);
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 function fmtTodayHeader(d: Date): string {
-  const s = new Intl.DateTimeFormat('pt-BR', { timeZone: SAO_PAULO_TZ, weekday: 'long', day: '2-digit', month: 'long' }).format(d);
+  const s = formatadorDeData('pt-BR', { timeZone: SAO_PAULO_TZ, weekday: 'long', day: '2-digit', month: 'long' }).format(d);
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 function crestInitials(name: string): string {
@@ -100,7 +110,7 @@ function HeroStat({ label, value, dark, ajuda }: { label: string; value: string;
 
 // ── Hero: melhor oportunidade do dia — 3 colunas (pick · por quê · confiab). ─
 // Alta = gradiente forest (texto branco); Média = card claro com acento âmbar.
-function TopValueHero({ o, to, favor, contra, textoScore, carregandoMotivos = false }: { o: FutebolValueBoardRow; to: string; favor: Motivo[]; contra: Motivo[]; textoScore: string; carregandoMotivos?: boolean }) {
+function TopValueHero({ o, to, favor, contra, textoScore, carregandoMotivos = false, aoClicar }: { o: FutebolValueBoardRow; to: string; favor: Motivo[]; contra: Motivo[]; textoScore: string; carregandoMotivos?: boolean; aoClicar?: () => void }) {
   const pick = pickLabel(o, o.home_team_name, o.away_team_name);
   const ev = topEvidencia(o.evidencias);
   const d = true; // hero sempre no fundo forest (mockup); a faixa vai no selo, não na cor do card
@@ -158,7 +168,7 @@ function TopValueHero({ o, to, favor, contra, textoScore, carregandoMotivos = fa
             </span>
             <span className="opacity-70"><span className="hidden sm:inline">· </span>{fmtDayTime(o.kickoff_utc)}</span>
           </div>
-          <Link to={to} className={`h-11 px-5 mt-5 w-fit rounded-md text-[13px] font-semibold inline-flex items-center gap-2 ${d ? '' : 'bg-ink text-canvas hover:bg-ink-2'} transition`}
+          <Link to={to} onClick={aoClicar} className={`h-11 px-5 mt-5 w-fit rounded-md text-[13px] font-semibold inline-flex items-center gap-2 ${d ? '' : 'bg-ink text-canvas hover:bg-ink-2'} transition`}
             style={d ? { background: '#fbbf24', color: '#1a1d1a' } : undefined}>
             Abrir análise do jogo <ArrowRight className="w-4 h-4" />
           </Link>
@@ -269,16 +279,19 @@ function TopValueHero({ o, to, favor, contra, textoScore, carregandoMotivos = fa
 }
 
 // ── Card de oportunidade ───────────────────────────────────
-function OppCard({ o, to }: { o: FutebolValueBoardRow; to: string }) {
+function OppCard({ o, to, aoClicar, aoAparecer }: { o: FutebolValueBoardRow; to: string; aoClicar?: () => void; aoAparecer?: () => void }) {
   const pick = pickLabel(o, o.home_team_name, o.away_team_name);
   const chance = chancePct(o.prob_justa_fechamento);
+  // O gancho é chamado AQUI, e não no pai: hook não roda dentro de `.map`, e o
+  // que se observa é este cartão. O pai só diz o que fazer quando ele aparece.
+  const refDeImpressao = useImpressaoDeOportunidade({ chave: idDaOportunidade(o), aoAparecer });
   return (
     // `flex-col` + `h-full`, e não `block`: no grid os cartões já esticavam
     // para a mesma altura, mas o conteúdo parava onde acabava, e uma aposta que
     // quebra em duas linhas ("Mais de 2,5 gols" contra o nome de dois times
     // longos) empurrava só o botão dela. Com o botão em `mt-auto`, a fileira
     // inteira termina na mesma linha.
-    <Link to={to} className={`${CARD} group flex h-full flex-col p-4 text-left hover:shadow-sm hover:border-line-2 transition w-full`}>
+    <Link ref={refDeImpressao} to={to} onClick={aoClicar} className={`${CARD} group flex h-full flex-col p-4 text-left hover:shadow-sm hover:border-line-2 transition w-full`}>
       <div className="flex items-start justify-between gap-3">
         {/* A esquerda do topo é uma PILHA, e não uma linha, por causa do Score.
             O número de 26px deixa o bloco da direita com quase o dobro da
@@ -341,10 +354,10 @@ function OppCard({ o, to }: { o: FutebolValueBoardRow; to: string }) {
 }
 
 // ── Linha de jogo (rail) ───────────────────────────────────
-function GameRailRow({ f, best, to, locked }: { f: FutebolFixture & { competition?: string }; best: FutebolValueBoardRow | null; to: string; locked?: boolean }) {
+function GameRailRow({ f, best, to, locked, aoClicar }: { f: FutebolFixture & { competition?: string }; best: FutebolValueBoardRow | null; to: string; locked?: boolean; aoClicar?: () => void }) {
   const finished = isFinished(f.status_short);
   return (
-    <Link to={to} style={finished ? { background: 'var(--canvas-2)' } : undefined} className="w-full flex items-center gap-2.5 px-4 py-3 border-t border-line first:border-t-0 hover:bg-canvas-2 transition text-left">
+    <Link to={to} onClick={aoClicar} style={finished ? { background: 'var(--canvas-2)' } : undefined} className="w-full flex items-center gap-2.5 px-4 py-3 border-t border-line first:border-t-0 hover:bg-canvas-2 transition text-left">
       <span className={`w-10 text-[11px] font-semibold tabular-nums shrink-0 ${finished ? 'text-ink-3 uppercase tracking-wide' : 'text-ink-2'}`}>{finished ? 'fim' : fmtTime(f.kickoff_utc)}</span>
       <div className="flex items-center gap-1.5 min-w-0 flex-1">
         <Crest teamId={f.home_team_id} name={f.home_team_name} size={20} />
@@ -390,13 +403,37 @@ export default function FutebolHoje() {
   );
   const { data: allGames, isLoading: lFix } = useFutebolFixturesMulti(fixtureScopes);
   const { data: boardRows, isLoading: l3 } = useFutebolValueBoard();
-  const { data: histRows, isLoading: lHist } = useFutebolValueHistory();
+  // DOIS dias, não os 30 do painel. A régua desta tela só oferece hoje e os
+  // dias POR VIR (ver o memo `days` abaixo), e a RPC do histórico corta em
+  // `kickoff < now()` no banco: dia futuro não tem foto do apito, e dia passado
+  // a tela não mostra. Dos 30 dias que ela pedia, portanto, usava 1 — e os
+  // outros 29 eram 1,5 MB baixados para serem descartados, numa consulta que
+  // oscilava entre 0,9 e 4,4 segundos e às vezes estourava em HTTP 500.
+  //
+  // ⚠️ E por que 2, se ela usa 1? Por causa da MEIA-NOITE. O `brtToday()` que
+  // monta a janela lê o relógio de verdade, enquanto a fusão do
+  // `mergeBoardAndHistory` anda pelo `useNow`, de minuto em minuto. Na virada
+  // do dia existe uma janela de até 60 segundos em que a consulta já pede D+1 e
+  // a tela ainda pensa em D — e, como o board já expurgou o jogo encerrado, as
+  // oportunidades de D ficariam sem fonte nenhuma. Pedir ontem junto custa o
+  // mesmo (foram 198ms nas duas medições) e fecha o buraco.
+  //
+  // O painel de Oportunidades continua pedindo 30, e ali é legítimo: a régua
+  // dele navega o passado de verdade.
+  const { data: histRows, isLoading: lHist } = useFutebolValueHistory(2);
   const { data: alertedRaw, isLoading: lReg } = useFutebolAlertedPicks();
-  const { vitrine, ocultos, limiares, isLoading: lVitrine } = useVitrine();
+  // `ocultos` — a lista de mercados fora da vitrine HOJE — saiu daqui com a
+  // #490: quem filtra a registrada agora é `oportunidadesDoDia`, pela vitrine
+  // COM DATA. A home não tem mais uso para a versão sem data.
+  const { vitrine, limiares, isLoading: lVitrine } = useVitrine();
   // O acesso ENTRA no gate: enquanto ele não chega, `locked` é verdadeiro e o
   // conteúdo renderiza borrado, desborrando quando a resposta volta. Para quem
   // paga, isso é o mesmo defeito do card de motivos, num lugar diferente.
   const { data: access, isLoading: lAccess } = useFutebolAccess();
+  // Uma impressão por oportunidade a cada CARREGAMENTO da página. A memória
+  // vive no módulo do gancho, então quem a zera é a página ao montar — trocar
+  // o dia ou um filtro não conta de novo, mas voltar à tela conta.
+  useEffect(() => reiniciarImpressoes(), []);
   // A vitrine entra no gate: sem ela a lista renderiza sem filtro e o mercado
   // escondido aparece por um instante antes de sumir (#324).
   const loading = lFix || l3 || lHist || lReg || lVitrine || lAccess;
@@ -406,6 +443,8 @@ export default function FutebolHoje() {
   // REAL, e não das linhas da própria demo — senão o tour anuncia a régua que
   // ele mesmo inventou, que era o defeito.
   const locked = isDemo ? false : !access?.unlocked;
+
+  const acessoDaFaixa = useFaixaDeAcesso(access);
 
   // O dia mora na URL: os atalhos daqui levam o contexto junto, e quem estava
   // vendo amanhã para de cair em hoje ao clicar em "Ver todas".
@@ -462,9 +501,14 @@ export default function FutebolHoje() {
   const registradasAll = useMemo(
     () =>
       (alertedRaw ?? []).filter(
-        (a) => !!a.market && !!a.outcome && !mercadoEstaOculto(a.market, ocultos),
+        // ⚠️ O filtro de mercado oculto SAIU daqui (#490). Ele era a regra do
+        // PRESENTE, sem data, e agora `oportunidadesDoDia` aplica a versão com
+        // data — a mesma que o board e o histórico usam. Manter os dois deixaria
+        // duas metades da mesma regra em arquivos diferentes, que é o defeito
+        // que esta função foi criada para matar.
+        (a) => !!a.market && !!a.outcome,
       ),
-    [alertedRaw, ocultos],
+    [alertedRaw],
   );
   const fixturePorId = useMemo(() => {
     const m = new Map<number, FutebolFixture>();
@@ -481,8 +525,15 @@ export default function FutebolHoje() {
       registradas: registradasAll,
       dia: selectedDay,
       fixturePorId,
+      // A registrada passa pelas mesmas regras do board e do histórico (#490),
+      // avaliadas na data do ENVIO. Vai nas DUAS telas: esta função existe para
+      // a home e o painel mostrarem a mesma lista, e passar só numa delas as
+      // faria divergir de novo.
+      vitrine,
+      limiares,
+      agoraMs: agora,
     }),
-    [valueRows, selectedDay, registradasAll, fixturePorId],
+    [valueRows, selectedDay, registradasAll, fixturePorId, vitrine, limiares, agora],
   );
 
   // A demonstração herda a escala do produto (#333). A janela passada aqui é a
@@ -584,8 +635,23 @@ export default function FutebolHoje() {
   }, [heroOpp, contratoMotivos]);
   // A escala da janela, e não a da linha: a registrada não declara versão.
   const textoScore = textoDoScore(escalaDeExibicao(dayRows));
-  const moreOpps = oppsByFixture.filter((o) => o !== heroOpp && ehDestaque(o.faixa)).slice(0, 4);
+  // A população que a home exibe E que a tela de Oportunidades lista por
+  // padrão: faixa Alta ou Média, com número. É ela que manda na conta do
+  // convite — nunca o total do dia.
+  const emDestaque = oppsByFixture.filter((o) => ehDestaque(o.faixa));
+  const moreOpps = emDestaque.filter((o) => o !== heroOpp).slice(0, 4);
   const nOpps = isDemo ? demoBoard.length : dayRows.length;
+  // A grade mostra menos do que existe?
+  //
+  // Só isto — e não QUANTAS faltam. A versão anterior anunciava um "restantes"
+  // calculado por subtração, e ele nunca batia com o número do título: eram
+  // duas frases, lado a lado, com números diferentes sobre a mesma lista.
+  // Título e convite agora dizem o MESMO número, o tamanho da lista que o
+  // destino abre, e a subtração deixou de ter para que existir.
+  //
+  // O que sobrou é a guarda: não convidar para uma lista que já está inteira
+  // na tela. O destaque conta, porque ele também é uma das `emDestaque`.
+  const haMaisQueAGrade = emDestaque.length > moreOpps.length + (heroOpp ? 1 : 0);
   // O placar do coletor entra AQUI, no recorte do dia — e não na lista inteira
   // (issue #479). `allGames` é a temporada de treze ligas: perguntar por ela
   // arrastaria todo jogo adiado desde janeiro, e foi para tapar esse buraco que
@@ -607,8 +673,9 @@ export default function FutebolHoje() {
   );
   const alta = oppsByFixture.filter((o) => faixaTone(o.faixa) === 'alta').length;
   // melhor valor entre as oportunidades realmente exibidas, não o edge bruto de longshots
-  const surfaced = oppsByFixture.filter((o) => ehDestaque(o.faixa));
-  const melhorValor = surfaced.length ? Math.round(Math.max(...surfaced.map((o) => o.edge)) * 100) : null;
+  // (`emDestaque`, derivada junto com a conta do convite: eram dois filtros
+  // idênticos no mesmo arquivo, e dois filtros idênticos acabam divergindo.)
+  const melhorValor = emDestaque.length ? Math.round(Math.max(...emDestaque.map((o) => o.edge)) * 100) : null;
 
   // contagem de jogos por dia (BRT) — pros chips do stepper
   const gamesByDay = useMemo(() => {
@@ -618,8 +685,11 @@ export default function FutebolHoje() {
   }, [allGames]);
 
   const futebolSteps = useMemo(
-    () => makeFutebolSteps({ hasDayBar: !loading && days.length > 0 }),
-    [loading, days.length],
+    // A barra segue a agenda (`lFix`), não o carregamento da tela inteira —
+    // ver o comentário dela lá embaixo. O tour precisa da mesma condição, senão
+    // ele aponta para um alvo que não está lá.
+    () => makeFutebolSteps({ hasDayBar: !lFix && days.length > 0 }),
+    [lFix, days.length],
   );
 
   return (
@@ -629,10 +699,34 @@ export default function FutebolHoje() {
           significa trocar de produto, não desfazer o último passo. */}
       <AnalyticsNav variant="rebrand" showBack backTo="/inicio" />
       <OnboardingTour tourId={FUTEBOL_TOUR_ID} steps={futebolSteps} run={futebolTour.run} onFinish={futebolTour.finish} />
-      {!loading && days.length > 0 && (
+      {/* A barra de datas era o MAIOR empurrão da tela: medimos 0,080 de CLS
+          nela sozinha. Ela nascia só depois das consultas, no alto de tudo, e
+          descia a página inteira de uma vez — por cima de quem já estava
+          lendo. É assim que se ganha um clique errado.
+
+          Agora a faixa existe desde a primeira pintura com a altura final
+          reservada: a altura das pílulas (ALTURA_DA_PILULA, do próprio stepper)
+          mais o respiro de 12px em cima e
+          embaixo (py-3). O conteúdo real entra dentro dela sem mover nada.
+
+          A espera é `lFix`, e não o `loading` da tela inteira, porque tudo o
+          que a barra mostra — os dias, o dia escolhido, a contagem por dia —
+          sai de `allGames` e de mais nada. Esperar o board e o histórico
+          deixaria a régua travada por causa de consultas que ela não usa.
+
+          ⚠️ Num dia sem jogo NENHUM nas ligas do painel, `days` fica vazio e a
+          faixa reservada some quando a agenda chega — um empurrão de 61px para
+          CIMA. É troca consciente: o empurrão de antes era garantido, em toda
+          visita; este só acontece num dia em que a tela também não tem mais
+          nada para mostrar. */}
+      {(lFix || days.length > 0) && (
         <div data-tour="futebol-datas" className="bg-white border-b border-line">
           <div className="max-w-[1480px] w-full mx-auto px-4 md:px-6 py-3">
-            <FutebolDayStepper days={days} value={selectedDay} onChange={setDay} counts={gamesByDay} />
+            {lFix ? (
+              <Skeleton className={`${ALTURA_DA_PILULA} w-full max-w-[420px] rounded-full bg-canvas-2`} />
+            ) : (
+              <FutebolDayStepper days={days} value={selectedDay} onChange={setDay} counts={gamesByDay} />
+            )}
           </div>
         </div>
       )}
@@ -644,7 +738,13 @@ export default function FutebolHoje() {
           <div className="md:col-span-5">
             <div className={`${LABEL} flex items-center gap-2`}>{isToday ? 'Hoje no futebol' : 'No futebol'}{isDemo && <DemoBadge />}</div>
             <h1 data-tour="futebol-hero" className="font-display text-3xl md:text-[40px] font-extrabold tracking-tight leading-none text-ink mt-1">{fmtTodayHeader(selectedDate)}</h1>
-            <p className="text-sm mt-2.5 text-ink-2">
+            {/* Duas linhas reservadas no celular. A frase começa em "Sem jogos
+                nesse dia" (uma linha) e vira "6 jogos · 4 oportunidades · 2 de
+                faixa Alta" (duas), e a diferença descia o raio-x e tudo o que
+                vem abaixo dele — dois empurrões de 0,023 por carregamento, um
+                para cada passada dos dados. No desktop a coluna é larga e a
+                frase nunca quebra, então lá não há altura a reservar. */}
+            <p className="text-sm mt-2.5 text-ink-2 min-h-10 md:min-h-0">
               {gameList.length > 0 ? (
                 <>
                   <span className="font-semibold text-ink">{gameList.length} jogo{gameList.length === 1 ? '' : 's'}</span>
@@ -683,7 +783,11 @@ export default function FutebolHoje() {
           </div>
         </div>
 
-        {!loading && <FutebolAccessBanner access={access} />}
+        {/* Ela nascia depois de TODAS as consultas e jogava o raio-x, o
+            destaque e os cartões para baixo, em cima de quem já estava lendo.
+            Quem decide o espaço dela agora é o gancho, na primeira pintura: a
+            regra, o número medido e o porquê estão em use-faixa-de-acesso.ts. */}
+        <FutebolAccessBanner access={acessoDaFaixa} />
 
         {/* Hero / sem valor */}
         {loading ? (
@@ -703,7 +807,25 @@ export default function FutebolHoje() {
             </div>
           </div>
         ) : heroOpp ? (
-          <TopValueHero o={heroOpp} favor={heroFavor} contra={heroContra} carregandoMotivos={carregandoMotivos} textoScore={textoScore} to={hrefDaSaida(heroOpp.fixture_id, heroOpp)} />
+          <TopValueHero
+            o={heroOpp}
+            favor={heroFavor}
+            contra={heroContra}
+            carregandoMotivos={carregandoMotivos}
+            textoScore={textoScore}
+            to={hrefDaSaida(heroOpp.fixture_id, heroOpp)}
+            aoClicar={() =>
+              jogoClicado({
+                game_id: heroOpp.fixture_id,
+                source: 'home_featured',
+                position: 0,
+                is_featured: true,
+                destination_path: hrefDaSaida(heroOpp.fixture_id, heroOpp),
+                competition: heroOpp.competition,
+                opportunity_id: idDaOportunidade(heroOpp),
+              })
+            }
+          />
         ) : (
           <div className={`${CARD} p-6 flex items-start gap-3`}>
             <Zap className="w-5 h-5 text-ink-3 mt-0.5 shrink-0" />
@@ -721,12 +843,88 @@ export default function FutebolHoje() {
         <div className="grid md:grid-cols-12 gap-6">
           <div data-tour="futebol-oportunidades" className="md:col-span-8 min-w-0">
             <div className="flex items-end justify-between mb-3">
-              <div>
-                <div className={LABEL}>Mais oportunidades</div>
-                <div className="text-lg font-bold tracking-tight text-ink mt-0.5">Por confiabilidade</div>
+              {/* `min-w-0`: item de flex não encolhe abaixo do próprio
+                  conteúdo sem isto, e o título aqui dentro é `truncate`. Os
+                  dois só funcionam juntos — sem este, uma fonte de navegador
+                  ampliada empurraria a linha para fora e traria de volta a
+                  rolagem lateral que o comentário do grid acima registra como
+                  bug antigo. */}
+              <div className="min-w-0">
+                {/* A hierarquia estava invertida: o negrito era "Por
+                    confiabilidade" — o CRITÉRIO DE ORDENAÇÃO — e o número, que
+                    é o que faz alguém querer ver o resto, não aparecia em lugar
+                    nenhum. Ninguém clica em critério de ordenação. O critério
+                    desceu pro sobretítulo, que é o lugar dele, e o negrito
+                    passou a contar quantas o dia tem.
+
+                    Sem acesso, `nOpps` continua contando (o board devolve as
+                    linhas com as colunas nulas), então o número segue honesto
+                    no bloqueio — é ele que mostra que há produto ali dentro. */}
+                {/* ⚠️ CELULAR PRIMEIRO: é de onde vem a maior parte dos leads,
+                    e foi lá que a primeira versão quebrou. O sobretítulo tem
+                    caixa alta com `tracking` de 0.16em — ele ocupa MUITO mais
+                    largura do que o número de letras sugere, e "Ordenadas por
+                    confiabilidade" virava duas linhas sozinho. "Por
+                    confiabilidade" diz a mesma coisa e cabe em uma. */}
+                <div className={LABEL}>Por confiabilidade</div>
+                {/* `truncate` é o que garante a linha única prometida — e não
+                    um `whitespace-nowrap` solto, que segura a linha mas deixa o
+                    texto transbordar em vez de cortar.
+
+                    O que costumava estourar era o sufixo do dia: com ele, o
+                    título ficava largo demais pro celular. Ele agora só aparece
+                    a partir de `sm`, onde há largura sobrando — no celular o
+                    seletor de dia fica logo acima, então "hoje" ali era
+                    repetição que custava uma linha. */}
+                {/* ⚠️ `nOpps` AQUI É DELIBERADO: é o mesmo número do KPI
+                    "Oportunidades" no topo desta tela. As duas superfícies
+                    falam da mesma coisa — pelo glossário, Oportunidade é a
+                    candidata aprovada para publicação — e divergir delas é
+                    fazer a página se contradizer sozinha.
+
+                    ⚠️ E É POR ISSO QUE O CONVITE AO LADO NÃO LEVA NÚMERO.
+                    A lista do destino nasce filtrada por faixa Alta ou Média
+                    (`FAIXAS_FILTRO_PADRAO`, em `useState`, sem ler a URL), e
+                    por isso mostra MENOS que `nOpps`. Um botão dizendo "Ver
+                    todas as 331" abriria uma tela com 154 — a promessa
+                    quebrada que o review já pegou uma vez aqui.
+
+                    Quem quiser pôr número no botão precisa antes fazer o link
+                    carregar o filtro, senão o defeito volta. */}
+                <div className="text-lg font-bold tracking-tight text-ink mt-0.5 truncate">
+                  {loading || nOpps === 0 ? (
+                    'Mais oportunidades'
+                  ) : (
+                    <>
+                      {nOpps} oportunidade{nOpps === 1 ? '' : 's'}
+                      <span className="hidden sm:inline"> {isToday ? 'hoje' : 'nesse dia'}</span>
+                    </>
+                  )}
+                </div>
               </div>
-              <Link to={comDia('/futebol/oportunidades', selectedDay)} className="text-[12px] font-semibold inline-flex items-center gap-1 text-forest hover:text-forest-2">
-                Ver todas <ArrowRight className="w-3.5 h-3.5" />
+              {/* O convite ganhou corpo: fundo, contorno e altura, nos mesmos
+                  tokens `forest` que a tela já usa — nenhuma cor nova entrou.
+
+                  O motivo de clicar não está mais na copy do botão, e sim no
+                  número grande ao lado: a grade mostra quatro cartões sob um
+                  título que anuncia centenas. O peso do botão é o que resolve a
+                  discrição original — ele era texto de 12px e passava batido.
+
+                  Sem acesso o convite continua igual, e é de propósito: a lista
+                  do destino mostra os mesmos cadeados que esta home mostra, e a
+                  faixa do topo é quem vende. Esconder o caminho apagaria de
+                  quem ainda não assina que existe produto ali dentro — que é o
+                  contrário do que o bloqueio desta tela faz. */}
+              <Link
+                to={comDia('/futebol/oportunidades', selectedDay)}
+                className="shrink-0 inline-flex items-center gap-1.5 rounded-rebrand-md border border-forest/30 bg-forest/[0.08] text-forest hover:bg-forest hover:text-canvas hover:border-forest transition text-[12px] font-bold px-3 h-11"
+              >
+                {/* Copy curta também serve ao celular: o botão fica AO LADO do
+                    título, e cada caractere aqui é largura roubada de lá. Era
+                    isso, mais que o tamanho da fonte, que quebrava o título em
+                    duas linhas na primeira versão. */}
+                Ver todas
+                <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
             {loading ? (
@@ -740,10 +938,57 @@ export default function FutebolHoje() {
               </div>
             ) : moreOpps.length > 0 ? (
               <div className="grid sm:grid-cols-2 gap-4">
-                {moreOpps.map((o) => <OppCard key={`${o.fixture_id}-${o.market}-${o.outcome}-${o.line_value}`} o={o} to={hrefDaSaida(o.fixture_id, o)} />)}
+                {moreOpps.map((o, i) => (
+                  <OppCard
+                    key={`${o.fixture_id}-${o.market}-${o.outcome}-${o.line_value}`}
+                    o={o}
+                    to={hrefDaSaida(o.fixture_id, o)}
+                    aoAparecer={() =>
+                      oportunidadeExibida(
+                        propsDaOportunidade(o, {
+                          source: 'home_games',
+                          subscription_status: access?.state ?? 'unknown',
+                          position: i,
+                        }),
+                      )
+                    }
+                    aoClicar={() =>
+                      jogoClicado({
+                        game_id: o.fixture_id,
+                        source: 'home_games',
+                        position: i,
+                        is_featured: false,
+                        destination_path: hrefDaSaida(o.fixture_id, o),
+                        competition: o.competition,
+                        opportunity_id: idDaOportunidade(o),
+                      })
+                    }
+                  />
+                ))}
               </div>
             ) : (
               <div className={`${CARD} p-6 text-center text-sm text-ink-3`}>Sem outras oportunidades relevantes agora.</div>
+            )}
+
+            {/* Segunda chamada, no fim da grade.
+                Quem rolou os quatro cartões inteiros é quem tem MAIS intenção
+                na tela — e, até aqui, não encontrava nada ali: a única saída
+                pra lista ficava lá em cima, já fora do campo de visão.
+
+                Só aparece quando a grade mostra menos do que existe. Convidar
+                para uma lista que já está inteira na tela é insistir sem ter o
+                que oferecer — e o `moreOpps.length > 0` que havia aqui era
+                contraditório: escondia a chamada justamente quando a grade caía
+                no estado vazio, que é quando o caminho para a lista importa
+                mais. */}
+            {!loading && haMaisQueAGrade && (
+              <Link
+                to={comDia('/futebol/oportunidades', selectedDay)}
+                className="mt-4 flex items-center justify-center gap-1.5 rounded-rebrand-md border border-dashed border-forest/40 bg-forest/[0.04] text-forest hover:bg-forest/[0.09] transition text-[13px] font-bold h-11"
+              >
+                Ver todas as oportunidades {isToday ? 'de hoje' : 'do dia'}
+                <ArrowRight className="w-4 h-4" />
+              </Link>
             )}
           </div>
 
@@ -761,8 +1006,26 @@ export default function FutebolHoje() {
               <Skeleton className="h-64 w-full bg-canvas-2 rounded-rebrand-md" />
             ) : gradeDeJogos.length > 0 ? (
               <div className={`${CARD} overflow-hidden`}>
-                {gradeDeJogos.map((f) => (
-                  <GameRailRow key={f.fixture_id} f={f} best={bestByFixture.get(f.fixture_id) ?? null} to={hrefDaSaida(f.fixture_id, bestByFixture.get(f.fixture_id))} locked={locked} />
+                {gradeDeJogos.map((f, i) => (
+                  <GameRailRow
+                    key={f.fixture_id}
+                    f={f}
+                    best={bestByFixture.get(f.fixture_id) ?? null}
+                    to={hrefDaSaida(f.fixture_id, bestByFixture.get(f.fixture_id))}
+                    locked={locked}
+                    aoClicar={() => {
+                      const melhor = bestByFixture.get(f.fixture_id);
+                      jogoClicado({
+                        game_id: f.fixture_id,
+                        source: 'home_games',
+                        position: i,
+                        is_featured: false,
+                        destination_path: hrefDaSaida(f.fixture_id, melhor),
+                        competition: f.competition ?? null,
+                        opportunity_id: melhor ? idDaOportunidade(melhor) : null,
+                      });
+                    }}
+                  />
                 ))}
               </div>
             ) : (

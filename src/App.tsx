@@ -8,10 +8,6 @@ import { ReferralProvider } from "@/components/ReferralProvider";
 import { BrowserRouter, Routes, Route, Outlet, Navigate } from "react-router-dom";
 import { BolaoLayout } from "@/components/bolao/BolaoLayout";
 import LandingEcossistema from "./pages/LandingEcossistema";
-import Landing from "./pages/Landing";
-import Auth from "./pages/Auth";
-import Picks from "./pages/Picks";
-import NBADashboard from "./pages/NBADashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import PremiumRoute from "./components/PremiumRoute";
 import { PortaoDoSocio } from "./components/socios/PortaoDoSocio";
@@ -19,6 +15,8 @@ import { ROTA_DO_CRM, ROTA_DOS_SOCIOS } from "./components/socios/crm-vocabulari
 import { FichaAntiga } from "./components/socios/FichaAntiga";
 import { ROTA_DO_PLACAR } from "./components/placar/placar-vocabulario";
 import { PostHogPageView } from "./components/PostHogPageView";
+import { ChegadaDoTelegram } from "./components/ChegadaDoTelegram";
+import { IdentidadeAnalytics } from "./components/IdentidadeAnalytics";
 import { CrossSellManager } from "./components/crosssell/CrossSellManager";
 import { EnvironmentBanner } from "./components/EnvironmentBanner";
 import Footer from "./components/Footer";
@@ -30,6 +28,25 @@ import { lazyWithRetry } from "./lib/lazy-with-retry";
 // cacheada tenta carregar chunk inexistente -> "Failed to fetch dynamically
 // imported module" -> tela branca). Helper força reload uma vez por sessão
 // pra pegar build novo.
+//
+// ⚠️ Antes de tornar uma página ansiosa de novo, saiba o que ela arrasta junto.
+// Cada import estático aqui em cima entra no PACOTE DE ENTRADA — o arquivo que
+// toda página baixa e interpreta antes do primeiro pixel, inclusive as que não
+// usam nada daquilo.
+//
+// Foi assim que o pacote chegou a 1,8 MB: o NBADashboard puxava o recharts pela
+// GameChart, o Picks puxava o vaul pelo ui/drawer, e o Futebol no celular
+// pagava por gráficos e gavetas que nunca desenha. As quatro abaixo são rotas
+// de detalhe ou de entrada fria — quem chega nelas pode esperar o pedaço
+// próprio, e todo o resto do produto deixa de pagar por elas.
+//
+// A landing do ecossistema ("/") continua ansiosa de propósito: é a porta de
+// entrada mais comum e mais fria, a única onde uma ida extra ao servidor
+// apareceria. A Auth ainda leva o i18next junto, que serve três telas ao todo.
+const Landing = lazyWithRetry(() => import("./pages/Landing"));
+const Auth = lazyWithRetry(() => import("./pages/Auth"));
+const Picks = lazyWithRetry(() => import("./pages/Picks"));
+const NBADashboard = lazyWithRetry(() => import("./pages/NBADashboard"));
 const Betinho = lazyWithRetry(() => import("./pages/Betinho"));
 const Onboarding = lazyWithRetry(() => import("./pages/Onboarding"));
 const Inicio = lazyWithRetry(() => import("./pages/Inicio"));
@@ -104,6 +121,12 @@ const App = () => (
       <BrowserRouter>
         <EnvironmentBanner />
         <PostHogPageView />
+        {/* Telemetria de sessão: identidade e atribuição do Telegram. Vizinhos
+            do PostHogPageView de propósito — os três são componentes-sentinela,
+            montam uma vez e não desenham nada, e precisam estar DENTRO do
+            BrowserRouter porque leem a rota. */}
+        <IdentidadeAnalytics />
+        <ChegadaDoTelegram />
         <CrossSellManager />
         <Suspense fallback={<LazyFallback />}>
           <Routes>

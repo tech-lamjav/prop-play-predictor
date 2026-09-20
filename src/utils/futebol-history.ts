@@ -23,14 +23,38 @@
 import type { FutebolValueBoardRow } from '@/services/futebol-data.service';
 import { parseUtc, brtDateStr, brtDayOf, addDays } from '@/utils/futebol-datas';
 import { type MercadoOculto, mercadoOcultoNaData } from '@/utils/futebol-mercados-ocultos';
-import { cortadaNaData, type LimiarDeValor } from '@/utils/futebol-corte-de-valor';
+import {
+  cortadaNaData,
+  vantagemDePublicacao,
+  type LimiarDeValor,
+} from '@/utils/futebol-corte-de-valor';
 
 /** Quantos dias o Histórico navega para trás. */
 export const HISTORY_WINDOW_DAYS = 30;
 
-/** Janela padrão do Histórico: 30 dias contando hoje (hoje−29 … hoje). */
-export function historyWindow(today: string): { from: string; to: string } {
-  return { from: addDays(today, -(HISTORY_WINDOW_DAYS - 1)), to: today };
+/**
+ * Janela do Histórico, em dias contando hoje: `historyWindow(hoje)` dá os 30 do
+ * painel (hoje−29 … hoje), e `historyWindow(hoje, 1)` dá só hoje.
+ *
+ * ⚠️ O TAMANHO DA JANELA É O CUSTO DA CONSULTA, e não um detalhe de conforto.
+ * A `get_futebol_value_history` percorre o snapshot de oportunidades — todas as
+ * versões de todas as linhas —, e 30 dias são cerca de 40% dessa tabela: o
+ * Postgres desiste do índice e varre tudo. Medido no dev em 19/09/2026, com
+ * três rodadas alternadas de cada:
+ *
+ *   · 2 dias  → 198ms, 198ms, 199ms
+ *   · 30 dias → 879ms, 1.939ms, 4.397ms
+ *
+ * Repare menos no número e mais na VARIÂNCIA. A janela curta é constante; a
+ * longa oscila cinco vezes e piora sob carga, até estourar o tempo limite e
+ * voltar HTTP 500 — que foi o erro visto no console da home. Com cache frio, a
+ * de 30 dias chegou a 7,5 segundos, e esse é o preço que o primeiro visitante
+ * do dia paga.
+ *
+ * Então peça a janela que a tela usa, não a maior que possa servir.
+ */
+export function historyWindow(today: string, dias = HISTORY_WINDOW_DAYS): { from: string; to: string } {
+  return { from: addDays(today, -(dias - 1)), to: today };
 }
 
 type KeyParts = {
@@ -102,9 +126,10 @@ export function mergeBoardAndHistory(
     if (mercadoOcultoNaData(r.market, r.kickoff_utc, vitrine, nowMs)) continue;
     // Pela vantagem de PUBLICAÇÃO, não pela do apito: a regra é que o que
     // apareceu no board continua aparecendo, e o que nunca apareceu some.
-    // `edge` é a leitura do apito e só entra se a de publicação não vier —
-    // histórico antigo, ou board servido por uma versão anterior da RPC.
-    if (cortadaNaData(r.market, r.edge_publicacao ?? r.edge, r.kickoff_utc, limiares, nowMs)) continue;
+    // `vantagemDePublicacao` é quem sabe distinguir "nunca apareceu" (nulo) de
+    // "este banco não sabe responder" (coluna ausente) — as duas chegavam aqui
+    // iguais, e a primeira voltava à tela pela vantagem do apito.
+    if (cortadaNaData(r.market, vantagemDePublicacao(r), r.kickoff_utc, limiares, nowMs)) continue;
     if (d < today) out.push(r);
     else if (d === today) hojeHist.set(opportunityKey(r), r);
     // d > today: a RPC não devolve; se um dia devolver, o board manda.

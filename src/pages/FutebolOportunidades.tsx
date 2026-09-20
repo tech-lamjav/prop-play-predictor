@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ChevronRight, AlertTriangle } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useFaixaDeAcesso } from '@/hooks/use-faixa-de-acesso';
 import { useFutebolValueBoard, useFutebolValueHistory, useFutebolAccess, useFutebolFixturesMulti, useFutebolAlertedPicks, useFutebolCompetitions, useVitrine, useFutebolPlacarFresco } from '@/hooks/use-futebol-data';
 import { useFutebolPublicationAlerts } from '@/hooks/use-futebol-publication-alerts';
 import FutebolDayStepper from '@/components/FutebolDayStepper';
@@ -26,8 +27,18 @@ import {
   ESTADOS_DO_JOGO, passaNoFiltroDeEstado, type EstadoDoJogo,
 } from '@/utils/futebol-score';
 import { settleFutebol, resultBadge, resumoDoDia, type BetResult } from '@/utils/futebol-settlement';
-import { mercadoEstaOculto } from '@/utils/futebol-mercados-ocultos';
 import { hrefDaSaida } from '@/utils/futebol-links';
+import {
+  idDaOportunidade,
+  jogoClicado,
+  oportunidadeAberta,
+  oportunidadeExibida,
+  propsDaOportunidade,
+} from '@/lib/analytics';
+import {
+  reiniciarImpressoes,
+  useImpressaoDeOportunidade,
+} from '@/hooks/use-impressao-de-oportunidade';
 import { mergeBoardAndHistory, historyWindow, HISTORY_WINDOW_DAYS } from '@/utils/futebol-history';
 import { oppKey, oportunidadesDoDia, type OppLike } from '@/utils/futebol-registradas';
 import { parseUtc, brtDayOf, brtDateStr, fmtTime, isFinished, addDays } from '@/utils/futebol-datas';
@@ -95,12 +106,17 @@ function textoDoFiltroQueEsvaziou(escondidas: number, vazios: readonly string[])
 const GRID = 'grid grid-cols-[56px_64px_1fr_140px_64px_80px_72px_28px] gap-3 items-center';
 
 // Linha da tabela (desktop)
-function OppRow({ o, to, muted, locked, result, homeGoals, awayGoals }: {
+function OppRow({ o, to, muted, locked, result, homeGoals, awayGoals, aoClicar, aoAparecer }: {
   o: OppLike; to: string; muted?: boolean; locked?: boolean;
   result?: BetResult | null; homeGoals?: number | null; awayGoals?: number | null;
+  aoClicar?: () => void;
+  /** O que fazer quando o cartão de fato aparecer. Ver `useImpressaoDeOportunidade`. */
+  aoAparecer?: () => void;
 }) {
   const pick = pickLabel(o, o.home_team_name, o.away_team_name);
   const chance = chancePct(o.prob_justa_fechamento);
+  // Dentro do componente, e não no pai: hook não roda dentro de `.map`.
+  const refDeImpressao = useImpressaoDeOportunidade({ chave: idDaOportunidade(o), aoAparecer });
   const showLock = !!locked && !result; // histórico (com resultado) é sempre visível
   // `showLock` é o que a TELA sabe; `linhaBloqueada` é o que o BANCO já fez.
   // Desde a guarda de acesso a linha do board chega com as colunas nulas, e sem
@@ -111,7 +127,7 @@ function OppRow({ o, to, muted, locked, result, homeGoals, awayGoals }: {
   // chutar faixa (faixaWord de vazio diria "Baixa", que seria falso).
   const badgeCls = bloqueada || o.faixa == null ? 'bg-canvas-2 text-ink-3 border border-line' : faixaBadgeCls(o.faixa);
   return (
-    <Link to={to} className={`${GRID} w-full text-left px-5 py-3 border-t border-line hover:bg-canvas-2 transition ${muted ? 'opacity-60' : ''}`}>
+    <Link ref={refDeImpressao} to={to} onClick={aoClicar} className={`${GRID} w-full text-left px-5 py-3 border-t border-line hover:bg-canvas-2 transition ${muted ? 'opacity-60' : ''}`}>
       {/* Trava dos DOIS lados. O banco não devolve estes campos sem acesso, mas
           a tela não pode depender disso: se ela já sabe que não há acesso, não
           desenha a leitura nem que o dado venha. */}
@@ -165,18 +181,21 @@ function OppRow({ o, to, muted, locked, result, homeGoals, awayGoals }: {
 }
 
 // Card (mobile)
-function OppMobileCard({ o, to, locked, result, homeGoals, awayGoals, canRegister = false }: {
+function OppMobileCard({ o, to, locked, result, homeGoals, awayGoals, canRegister = false, aoClicar, aoAparecer }: {
   o: OppLike; to: string; locked?: boolean;
   result?: BetResult | null; homeGoals?: number | null; awayGoals?: number | null; canRegister?: boolean;
+  aoClicar?: () => void;
+  aoAparecer?: () => void;
 }) {
   const pick = pickLabel(o, o.home_team_name, o.away_team_name);
   const chance = chancePct(o.prob_justa_fechamento);
+  const refDeImpressao = useImpressaoDeOportunidade({ chave: idDaOportunidade(o), aoAparecer });
   const showLock = !!locked && !result;
   const bloqueada = showLock || linhaBloqueada(o);
   const hasScore = homeGoals != null && awayGoals != null;
   return (
-    <div className="w-full rounded-rebrand-md bg-white border border-line overflow-hidden">
-      <Link to={to} className="group block w-full text-left p-3.5">
+    <div ref={refDeImpressao} className="w-full rounded-rebrand-md bg-white border border-line overflow-hidden">
+      <Link to={to} onClick={aoClicar} className="group block w-full text-left p-3.5">
         <div className="flex items-start gap-3">
           <div className="flex items-center -space-x-1 shrink-0 pt-0.5">
             <Crest teamId={o.home_team_id} name={o.home_team_name} size={24} />
@@ -242,7 +261,7 @@ function OppMobileCard({ o, to, locked, result, homeGoals, awayGoals, canRegiste
       </Link>
       {canRegister && (
         <div className="px-3.5 pb-3.5 -mt-0.5">
-          <RegistrarApostaCTA variant="text" draft={draftFromBoardRow(o)} />
+          <RegistrarApostaCTA variant="text" draft={draftFromBoardRow(o)} origem="opportunities" />
         </div>
       )}
     </div>
@@ -282,10 +301,36 @@ export default function FutebolOportunidades() {
   // sem filtro e o mercado escondido aparece por um instante antes de sumir. O
   // board já vem filtrado do service, mas a fusão com o histórico e os picks
   // registrados reabrem o dia corrente.
-  const { vitrine, ocultos, limiares, isLoading: lVitrine } = useVitrine();
+  // `ocultos` — a lista de mercados fora da vitrine HOJE — saiu daqui com a
+  // #490, como saiu da home: quem filtra a registrada agora é
+  // `oportunidadesDoDia`, pela vitrine COM DATA. Esta tela não tem mais uso
+  // para a versão sem data.
+  const { vitrine, limiares, isLoading: lVitrine } = useVitrine();
   const isLoading = lBoard || lVitrine;
   const { data: catalog } = useFutebolCompetitions();
   const { data: access } = useFutebolAccess();
+  // Mesma razão da home: a faixa nascia depois da resposta do banco e empurrava
+  // a lista inteira para baixo. O gancho responde na primeira pintura.
+  const acessoDaFaixa = useFaixaDeAcesso(access);
+  // Ver o comentário gêmeo em FutebolHoje: a memória das impressões é do
+  // módulo, e zerá-la é responsabilidade de quem monta a página.
+  useEffect(() => reiniciarImpressoes(), []);
+
+  /**
+   * As propriedades comuns de uma oportunidade DESTA tela.
+   *
+   * O bloco estava escrito quatro vezes no arquivo, idêntico, e cada cópia era
+   * uma chance de alguém carimbar a origem errada num dos quatro pontos — o
+   * tipo de divergência que não quebra nada e só aparece quando o funil não
+   * fecha. Origem e situação de assinatura são as mesmas para a tela inteira;
+   * o que muda de cartão para cartão é a linha e a posição.
+   */
+  const comunsDaLista = (o: OppLike, posicao: number) =>
+    propsDaOportunidade(o, {
+      source: 'opportunities',
+      subscription_status: access?.state ?? 'unknown',
+      position: posicao,
+    });
   const { data: publicationAlerts, acknowledgeOnboarding, isAcknowledging } = useFutebolPublicationAlerts();
   // No primeiro contato, o cartão explica a novidade sozinho. Depois de
   // dispensado, ele dá lugar ao status compacto para não repetir a mesma ideia,
@@ -390,16 +435,21 @@ export default function FutebolOportunidades() {
   const registradasAll = useMemo(
     () =>
       (alertedRaw ?? []).filter(
-        (a) =>
-          !!a.market &&
-          !!a.outcome &&
-          // A vitrine (#324) vale de hoje para a frente. Dia passado é registro
-          // do que foi enviado e visto, e some-lo reescreveria o que o
-          // assinante recebeu. Sem este corte, um Handicap alertado ANTES de o
-          // mercado sair da vitrine voltava como linha do painel de hoje.
-          (a.game_day < hoje || !mercadoEstaOculto(a.market, ocultos)),
+        // ⚠️ O filtro de mercado oculto SAIU daqui (#490), como saiu da home.
+        //
+        // Ele era a regra do PRESENTE, sem data, e agora `oportunidadesDoDia`
+        // aplica a versão COM DATA — a mesma que o board e o histórico usam,
+        // avaliada no instante do envio. Ela cobre o que este filtro cobria: um
+        // handicap alertado ANTES de o mercado sair da vitrine continua
+        // entrando, porque no envio ele estava na tela.
+        //
+        // Tirar de uma tela e deixer na outra foi o defeito que o code review
+        // pegou nesta mesma entrega: as duas passaram a aplicar regras
+        // diferentes, que é exatamente o que `oportunidadesDoDia` existe para
+        // impedir.
+        (a) => !!a.market && !!a.outcome,
       ),
-    [alertedRaw, hoje, ocultos]
+    [alertedRaw]
   );
 
   // Dias no stepper: dias COM oportunidade (board = passado + presente) + dias
@@ -432,10 +482,26 @@ export default function FutebolOportunidades() {
     });
     return [...set].sort();
   }, [allRows, fixtures, registradasAll, agora, hoje]);
-  // Default: hoje se houver; senão o próximo dia futuro; senão o último disponível.
+  // Default: hoje se houver; senão o próximo dia futuro; senão o último
+  // disponível; senão HOJE.
+  //
+  // ⚠️ O último `?? hoje` não é cinto de segurança: sem ele esta tela QUEBRA no
+  // carregamento frio. Com `days` vazio — que é o estado de toda primeira
+  // pintura, antes de board, histórico e agenda voltarem —, o
+  // `days[days.length - 1]` é `days[-1]`, ou seja `undefined`. Esse `undefined`
+  // descia até o `useDemoFutebolBoard` lá embaixo, que monta o exemplo no dia
+  // pedido e faz `addDays(dia, 1)` para o jogo das 21h; `new Date("undefinedT…")`
+  // é data inválida, e o `toISOString` estoura `RangeError: Invalid time value`
+  // DENTRO do render. Sem ErrorBoundary no caminho, a página inteira some.
+  //
+  // Quem entrava por /futebol e navegava até aqui não via nada: o board já
+  // estava em cache, `days` vinha cheio na primeira pintura. Quebrava só quem
+  // abria o endereço direto ou apertava F5 — e por isso passou despercebido.
+  //
+  // A home já resolvia assim (`days[0] ?? todayStr`); esta tela ficou para trás.
   const selectedDay = (day && days.includes(day))
     ? day
-    : (days.includes(hoje) ? hoje : (days.find((d) => d >= hoje) ?? days[days.length - 1]));
+    : (days.includes(hoje) ? hoje : (days.find((d) => d >= hoje) ?? days[days.length - 1] ?? hoje));
   const isPastDay = !!selectedDay && selectedDay < hoje;
   const isFutureDay = !!selectedDay && selectedDay > hoje;
 
@@ -449,7 +515,18 @@ export default function FutebolOportunidades() {
 
   const compsOnDay = useMemo(() => {
     const s = new Set<string>();
-    allRows.forEach((r) => { if (brtDayOf(r.kickoff_utc) === selectedDay) s.add(r.competition); });
+    // ⚠️ O `&& r.competition` não é asseio: sem ele esta tela QUEBRA para quem
+    // não tem acesso. A guarda `futebol_acesso_do_chamador` devolve a linha com
+    // as colunas nulas, e a `competition` vem no pacote — conferido no board de
+    // homologação, 416 linhas de 416 com `competition: null` para chamador
+    // anônimo. O `null` entrava no conjunto e o `sortCompetitions` estourava no
+    // `a.localeCompare(b)`, derrubando a árvore inteira.
+    //
+    // O tipo diz `string` e mente: `FutebolValueBoardRow` descreve a linha
+    // ABERTA. É o mesmo motivo do `linhaBloqueada` existir para o `market`.
+    //
+    // A linha de baixo já protegia com `&& a.league`; esta ficou para trás.
+    allRows.forEach((r) => { if (brtDayOf(r.kickoff_utc) === selectedDay && r.competition) s.add(r.competition); });
     registradasAll.forEach((a) => { if (a.game_day === selectedDay && a.league) s.add(a.league); });
     return s;
   }, [allRows, selectedDay, registradasAll]);
@@ -469,8 +546,13 @@ export default function FutebolOportunidades() {
       registradas: registradasAll,
       dia: selectedDay,
       fixturePorId: fixtureMap,
+      // A registrada passa pelas mesmas regras do board e do histórico (#490),
+      // avaliadas na data do ENVIO — a única foto que ela tem.
+      vitrine,
+      limiares,
+      agoraMs: agora,
     }),
-    [allRows, selectedDay, registradasAll, fixtureMap],
+    [allRows, selectedDay, registradasAll, fixtureMap, vitrine, limiares, agora],
   );
 
   // ── O placar fresco ───────────────────────────────────────────────────────
@@ -816,7 +898,7 @@ export default function FutebolOportunidades() {
 
       <div className="max-w-[1480px] w-full mx-auto px-4 md:px-6 py-6 flex flex-col gap-4 flex-1">
         <DemoRibbon show={isDemo} />
-        <FutebolAccessBanner access={access} />
+        <FutebolAccessBanner access={acessoDaFaixa} />
         {publicationAlerts && (
           <>
             {showAlertCard && (
@@ -880,10 +962,37 @@ export default function FutebolOportunidades() {
                 const g = placarDe(o);
                 return (
                   <div key={key(o, i)}>
-                    <OppRow o={o} to={hrefDaSaida(o.fixture_id, o)} locked={locked} result={res} homeGoals={g?.gh} awayGoals={g?.ga} />
+                    <OppRow
+                      o={o}
+                      to={hrefDaSaida(o.fixture_id, o)}
+                      locked={locked}
+                      result={res}
+                      homeGoals={g?.gh}
+                      awayGoals={g?.ga}
+                      aoAparecer={() => oportunidadeExibida(comunsDaLista(o, i))}
+                      aoClicar={() => {
+                        const comuns = comunsDaLista(o, i);
+                        const destino = hrefDaSaida(o.fixture_id, o);
+                        // DOIS eventos, de propósito. `opportunity_opened` é o
+                        // degrau do funil da oportunidade; `futebol_game_clicked`
+                        // é o da navegação entre telas, e responde "de onde veio
+                        // quem abriu este jogo". Emitir só um deixaria um dos
+                        // dois funis cego neste ponto.
+                        oportunidadeAberta({ ...comuns, open_mode: 'card', destination_path: destino });
+                        jogoClicado({
+                          game_id: o.fixture_id,
+                          source: 'opportunities',
+                          position: i,
+                          is_featured: false,
+                          destination_path: destino,
+                          competition: o.competition,
+                          opportunity_id: idDaOportunidade(o),
+                        });
+                      }}
+                    />
                     {!locked && (
                       <div className="px-5 pb-2 -mt-0.5">
-                        <RegistrarApostaCTA variant="text" draft={draftFromBoardRow(o)} />
+                        <RegistrarApostaCTA variant="text" draft={draftFromBoardRow(o)} origem="opportunities" />
                       </div>
                     )}
                   </div>
@@ -906,6 +1015,21 @@ export default function FutebolOportunidades() {
                     homeGoals={g?.gh}
                     awayGoals={g?.ga}
                     canRegister={!locked}
+                    aoAparecer={() => oportunidadeExibida(comunsDaLista(o, i))}
+                    aoClicar={() => {
+                      const comuns = comunsDaLista(o, i);
+                      const destino = hrefDaSaida(o.fixture_id, o);
+                      oportunidadeAberta({ ...comuns, open_mode: 'card', destination_path: destino });
+                      jogoClicado({
+                        game_id: o.fixture_id,
+                        source: 'opportunities',
+                        position: i,
+                        is_featured: false,
+                        destination_path: destino,
+                        competition: o.competition,
+                        opportunity_id: idDaOportunidade(o),
+                      });
+                    }}
                   />
                 );
               })}

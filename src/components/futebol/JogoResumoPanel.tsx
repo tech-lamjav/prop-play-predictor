@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, X, Minus } from 'lucide-react';
 import { Crest } from './Crest';
 import { RegistrarApostaCTA } from './RegistrarAposta';
+import { analiseAberta, propsDaOportunidade } from '@/lib/analytics';
 import {
   useFutebolFixturePremissas,
   useFutebolFixtureNumeros,
@@ -187,6 +188,29 @@ export function JogoResumoPanel({
   // Sem isto, num jogo sem oportunidade o link ia pelado e a tela do jogo abria
   // noutra linha (#346).
   const paraOJogo = hrefDaSaida(fixture.fixture_id, best ?? cand);
+
+  /**
+   * A oportunidade que este painel está exibindo, para a telemetria.
+   *
+   * `best ?? cand` pelo MESMO motivo do `paraOJogo` logo acima: sem preço ainda
+   * há saída anunciada, e o painel a mostra em letra grande. Usar só `best`
+   * faria o evento de um jogo sem oportunidade sair sem identidade nenhuma.
+   */
+  const oportunidadeDoPainel = () => {
+    const saida = best ?? cand;
+    return propsDaOportunidade(
+      {
+        fixture_id: fixture.fixture_id,
+        market: saida?.market,
+        outcome: saida?.outcome,
+        line_value: saida?.line_value,
+        competition: fixture.competition,
+        faixa: best?.faixa,
+        score: best?.score,
+      },
+      { source: 'games_list', subscription_status: access?.state ?? 'unknown' },
+    );
+  };
   const lado = cand ? ladoDaSaida(mercadoLeitura!, cand.outcome) : null;
   const nValem = cand ? contaQueValem(cand) : 0;
 
@@ -300,6 +324,17 @@ export function JogoResumoPanel({
             alvo de clique. A margem negativa devolve o espaço ao layout. */}
         <Link
           to={paraOJogo}
+          onClick={() =>
+            analiseAberta({
+              ...oportunidadeDoPainel(),
+              // Os DOIS caminhos para a mesma tela precisam se distinguir: o
+              // título aqui em cima e o botão do rodapé. Com um rótulo só, o
+              // botão levaria o crédito de um clique que aconteceu no título —
+              // e a conclusão seria "ninguém usa o título", que é falsa.
+              analysis_type: 'titulo_do_painel',
+              destination_path: paraOJogo,
+            })
+          }
           className="text-[13.5px] font-semibold tracking-tight text-ink truncate hover:underline py-1.5 -my-1.5"
           title="Abrir a tela do jogo"
         >
@@ -529,6 +564,13 @@ export function JogoResumoPanel({
         <div className="mt-4 flex gap-2">
           <Link
             to={paraOJogo}
+            onClick={() =>
+              analiseAberta({
+                ...oportunidadeDoPainel(),
+                analysis_type: 'botao_do_rodape',
+                destination_path: paraOJogo,
+              })
+            }
             className="flex-1 h-10 rounded-[10px] bg-forest text-canvas text-[13px] font-semibold inline-flex items-center justify-center gap-1.5 hover:bg-forest-2 transition"
           >
             {temLeitura ? 'Ver a análise dos 5 mercados' : 'Ver a análise completa'} <ArrowRight className="w-4 h-4" />
@@ -536,6 +578,7 @@ export function JogoResumoPanel({
           {best && !fim && (
             <RegistrarApostaCTA
               draft={{
+                fixtureId: fixture.fixture_id,
                 homeName: fixture.home_team_name,
                 awayName: fixture.away_team_name,
                 competition: fixture.competition,
@@ -548,6 +591,7 @@ export function JogoResumoPanel({
               }}
               variant="ambar"
               rotulo="Registrar"
+              origem="games_list"
             />
           )}
         </div>

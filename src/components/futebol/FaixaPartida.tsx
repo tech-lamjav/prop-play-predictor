@@ -244,6 +244,7 @@ export function FaixaPartida({
   const botaoRegistrar = v ? (
     <RegistrarApostaCTA
       draft={{
+        fixtureId: jogo.fixtureId,
         homeName: jogo.home,
         awayName: jogo.away,
         competition: jogo.competition,

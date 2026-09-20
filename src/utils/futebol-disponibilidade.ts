@@ -1,6 +1,6 @@
 import type { FutebolFixtureDisponibilidade } from '@/services/futebol-data.service';
 import { mesmaLinha } from '@/utils/futebol-leitura';
-import { parseUtc } from '@/utils/futebol-datas';
+import { formatadorDeData, parseUtc } from '@/utils/futebol-datas';
 
 /**
  * "Disponível desde" da saída analisada (issue #300).
@@ -37,7 +37,7 @@ export function disponivelDesdeDaSaida(
 export function rotuloDisponivelDesde(disponivelDesde: string | null | undefined): string | null {
   const quando = parseUtc(disponivelDesde ?? null);
   if (!quando) return null;
-  return new Intl.DateTimeFormat('pt-BR', {
+  return formatadorDeData('pt-BR', {
     timeZone: 'America/Sao_Paulo',
     day: '2-digit',
     month: '2-digit',
