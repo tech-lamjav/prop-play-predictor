@@ -1387,8 +1387,10 @@ as $function$
   -- inventar "sem leitura". Vazio, e nao erro: bloqueio nao e falha.
   select * from (
 
-  -- migration 101: kickoff no futuro lê o board; kickoff já passado lê a FOTO DO
-  -- APITO no snapshot. migration 105: os avisos leem as colunas pen_* do mart.
+  -- migration 165: jogo NÃO ENCERRADO lê o board; jogo encerrado lê no snapshot
+  -- a versão que atravessa o kickoff. O portão é o mesmo do histórico, e é isso
+  -- que faz as duas telas falarem o mesmo número com o jogo rolando.
+  -- migration 105: os avisos leem as colunas pen_* do mart.
   with v_src as (
     -- ⚠️ `opportunity_key` NULA aqui, e isso é o que identifica o ramo do board
     -- lá embaixo. O board não tem a coluna, e a linha dele está VIVA: a vantagem
@@ -1403,7 +1405,8 @@ as $function$
     from futebol.fact_value_opportunities
     where fixture_id = p_fixture_id
       and exists (select 1 from futebol.fact_fixtures fx
-                   where fx.fixture_id = p_fixture_id and fx.kickoff_utc > (now() at time zone 'UTC'))
+                   where fx.fixture_id = p_fixture_id
+                     and coalesce(fx.status_short, '') not in ('FT', 'AET', 'PEN'))
     union all
     select h.opportunity_key,
            h.fixture_id, h.market, h.outcome, h.line_value, h.competition, h.season, h.edge,
@@ -1416,7 +1419,7 @@ as $function$
     where h.fixture_id = p_fixture_id
       and exists (select 1 from futebol.fact_fixtures fx
                    where fx.fixture_id = p_fixture_id
-                     and fx.kickoff_utc <= (now() at time zone 'UTC')
+                     and fx.status_short in ('FT', 'AET', 'PEN')
                      and h.dbt_valid_from <= fx.kickoff_utc
                      and (h.dbt_valid_to is null or fx.kickoff_utc < h.dbt_valid_to))
   ), janelas as (
@@ -1497,8 +1500,8 @@ as $function$
     public.futebol_copy('aviso', v.market, case v.outcome when 'Home' then 'home' when 'Away' then 'away' else 'any' end, public.futebol_flags(to_jsonb(v), to_jsonb(p), to_jsonb(o), to_jsonb(ah), to_jsonb(bt), to_jsonb(dc))),
     (public.futebol_copy('contra', v.market, case v.outcome when 'Home' then 'home' when 'Away' then 'away' else 'any' end, public.futebol_flags(to_jsonb(v), to_jsonb(p), to_jsonb(o), to_jsonb(ah), to_jsonb(bt), to_jsonb(dc))))[1:3],
     v.premissas_sem_dado::int,
-    -- Jogo por começar (sem chave): a linha está viva e a vantagem corrente é a
-    -- publicada. Jogo encerrado (com chave): a da primeira versão visível, que
+    -- Jogo não encerrado (sem chave): a linha está viva e a vantagem corrente é
+    -- a publicada. Jogo encerrado (com chave): a da primeira versão visível, que
     -- é NULA quando nunca houve nenhuma.
     case when v.opportunity_key is null then v.edge else n.edge end
   from v_src v

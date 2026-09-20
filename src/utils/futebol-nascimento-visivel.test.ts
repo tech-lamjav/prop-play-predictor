@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 // ============================================================================
@@ -26,17 +26,39 @@ import { resolve } from 'node:path';
 
 const RAIZ = resolve(__dirname, '../..');
 const SHAPE = readFileSync(resolve(RAIZ, 'docs/futebol-prod-deploy.sql'), 'utf8');
-// ⚠️ O nome mudou de `20260919120000_161` para `20260919130000_162`: a migration
-// foi re-carimbada porque colidia, no carimbo E no número, com a dos índices das
-// premissas — e o Supabase identifica migration pelo carimbo, então o deploy da
-// develop morria em `duplicate key`. O porquê está no cabeçalho do próprio
-// arquivo. Este teste foi quem acusou a renomeação, que é o papel dele.
-const MIGRATION = readFileSync(
-  resolve(RAIZ, 'supabase/migrations/20260919130000_162_futebol_nascimento_visivel.sql'),
-  'utf8',
-);
 
 const RPCS = ['get_futebol_value_history', 'get_futebol_fixture_value'] as const;
+
+/**
+ * As migrations, na ordem em que o banco as aplica.
+ *
+ * ⚠️ NADA DE CAMINHO FIXO AQUI, e a lição custou dois CIs. Este arquivo já
+ * apontou para `20260919120000_161_...`, que virou `20260919130000_162_...` no
+ * merge por colisão de carimbo; o teste passava na máquina de quem escreveu e
+ * reprovava no CI com ENOENT. Depois a 165 redefiniu `get_futebol_fixture_value`
+ * e o caminho fixo passou a comparar o provisionamento contra a migration
+ * ERRADA — que é pior, porque fica verde.
+ *
+ * Qual arquivo define cada função é pergunta que se responde lendo, não
+ * decorando.
+ */
+const MIGRATIONS = readdirSync(resolve(RAIZ, 'supabase/migrations'))
+  .filter((f) => f.endsWith('.sql'))
+  .sort()
+  .map((f) => readFileSync(resolve(RAIZ, 'supabase/migrations', f), 'utf8'));
+
+/**
+ * A ÚLTIMA migration que define a função — que é a que o banco fica rodando.
+ *
+ * As migrations empilham redefinições, e comparar contra qualquer outra é cobrar
+ * do provisionamento uma regra que o banco não tem mais.
+ */
+function migrationQueDefine(funcao: string): string {
+  const marca = new RegExp(`create\\s+(?:or\\s+replace\\s+)?function\\s+public\\.${funcao}\\s*\\(`, 'i');
+  const definem = MIGRATIONS.filter((sql) => marca.test(sql));
+  expect(definem.length, `nenhuma migration define ${funcao}`).toBeGreaterThan(0);
+  return definem[definem.length - 1];
+}
 
 /**
  * Compara SEM espaço em branco, e isso não é asseio.
@@ -97,11 +119,26 @@ const REGRA_DO_CRUZAMENTO = `
 
 const PECAS_DA_VISIBILIDADE = [REGRA_DA_JANELA, REGRA_DA_VITRINE, REGRA_DO_CRUZAMENTO];
 
-describe.each([
-  ['migration 161', MIGRATION],
-  ['arquivo de provisionamento', SHAPE],
-])('%s', (_nome, sql) => {
+/**
+ * Os dois lugares onde a regra de uma função vive: a migration que a definiu por
+ * último, e o arquivo de provisionamento.
+ *
+ * ⚠️ É POR FUNÇÃO, e não por arquivo, porque as duas RPCs deixaram de morar na
+ * mesma migration: o histórico ficou na 162 e o detalhe passou para a 165. Um
+ * caminho fixo escondia essa separação e comparava o provisionamento contra a
+ * migration errada — ficando verde.
+ */
+const ondeVive = (funcao: string): [string, string][] => [
+  ['a migration que define', migrationQueDefine(funcao)],
+  ['o arquivo de provisionamento', SHAPE],
+];
+
+describe.each(['migration', 'arquivo de provisionamento'])('%s', (fonte) => {
+  const sqlDe = (funcao: string) =>
+    fonte === 'migration' ? migrationQueDefine(funcao) : SHAPE;
+
   it.each(RPCS)('o nascimento de %s é chaveado por opportunity_key', (funcao) => {
+    const sql = sqlDe(funcao);
     // Chavear pelas colunas da saída mistura a vida de duas oportunidades na
     // mesma foto quando a linha sai do board e volta. São 74 chaves com
     // reativação em produção.
@@ -111,13 +148,33 @@ describe.each([
   });
 
   it.each(RPCS)('a regra de visibilidade está inteira em %s', (funcao) => {
-    const corpo = semEspaco(corpoDaFuncao(sql, funcao));
+    const corpo = semEspaco(corpoDaFuncao(sqlDe(funcao), funcao));
     for (const peca of PECAS_DA_VISIBILIDADE) {
       expect(corpo, `${funcao} sem o bloco:${peca}`).toContain(semEspaco(peca));
     }
   });
 
+  it('⚠️ o detalhe troca de fonte no APITO, e não no kickoff', () => {
+    // O defeito que a 165 fecha: com o jogo EM ANDAMENTO, a lista mostrava a
+    // linha viva do board e esta tela já mostrava a foto tirada no kickoff.
+    // Chance, odd e valor diferentes na mesma linha, todo jogo, todos os dias.
+    //
+    // A trava do histórico (só `FT`, `AET`, `PEN`) não pode ser solta: aquela
+    // RPC é ABERTA, e soltar devolve valor apostável ao vivo para quem não
+    // assina. Então quem muda de portão é o detalhe, que se fecha por dentro.
+    const corpo = corpoDaFuncao(sqlDe('get_futebol_fixture_value'), 'get_futebol_fixture_value');
+    expect(corpo).toContain("fx.status_short in ('FT', 'AET', 'PEN')");
+    expect(corpo).not.toMatch(/fx\.kickoff_utc (>|<=) \(now\(\) at time zone 'UTC'\)/);
+    // ⚠️ Status NULO conta como não encerrado. `not in` com nulo devolve nulo e
+    // a linha SUMIRIA da tela enquanto o mart não carregasse o status — trocar
+    // divergência por desaparecimento é pior.
+    expect(corpo).toContain("coalesce(fx.status_short, '') not in ('FT', 'AET', 'PEN')");
+    // A escolha da versão não muda: continua a que atravessa o kickoff.
+    expect(corpo).toContain('h.dbt_valid_from <= fx.kickoff_utc');
+  });
+
   it.each(RPCS)('%s pergunta pelo INTERVALO da versão, não pelo nascimento dela', (funcao) => {
+    const sql = sqlDe(funcao);
     // ⚠️ Este foi o primeiro defeito da 161, e ele passaria por qualquer guarda
     // que só procurasse os nomes das colunas: a regra citava `oculto_desde`,
     // `oculto_ate` e `vigente_desde` e mesmo assim decidia pelo instante em que
@@ -130,16 +187,16 @@ describe.each([
 
   it('o detalhe carrega a chave e decide por ela, em vez de coalescer', () => {
     // `coalesce(n.edge, v.edge)` dava a vitória ao nascimento sempre que o CTE
-    // achasse alguma versão — inclusive num jogo POR COMEÇAR, cujo snapshot já
+    // achasse alguma versão — inclusive num jogo não encerrado, cujo snapshot já
     // tem versões. Sem chave é board, e board é a vantagem viva.
-    const corpo = corpoDaFuncao(sql, 'get_futebol_fixture_value');
+    const corpo = corpoDaFuncao(sqlDe('get_futebol_fixture_value'), 'get_futebol_fixture_value');
     expect(corpo).toContain('null::text as opportunity_key');
     expect(corpo).toContain('case when v.opportunity_key is null then v.edge else n.edge end');
     expect(corpo).not.toContain('coalesce(n.edge, v.edge)');
   });
 
   it('o histórico segue devolvendo a vantagem do nascimento, e não a do apito', () => {
-    const corpo = corpoDaFuncao(sql, 'get_futebol_value_history');
+    const corpo = corpoDaFuncao(sqlDe('get_futebol_value_history'), 'get_futebol_value_history');
     expect(corpo).toMatch(/left join nascimento n on n\.opportunity_key = v\.opportunity_key/);
   });
 });
@@ -147,10 +204,20 @@ describe.each([
 describe('a migration e o arquivo de provisionamento não se afastam', () => {
   it.each(RPCS)('%s tem o mesmo corpo nos dois arquivos', (funcao) => {
     // Espaço em branco não é a regra; o resto é. Se um dia divergirem, um
-    // ambiente novo nasce com a 146 e a produção roda a 161.
+    // ambiente novo nasce com uma regra e a produção roda outra.
     expect(semEspaco(corpoDaFuncao(SHAPE, funcao))).toBe(
-      semEspaco(corpoDaFuncao(MIGRATION, funcao)),
+      semEspaco(corpoDaFuncao(migrationQueDefine(funcao), funcao)),
     );
+  });
+
+  it('e é a ÚLTIMA migration que define cada função que vale', () => {
+    // A guarda existe porque este arquivo já apontou para a migration errada
+    // duas vezes: uma por renomeação no merge, outra quando a 165 redefiniu o
+    // detalhe e o caminho fixo continuou lendo a 162.
+    expect(ondeVive('get_futebol_fixture_value')[0][1]).toContain(
+      "coalesce(fx.status_short, '') not in ('FT', 'AET', 'PEN')",
+    );
+    expect(ondeVive('get_futebol_value_history')[0][1]).toContain('get_futebol_value_history');
   });
 });
 
@@ -173,22 +240,24 @@ describe('⚠️ o histórico e o detalhe não se afastam ENTRE SI', () => {
     return corpo.slice(i, j);
   };
 
-  it.each([
-    ['migration 161', MIGRATION],
-    ['arquivo de provisionamento', SHAPE],
-  ])('em %s, a janela é calculada igual nas duas RPCs', (_nome, sql) => {
-    const doHistorico = janelasDe(sql, 'get_futebol_value_history');
-    const doDetalhe = janelasDe(sql, 'get_futebol_fixture_value');
+  // ⚠️ SÓ NO ARQUIVO DE PROVISIONAMENTO, e isso é consequência de um fato, não
+  // preguiça: as duas RPCs deixaram de morar na mesma migration. O histórico foi
+  // definido por último na 162 e o detalhe na 165, então não existe UM arquivo
+  // de migration onde as duas possam ser comparadas entre si.
+  //
+  // O provisionamento é o lugar onde elas convivem, e a guarda acima já obriga
+  // cada uma a ser igual à migration que a definiu. As duas asserções juntas
+  // cobrem o mesmo que antes.
+  it('no arquivo de provisionamento, a janela é calculada igual nas duas RPCs', () => {
+    const doHistorico = janelasDe(SHAPE, 'get_futebol_value_history');
+    const doDetalhe = janelasDe(SHAPE, 'get_futebol_fixture_value');
     for (const peca of [REGRA_DA_JANELA]) {
       expect(semEspaco(doHistorico), 'histórico').toContain(semEspaco(peca));
       expect(semEspaco(doDetalhe), 'detalhe').toContain(semEspaco(peca));
     }
   });
 
-  it.each([
-    ['migration 161', MIGRATION],
-    ['arquivo de provisionamento', SHAPE],
-  ])('em %s, a estreia é escolhida igual nas duas RPCs', (_nome, sql) => {
+  it.each([['arquivo de provisionamento', SHAPE]])('em %s, a estreia é escolhida igual nas duas RPCs', (_nome, sql) => {
     const nascimentoDe = (funcao: string) => {
       const corpo = corpoDaFuncao(sql, funcao);
       const i = corpo.indexOf('    select distinct on (j.opportunity_key)');
