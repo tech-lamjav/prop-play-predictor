@@ -119,6 +119,27 @@ describe('Onboarding', () => {
     expect(mocks.navigate).toHaveBeenCalledWith('/futebol/oportunidades');
   });
 
+  it('vindo da landing do futebol, pular também termina no futebol', async () => {
+    // O cenário que falhou num teste manual: veio da LP, pulou o onboarding e
+    // precisava cair no produto. As três saídas do onboarding usam o mesmo
+    // destino, então pular não é um caminho à parte — mas isso não estava
+    // provado com a origem que as landings do futebol mandam.
+    renderOnboarding('?src=lp-futebol&return=%2Ffutebol');
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Pular por agora' }));
+    expect(mocks.navigate).toHaveBeenCalledWith('/futebol');
+  });
+
+  it('sem instrução na URL, pular cai no hub — é o padrão, não um defeito', async () => {
+    // O contraste do teste acima: quem abre o cadastro sem passar por um CTA de
+    // landing não tem destino nenhum pendurado, e o hub é a resposta certa.
+    // Fica escrito para ninguém ler este comportamento como regressão.
+    renderOnboarding('?src=signup');
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Pular por agora' }));
+    expect(mocks.navigate).toHaveBeenCalledWith('/inicio');
+  });
+
   it('destino de retorno inválido cai na rota segura', async () => {
     renderOnboarding('?src=alertas-futebol&return=https%3A%2F%2Fevil.com');
 
