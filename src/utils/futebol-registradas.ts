@@ -186,23 +186,6 @@ export function oportunidadesDoDia({
   const soRegistradas: OppLike[] = [];
   for (const a of porEnvio) {
     if (a.game_day !== dia) continue;
-    // ⚠️ AS MESMAS DUAS REGRAS DO RESTO DA LISTA, no eixo do ENVIO (#490).
-    //
-    // O eixo é o envio, e não o kickoff, por três motivos:
-    //
-    //   · é a única foto que a registrada tem. Ela não tem nascimento: tem o
-    //     instante em que foi anunciada, e é com aquele preço que o assinante
-    //     pôde apostar;
-    //   · `sent_at` e `edge` existem sempre; `kickoff_utc` vem NULO quando a
-    //     liga está fora da lista fixa do board, e filtrar por ele derrubaria
-    //     justamente essas linhas;
-    //   · e o passado não se reescreve: antes da vigência do limiar não havia
-    //     corte para esconder nada, então a linha fica. `cortadaNaData` e
-    //     `mercadoOcultoNaData` já sabem disso — a data é argumento delas.
-    //
-    // O board e o histórico continuam julgando pelo kickoff. A diferença de
-    // eixo é conhecida, tem ticket próprio, e alinhá-la aqui seria mudar duas
-    // coisas ao mesmo tempo.
     const chave = oppKey(a.fixture_id, a.market, a.outcome, a.line_value);
     // Dedup contra o board E contra as outras registradas. A segunda parte
     // faltava: o mesmo pick enviado em dias diferentes vira uma linha por envio
