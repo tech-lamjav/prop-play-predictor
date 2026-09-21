@@ -23,6 +23,10 @@ export const COMPETITION_LABELS: Record<string, string> = {
   primeira_liga: 'Primeira Liga',
   // O humanize devolvia "Serie A Ita", que é o único nome feio da lista.
   serie_a_ita: 'Serie A (Itália)',
+  // O humanize já devolveria "Nations League", que é o nome certo — competição
+  // de fora mantém o nome nativo aqui, como Champions e Premier. Entra mesmo
+  // assim para o rótulo ser explícito, e não um acerto do acaso na formatação.
+  nations_league: 'Nations League',
 };
 
 /**
@@ -46,6 +50,7 @@ export const COMPETITION_API_IDS: Record<string, number> = {
   primeira_liga: 94,
   serie_a_ita: 135,
   la_liga: 140,
+  nations_league: 5,
 };
 
 // Ordem canônica nos seletores que buscam por slug (pickers). Copa do Mundo por
