@@ -47,57 +47,82 @@ function renderLinha(props: Partial<Parameters<typeof FixtureRow>[0]> = {}) {
 }
 
 // ============================================================================
-// A coluna da leitura tem altura RESERVADA
+// A coluna da leitura não muda de altura
 // ============================================================================
-// Era a maior fonte de instabilidade do produto. Numa agenda de 34 jogos, a
-// coluna crescia quando a leitura chegava e cada linha empurrava todas as de
-// baixo. Medido no navegador, com o board respondido:
+// A leitura chega depois do jogo, e a coluna crescia ao recebê-la: no desktop
+// isso levava a linha de 65px para 73px, e com 34 jogos na tela cada uma
+// empurrava todas as de baixo. É a instabilidade que a agenda tinha.
 //
-//   · celular: esqueleto 11px  ->  carregado 34px   (+23 por linha)
-//   · desktop: esqueleto 40px  ->  carregado 52px   (+12 por linha)
+// (No celular o mesmo teste dá zero: lá quem manda na altura da linha é outro
+// filho, e a coluna nunca chegou perto. O conserto vale para os dois, mas o
+// defeito era só do desktop — vale dizer, porque o comentário anterior deste
+// arquivo afirmava o contrário e estava errado.)
 //
-// Depois da reserva, 34px e 52px nos dois estados — conferido acompanhando a
-// altura da coluna durante o carregamento, e o CLS da tela caiu de 0,0085
-// para 0,0014 no celular.
+// A reserva não é um número digitado: são FANTASMAS, cópias invisíveis das três
+// linhas possíveis na mesma célula da grade, com a tipografia real. O navegador
+// mede. Mexer numa fonte ou num `text-[]` ao lado não deixa a reserva errada em
+// silêncio — que é o modo de falha de qualquer `min-h` cravado à mão.
 //
-// O teste olha a CLASSE e não o pixel: em jsdom não há layout, então medir
-// altura aqui mediria zero. O que ele impede é a reserva sumir sem ninguém
-// notar — que foi exatamente como o defeito nasceu.
+// Estes testes olham a ESTRUTURA, não o pixel: em jsdom não há layout, então
+// medir altura aqui mediria zero. O que eles impedem é os fantasmas sumirem
+// sem ninguém notar. A prova de que a linha fica imóvel é de navegador, e está
+// no corpo do PR.
 // ============================================================================
 
 describe('FixtureRow · a altura da coluna de leitura', () => {
-  /** A coluna da direita, onde a leitura entra. */
   const coluna = (container: HTMLElement) =>
-    container.querySelector('div.shrink-0.text-right.min-w-0');
+    container.querySelector('[data-testid="linha-coluna-leitura"]');
 
-  it('reserva a mesma altura nos dois estados, e nos dois tamanhos de tela', () => {
-    const carregando = renderLinha({ leituraCarregando: true });
-    const pronta = renderLinha({ leituraCarregando: false });
+  /** Uma classe isolada, e não um pedaço de outra: `hidden` ≠ `overflow-hidden`. */
+  const temClasse = (el: Element, classe: string) => el.classList.contains(classe);
 
-    for (const [nome, tela] of [
-      ['carregando', carregando],
-      ['pronta', pronta],
-    ] as const) {
-      const c = coluna(tela.container as HTMLElement);
-      expect(c, nome).not.toBeNull();
-      expect(c!.className, nome + ': perdeu a reserva do celular').toContain('min-h-[34px]');
-      expect(c!.className, nome + ': perdeu a reserva do desktop').toContain('sm:min-h-[52px]');
+  it('a coluna existe nos dois estados e é a grade que empilha os fantasmas', () => {
+    for (const carregando of [true, false]) {
+      const { container } = renderLinha({ leituraCarregando: carregando });
+      const c = coluna(container as HTMLElement);
+      expect(c, String(carregando)).not.toBeNull();
+      expect(temClasse(c!, 'grid'), `carregando=${carregando}: a coluna deixou de ser grade`).toBe(true);
     }
   });
 
-  // No celular o conteúdo carregado tem DUAS linhas (aposta e odd), e o
-  // esqueleto tinha uma só: duas das três barras eram `sm:block`. Era metade
-  // do defeito, e a que ninguém via porque só aparecia abaixo de 640px.
-  it('o esqueleto do celular tem duas barras, como o texto que vai chegar', () => {
+  it('os fantasmas reservam a altura, e não são lidos nem vistos', () => {
     const { container } = renderLinha({ leituraCarregando: true });
-    const barras = [...container.querySelectorAll('[data-testid="linha-leitura-carregando"] > *')];
+    const fantasma = coluna(container as HTMLElement)!.querySelector('[aria-hidden]');
 
-    expect(barras).toHaveLength(3);
-    // A primeira é o rótulo do mercado, que só existe no desktop.
-    expect(barras[0].className).toContain('hidden sm:block');
-    // As outras duas acompanham a aposta e a odd, e aparecem nos dois tamanhos.
-    expect(barras[1].className).not.toContain('hidden');
-    expect(barras[2].className).not.toContain('hidden');
+    expect(fantasma, 'sumiram os fantasmas: a coluna volta a mudar de altura').not.toBeNull();
+    expect(temClasse(fantasma!, 'invisible'), 'o fantasma ficou visível').toBe(true);
+    // Mesma célula da grade que o conteúdo real: é isso que faz a célula ficar
+    // do tamanho do mais alto, em vez de empilhar um sobre o outro.
+    expect(temClasse(fantasma!, 'col-start-1')).toBe(true);
+    expect(temClasse(fantasma!, 'row-start-1')).toBe(true);
+    // Três linhas possíveis: rótulo do mercado (só no desktop), aposta e odd.
+    expect(fantasma!.children).toHaveLength(3);
+  });
+
+  it('o conteúdo real divide a célula com os fantasmas', () => {
+    const { container } = renderLinha({ leituraCarregando: false });
+    const celulas = [...coluna(container as HTMLElement)!.children];
+    const real = celulas.find((c) => !c.hasAttribute('aria-hidden'));
+
+    expect(real, 'o conteúdo saiu da célula dos fantasmas').toBeDefined();
+    expect(temClasse(real!, 'col-start-1')).toBe(true);
+    expect(temClasse(real!, 'row-start-1')).toBe(true);
+  });
+
+  // O rótulo do mercado é o único que pode CRESCER acima da reserva:
+  // `marketShort` devolve o slug cru para mercado fora do catálogo, e sem corte
+  // um nome longo quebra em duas linhas.
+  it('o rótulo do mercado corta em vez de quebrar em duas linhas', () => {
+    const { container } = renderLinha({
+      leituraCarregando: false,
+      best: { ...leitura, market: 'um_mercado_muito_longo_que_ninguem_mapeou' },
+    });
+    const real = [...coluna(container as HTMLElement)!.children].find(
+      (c) => !c.hasAttribute('aria-hidden'),
+    );
+    const rotulo = real!.querySelector('span');
+
+    expect(temClasse(rotulo!, 'truncate'), 'o rótulo perdeu o corte e pode estourar a reserva').toBe(true);
   });
 });
 

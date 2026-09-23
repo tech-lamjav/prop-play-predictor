@@ -193,32 +193,43 @@ export function FixtureRow({
           esqueleto; com odds coletadas, o pick; sem elas, a frase em cinza em vez
           de um pick inventado. No celular cabem o pick e a odd, e o rótulo do
           mercado e a chance ficam para o desktop. */}
-      {/* ⚠️ A ALTURA É RESERVADA AQUI, e não deixada por conta do esqueleto.
-          Com 34 jogos numa tela, esta coluna é a maior fonte de instabilidade
-          do produto: ela cresce quando a leitura chega, e cada linha empurra
-          todas as de baixo.
+      {/* ⚠️ A ALTURA DESTA COLUNA É RESERVADA, senão a agenda pula.
+          A leitura chega depois do jogo, e a coluna cresce ao recebê-la: no
+          DESKTOP isso levava a linha de 65px para 73px, e com 34 jogos na tela
+          cada uma empurrava todas as de baixo.
 
-          O comentário que morava embaixo dizia que as barras mantinham "a
-          altura igual nos dois tamanhos". Não mantinham, e por uma distância
-          grande — medido no navegador, com o board respondido:
+          `+8px por LINHA`, medido no navegador trocando o conteúdo da coluna
+          pelo esqueleto e de volta. No CELULAR o mesmo teste dá zero: lá a
+          altura da linha é governada por outro filho, e a coluna — 11px de
+          esqueleto contra 34px de leitura — nunca chegou perto de mandar. A
+          reserva do celular fica como piso explícito, não porque conserte algo
+          hoje.
 
-            · celular: esqueleto 11px  →  carregado 34px   (+23 por linha)
-            · desktop: esqueleto 40px  →  carregado 52px   (+12 por linha)
+          A reserva vem dos FANTASMAS, e não de um número digitado: são cópias
+          invisíveis das três linhas possíveis, na mesma célula da grade, com a
+          tipografia real. O navegador mede, e mudar uma fonte ou um `text-[]`
+          ao lado não deixa a reserva errada em silêncio. Mesmo remédio do
+          cabeçalho da Bancada, pelo mesmo motivo.
 
-          No celular o engano era duplo: duas das três barras são `sm:block`, e
-          o conteúdo carregado ali TAMBÉM tem duas linhas (aposta e odd), não
-          uma. Sobrava uma barra de 11px no lugar de 34px de texto.
+          E vale para os QUATRO estados: a linha bloqueada e as duas frases de
+          "sem leitura" são MAIS CURTAS que a leitura pronta, então reservar a
+          maior impede qualquer uma delas de mexer na página.
 
-          O `min-h` resolve para TODOS os estados, e não só para o esqueleto: a
-          linha bloqueada e a "sem leitura" são mais curtas que a leitura
-          pronta, então reservar a maior delas impede qualquer um dos quatro
-          casos de mexer na página. Os números vêm da medição acima. */}
-      <div className="w-[96px] sm:w-[160px] shrink-0 text-right min-w-0 min-h-[34px] sm:min-h-[52px]">
+          ⚠️ Preço assumido: para quem não tem acesso, toda linha passa a ter a
+          altura da leitura pronta. A lista fica mais alta do que era — e imóvel,
+          que é o que se quis comprar. */}
+      <div data-testid="linha-coluna-leitura" className="w-[96px] sm:w-[160px] shrink-0 text-right min-w-0 grid">
+        <div aria-hidden className="invisible col-start-1 row-start-1">
+          <span className="hidden sm:block text-[9px] uppercase tracking-[0.14em] font-semibold">M</span>
+          <span className="block sm:mt-0.5 text-[11.5px] sm:text-[12.5px] font-semibold">M</span>
+          <span className="block mt-px text-[10.5px] sm:text-[11px] tabular-nums">M</span>
+        </div>
+        <div className="col-start-1 row-start-1">
         {leituraCarregando ? (
           // As barras espelham as linhas que vão chegar: no celular a aposta e
-          // a odd; no desktop, o rótulo do mercado antes delas. As alturas e as
-          // margens são as do texto real, medidas, para o esqueleto preencher o
-          // espaço reservado em vez de flutuar dentro dele.
+          // a odd; no desktop, o rótulo do mercado antes delas. Elas não mandam
+          // mais na altura — os fantasmas mandam —, então aqui só precisam
+          // caber.
           <div data-testid="linha-leitura-carregando" aria-busy="true" className="flex flex-col items-end">
             <Skeleton className="hidden sm:block h-[14px] w-[52px] bg-canvas-2" />
             <Skeleton className="h-[17px] sm:h-[18px] sm:mt-0.5 w-[74px] bg-canvas-2" />
@@ -226,7 +237,11 @@ export function FixtureRow({
           </div>
         ) : (
         <>
-        <span className="hidden sm:block text-[9px] uppercase tracking-[0.14em] font-semibold" style={{ color: '#8d8672' }}>
+        {/* `truncate` porque `marketShort` devolve o slug CRU quando o mercado
+            não está no catálogo. Sem ele, um nome longo quebra em duas linhas,
+            a coluna passa da altura reservada e a linha volta a empurrar — o
+            defeito de volta, pela porta dos fundos. */}
+        <span className="hidden sm:block text-[9px] uppercase tracking-[0.14em] font-semibold truncate" style={{ color: '#8d8672' }}>
           {best ? marketShort(best.market) : apitou ? 'sem leitura' : 'sem leitura ainda'}
         </span>
         {best && bloqueado ? (
@@ -263,6 +278,7 @@ export function FixtureRow({
         )}
         </>
         )}
+        </div>
       </div>
 
       {leituraCarregando ? (
