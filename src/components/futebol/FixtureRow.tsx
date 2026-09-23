@@ -193,20 +193,55 @@ export function FixtureRow({
           esqueleto; com odds coletadas, o pick; sem elas, a frase em cinza em vez
           de um pick inventado. No celular cabem o pick e a odd, e o rótulo do
           mercado e a chance ficam para o desktop. */}
-      <div className="w-[96px] sm:w-[160px] shrink-0 text-right min-w-0">
+      {/* ⚠️ A ALTURA DESTA COLUNA É RESERVADA, senão a agenda pula.
+          A leitura chega depois do jogo, e a coluna cresce ao recebê-la: no
+          DESKTOP isso levava a linha de 65px para 73px, e com 34 jogos na tela
+          cada uma empurrava todas as de baixo.
+
+          `+8px por LINHA`, medido no navegador trocando o conteúdo da coluna
+          pelo esqueleto e de volta. No CELULAR o mesmo teste dá zero: lá a
+          altura da linha é governada por outro filho, e a coluna — 11px de
+          esqueleto contra 34px de leitura — nunca chegou perto de mandar. A
+          reserva do celular fica como piso explícito, não porque conserte algo
+          hoje.
+
+          A reserva vem dos FANTASMAS, e não de um número digitado: são cópias
+          invisíveis das três linhas possíveis, na mesma célula da grade, com a
+          tipografia real. O navegador mede, e mudar uma fonte ou um `text-[]`
+          ao lado não deixa a reserva errada em silêncio. Mesmo remédio do
+          cabeçalho da Bancada, pelo mesmo motivo.
+
+          E vale para os QUATRO estados: a linha bloqueada e as duas frases de
+          "sem leitura" são MAIS CURTAS que a leitura pronta, então reservar a
+          maior impede qualquer uma delas de mexer na página.
+
+          ⚠️ Preço assumido: para quem não tem acesso, toda linha passa a ter a
+          altura da leitura pronta. A lista fica mais alta do que era — e imóvel,
+          que é o que se quis comprar. */}
+      <div data-testid="linha-coluna-leitura" className="w-[96px] sm:w-[160px] shrink-0 text-right min-w-0 grid">
+        <div aria-hidden className="invisible col-start-1 row-start-1">
+          <span className="hidden sm:block text-[9px] uppercase tracking-[0.14em] font-semibold">M</span>
+          <span className="block sm:mt-0.5 text-[11.5px] sm:text-[12.5px] font-semibold">M</span>
+          <span className="block mt-px text-[10.5px] sm:text-[11px] tabular-nums">M</span>
+        </div>
+        <div className="col-start-1 row-start-1">
         {leituraCarregando ? (
-          // No desktop a leitura pronta ocupa três linhas (mercado, pick, odd) e
-          // aqui vão três barras. No celular o rótulo do mercado não existe e a
-          // negação ocupa uma linha só, então a primeira barra some junto: é o
-          // que mantém a altura igual nos dois tamanhos.
-          <div data-testid="linha-leitura-carregando" aria-busy="true" className="flex flex-col items-end gap-1">
-            <Skeleton className="hidden sm:block h-[9px] w-[52px] bg-canvas-2" />
-            <Skeleton className="hidden sm:block h-[12px] w-[74px] bg-canvas-2" />
-            <Skeleton className="h-[11px] w-[56px] bg-canvas-2" />
+          // As barras espelham as linhas que vão chegar: no celular a aposta e
+          // a odd; no desktop, o rótulo do mercado antes delas. Elas não mandam
+          // mais na altura — os fantasmas mandam —, então aqui só precisam
+          // caber.
+          <div data-testid="linha-leitura-carregando" aria-busy="true" className="flex flex-col items-end">
+            <Skeleton className="hidden sm:block h-[14px] w-[52px] bg-canvas-2" />
+            <Skeleton className="h-[17px] sm:h-[18px] sm:mt-0.5 w-[74px] bg-canvas-2" />
+            <Skeleton className="h-[16px] sm:h-[17px] mt-px w-[56px] bg-canvas-2" />
           </div>
         ) : (
         <>
-        <span className="hidden sm:block text-[9px] uppercase tracking-[0.14em] font-semibold" style={{ color: '#8d8672' }}>
+        {/* `truncate` porque `marketShort` devolve o slug CRU quando o mercado
+            não está no catálogo. Sem ele, um nome longo quebra em duas linhas,
+            a coluna passa da altura reservada e a linha volta a empurrar — o
+            defeito de volta, pela porta dos fundos. */}
+        <span className="hidden sm:block text-[9px] uppercase tracking-[0.14em] font-semibold truncate" style={{ color: '#8d8672' }}>
           {best ? marketShort(best.market) : apitou ? 'sem leitura' : 'sem leitura ainda'}
         </span>
         {best && bloqueado ? (
@@ -243,6 +278,7 @@ export function FixtureRow({
         )}
         </>
         )}
+        </div>
       </div>
 
       {leituraCarregando ? (

@@ -18,7 +18,7 @@
  * sozinha, sem ninguém precisar apagar nada.
  */
 
-import type { Evidencia } from '@/utils/futebol-evidencias';
+import { plural, type Evidencia } from '@/utils/futebol-evidencias';
 
 /** Uma linha de `futebol.fact_insumos_medidos`, só com o que esta escolha usa. */
 export interface InsumoMedido {
@@ -78,7 +78,10 @@ export interface NomesDoConfronto {
   adversario?: string | null;
 }
 
-const FORMAS: Record<string, (v: Record<string, number>, n: NomesDoConfronto) => Evidencia | null> = {
+const FORMAS: Record<
+  string,
+  (v: Record<string, number>, n: NomesDoConfronto, lado: 'home' | 'away' | null) => Evidencia | null
+> = {
   // O modelo compara pontos POR JOGO; a frase antiga mostrava o total da
   // temporada ("76 pontos"), que é outra grandeza. Era um número verdadeiro que
   // não é o insumo — o que o glossário chama de ilustrar sem explicar.
@@ -113,6 +116,71 @@ const FORMAS: Record<string, (v: Record<string, number>, n: NomesDoConfronto) =>
         `${numero(v.h2h_total)} ${v.h2h_total === 1 ? 'confronto' : 'confrontos'}`,
     };
   },
+
+  // Sem barra: o critério é `n_wins_last5 >= 3`, um número do time contra um
+  // corte — não existe segundo lado para comparar. A frase antiga listava
+  // "3 vitórias, 1 empate e 1 derrota", montada do `form` da API: verdadeira, e
+  // não era o insumo. Empate e derrota não entram na conta que acende.
+  //
+  // O gráfico (`SPECS.forma`) desenha os 5 jogos por resultado, e esta frase
+  // conta as vitórias DESSES jogos: mesma grandeza, uma resumindo a outra.
+  'match_winner:forma': (v) => {
+    if (v.n_wins_last5 == null) return null;
+    return { texto: `${plural(v.n_wins_last5, 'vitória', 'vitórias')} nos últimos 5 jogos` };
+  },
+
+  // Duas grandezas diferentes: gol MARCADO pelo time e gol SOFRIDO pelo
+  // adversário, cada uma com o seu corte (1,4 e 1,3).
+  //
+  // ⚠️ E CADA UMA NO MANDO DELA — `venue` está no nome das duas colunas. A
+  // primeira versão desta frase dizia "marca 1,60 por jogo", que declara janela
+  // mais larga que a medida; pelo glossário (Janela da premissa), recorte de
+  // mando desencontrado do número é o gráfico desmentindo o número que ele
+  // deveria explicar. É por isso que a forma recebe o `lado`.
+  //
+  // `destaque: 'nenhum'` pelo mesmo motivo da rota antiga: os dois números altos
+  // favorecem a aposta, então pintar o maior de verde diria que a defesa vazada
+  // do adversário é o lado "bom" da comparação.
+  'match_winner:forca_mismatch': (v, n, lado) => {
+    if (v.s_gf_venue == null || v.o_ga_venue == null || lado == null) return null;
+    const ondeTime = lado === 'home' ? 'em casa' : 'fora';
+    const ondeAdv = lado === 'home' ? 'fora' : 'em casa';
+    return {
+      texto:
+        `${n.time ?? 'O time'} marca ${numero(v.s_gf_venue)} ${ondeTime} e ` +
+        `${n.adversario ?? 'o adversário'} sofre ${numero(v.o_ga_venue)} ${ondeAdv}`,
+      comparacao: {
+        esqLabel: `${n.time ?? 'O time'} marca ${ondeTime}`,
+        esqValor: v.s_gf_venue,
+        dirLabel: `${n.adversario ?? 'Adversário'} sofre ${ondeAdv}`,
+        dirValor: v.o_ga_venue,
+        destaque: 'nenhum',
+      },
+    };
+  },
+
+  // O critério tem DUAS condições e as duas contam: `o_missing >= 1` e
+  // `s_missing = 0`. Mostrar só os desfalques do adversário esconderia metade —
+  // um time com dois desfalques próprios não acende esta premissa, e a tela
+  // diria o contrário.
+  //
+  // `destaque: 'nenhum'`: aqui o lado bom é o adversário ter MAIS e o time ter
+  // MENOS. Não existe "maior é melhor" que sirva para os dois.
+  'match_winner:desfalque_adversario': (v, n) => {
+    if (v.o_missing == null || v.s_missing == null) return null;
+    const doAdv = plural(v.o_missing, 'desfalque', 'desfalques');
+    const doTime = v.s_missing === 0 ? 'nenhum' : numero(v.s_missing);
+    return {
+      texto: `${n.adversario ?? 'Adversário'} com ${doAdv} de titular, contra ${doTime} do ${n.time ?? 'time'}`,
+      comparacao: {
+        esqLabel: `${n.time ?? 'O time'}`,
+        esqValor: v.s_missing,
+        dirLabel: `${n.adversario ?? 'Adversário'}`,
+        dirValor: v.o_missing,
+        destaque: 'nenhum',
+      },
+    };
+  },
 };
 
 /**
@@ -141,5 +209,5 @@ export function evidenciaDoInsumoMedido(
   const porNome: Record<string, number> = {};
   for (const i of achados) porNome[i.insumo] = i.valor as number;
 
-  return FORMAS[`${mercado}:${slug}`]?.(porNome, nomes) ?? null;
+  return FORMAS[`${mercado}:${slug}`]?.(porNome, nomes, lado) ?? null;
 }

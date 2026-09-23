@@ -142,6 +142,129 @@ describe('a evidência do valor medido', () => {
     expect(evidenciaDoInsumoMedido('match_winner', 'superioridade_tabela', 'home', [])).toBeNull();
     expect(evidenciaDoInsumoMedido('match_winner', 'superioridade_tabela', 'home', undefined)).toBeNull();
   });
+
+  // ── As quatro premissas que passaram a ler o valor medido ──────────────────
+  // O mart publica 8 premissas de `match_winner` e o mapa consumia 2. Estas
+  // quatro fecham a diferença menos a `superioridade_xg`, que precisa da família
+  // de diferença (criado MENOS sofrido) e de uma métrica de xG sofrido que o
+  // gráfico ainda não nomeia — escrever só a frase dela faria frase e gráfico
+  // discordarem, que é o defeito que esta rota existe para fechar.
+
+  it('a forma conta as vitórias do critério, e não o resumo de três números', () => {
+    // A frase antiga saía do `form` da API: "3 vitórias, 1 empate e 1 derrota".
+    // Verdadeira, e não era o insumo: o critério é `n_wins_last5 >= 3`, onde
+    // empate e derrota não entram na conta que acende.
+    expect(evidenciaDoInsumoMedido('match_winner', 'forma', 'home', [
+      linha({ premissa: 'forma', insumo: 'n_wins_last5', valor: 3 }),
+    ])?.texto).toBe('3 vitórias nos últimos 5 jogos');
+  });
+
+  it('e concorda em número quando a vitória é uma só', () => {
+    expect(evidenciaDoInsumoMedido('match_winner', 'forma', 'home', [
+      linha({ premissa: 'forma', insumo: 'n_wins_last5', valor: 1 }),
+    ])?.texto).toBe('1 vitória nos últimos 5 jogos');
+  });
+
+  it('a forma não ganha barra: é um número contra um corte, sem segundo lado', () => {
+    expect(evidenciaDoInsumoMedido('match_winner', 'forma', 'home', [
+      linha({ premissa: 'forma', insumo: 'n_wins_last5', valor: 4 }),
+    ])?.comparacao).toBeUndefined();
+  });
+
+  it('o mando NÃO entra, mesmo com o valor publicado pelo mart', () => {
+    // ⚠️ EXCLUSÃO DELIBERADA, pela mesma regra da `superioridade_xg`.
+    //
+    // O mart publica `pct_pts_home` e `aprov_fora`, e a frase sairia fácil. Mas
+    // `SPECS.mando` desenha `metrica: 'resultado'` — grade de vitórias, empates
+    // e derrotas —, e o critério compara APROVEITAMENTO percentual contra 55 em
+    // casa e 45 fora. Escrever só a frase deixaria o número certo com o gráfico
+    // errado logo abaixo, se desmentindo na tela.
+    //
+    // Hoje os dois estão errados e CONCORDAM; consertar metade é pior. Entra
+    // junto com a `superioridade_xg` quando o gráfico souber desenhar a
+    // grandeza — o tipo `Metrica` não tem ponto nem xG sofrido.
+    expect(evidenciaDoInsumoMedido('match_winner', 'mando', 'home', [
+      linha({ premissa: 'mando', insumo: 'pct_pts_home', valor: 62 }),
+    ])).toBeNull();
+  });
+
+  it('o mismatch de força mostra as duas grandezas do critério', () => {
+    // `s_gf_venue >= 1.4 AND o_ga_venue >= 1.3`: gol MARCADO pelo time e gol
+    // SOFRIDO pelo adversário, cada um no mando dele. São duas coisas
+    // diferentes, e a frase precisa dizer qual é qual.
+    const ev = evidenciaDoInsumoMedido('match_winner', 'forca_mismatch', 'home', [
+      linha({ premissa: 'forca_mismatch', insumo: 's_gf_venue', valor: 1.6 }),
+      linha({ premissa: 'forca_mismatch', insumo: 'o_ga_venue', valor: 1.4 }),
+    ], { time: 'Casa', adversario: 'Fora' });
+
+    expect(ev?.texto).toBe('Casa marca 1,60 em casa e Fora sofre 1,40 fora');
+  });
+
+  it('e o mando inverte quando a aposta é no visitante', () => {
+    // `venue` está no nome das duas colunas: o insumo é recortado por mando.
+    // Dizer "por jogo" declarava janela mais larga que a medida — pelo
+    // glossário, recorte desencontrado do número é o gráfico desmentindo o
+    // número que ele deveria explicar.
+    const ev = evidenciaDoInsumoMedido('match_winner', 'forca_mismatch', 'away', [
+      linha({ outcome: 'Away', premissa: 'forca_mismatch', insumo: 's_gf_venue', valor: 1.6 }),
+      linha({ outcome: 'Away', premissa: 'forca_mismatch', insumo: 'o_ga_venue', valor: 1.4 }),
+    ], { time: 'Fora', adversario: 'Casa' });
+
+    expect(ev?.texto).toBe('Fora marca 1,60 fora e Casa sofre 1,40 em casa');
+  });
+
+  it('e a barra dele não destaca lado nenhum', () => {
+    // Os dois números altos favorecem a aposta. Pintar o maior de verde diria
+    // que a defesa vazada do adversário é o lado "bom" da comparação.
+    const ev = evidenciaDoInsumoMedido('match_winner', 'forca_mismatch', 'home', [
+      linha({ premissa: 'forca_mismatch', insumo: 's_gf_venue', valor: 1.6 }),
+      linha({ premissa: 'forca_mismatch', insumo: 'o_ga_venue', valor: 1.4 }),
+    ], { time: 'Casa', adversario: 'Fora' });
+
+    expect(ev?.comparacao).toEqual({
+      esqLabel: 'Casa marca em casa',
+      esqValor: 1.6,
+      dirLabel: 'Fora sofre fora',
+      dirValor: 1.4,
+      destaque: 'nenhum',
+    });
+  });
+
+  it('faltando um lado do mismatch, devolve nulo em vez de meia frase', () => {
+    expect(evidenciaDoInsumoMedido('match_winner', 'forca_mismatch', 'home', [
+      linha({ premissa: 'forca_mismatch', insumo: 's_gf_venue', valor: 1.6 }),
+    ])).toBeNull();
+  });
+
+  it('o desfalque mostra as DUAS condições do critério', () => {
+    // `o_missing >= 1 AND s_missing = 0`. Mostrar só o desfalque do adversário
+    // esconderia metade: um time com dois desfalques próprios não acende esta
+    // premissa, e a tela diria o contrário.
+    const ev = evidenciaDoInsumoMedido('match_winner', 'desfalque_adversario', 'home', [
+      linha({ premissa: 'desfalque_adversario', insumo: 'o_missing', valor: 2 }),
+      linha({ premissa: 'desfalque_adversario', insumo: 's_missing', valor: 0 }),
+    ], { time: 'Casa', adversario: 'Fora' });
+
+    expect(ev?.texto).toBe('Fora com 2 desfalques de titular, contra nenhum do Casa');
+  });
+
+  it('e escreve o número quando o próprio time também tem desfalque', () => {
+    const ev = evidenciaDoInsumoMedido('match_winner', 'desfalque_adversario', 'home', [
+      linha({ premissa: 'desfalque_adversario', insumo: 'o_missing', valor: 1 }),
+      linha({ premissa: 'desfalque_adversario', insumo: 's_missing', valor: 1 }),
+    ], { time: 'Casa', adversario: 'Fora' });
+
+    expect(ev?.texto).toBe('Fora com 1 desfalque de titular, contra 1 do Casa');
+  });
+
+  it('sem nome de time, as quatro ainda saem, sem inventar nome', () => {
+    const ev = evidenciaDoInsumoMedido('match_winner', 'forca_mismatch', 'home', [
+      linha({ premissa: 'forca_mismatch', insumo: 's_gf_venue', valor: 1.6 }),
+      linha({ premissa: 'forca_mismatch', insumo: 'o_ga_venue', valor: 1.4 }),
+    ]);
+
+    expect(ev?.texto).toBe('O time marca 1,60 em casa e o adversário sofre 1,40 fora');
+  });
 });
 
 describe('a posição do valor medido na porta única', () => {

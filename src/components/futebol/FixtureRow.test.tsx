@@ -46,6 +46,86 @@ function renderLinha(props: Partial<Parameters<typeof FixtureRow>[0]> = {}) {
   );
 }
 
+// ============================================================================
+// A coluna da leitura não muda de altura
+// ============================================================================
+// A leitura chega depois do jogo, e a coluna crescia ao recebê-la: no desktop
+// isso levava a linha de 65px para 73px, e com 34 jogos na tela cada uma
+// empurrava todas as de baixo. É a instabilidade que a agenda tinha.
+//
+// (No celular o mesmo teste dá zero: lá quem manda na altura da linha é outro
+// filho, e a coluna nunca chegou perto. O conserto vale para os dois, mas o
+// defeito era só do desktop — vale dizer, porque o comentário anterior deste
+// arquivo afirmava o contrário e estava errado.)
+//
+// A reserva não é um número digitado: são FANTASMAS, cópias invisíveis das três
+// linhas possíveis na mesma célula da grade, com a tipografia real. O navegador
+// mede. Mexer numa fonte ou num `text-[]` ao lado não deixa a reserva errada em
+// silêncio — que é o modo de falha de qualquer `min-h` cravado à mão.
+//
+// Estes testes olham a ESTRUTURA, não o pixel: em jsdom não há layout, então
+// medir altura aqui mediria zero. O que eles impedem é os fantasmas sumirem
+// sem ninguém notar. A prova de que a linha fica imóvel é de navegador, e está
+// no corpo do PR.
+// ============================================================================
+
+describe('FixtureRow · a altura da coluna de leitura', () => {
+  const coluna = (container: HTMLElement) =>
+    container.querySelector('[data-testid="linha-coluna-leitura"]');
+
+  /** Uma classe isolada, e não um pedaço de outra: `hidden` ≠ `overflow-hidden`. */
+  const temClasse = (el: Element, classe: string) => el.classList.contains(classe);
+
+  it('a coluna existe nos dois estados e é a grade que empilha os fantasmas', () => {
+    for (const carregando of [true, false]) {
+      const { container } = renderLinha({ leituraCarregando: carregando });
+      const c = coluna(container as HTMLElement);
+      expect(c, String(carregando)).not.toBeNull();
+      expect(temClasse(c!, 'grid'), `carregando=${carregando}: a coluna deixou de ser grade`).toBe(true);
+    }
+  });
+
+  it('os fantasmas reservam a altura, e não são lidos nem vistos', () => {
+    const { container } = renderLinha({ leituraCarregando: true });
+    const fantasma = coluna(container as HTMLElement)!.querySelector('[aria-hidden]');
+
+    expect(fantasma, 'sumiram os fantasmas: a coluna volta a mudar de altura').not.toBeNull();
+    expect(temClasse(fantasma!, 'invisible'), 'o fantasma ficou visível').toBe(true);
+    // Mesma célula da grade que o conteúdo real: é isso que faz a célula ficar
+    // do tamanho do mais alto, em vez de empilhar um sobre o outro.
+    expect(temClasse(fantasma!, 'col-start-1')).toBe(true);
+    expect(temClasse(fantasma!, 'row-start-1')).toBe(true);
+    // Três linhas possíveis: rótulo do mercado (só no desktop), aposta e odd.
+    expect(fantasma!.children).toHaveLength(3);
+  });
+
+  it('o conteúdo real divide a célula com os fantasmas', () => {
+    const { container } = renderLinha({ leituraCarregando: false });
+    const celulas = [...coluna(container as HTMLElement)!.children];
+    const real = celulas.find((c) => !c.hasAttribute('aria-hidden'));
+
+    expect(real, 'o conteúdo saiu da célula dos fantasmas').toBeDefined();
+    expect(temClasse(real!, 'col-start-1')).toBe(true);
+    expect(temClasse(real!, 'row-start-1')).toBe(true);
+  });
+
+  // O rótulo do mercado é o único que pode CRESCER acima da reserva:
+  // `marketShort` devolve o slug cru para mercado fora do catálogo, e sem corte
+  // um nome longo quebra em duas linhas.
+  it('o rótulo do mercado corta em vez de quebrar em duas linhas', () => {
+    const { container } = renderLinha({
+      leituraCarregando: false,
+      best: { ...leitura, market: 'um_mercado_muito_longo_que_ninguem_mapeou' },
+    });
+    const real = [...coluna(container as HTMLElement)!.children].find(
+      (c) => !c.hasAttribute('aria-hidden'),
+    );
+    const rotulo = real!.querySelector('span');
+
+    expect(temClasse(rotulo!, 'truncate'), 'o rótulo perdeu o corte e pode estourar a reserva').toBe(true);
+  });
+});
+
 describe('FixtureRow · estado da leitura', () => {
   it('mostra o esqueleto, e não a conclusão, enquanto o board carrega', () => {
     renderLinha({ leituraCarregando: true });
