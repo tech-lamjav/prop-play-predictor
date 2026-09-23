@@ -46,6 +46,61 @@ function renderLinha(props: Partial<Parameters<typeof FixtureRow>[0]> = {}) {
   );
 }
 
+// ============================================================================
+// A coluna da leitura tem altura RESERVADA
+// ============================================================================
+// Era a maior fonte de instabilidade do produto. Numa agenda de 34 jogos, a
+// coluna crescia quando a leitura chegava e cada linha empurrava todas as de
+// baixo. Medido no navegador, com o board respondido:
+//
+//   · celular: esqueleto 11px  ->  carregado 34px   (+23 por linha)
+//   · desktop: esqueleto 40px  ->  carregado 52px   (+12 por linha)
+//
+// Depois da reserva, 34px e 52px nos dois estados — conferido acompanhando a
+// altura da coluna durante o carregamento, e o CLS da tela caiu de 0,0085
+// para 0,0014 no celular.
+//
+// O teste olha a CLASSE e não o pixel: em jsdom não há layout, então medir
+// altura aqui mediria zero. O que ele impede é a reserva sumir sem ninguém
+// notar — que foi exatamente como o defeito nasceu.
+// ============================================================================
+
+describe('FixtureRow · a altura da coluna de leitura', () => {
+  /** A coluna da direita, onde a leitura entra. */
+  const coluna = (container: HTMLElement) =>
+    container.querySelector('div.shrink-0.text-right.min-w-0');
+
+  it('reserva a mesma altura nos dois estados, e nos dois tamanhos de tela', () => {
+    const carregando = renderLinha({ leituraCarregando: true });
+    const pronta = renderLinha({ leituraCarregando: false });
+
+    for (const [nome, tela] of [
+      ['carregando', carregando],
+      ['pronta', pronta],
+    ] as const) {
+      const c = coluna(tela.container as HTMLElement);
+      expect(c, nome).not.toBeNull();
+      expect(c!.className, nome + ': perdeu a reserva do celular').toContain('min-h-[34px]');
+      expect(c!.className, nome + ': perdeu a reserva do desktop').toContain('sm:min-h-[52px]');
+    }
+  });
+
+  // No celular o conteúdo carregado tem DUAS linhas (aposta e odd), e o
+  // esqueleto tinha uma só: duas das três barras eram `sm:block`. Era metade
+  // do defeito, e a que ninguém via porque só aparecia abaixo de 640px.
+  it('o esqueleto do celular tem duas barras, como o texto que vai chegar', () => {
+    const { container } = renderLinha({ leituraCarregando: true });
+    const barras = [...container.querySelectorAll('[data-testid="linha-leitura-carregando"] > *')];
+
+    expect(barras).toHaveLength(3);
+    // A primeira é o rótulo do mercado, que só existe no desktop.
+    expect(barras[0].className).toContain('hidden sm:block');
+    // As outras duas acompanham a aposta e a odd, e aparecem nos dois tamanhos.
+    expect(barras[1].className).not.toContain('hidden');
+    expect(barras[2].className).not.toContain('hidden');
+  });
+});
+
 describe('FixtureRow · estado da leitura', () => {
   it('mostra o esqueleto, e não a conclusão, enquanto o board carrega', () => {
     renderLinha({ leituraCarregando: true });
