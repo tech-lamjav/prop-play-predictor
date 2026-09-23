@@ -43,6 +43,7 @@ const LADO = 96; // a tela usa 26px; 96 cobre retina com folga
 // o escudo cinza de "sem imagem", que em tela fica pior que o ícone de troféu.
 // Se um dia subirem o brasão de verdade, é só voltar `copa_mundo: 1` aqui.
 const LIGAS: Record<string, number> = {
+  nations_league: 5,
   champions_league: 2,
   sudamericana: 11,
   libertadores: 13,
