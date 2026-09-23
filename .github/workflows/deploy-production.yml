@@ -58,6 +58,7 @@ jobs:
           supabase functions deploy notify-published-opportunities --no-verify-jwt
           supabase functions deploy go --no-verify-jwt
           supabase functions deploy mirror-futebol-team-logos --no-verify-jwt
+          supabase functions deploy mirror-futebol-league-logos --no-verify-jwt
           supabase functions deploy mirror-futebol-player-photos --no-verify-jwt
           supabase functions deploy ingest-fixtures --no-verify-jwt
           supabase functions deploy notify-weekly-summary --no-verify-jwt
