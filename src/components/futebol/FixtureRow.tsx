@@ -193,16 +193,36 @@ export function FixtureRow({
           esqueleto; com odds coletadas, o pick; sem elas, a frase em cinza em vez
           de um pick inventado. No celular cabem o pick e a odd, e o rótulo do
           mercado e a chance ficam para o desktop. */}
-      <div className="w-[96px] sm:w-[160px] shrink-0 text-right min-w-0">
+      {/* ⚠️ A ALTURA É RESERVADA AQUI, e não deixada por conta do esqueleto.
+          Com 34 jogos numa tela, esta coluna é a maior fonte de instabilidade
+          do produto: ela cresce quando a leitura chega, e cada linha empurra
+          todas as de baixo.
+
+          O comentário que morava embaixo dizia que as barras mantinham "a
+          altura igual nos dois tamanhos". Não mantinham, e por uma distância
+          grande — medido no navegador, com o board respondido:
+
+            · celular: esqueleto 11px  →  carregado 34px   (+23 por linha)
+            · desktop: esqueleto 40px  →  carregado 52px   (+12 por linha)
+
+          No celular o engano era duplo: duas das três barras são `sm:block`, e
+          o conteúdo carregado ali TAMBÉM tem duas linhas (aposta e odd), não
+          uma. Sobrava uma barra de 11px no lugar de 34px de texto.
+
+          O `min-h` resolve para TODOS os estados, e não só para o esqueleto: a
+          linha bloqueada e a "sem leitura" são mais curtas que a leitura
+          pronta, então reservar a maior delas impede qualquer um dos quatro
+          casos de mexer na página. Os números vêm da medição acima. */}
+      <div className="w-[96px] sm:w-[160px] shrink-0 text-right min-w-0 min-h-[34px] sm:min-h-[52px]">
         {leituraCarregando ? (
-          // No desktop a leitura pronta ocupa três linhas (mercado, pick, odd) e
-          // aqui vão três barras. No celular o rótulo do mercado não existe e a
-          // negação ocupa uma linha só, então a primeira barra some junto: é o
-          // que mantém a altura igual nos dois tamanhos.
-          <div data-testid="linha-leitura-carregando" aria-busy="true" className="flex flex-col items-end gap-1">
-            <Skeleton className="hidden sm:block h-[9px] w-[52px] bg-canvas-2" />
-            <Skeleton className="hidden sm:block h-[12px] w-[74px] bg-canvas-2" />
-            <Skeleton className="h-[11px] w-[56px] bg-canvas-2" />
+          // As barras espelham as linhas que vão chegar: no celular a aposta e
+          // a odd; no desktop, o rótulo do mercado antes delas. As alturas e as
+          // margens são as do texto real, medidas, para o esqueleto preencher o
+          // espaço reservado em vez de flutuar dentro dele.
+          <div data-testid="linha-leitura-carregando" aria-busy="true" className="flex flex-col items-end">
+            <Skeleton className="hidden sm:block h-[14px] w-[52px] bg-canvas-2" />
+            <Skeleton className="h-[17px] sm:h-[18px] sm:mt-0.5 w-[74px] bg-canvas-2" />
+            <Skeleton className="h-[16px] sm:h-[17px] mt-px w-[56px] bg-canvas-2" />
           </div>
         ) : (
         <>
