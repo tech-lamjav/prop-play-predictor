@@ -814,7 +814,17 @@ export default function FutebolJogo() {
                       qualquer média: é a coisa mais concreta da aba, e some
                       sozinho no jogo por vir. */}
                   {jogoCard}
-                  <EstatisticasDoJogo historico={historico} carregando={historicoCarregando} />
+                  {/* Nasce no mercado e na linha que a pessoa vinha lendo, para
+                      a aba não recomeçar do zero. Daí em diante é independente:
+                      a régua da bancada escolhe QUAL APOSTA ler, esta escolhe
+                      onde cortar a cor, e acoplar as duas juntaria conceitos
+                      diferentes. */}
+                  <EstatisticasDoJogo
+                    historico={historico}
+                    carregando={historicoCarregando}
+                    mercadoInicial={preferida?.market ?? mercadoAtivo}
+                    linhaInicial={preferida?.line_value ?? null}
+                  />
                   <div className="grid lg:grid-cols-2 gap-5 items-start">
                     {statsCard}
                     {h2hCard}

@@ -41,6 +41,18 @@ export const rotuloMedia = (v: number, metrica: SerieHistorico['metrica']) =>
  * time ganhava a própria escala e barra alta de um valia menos que barra baixa
  * do outro.
  */
+/**
+ * O PISO da escala compartilhada: zero, ou o valor mais negativo.
+ *
+ * Existe porque o saldo de gols é negativo na derrota, e uma barra que só sabe
+ * crescer para cima desenharia "perdeu de 2" com a mesma altura mínima de
+ * "empatou". Onde não há negativo o piso é zero e nada muda.
+ */
+export function pisoDaEscala(series: SerieHistorico[]): number {
+  const valores = series.flatMap((s) => s.jogos.map((j) => j.valor)).filter((v): v is number => v != null);
+  return Math.min(0, ...valores);
+}
+
 export function tetoDaEscala(series: SerieHistorico[], referencia?: number): number {
   const valores = series.flatMap((s) => s.jogos.map((j) => j.valor)).filter((v): v is number => v != null);
   return Math.max(...valores, referencia ?? 0, 1);

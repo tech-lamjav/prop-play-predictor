@@ -2,86 +2,139 @@ import type { FutebolFixtureHistorico } from '@/services/futebol-data.service';
 import { seriesDaEspecificacao, type Metrica, type SerieHistorico, type SerieSpec } from '@/utils/futebol-historico';
 
 /**
- * A série jogo a jogo da aba de Estatísticas.
+ * O gráfico jogo a jogo da aba de Estatísticas.
  *
- * O que ela desenha é **estatística da partida**, e não **evidência** de
- * premissa. A distinção está no glossário e é ela que sustenta este módulo
- * existir separado: aqui a janela e o mando são ESCOLHA de quem olha, enquanto
- * no gráfico das premissas os dois são travados pelo modelo, porque lá o
- * gráfico responde por um número que o modelo calculou.
+ * Duas regras sustentam este módulo, e as duas são de domínio:
  *
- * ⚠️ Daí sai a regra que este arquivo não pode quebrar: nada aqui aparece
- * embaixo de uma premissa, e nada aqui se chama evidência. A migration 095 já
- * tinha escrito o porquê ao deixar finalização, escanteio e posse de fora do
- * jogo a jogo — "publicar um número nosso como se fosse o da premissa seria
- * fingir auditoria".
+ * 1. O que ele desenha é **estatística da partida**, não **evidência** de
+ *    premissa. Por isso a janela, o mando e o time são escolha de quem olha,
+ *    enquanto no gráfico das premissas os três são travados pelo modelo.
+ *
+ * 2. A LINHA é uma **referência**, não uma aposta. Ela não vem de preço, não
+ *    tem lado escolhido e nada aqui é liquidado: mexer nela repinta as barras e
+ *    não toca nos valores. É o que impede a aba de virar retrovisor de aposta —
+ *    "se você tivesse apostado nos últimos quinze, teria batido nove" é outra
+ *    afirmação, e bem mais forte do que esta tela quer fazer.
  *
  * A montagem das barras NÃO é reescrita: é a mesma `seriesDaEspecificacao` que
- * a premissa usa, com a especificação vindo da escolha em vez do mapa `SPECS`.
- * Um segundo montador é como este arquivo já se contradisse antes (#350), e o
- * defeito não aparece em leitura de código.
+ * a premissa usa, com a especificação vindo do mercado em vez do mapa `SPECS`.
  */
 
-export type MetricaDaEstatistica = Extract<Metrica, 'gf' | 'ga' | 'total' | 'xg'>;
+/** Quem entra no gráfico. O mandante e o visitante são os deste confronto. */
+export type QuemNoGrafico = 'ambos' | 'mandante' | 'visitante';
 
 /** O mando recorta DENTRO da janela, nunca antes dela. */
 export type MandoDaEstatistica = 'todos' | 'proprio';
 
 export interface EscolhaDaEstatistica {
-  metrica: MetricaDaEstatistica;
+  /** Slug do mercado, o mesmo da bancada. */
+  mercado: string;
+  /** A referência da cor. `null` mostra a média no lugar dela. */
+  linha: number | null;
+  quem: QuemNoGrafico;
   /** Quantos dos jogos mais recentes entram. */
   janela: number;
   mando: MandoDaEstatistica;
 }
 
-export const METRICAS_OFERECIDAS: { valor: MetricaDaEstatistica; rotulo: string }[] = [
-  { valor: 'gf', rotulo: 'Gols marcados' },
-  { valor: 'ga', rotulo: 'Gols sofridos' },
-  { valor: 'total', rotulo: 'Gols no jogo' },
-  { valor: 'xg', rotulo: 'Gols esperados' },
-];
+/**
+ * O que cada mercado mede, jogo a jogo.
+ *
+ * ⚠️ Só gols e handicap têm quantidade contra a qual uma linha faz sentido — é
+ * o mesmo par que a bancada trata como mercado de linha. Ambos marcam é binário
+ * e Resultado não tem quantidade nenhuma: desenhar uma linha neles seria
+ * oferecer um corte sobre um número que não existe.
+ */
+export const MERCADOS_NO_GRAFICO: Record<
+  string,
+  { metrica: Metrica; temLinha: boolean; rotulo: string; chip: string; paradas: number[]; padrao: number | null }
+> = {
+  // ⚠️ `padrao` é DECLARADO por mercado, e não "a parada do meio da lista".
+  // O meio das seis paradas de gols é 3,5, e a linha canônica do mercado é 2,5:
+  // abrir em 3,5 mostraria quase tudo abaixo da linha e pareceria defeito.
+  goals_over_under: {
+    metrica: 'total', temLinha: true, rotulo: 'Gols no jogo', chip: 'Gols',
+    paradas: [0.5, 1.5, 2.5, 3.5, 4.5, 5.5], padrao: 2.5,
+  },
+  asian_handicap: {
+    metrica: 'saldo', temLinha: true, rotulo: 'Saldo de gols', chip: 'Handicap',
+    paradas: [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5], padrao: -0.5,
+  },
+  btts: { metrica: 'ambos', temLinha: false, rotulo: 'Os dois marcaram', chip: 'Ambos marcam', paradas: [], padrao: null },
+  match_winner: { metrica: 'resultado', temLinha: false, rotulo: 'Resultado', chip: 'Resultado', paradas: [], padrao: null },
+  double_chance: { metrica: 'resultado', temLinha: false, rotulo: 'Resultado', chip: 'Dupla chance', paradas: [], padrao: null },
+};
 
 /**
  * As janelas oferecidas.
  *
  * 10 é o padrão porque é a janela que o modelo usa na maioria das premissas, e
  * chegar na aba vendo outro recorte faria os dois gráficos da mesma tela
- * discordarem sem motivo. 5 e 20 existem para encurtar e alargar em volta dela.
+ * discordarem sem motivo. 5 e 20 encurtam e alargam em volta dela.
  */
 export const JANELAS_OFERECIDAS = [5, 10, 20] as const;
 
-export const ESCOLHA_PADRAO: EscolhaDaEstatistica = { metrica: 'gf', janela: 10, mando: 'todos' };
+export const ESCOLHA_PADRAO: EscolhaDaEstatistica = {
+  mercado: 'goals_over_under',
+  linha: null,
+  quem: 'ambos',
+  janela: 10,
+  mando: 'todos',
+};
 
 /**
  * Como ler cada gráfico, na língua desta aba.
  *
  * Escrito aqui e não reusado do módulo das premissas de propósito. Lá o texto
  * do total de gols diz que a linha tracejada é "a linha que você escolheu" — e
- * linha, ali, é a da aposta. Nesta aba não há aposta escolhida: repetir aquela
- * frase seria a tela afirmar um conceito que ela não tem.
+ * linha, ali, é a da aposta. Aqui ela é uma referência que a pessoa arrasta, e
+ * nenhuma palavra deste arquivo pode sugerir preço.
  */
-const COMO_LER: Record<MetricaDaEstatistica, string> = {
-  gf: 'Cada barra é um jogo: quanto mais alta, mais gols o time marcou. A linha tracejada é a média dos jogos desenhados.',
-  ga: 'Cada barra é um jogo: quanto mais alta, mais gols o time sofreu. A linha tracejada é a média dos jogos desenhados.',
-  total: 'Cada barra é o total de gols daquele jogo, somando os dois times. A linha tracejada é a média dos jogos desenhados.',
-  xg: 'Cada barra é o gol esperado do time no jogo, ou seja, quanta chance ele criou. A linha tracejada é a média dos jogos desenhados.',
+const COMO_LER: Record<Metrica, string> = {
+  total: 'Cada barra é o total de gols daquele jogo, somando os dois times. A linha é uma referência: mexer nela repinta as barras.',
+  saldo: 'Cada barra é o saldo do time naquele jogo, positivo na vitória e negativo na derrota. A linha é uma referência: mexer nela repinta as barras.',
+  ambos: 'Cada barra é um jogo: cheia quando os dois times marcaram, vazia quando algum passou em branco.',
+  resultado: 'Cada quadrado é um jogo, com o placar e o adversário. Verde é vitória, cinza empate, vermelho derrota.',
+  gf: 'Cada barra é um jogo: quanto mais alta, mais gols o time marcou. A linha é uma referência.',
+  ga: 'Cada barra é um jogo: quanto mais alta, mais gols o time sofreu. A linha é uma referência.',
+  xg: 'Cada barra é o gol esperado do time no jogo, ou seja, quanta chance ele criou. A linha é uma referência.',
+  sem_sofrer: 'Cada barra é um jogo: cheia quando o time não sofreu gol, vazia quando sofreu.',
+  sem_marcar: 'Cada barra é um jogo: cheia quando o time não marcou, vazia quando marcou.',
 };
 
-/**
- * As barras dos dois times, na escala que o componente compartilha.
- *
- * `direcao: 'maior'` e linha nula não são detalhe: juntos fazem a régua de cada
- * barra ser a MÉDIA do próprio time, e não um limiar de aposta. É por isso que
- * a cor aqui só pode significar "acima ou abaixo da média" — dizer que uma
- * barra "joga a favor" exigiria uma saída escolhida, que esta aba não tem.
- */
-export function seriesDaEstatistica(
+export interface GraficoDaEstatistica {
+  series: SerieHistorico[];
+  /** O mercado tem quantidade contra a qual uma linha faz sentido? */
+  temLinha: boolean;
+  /** A referência desenhada. `null` quando o mercado não tem linha. */
+  referencia: number | null;
+  /**
+   * Quantas barras passaram da referência, e de quantas.
+   *
+   * ⚠️ Quem exibir isto TEM de dizer a janela na mesma frase. Existe premissa
+   * que conta os últimos cinco contra a linha, com janela travada pelo modelo:
+   * dois números da mesma forma só não se contradizem porque cada um declara a
+   * base de onde saiu.
+   */
+  contagem: { acima: number; de: number } | null;
+}
+
+/** O papel de cada escolha de time dentro da especificação da série. */
+function papelDe(quem: QuemNoGrafico): { quem: SerieSpec['quem']; lado: 'home' | 'away' | null } {
+  if (quem === 'mandante') return { quem: 'time', lado: 'home' };
+  if (quem === 'visitante') return { quem: 'time', lado: 'away' };
+  return { quem: 'ambos', lado: null };
+}
+
+export function graficoDaEstatistica(
   escolha: EscolhaDaEstatistica,
   hist: FutebolFixtureHistorico[] | undefined,
-): SerieHistorico[] {
+): GraficoDaEstatistica {
+  const doMercado = MERCADOS_NO_GRAFICO[escolha.mercado] ?? MERCADOS_NO_GRAFICO.goals_over_under;
+  const papel = papelDe(escolha.quem);
   const spec: SerieSpec = {
-    quem: 'ambos',
-    metrica: escolha.metrica,
+    quem: papel.quem,
+    metrica: doMercado.metrica,
     mando: escolha.mando,
     direcao: 'maior',
     ultimos: escolha.janela,
@@ -89,8 +142,33 @@ export function seriesDaEstatistica(
     // que é o que a consulta devolve e o que "últimos 10 jogos" quer dizer.
     competicoes: 'qualquer',
   };
-  return seriesDaEspecificacao([spec], hist, null, null, 'estatistica').map((s) => ({
+
+  // `linha` não desce para o montador: lá dentro ela é a linha da APOSTA e vale
+  // só para o total de gols. Aqui ela é referência e vale para toda métrica
+  // numérica, então a régua da cor é recalculada aqui — sem tocar no caminho
+  // das premissas.
+  const cruas = seriesDaEspecificacao([spec], hist, papel.lado, null, 'estatistica');
+  const referencia = doMercado.temLinha ? escolha.linha : null;
+
+  const series = cruas.map((s) => ({
     ...s,
-    comoLer: COMO_LER[escolha.metrica],
+    comoLer: COMO_LER[doMercado.metrica],
+    jogos:
+      referencia == null
+        ? s.jogos
+        : s.jogos.map((j) => ({
+            ...j,
+            // Comparação ESTRITA, a mesma do resto do código: um jogo de 2 gols
+            // não passa de uma referência de 2.
+            favorece: j.valor != null && j.valor > referencia,
+          })),
   }));
+
+  const comValor = series.flatMap((s) => s.jogos).filter((j) => j.valor != null);
+  const contagem =
+    referencia == null
+      ? null
+      : { acima: comValor.filter((j) => (j.valor as number) > referencia).length, de: comValor.length };
+
+  return { series, temLinha: doMercado.temLinha, referencia, contagem };
 }

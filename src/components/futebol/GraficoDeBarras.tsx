@@ -40,18 +40,30 @@ const TOPO_ROTULO = 16;
 export function BlocoSerie({
   s,
   teto,
+  piso = 0,
   comRotulo,
   mostraComoLer,
   referencia,
 }: {
   s: SerieHistorico;
   teto: number;
+  /**
+   * O fundo da escala. Zero em tudo que só cresce para cima; negativo no saldo
+   * de gols, onde a barra precisa descer a partir de uma linha de base.
+   */
+  piso?: number;
   comRotulo: boolean;
   /** As séries do card medem coisas diferentes, então cada uma se explica. */
   mostraComoLer: boolean;
   referencia?: Story['referencia'];
 }) {
-  const y = (v: number) => (v / teto) * (PLOT - TOPO_ROTULO);
+  const util = PLOT - TOPO_ROTULO;
+  const amplitude = teto - piso || 1;
+  /** Onde o zero cai, medido do fundo do gráfico. É 0 quando não há negativo. */
+  const zero = ((0 - piso) / amplitude) * util;
+  const alturaDe = (v: number) => (Math.abs(v) / amplitude) * util;
+  const temNegativo = piso < 0;
+  const y = (v: number) => zero + ((v - 0) / amplitude) * util;
   return (
     <div className="min-w-0" style={{ flexGrow: s.jogos.length, flexBasis: 0 }}>
       {/* O escudo e o nome ficam em cima do PRÓPRIO gráfico: na legenda longe dele
@@ -73,30 +85,77 @@ export function BlocoSerie({
           fileira só. Rolagem para dezessete pixels de sobra seria complexidade
           sem troco, e o panorama de ver tudo de uma vez volta de graça. */}
       <div className="relative" style={{ height: PLOT }}>
-        <div className="absolute inset-0 flex items-end gap-[3px]">
-          {s.jogos.map((j) => (
-            <div
-              key={`${j.ordem}-${j.data}`}
-              className="flex-1 min-w-[6px] max-w-[44px] flex flex-col items-center justify-end"
-              title={`${dia(j.data)} · ${j.emCasa ? 'em casa' : 'fora'} contra ${j.adversario} · ${j.placar}${
-                j.valor != null ? ` · ${rotuloValor(j.valor, s.metrica)}` : ' · sem dado'
-              }`}
-            >
-              {comRotulo && (
-                <span className="tabular-nums text-[9.5px] font-semibold leading-none mb-1" style={{ color: 'var(--ink-2)' }}>
-                  {j.valor == null ? '·' : rotuloValor(j.valor, s.metrica)}
-                </span>
-              )}
+        {/* ⚠️ DOIS caminhos de desenho, de propósito.
+            O de cima é o original, byte por byte, e é o que as premissas usam:
+            barra colada no fundo, crescendo para cima. O de baixo só entra
+            quando existe valor negativo — hoje, só o saldo de gols do mercado
+            de handicap. Mantê-los separados é o que garante que o gráfico das
+            premissas não mudou um pixel, e eu não tenho como conferir pixel por
+            leitura de código. Quem puder olhar os dois lado a lado pode fundi-los. */}
+        {!temNegativo ? (
+          <div className="absolute inset-0 flex items-end gap-[3px]">
+            {s.jogos.map((j) => (
               <div
-                className="w-full rounded-t-[3px]"
-                style={{
-                  height: j.valor == null ? 3 : Math.max(3, y(j.valor)),
-                  background: j.valor == null ? '#e3e6e0' : j.favorece ? COR_FAVOR : COR_CONTRA,
-                }}
-              />
-            </div>
-          ))}
-        </div>
+                key={`${j.ordem}-${j.data}`}
+                className="flex-1 min-w-[6px] max-w-[44px] flex flex-col items-center justify-end"
+                title={`${dia(j.data)} · ${j.emCasa ? 'em casa' : 'fora'} contra ${j.adversario} · ${j.placar}${
+                  j.valor != null ? ` · ${rotuloValor(j.valor, s.metrica)}` : ' · sem dado'
+                }`}
+              >
+                {comRotulo && (
+                  <span className="tabular-nums text-[9.5px] font-semibold leading-none mb-1" style={{ color: 'var(--ink-2)' }}>
+                    {j.valor == null ? '·' : rotuloValor(j.valor, s.metrica)}
+                  </span>
+                )}
+                <div
+                  className="w-full rounded-t-[3px]"
+                  style={{
+                    height: j.valor == null ? 3 : Math.max(3, y(j.valor)),
+                    background: j.valor == null ? '#e3e6e0' : j.favorece ? COR_FAVOR : COR_CONTRA,
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="absolute inset-0 flex items-stretch gap-[3px]">
+            {s.jogos.map((j) => {
+              const v = j.valor;
+              const alt = v == null ? 3 : Math.max(3, alturaDe(v));
+              const base = v == null || v >= 0 ? zero : zero - alt;
+              return (
+                <div
+                  key={`${j.ordem}-${j.data}`}
+                  className="relative flex-1 min-w-[6px] max-w-[44px]"
+                  title={`${dia(j.data)} · ${j.emCasa ? 'em casa' : 'fora'} contra ${j.adversario} · ${j.placar}${
+                    v != null ? ` · ${rotuloValor(v, s.metrica)}` : ' · sem dado'
+                  }`}
+                >
+                  {comRotulo && (
+                    <span
+                      className="absolute left-0 right-0 text-center tabular-nums text-[9.5px] font-semibold leading-none"
+                      style={{ color: 'var(--ink-2)', bottom: base + alt + 2 }}
+                    >
+                      {v == null ? '·' : rotuloValor(v, s.metrica)}
+                    </span>
+                  )}
+                  <div
+                    className="absolute left-0 right-0 rounded-[2px]"
+                    style={{
+                      bottom: base,
+                      height: alt,
+                      background: v == null ? '#e3e6e0' : j.favorece ? COR_FAVOR : COR_CONTRA,
+                    }}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {/* A linha do zero, que é o que dá sentido à barra que desce. */}
+        {temNegativo && (
+          <div className="absolute left-0 right-0 border-t pointer-events-none" style={{ borderColor: 'var(--ink-3)', bottom: zero }} />
+        )}
         {referencia && (
           <div
             className="absolute left-0 right-0 border-t border-dashed pointer-events-none"
