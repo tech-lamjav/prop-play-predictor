@@ -8,8 +8,9 @@ import { type JogoInfo } from '@/components/futebol/jogo-info';
 import { FaixaPartida } from '@/components/futebol/FaixaPartida';
 import { BancadaMercados } from '@/components/futebol/BancadaMercados';
 import { CampoEscalacao } from '@/components/futebol/CampoEscalacao';
+import { EstatisticasDoJogo } from '@/components/futebol/EstatisticasDoJogo';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useVitrine, useFutebolFixtureDetail, useFutebolFixtureExtras, useFutebolMatchupTendencies, useFutebolFixtureValue, useFutebolFixtureCortadas, useFutebolH2H, useFutebolFixtureInjuries, useFutebolFixturePremissas, useFutebolTeamProfile, useFutebolAccess, useJogosComPlacarFresco } from '@/hooks/use-futebol-data';
+import { useVitrine, useFutebolFixtureDetail, useFutebolFixtureExtras, useFutebolMatchupTendencies, useFutebolFixtureValue, useFutebolFixtureCortadas, useFutebolH2H, useFutebolFixtureHistorico, useFutebolFixtureInjuries, useFutebolFixturePremissas, useFutebolTeamProfile, useFutebolAccess, useJogosComPlacarFresco } from '@/hooks/use-futebol-data';
 import { useNow } from '@/hooks/use-now';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 import {
@@ -279,6 +280,10 @@ export default function FutebolJogo() {
   const [fixtureFresco] = useJogosComPlacarFresco(soEsteJogo, agora);
   const fixture = fixtureFresco ?? fixtureDoEspelho;
   const { data: h2h, isLoading: h2hLoading } = useFutebolH2H(fixture?.home_team_id, fixture?.away_team_id);
+  // O jogo a jogo dos dois times, para a aba de Estatísticas. Mesma consulta que
+  // a bancada já faz para o gráfico das premissas, então sai do cache do
+  // react-query sem ida extra à rede — e é fato público, sem portão.
+  const { data: historico, isLoading: historicoCarregando } = useFutebolFixtureHistorico(fid);
   const { data: injuries } = useFutebolFixtureInjuries(fid);
   const { data: realTend } = useFutebolMatchupTendencies(
     fixture?.home_team_id, fixture?.away_team_id, fixture?.competition, fixture?.season
@@ -682,9 +687,16 @@ export default function FutebolJogo() {
               {aba === 'escalacoes' && escalacaoCard}
 
               {aba === 'estatisticas' && (
-                <div data-tour="fut-jogo-contexto" className="grid lg:grid-cols-2 gap-5 items-start">
-                  {statsCard}
-                  {h2hCard}
+                <div data-tour="fut-jogo-contexto" className="flex flex-col gap-5">
+                  {/* O jogo a jogo vem primeiro e ocupa a largura inteira: é o
+                      que a aba veio mostrar, e é o único bloco daqui que deixa
+                      CONFERIR um número em vez de aceitá-lo. As duas caixas de
+                      resumo seguem embaixo, lado a lado como estavam. */}
+                  <EstatisticasDoJogo historico={historico} carregando={historicoCarregando} />
+                  <div className="grid lg:grid-cols-2 gap-5 items-start">
+                    {statsCard}
+                    {h2hCard}
+                  </div>
                 </div>
               )}
             </div>
