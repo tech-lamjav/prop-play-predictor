@@ -102,7 +102,7 @@ export type Quem = 'time' | 'adversario' | 'ambos';
  */
 export type Direcao = 'maior' | 'menor';
 
-interface SerieSpec {
+export interface SerieSpec {
   quem: Quem;
   metrica: Metrica;
   mando: FiltroMando;
@@ -341,18 +341,29 @@ const COMO_LER: Record<Metrica, string> = {
 };
 
 /**
- * O gráfico que prova (ou derruba) a premissa, com o mesmo recorte da média.
- * Devolve null quando não existe jogo suficiente ou quando a premissa não tem como
- * ser auditada com o que o mart entrega.
+ * As séries de barras de uma especificação EXPLÍCITA.
+ *
+ * O recorte mora aqui e em lugar nenhum mais. Quem monta barra a partir das
+ * linhas do jogo a jogo chama esta função, e a especificação diz o que medir:
+ * a premissa traz a dela do mapa `SPECS`, a aba de Estatísticas monta a sua a
+ * partir do que a pessoa escolheu.
+ *
+ * ⚠️ Existe como função à parte por um motivo com histórico neste arquivo: duas
+ * funções que calculam a mesma coisa por caminhos diferentes acabam divergindo,
+ * e ninguém vê por leitura de código. Foi assim na #350 (o gráfico e o número
+ * do xG em janelas diferentes) e de novo na `evidenciaDoHistorico`, que varria o
+ * histórico inteiro enquanto o gráfico logo abaixo recortava — a tela dizia 1,2
+ * e desenhava 1,3. Um segundo montador de série para a aba nova recriaria a
+ * mesma armadilha, agora entre duas abas que ninguém compara lado a lado.
  */
-export function storyDaPremissa(
-  slug: string,
+export function seriesDaEspecificacao(
+  specs: SerieSpec[],
   hist: FutebolFixtureHistorico[] | undefined,
   lado: 'home' | 'away' | null,
   linha: number | null,
-): Story | null {
-  const specs = SPECS[slug];
-  if (!specs?.length || !hist?.length) return null;
+  chavePrefixo: string,
+): SerieHistorico[] {
+  if (!specs?.length || !hist?.length) return [];
   const p = papeis(lado);
 
   // Duas premissas comparam métricas diferentes, e só nelas o título precisa
@@ -409,7 +420,7 @@ export function storyDaPremissa(
         resultado: j.resultado as 'V' | 'E' | 'D',
       }));
       series.push({
-        chave: `${slug}-${side}-${spec.metrica}-${spec.mando}`,
+        chave: `${chavePrefixo}-${side}-${spec.metrica}-${spec.mando}`,
         teamId: filtrados[0].team_id,
         teamName: filtrados[0].team_name,
         // O título nomeia o RECORTE, e o sub declara a BASE. Juntos eles dizem o
@@ -447,6 +458,27 @@ export function storyDaPremissa(
       });
     }
   }
+  return series;
+}
+
+/**
+ * O gráfico que prova (ou derruba) a premissa, com o mesmo recorte da média.
+ * Devolve null quando não existe jogo suficiente ou quando a premissa não tem como
+ * ser auditada com o que o mart entrega.
+ *
+ * A montagem das barras é a de `seriesDaEspecificacao`; o que esta função
+ * acrescenta é o que só a PREMISSA tem: qual especificação vale (o mapa
+ * `SPECS`), a linha tracejada de referência e o consolidado contra a linha.
+ */
+export function storyDaPremissa(
+  slug: string,
+  hist: FutebolFixtureHistorico[] | undefined,
+  lado: 'home' | 'away' | null,
+  linha: number | null,
+): Story | null {
+  const specs = SPECS[slug];
+  if (!specs?.length) return null;
+  const series = seriesDaEspecificacao(specs, hist, lado, linha, slug);
   if (!series.length) return null;
 
   const metrica = series[0].metrica;
