@@ -9,6 +9,7 @@ import { FaixaPartida } from '@/components/futebol/FaixaPartida';
 import { BancadaMercados } from '@/components/futebol/BancadaMercados';
 import { CampoEscalacao } from '@/components/futebol/CampoEscalacao';
 import { EstatisticasDoJogo } from '@/components/futebol/EstatisticasDoJogo';
+import { Chip } from '@/components/futebol/Chip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useVitrine, useFutebolFixtureDetail, useFutebolFixtureExtras, useFutebolMatchupTendencies, useFutebolFixtureValue, useFutebolFixtureCortadas, useFutebolH2H, useFutebolFixtureHistorico, useFutebolFixtureInjuries, useFutebolFixturePremissas, useFutebolTeamProfile, useFutebolAccess, useJogosComPlacarFresco } from '@/hooks/use-futebol-data';
 import { useNow } from '@/hooks/use-now';
@@ -27,7 +28,7 @@ import { escalacaoDoTime, ultimoJogoDoTime } from '@/utils/futebol-escalacao-ref
 import { formatadorDeData, isFinished, isLive, brtDayOf, fmtDayShort } from '@/utils/futebol-datas';
 import { PARAMS_DA_SAIDA } from '@/utils/futebol-links';
 import type {
-  FutebolEvent, FutebolFormResult, FutebolInjury, FutebolLineupPlayer, FutebolPlayerStat, FutebolTeamStats, FutebolFixtureValueRow, FutebolTeamProfile, Competition,
+  FutebolEvent, FutebolFormResult, FutebolInjury, FutebolLineupPlayer, FutebolPlayerStat, FutebolTeamStats, FutebolFixtureValueRow, FutebolTeamProfile, ProfileScope, Competition,
 } from '@/services/futebol-data.service';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
@@ -251,12 +252,22 @@ function BarrasComparadas({ rows, vazio }: { rows: LinhaComparada[]; vazio: stri
   );
 }
 
+/** Geral, ou o mando que cada time tem NESTE jogo. */
+type RecorteDoPerfil = 'geral' | 'mando';
+
 // Estatísticas comparadas da temporada (barras espelhadas) — médias via team_profile
 function StatsCompare({ home, away }: { home?: FutebolTeamProfile; away?: FutebolTeamProfile }) {
-  const hr = home?.results.find((r) => r.scope === 'geral');
-  const ar = away?.results.find((r) => r.scope === 'geral');
-  const hs = home?.stats_avg.find((s) => s.scope === 'geral');
-  const as = away?.stats_avg.find((s) => s.scope === 'geral');
+  const [recorte, setRecorte] = useState<RecorteDoPerfil>('geral');
+  // ⚠️ "Mando deste jogo" são recortes OPOSTOS: o mandante medido em casa e o
+  // visitante medido fora. Por isso o rótulo nomeia a regra e não um lado — e
+  // por isso não existe chip de "casa" solto, que para o visitante descreveria
+  // jogos sem relação nenhuma com esta partida.
+  const escopoMandante: ProfileScope = recorte === 'mando' ? 'casa' : 'geral';
+  const escopoVisitante: ProfileScope = recorte === 'mando' ? 'fora' : 'geral';
+  const hr = home?.results.find((r) => r.scope === escopoMandante);
+  const ar = away?.results.find((r) => r.scope === escopoVisitante);
+  const hs = home?.stats_avg.find((s) => s.scope === escopoMandante);
+  const as = away?.stats_avg.find((s) => s.scope === escopoVisitante);
   const rows = [
     { l: 'Gols marcados / jogo', a: hr?.avg_gf, b: ar?.avg_gf, f: 'dec' },
     { l: 'Gols sofridos / jogo', a: hr?.avg_ga, b: ar?.avg_ga, f: 'dec' },
@@ -265,7 +276,30 @@ function StatsCompare({ home, away }: { home?: FutebolTeamProfile; away?: Futebo
     { l: 'Escanteios / jogo', a: hs?.avg_corners, b: as?.avg_corners, f: 'dec' },
     { l: '% jogos Over 2.5', a: hr?.over25_pct, b: ar?.over25_pct, f: 'pct' },
   ].filter((r) => r.a != null && r.b != null) as LinhaComparada[];
-  return <BarrasComparadas rows={rows} vazio="Médias da temporada indisponíveis." />;
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <Chip ativo={recorte === 'geral'} onClick={() => setRecorte('geral')}>Geral</Chip>
+        <Chip ativo={recorte === 'mando'} onClick={() => setRecorte('mando')}>Mando deste jogo</Chip>
+      </div>
+      {/* A BASE, sempre à vista, e no mesmo arranjo das barras: valor, rótulo,
+          valor. Trocar o recorte muda quantos jogos sustentam cada número — no
+          mando eles nem são os mesmos jogos dos dois lados — e um número que
+          muda de base em silêncio é como "Flamengo em casa, 11 jogos" apareceu
+          embaixo de um critério que somava dez. */}
+      {(hr || ar) && (
+        <div className="flex items-center justify-between text-[10.5px] tabular-nums">
+          <span className="font-semibold text-forest">{hr ? `${hr.games} ${hr.games === 1 ? 'jogo' : 'jogos'}` : '—'}</span>
+          <span className="uppercase tracking-[0.1em] font-semibold text-ink-3">base</span>
+          <span className="font-semibold text-ink-2">{ar ? `${ar.games} ${ar.games === 1 ? 'jogo' : 'jogos'}` : '—'}</span>
+        </div>
+      )}
+      <BarrasComparadas
+        rows={rows}
+        vazio={recorte === 'mando' ? 'Sem médias para o mando deste confronto.' : 'Médias da temporada indisponíveis.'}
+      />
+    </div>
+  );
 }
 
 /**
