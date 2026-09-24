@@ -4,7 +4,7 @@ import type { FutebolFixtureHistorico, FutebolFixtureNumeros } from '@/services/
 import { pesoPalavra, pesoForte, rotuloPremissa, type Premissa } from '@/utils/futebol-premissas';
 import { evidenciaDe, type Evidencia } from '@/utils/futebol-evidencias';
 import { alinharAbaixoDoCabecalho } from '@/utils/rolagem';
-import { EH_BINARIA, evidenciaDoHistorico, storyDaPremissa, type SerieHistorico, type Story } from '@/utils/futebol-historico';
+import { evidenciaDoHistorico, storyDaPremissa, type SerieHistorico, type Story } from '@/utils/futebol-historico';
 import {
   corteEmPalavras,
   exato,
@@ -17,6 +17,8 @@ import {
 import { evidenciaDaPremissa } from '@/utils/futebol-evidencia-da-premissa';
 import type { InsumoMedido } from '@/utils/futebol-insumo-medido';
 import { Crest } from './Crest';
+import { BlocoSerie, COR_CONTRA, COR_FAVOR } from './GraficoDeBarras';
+import { cabeRotulo, d1, dia, tetoDaEscala } from '@/utils/futebol-grafico-de-barras';
 
 /**
  * As abas "A favor" e "Contra": cada premissa com os jogos que produziram a média.
@@ -32,7 +34,6 @@ import { Crest } from './Crest';
  *   rótulo na ponta da linha → qual é essa média, sem precisar medir no olho
  */
 
-const d1 = (v: number) => v.toFixed(1).replace('.', ',');
 /**
  * A linha sai como está cotada: 1,75 é 1,75, não 1,8. Arredondar para uma casa
  * dizia "linha 1,8" numa aposta que é de 1,75.
@@ -41,43 +42,13 @@ const d1 = (v: number) => v.toFixed(1).replace('.', ',');
  * função escrita duas vezes.
  */
 const fmtLinhaExata = exato;
-const dia = (iso: string) => {
-  const [, m, d] = iso.split('-');
-  return `${d}/${m}`;
-};
 
-/** Gol é inteiro, gol esperado é decimal, e métrica binária é sim ou não. */
-const rotuloValor = (v: number | null, metrica: SerieHistorico['metrica']) => {
-  if (v == null) return '';
-  if (EH_BINARIA(metrica)) return v ? 'sim' : 'não';
-  return metrica === 'xg' ? d1(v) : String(Math.round(v));
-};
-
-/**
- * A média das barras, no rótulo do gráfico.
- *
- * Numa métrica binária a média é a FRAÇÃO de jogos, e escrevê-la como "média 0,4"
- * embaixo de uma premissa que compara 40% contra 40% seria o gráfico falando outra
- * língua que o card (#355).
- */
-const rotuloMedia = (v: number, metrica: SerieHistorico['metrica']) =>
-  EH_BINARIA(metrica) ? `${Math.round(v * 100)}% dos jogos` : `média ${d1(v)}`;
-
-/**
- * A cor da barra diz o que o jogo significa PARA A SAÍDA ESCOLHIDA, não só "acima ou
- * abaixo da média": num "mais de 2,5" o jogo de 4 gols joga a favor, num "menos de
- * 2,5" o mesmo jogo joga contra. Quem separa os times é a posição (bloco da esquerda
- * e da direita, com o nome em cima), então a cor fica livre para o significado.
- */
 /**
  * O sentido em palavra. Os valores do enum são as próprias palavras hoje, e o
  * ternário que os repetia era um no-op — mas renomear o enum mudaria a copy em
  * silêncio, e um mapa é o que separa o tipo do texto.
  */
 const LADO_DO_CORTE: Record<Prestacao['sentido'], string> = { acima: 'acima', abaixo: 'abaixo' };
-
-const COR_FAVOR = '#0a3d2e';
-const COR_CONTRA = '#c9cec6';
 
 const COR_RES: Record<'V' | 'E' | 'D', { bg: string; fg: string }> = {
   V: { bg: '#dcefe2', fg: '#0a3d2e' },
@@ -146,126 +117,11 @@ function SerieMiuda({ s }: { s: SerieHistorico }) {
   );
 }
 
-const PLOT = 96;
-const TOPO_ROTULO = 16;
-
-/** Um bloco do gráfico unificado: as barras de um time, na escala comum. */
-function BlocoSerie({
-  s,
-  teto,
-  comRotulo,
-  mostraComoLer,
-  referencia,
-}: {
-  s: SerieHistorico;
-  teto: number;
-  comRotulo: boolean;
-  /** As séries do card medem coisas diferentes, então cada uma se explica. */
-  mostraComoLer: boolean;
-  referencia?: Story['referencia'];
-}) {
-  const y = (v: number) => (v / teto) * (PLOT - TOPO_ROTULO);
-  return (
-    <div className="min-w-0" style={{ flexGrow: s.jogos.length, flexBasis: 0 }}>
-      {/* O escudo e o nome ficam em cima do PRÓPRIO gráfico: na legenda longe dele
-          não dava para saber qual metade era de quem. */}
-      <div className="flex items-center gap-1.5 mb-2 min-w-0">
-        <Crest name={s.teamName} id={s.teamId} size={16} />
-        <span className="text-[11.5px] font-semibold text-ink truncate">{s.titulo}</span>
-        {s.sub && <span className="text-[10.5px] text-ink-3 shrink-0">{s.sub}</span>}
-      </div>
-      {/* A barra se ajusta à largura, sem rolagem — e isso passou a caber
-          porque o RECORTE mudou.
-          
-          Enquanto a tela desenhava o histórico inteiro, 25 barras em ~290px
-          davam menos de 12px cada: nesse tamanho não se compara altura nenhuma,
-          o escudo fica ilegível e o rótulo de valor não aparece. A saída da vez
-          foi barra fixa de 28px com rolagem lateral.
-          
-          Com a janela alinhada ao modelo — dez jogos — são ~25px por barra numa
-          fileira só. Rolagem para dezessete pixels de sobra seria complexidade
-          sem troco, e o panorama de ver tudo de uma vez volta de graça. */}
-      <div className="relative" style={{ height: PLOT }}>
-        <div className="absolute inset-0 flex items-end gap-[3px]">
-          {s.jogos.map((j) => (
-            <div
-              key={`${j.ordem}-${j.data}`}
-              className="flex-1 min-w-[6px] max-w-[44px] flex flex-col items-center justify-end"
-              title={`${dia(j.data)} · ${j.emCasa ? 'em casa' : 'fora'} contra ${j.adversario} · ${j.placar}${
-                j.valor != null ? ` · ${rotuloValor(j.valor, s.metrica)}` : ' · sem dado'
-              }`}
-            >
-              {comRotulo && (
-                <span className="tabular-nums text-[9.5px] font-semibold leading-none mb-1" style={{ color: 'var(--ink-2)' }}>
-                  {j.valor == null ? '·' : rotuloValor(j.valor, s.metrica)}
-                </span>
-              )}
-              <div
-                className="w-full rounded-t-[3px]"
-                style={{
-                  height: j.valor == null ? 3 : Math.max(3, y(j.valor)),
-                  background: j.valor == null ? '#e3e6e0' : j.favorece ? COR_FAVOR : COR_CONTRA,
-                }}
-              />
-            </div>
-          ))}
-        </div>
-        {referencia && (
-          <div
-            className="absolute left-0 right-0 border-t border-dashed pointer-events-none"
-            style={{ borderColor: 'var(--ink-3)', bottom: y(referencia.valor) }}
-          />
-        )}
-        {s.media != null && s.mostraMedia && (
-          <>
-            <div
-              className="absolute left-0 right-0 border-t-2 border-dashed pointer-events-none"
-              style={{ borderColor: '#d4a017', bottom: y(s.media) }}
-            />
-            <span
-              className="absolute right-0 tabular-nums text-[9.5px] font-bold px-1 rounded bg-white/90 pointer-events-none"
-              style={{ color: '#b8870f', bottom: y(s.media) + 2 }}
-            >
-              {rotuloMedia(s.media, s.metrica)}
-            </span>
-          </>
-        )}
-      </div>
-      {/* Contra quem foi cada jogo. Encostado nas barras, sempre: o escudo é a
-          legenda do eixo, e qualquer coisa entre os dois quebra a leitura de
-          "esta barra foi contra este time". */}
-      <div className="flex items-start gap-[3px] mt-1.5">
-        {s.jogos.map((j) => (
-          <div key={`c-${j.ordem}-${j.data}`} className="flex-1 min-w-[6px] max-w-[44px] flex justify-center">
-            <Crest name={j.adversario} id={j.adversarioId} size={comRotulo ? 15 : 11} />
-          </div>
-        ))}
-      </div>
-      {/* A explicação DESTE gráfico, quando as séries do card medem coisas
-          diferentes. Onde medem a mesma, a story traz uma só, embaixo dos dois
-          — repeti-la em cada um seria dizer duas vezes. */}
-      {mostraComoLer && (
-        <div className="text-[11px] leading-relaxed mt-2" style={{ color: '#8d8672' }}>
-          {s.comoLer}
-        </div>
-      )}
-    </div>
-  );
-}
-
 /** O gráfico dos dois times em uma caixa, escala compartilhada. */
 function GraficoUnificado({ story }: { story: Story }) {
   const numericas = story.series.filter((s) => s.metrica !== 'resultado');
-  const todosValores = numericas.flatMap((s) => s.jogos.map((j) => j.valor)).filter((v): v is number => v != null);
-  const teto = Math.max(...todosValores, story.referencia?.valor ?? 0, 1);
-  const total = numericas.reduce((n, s) => n + s.jogos.length, 0);
-  // Rótulo de dados em cima de cada barra. Gol é 1 caractere e cabe quase sempre; o
-  // gol esperado tem decimal e só cabe até a temporada inteira dos dois times.
-  // Rótulo de dados em cima de cada barra. Cabe sempre desde que a janela
-  // encolheu para dez jogos: são ~25px por barra e o rótulo mede ~17. A conta
-  // fica porque a régua ainda vale — gol é um caractere, gol esperado tem
-  // decimal, e é o segundo que aperta.
-  const comRotulo = total <= 24 || numericas.every((s) => s.metrica !== 'xg');
+  const teto = tetoDaEscala(numericas, story.referencia?.valor);
+  const comRotulo = cabeRotulo(numericas);
 
   // A barra por jogo compara com a MÉDIA (é o que a barra tem para comparar), e o
   // consolidado compara com a LINHA. Dizer "joga a favor" nas duas fazia as duas se
