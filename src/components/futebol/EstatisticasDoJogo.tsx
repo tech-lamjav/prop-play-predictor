@@ -9,6 +9,7 @@ import {
   type EscolhaDaEstatistica,
 } from '@/utils/futebol-estatisticas-da-partida';
 import { cabeRotulo, tetoDaEscala } from '@/utils/futebol-grafico-de-barras';
+import { Chip } from './Chip';
 import { BlocoSerie, COR_CONTRA, COR_FAVOR } from './GraficoDeBarras';
 
 /**
@@ -25,29 +26,6 @@ import { BlocoSerie, COR_CONTRA, COR_FAVOR } from './GraficoDeBarras';
  */
 
 const LABEL = 'text-[10px] uppercase tracking-[0.14em] font-bold text-ink-3';
-
-/**
- * O mesmo chip da fileira de filtros de Oportunidades, de propósito: 44px de
- * alvo no celular, 32 no desktop, fundo forest quando ativo. Escrito aqui e não
- * importado de lá porque o de lá vive dentro de uma fileira que rola na
- * horizontal e carrega o comportamento dela junto; o que se quer igual é a
- * aparência do controle, que são estas classes.
- */
-function Chip({ ativo, onClick, children }: { ativo: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={ativo}
-      className={cn(
-        'h-11 sm:h-8 px-3 rounded-rebrand-sm text-[12px] font-semibold border transition-colors shrink-0',
-        ativo ? 'bg-forest text-canvas border-forest' : 'bg-white text-ink border-line hover:bg-canvas-2',
-      )}
-    >
-      {children}
-    </button>
-  );
-}
 
 function FileiraDeChips({ rotulo, children }: { rotulo: string; children: React.ReactNode }) {
   return (

@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { Chip } from './Chip';
 import type { EstadoDoJogo, Faixa, FiltroDeValor } from '@/utils/futebol-score';
 
 export type MarketFilter = 'all' | 'match_winner' | 'goals_over_under' | 'asian_handicap' | 'btts' | 'double_chance';
@@ -39,21 +40,6 @@ const MARKET_ITEMS: { value: MarketFilter; label: string }[] = [
   { value: 'double_chance', label: 'Dupla chance' },
 ];
 
-function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button onClick={onClick}
-      className={cn(
-        // 44px no celular, como os itens dos menus ao lado. A fileira segue
-        // rolando na horizontal — aqui isso não atrapalha, porque chip não abre
-        // menu: o arrasto não dispara nada, ele só rola.
-        'h-11 sm:h-8 px-3 rounded-rebrand-sm text-[12px] font-semibold border transition-colors shrink-0',
-        active ? 'bg-forest text-canvas border-forest' : 'bg-white text-ink border-line hover:bg-canvas-2',
-      )}>
-      {children}
-    </button>
-  );
-}
-
 function MarketChips({ value, onChange }: { value: MarketFilter; onChange: (m: MarketFilter) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const [more, setMore] = useState(false);
@@ -72,7 +58,7 @@ function MarketChips({ value, onChange }: { value: MarketFilter; onChange: (m: M
       <div className="relative min-w-0 flex-1">
         <div ref={ref} className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide -my-1 py-1 pr-7">
           {MARKET_ITEMS.map((m) => (
-            <Chip key={m.value} active={value === m.value} onClick={() => onChange(m.value)}>{m.label}</Chip>
+            <Chip key={m.value} ativo={value === m.value} onClick={() => onChange(m.value)}>{m.label}</Chip>
           ))}
         </div>
         {more && (
