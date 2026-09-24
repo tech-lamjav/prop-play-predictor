@@ -56,6 +56,10 @@ _Avoid_: Evidência (é o insumo já na tela), estatística, dado
 O limiar contra o qual o **insumo** é comparado. Pode ser um número fixo, ou derivado da linha com uma margem — e nesse caso o corte **não** é a linha.
 _Avoid_: Linha, limite, threshold
 
+**Linha de referência**:
+O limiar que a aba de Estatísticas desenha sobre o jogo a jogo, e que quem olha arrasta. Serve para uma coisa só: repintar as barras. Não é **corte**, que é do modelo e decide se uma premissa acende; não é **linha cotada**, porque não vem de preço e nenhuma casa precisa oferecê-la; e não é **odd de referência**. Nada é liquidado contra ela, e mexer nela não muda valor nenhum — só a cor.
+_Avoid_: Corte, linha, linha da aposta, odd de referência
+
 **Janela da premissa**:
 O conjunto de partidas sobre o qual o **insumo** é medido: os últimos jogos do time em qualquer competição, contados antes do apito da partida analisada. Não é a temporada e não é uma competição só. O tamanho é da premissa — dez na maioria, cinco nas de contagem —, e algumas recortam por mando porque o mando é parte do **critério** delas. Recorte de mando embaixo de um critério que não olha mando é o gráfico desmentindo o número que ele deveria explicar.
 _Avoid_: Temporada, forma recente, últimos jogos no campeonato

@@ -26,9 +26,28 @@ export type QuemNoGrafico = 'ambos' | 'mandante' | 'visitante';
 /** O mando recorta DENTRO da janela, nunca antes dela. */
 export type MandoDaEstatistica = 'todos' | 'proprio';
 
+/**
+ * Os mercados que este gráfico sabe desenhar.
+ *
+ * É um TIPO e não um texto solto: com `string`, um slug errado — de um link
+ * velho, de uma tela nova — cairia calado no mercado padrão e a tela mostraria
+ * gols embaixo de um seletor dizendo outra coisa.
+ */
+export type MercadoDoGrafico =
+  | 'goals_over_under'
+  | 'asian_handicap'
+  | 'btts'
+  | 'match_winner'
+  | 'double_chance';
+
+/** O slug que veio de fora (link, outra tela) é deste gráfico? */
+export function ehMercadoDoGrafico(slug: string | null | undefined): slug is MercadoDoGrafico {
+  return !!slug && Object.prototype.hasOwnProperty.call(MERCADOS_NO_GRAFICO, slug);
+}
+
 export interface EscolhaDaEstatistica {
   /** Slug do mercado, o mesmo da bancada. */
-  mercado: string;
+  mercado: MercadoDoGrafico;
   /** A referência da cor. `null` mostra a média no lugar dela. */
   linha: number | null;
   quem: QuemNoGrafico;
@@ -46,7 +65,7 @@ export interface EscolhaDaEstatistica {
  * oferecer um corte sobre um número que não existe.
  */
 export const MERCADOS_NO_GRAFICO: Record<
-  string,
+  MercadoDoGrafico,
   { metrica: Metrica; temLinha: boolean; rotulo: string; chip: string; paradas: number[]; padrao: number | null }
 > = {
   // ⚠️ `padrao` é DECLARADO por mercado, e não "a parada do meio da lista".
@@ -130,7 +149,7 @@ export function graficoDaEstatistica(
   escolha: EscolhaDaEstatistica,
   hist: FutebolFixtureHistorico[] | undefined,
 ): GraficoDaEstatistica {
-  const doMercado = MERCADOS_NO_GRAFICO[escolha.mercado] ?? MERCADOS_NO_GRAFICO.goals_over_under;
+  const doMercado = MERCADOS_NO_GRAFICO[escolha.mercado];
   const papel = papelDe(escolha.quem);
   const spec: SerieSpec = {
     quem: papel.quem,

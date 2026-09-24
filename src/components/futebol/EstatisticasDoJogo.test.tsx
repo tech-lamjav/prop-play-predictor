@@ -88,6 +88,20 @@ describe('o mercado manda no que o gráfico mede', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Ambos marcam' }));
     expect(screen.queryByLabelText('Linha de referência')).not.toBeInTheDocument();
   });
+
+  it('Resultado vira QUADRO de jogo, e não barra', async () => {
+    // Vitória não é "mais alta" que empate. Desenhar resultado como barra fazia
+    // a tela imprimir "cada quadrado é um jogo" embaixo de barras de saldo de
+    // gols — a legenda desmentindo o desenho logo acima dela. O teste anterior
+    // só olhava a métrica e a linha, e por isso passou verde nesse defeito.
+    abrir();
+    await userEvent.click(screen.getByRole('button', { name: 'Resultado' }));
+
+    expect(screen.getByText('4 a 0')).toBeInTheDocument();
+    expect(screen.getByText(/Cada quadrado é um jogo/i)).toBeInTheDocument();
+    expect(screen.queryByText(/acima da linha/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/acima da média do time/i)).not.toBeInTheDocument();
+  });
 });
 
 describe('a linha é referência, e o número declara a janela', () => {
@@ -96,7 +110,28 @@ describe('a linha é referência, e o número declara a janela', () => {
     // veio fazer. Gols abre em 2,5, que é a linha canônica do mercado.
     // Mandante 1, 2, 3 e 4 gols; visitante 1 e 1. Acima de 2,5: só 3 e 4.
     abrir();
-    expect(screen.getByText(/dos últimos 6 passaram de 2,5/i)).toHaveTextContent('2 dos últimos 6');
+    expect(screen.getByText(/dos 6 jogos dos dois times passaram de 2,5/i)).toHaveTextContent('2 dos 6 jogos');
+  });
+
+  it('a frase declara a BASE inteira, não só o número', () => {
+    // Ela dizia "dos últimos 6" somando as barras dos dois times — com janela 10
+    // isso anunciaria "os últimos 20", uma janela que ninguém escolheu. Existe
+    // premissa contando os últimos cinco contra a linha: dois números da mesma
+    // forma só não se contradizem porque cada um diz de onde saiu.
+    abrir();
+    expect(screen.getByText(/Janela: últimos 10 de cada time/i)).toBeInTheDocument();
+  });
+
+  it('e diz quando o recorte de mando está ligado', async () => {
+    abrir();
+    await userEvent.click(screen.getByRole('button', { name: 'Mando deste jogo' }));
+    expect(screen.getByText(/só com o mando deste confronto/i)).toBeInTheDocument();
+  });
+
+  it('com um time só, a frase nomeia o time', async () => {
+    abrir();
+    await userEvent.click(screen.getByRole('button', { name: 'Flamengo' }));
+    expect(screen.getByText(/dos 4 jogos do Flamengo passaram de 2,5/i)).toBeInTheDocument();
   });
 
   it('mexer na linha muda a conta, sem mexer nas barras', () => {
@@ -106,7 +141,7 @@ describe('a linha é referência, e o número declara a janela', () => {
     // Índice 1 nas paradas de gols é 1,5: passam 2, 3 e 4.
     fireEvent.change(regua, { target: { value: '1' } });
 
-    expect(screen.getByText(/dos últimos 6 passaram de 1,5/i)).toHaveTextContent('3 dos últimos 6');
+    expect(screen.getByText(/dos 6 jogos dos dois times passaram de 1,5/i)).toHaveTextContent('3 dos 6 jogos');
   });
 });
 

@@ -1,3 +1,4 @@
+import { cn } from '@/lib/utils';
 import { type SerieHistorico, type Story } from '@/utils/futebol-historico';
 import { dia, rotuloMedia, rotuloValor } from '@/utils/futebol-grafico-de-barras';
 import { Crest } from './Crest';
@@ -35,6 +36,48 @@ export const COR_CONTRA = '#c9cec6';
 
 export const PLOT = 96;
 const TOPO_ROTULO = 16;
+
+const COR_RES: Record<'V' | 'E' | 'D', { bg: string; fg: string }> = {
+  V: { bg: '#dcefe2', fg: '#0a3d2e' },
+  E: { bg: '#eef0eb', fg: '#5a625a' },
+  D: { bg: '#fbeeec', fg: '#b8341c' },
+};
+
+/**
+ * Sequência de resultados: um quadro por jogo, com placar, escudo e adversário.
+ *
+ * Vive aqui pelo mesmo motivo que `BlocoSerie`: ganhou um segundo leitor. A
+ * métrica `resultado` não tem quantidade — vitória não é "mais alto" que
+ * empate —, então desenhá-la como barra é a tela afirmando uma grandeza que não
+ * existe. Quem tem série de resultado usa isto, não barra.
+ */
+export function SerieResultados({ s }: { s: SerieHistorico }) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {s.jogos.map((j) => {
+        const c = COR_RES[j.resultado];
+        return (
+          <div
+            key={`${j.ordem}-${j.data}`}
+            className="rounded-lg px-2 py-1.5"
+            style={{ background: c.bg }}
+            title={`${dia(j.data)} · ${j.emCasa ? 'em casa' : 'fora'} contra ${j.adversario}`}
+          >
+            <div className="tabular-nums text-[12.5px] font-bold leading-none text-center" style={{ color: c.fg }}>
+              {j.placar}
+            </div>
+            <div className="flex items-center gap-1 mt-1.5">
+              <Crest name={j.adversario} id={j.adversarioId} size={13} />
+              <span className="text-[9.5px] truncate max-w-[58px]" style={{ color: c.fg, opacity: 0.8 }}>
+                {j.adversario}
+              </span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 /** Um bloco do gráfico unificado: as barras de um time, na escala comum. */
 export function BlocoSerie({
@@ -131,16 +174,24 @@ export function BlocoSerie({
                     v != null ? ` · ${rotuloValor(v, s.metrica)}` : ' · sem dado'
                   }`}
                 >
+                  {/* 4px, o mesmo respiro do `mb-1` do caminho de cima: os dois
+                      desenhos precisam ser indistinguíveis onde medem a mesma
+                      coisa, senão a barra muda de aparência ao trocar de
+                      mercado e ninguém descobre por quê. */}
                   {comRotulo && (
                     <span
                       className="absolute left-0 right-0 text-center tabular-nums text-[9.5px] font-semibold leading-none"
-                      style={{ color: 'var(--ink-2)', bottom: base + alt + 2 }}
+                      style={{ color: 'var(--ink-2)', bottom: base + alt + 4 }}
                     >
                       {v == null ? '·' : rotuloValor(v, s.metrica)}
                     </span>
                   )}
+                  {/* Arredondada na ponta LIVRE: em cima quando sobe, embaixo
+                      quando desce. O mesmo raio de 3px do outro caminho — eram
+                      2px e quadrada dos dois lados, e essa foi a primeira
+                      divergência entre os dois desenhos, nascida junto com eles. */}
                   <div
-                    className="absolute left-0 right-0 rounded-[2px]"
+                    className={cn('absolute left-0 right-0', v != null && v < 0 ? 'rounded-b-[3px]' : 'rounded-t-[3px]')}
                     style={{
                       bottom: base,
                       height: alt,

@@ -17,7 +17,7 @@ import {
 import { evidenciaDaPremissa } from '@/utils/futebol-evidencia-da-premissa';
 import type { InsumoMedido } from '@/utils/futebol-insumo-medido';
 import { Crest } from './Crest';
-import { BlocoSerie, COR_CONTRA, COR_FAVOR } from './GraficoDeBarras';
+import { BlocoSerie, COR_CONTRA, COR_FAVOR, SerieResultados } from './GraficoDeBarras';
 import { cabeRotulo, d1, dia, tetoDaEscala } from '@/utils/futebol-grafico-de-barras';
 
 /**
@@ -49,41 +49,6 @@ const fmtLinhaExata = exato;
  * silêncio, e um mapa é o que separa o tipo do texto.
  */
 const LADO_DO_CORTE: Record<Prestacao['sentido'], string> = { acima: 'acima', abaixo: 'abaixo' };
-
-const COR_RES: Record<'V' | 'E' | 'D', { bg: string; fg: string }> = {
-  V: { bg: '#dcefe2', fg: '#0a3d2e' },
-  E: { bg: '#eef0eb', fg: '#5a625a' },
-  D: { bg: '#fbeeec', fg: '#b8341c' },
-};
-
-/** Sequência de resultados: um quadro por jogo, com placar, escudo e adversário. */
-function SerieResultados({ s }: { s: SerieHistorico }) {
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {s.jogos.map((j) => {
-        const c = COR_RES[j.resultado];
-        return (
-          <div
-            key={`${j.ordem}-${j.data}`}
-            className="rounded-lg px-2 py-1.5"
-            style={{ background: c.bg }}
-            title={`${dia(j.data)} · ${j.emCasa ? 'em casa' : 'fora'} contra ${j.adversario}`}
-          >
-            <div className="tabular-nums text-[12.5px] font-bold leading-none text-center" style={{ color: c.fg }}>
-              {j.placar}
-            </div>
-            <div className="flex items-center gap-1 mt-1.5">
-              <Crest name={j.adversario} id={j.adversarioId} size={13} />
-              <span className="text-[9.5px] truncate max-w-[58px]" style={{ color: c.fg, opacity: 0.8 }}>
-                {j.adversario}
-              </span>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 
 /**
  * Amostra de 1 ou 2 jogos não vira gráfico: barra sozinha ocupando a largura toda

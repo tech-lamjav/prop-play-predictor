@@ -2,16 +2,19 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import type { FutebolFixtureHistorico } from '@/services/futebol-data.service';
 import {
+  ehMercadoDoGrafico,
   ESCOLHA_PADRAO,
   graficoDaEstatistica,
   JANELAS_OFERECIDAS,
   MERCADOS_NO_GRAFICO,
   type EscolhaDaEstatistica,
+  type MercadoDoGrafico,
   type QuemNoGrafico,
 } from '@/utils/futebol-estatisticas-da-partida';
 import { cabeRotulo, pisoDaEscala, tetoDaEscala } from '@/utils/futebol-grafico-de-barras';
+import { exato } from '@/utils/futebol-criterio';
 import { Chip } from './Chip';
-import { BlocoSerie, COR_CONTRA, COR_FAVOR } from './GraficoDeBarras';
+import { BlocoSerie, COR_CONTRA, COR_FAVOR, SerieResultados } from './GraficoDeBarras';
 
 /**
  * O jogo a jogo dos dois times, na aba de Estatísticas.
@@ -36,7 +39,11 @@ function Fileira({ rotulo, children }: { rotulo: string; children: React.ReactNo
   );
 }
 
-const fmtLinha = (v: number) => String(v).replace('.', ',');
+/**
+ * A linha sai como está: 1,75 é 1,75, não 1,8. É o `exato` do módulo do
+ * critério — havia uma cópia desta expressão aqui, e ela já é a função de lá.
+ */
+const fmtLinha = exato;
 
 export function EstatisticasDoJogo({
   historico,
@@ -52,7 +59,7 @@ export function EstatisticasDoJogo({
   linhaInicial?: number | null;
 }) {
   const [escolha, setEscolha] = useState<EscolhaDaEstatistica>(() => {
-    const mercado = mercadoInicial && MERCADOS_NO_GRAFICO[mercadoInicial] ? mercadoInicial : ESCOLHA_PADRAO.mercado;
+    const mercado = ehMercadoDoGrafico(mercadoInicial) ? mercadoInicial : ESCOLHA_PADRAO.mercado;
     const { paradas, padrao } = MERCADOS_NO_GRAFICO[mercado];
     // A linha do link só vale se existir na régua deste mercado; fora disso, a
     // padrão. Nunca nula num mercado que tem linha: nascer sem ela desligaria
@@ -70,11 +77,14 @@ export function EstatisticasDoJogo({
   const nomeDoLado = (lado: 'home' | 'away') => historico?.find((r) => r.side === lado)?.team_name ?? null;
   const mandante = nomeDoLado('home');
   const visitante = nomeDoLado('away');
+  const quemNoTexto = escolha.quem === 'mandante' ? mandante : escolha.quem === 'visitante' ? visitante : null;
+  /** Resultado não tem quantidade: vitória não é "mais alto" que empate. */
+  const ehResultado = series[0]?.metrica === 'resultado';
 
   const muda = (parte: Partial<EscolhaDaEstatistica>) => setEscolha((atual) => ({ ...atual, ...parte }));
 
   /** Trocar de mercado troca a métrica, então a linha antiga pode não existir lá. */
-  const trocaMercado = (slug: string) => {
+  const trocaMercado = (slug: MercadoDoGrafico) => {
     const { paradas, padrao } = MERCADOS_NO_GRAFICO[slug];
     setEscolha((atual) => ({
       ...atual,
@@ -107,9 +117,9 @@ export function EstatisticasDoJogo({
       <div className="p-5">
         <div className="flex flex-col gap-2.5 mb-4">
           <Fileira rotulo="Mercado">
-            {Object.entries(MERCADOS_NO_GRAFICO).map(([slug, m]) => (
+            {(Object.keys(MERCADOS_NO_GRAFICO) as MercadoDoGrafico[]).map((slug) => (
               <Chip key={slug} ativo={escolha.mercado === slug} onClick={() => trocaMercado(slug)}>
-                {m.chip}
+                {MERCADOS_NO_GRAFICO[slug].chip}
               </Chip>
             ))}
           </Fileira>
@@ -156,10 +166,23 @@ export function EstatisticasDoJogo({
                 os últimos cinco contra a linha, com janela travada pelo modelo:
                 dois números da mesma forma só não se contradizem porque cada um
                 declara de onde saiu. */}
+            {/* ⚠️ A frase declara a BASE inteira, e não só um número.
+                Ela dizia "N dos últimos M", com M somando as barras dos DOIS
+                times — então com janela 10 e os dois no gráfico ela anunciava
+                "os últimos 20", uma janela que ninguém escolheu, sem dizer de
+                quais times nem que o recorte de mando estava ligado.
+                Existe premissa que conta os últimos cinco contra a linha, com
+                janela travada pelo modelo: dois números da mesma forma só não se
+                contradizem porque cada um diz de onde saiu. */}
             {contagem && contagem.de > 0 && (
               <div className="text-[12px] text-ink-2 mt-1">
-                <strong className="font-bold text-ink">{contagem.acima}</strong> dos últimos {contagem.de} passaram de{' '}
+                <strong className="font-bold text-ink">{contagem.acima}</strong> dos {contagem.de} jogos{' '}
+                {escolha.quem === 'ambos' ? 'dos dois times' : `do ${quemNoTexto ?? 'time'}`} passaram de{' '}
                 {fmtLinha(referencia as number)}.
+                <span className="block text-[10.5px] text-ink-3 mt-0.5">
+                  Janela: últimos {escolha.janela} de cada time
+                  {escolha.mando === 'proprio' ? ', só com o mando deste confronto' : ''}.
+                </span>
               </div>
             )}
           </div>
@@ -175,29 +198,50 @@ export function EstatisticasDoJogo({
           </p>
         ) : (
           <>
-            <div className="flex flex-col items-start gap-1 mb-3 md:flex-row md:items-center md:gap-3">
-              <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: COR_FAVOR }} />
-                <span className="text-[10.5px] text-ink-2">{temLinha ? 'acima da linha' : 'acima da média do time'}</span>
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: COR_CONTRA }} />
-                <span className="text-[10.5px] text-ink-3">abaixo</span>
-              </span>
-              <span className="text-[10.5px]" style={{ color: '#8d8672' }}>A cor compara, não diz se foi bom.</span>
-            </div>
+            {/* Resultado não ganha legenda de cor: os quadros já dizem o que
+                são, e "acima da linha" não significa nada num jogo ganho. */}
+            {!ehResultado && (
+              <div className="flex flex-col items-start gap-1 mb-3 md:flex-row md:items-center md:gap-3">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: COR_FAVOR }} />
+                  <span className="text-[10.5px] text-ink-2">{temLinha ? 'acima da linha' : 'acima da média do time'}</span>
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: COR_CONTRA }} />
+                  <span className="text-[10.5px] text-ink-3">abaixo</span>
+                </span>
+                <span className="text-[10.5px]" style={{ color: '#8d8672' }}>A cor compara, não diz se foi bom.</span>
+              </div>
+            )}
 
-            <div className="flex flex-col md:flex-row items-stretch md:items-start gap-4 md:gap-3">
-              {series.map((s, i) => (
-                <div
-                  key={s.chave}
-                  className={cn('flex min-w-0', i > 0 && 'pt-4 border-t md:pt-0 md:pl-3 md:border-t-0 md:border-l border-line')}
-                  style={{ flexGrow: s.jogos.length, flexBasis: 0 }}
-                >
-                  <BlocoSerie s={s} teto={teto} piso={piso} comRotulo={comRotulo} mostraComoLer={false} />
-                </div>
-              ))}
-            </div>
+            {/* ⚠️ Série de RESULTADO não vira barra. Vitória não é "mais alta"
+                que empate, e desenhá-la como barra fazia a tela imprimir "cada
+                quadrado é um jogo" embaixo de barras de saldo de gols — a tela
+                contradizendo a própria legenda. */}
+            {ehResultado ? (
+              <div className="flex flex-col gap-4">
+                {series.map((s) => (
+                  <div key={s.chave}>
+                    <div className="flex items-center gap-1.5 mb-2 min-w-0">
+                      <span className="text-[11.5px] font-semibold text-ink truncate">{s.titulo}</span>
+                    </div>
+                    <SerieResultados s={s} />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col md:flex-row items-stretch md:items-start gap-4 md:gap-3">
+                {series.map((s, i) => (
+                  <div
+                    key={s.chave}
+                    className={cn('flex min-w-0', i > 0 && 'pt-4 border-t md:pt-0 md:pl-3 md:border-t-0 md:border-l border-line')}
+                    style={{ flexGrow: s.jogos.length, flexBasis: 0 }}
+                  >
+                    <BlocoSerie s={s} teto={teto} piso={piso} comRotulo={comRotulo} mostraComoLer={false} />
+                  </div>
+                ))}
+              </div>
+            )}
 
             {semSerie.length > 0 && (
               <div className="text-[11px] leading-relaxed mt-3 text-ink-2">

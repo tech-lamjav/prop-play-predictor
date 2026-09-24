@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ehMercadoDoGrafico,
   ESCOLHA_PADRAO,
   graficoDaEstatistica,
   MERCADOS_NO_GRAFICO,
   type EscolhaDaEstatistica,
+  type MercadoDoGrafico,
 } from './futebol-estatisticas-da-partida';
 import type { FutebolFixtureHistorico } from '@/services/futebol-data.service';
 
@@ -119,11 +121,22 @@ describe('o mercado manda na métrica', () => {
   });
 
   it('todo mercado do catálogo tem métrica declarada', () => {
-    // Mercado sem entrada aqui viraria gráfico mudo, ou pior, um gráfico de
-    // gols embaixo de um seletor que diz outra coisa.
-    for (const slug of ['goals_over_under', 'asian_handicap', 'btts', 'match_winner', 'double_chance']) {
-      expect(MERCADOS_NO_GRAFICO[slug], `${slug} sem métrica`).toBeDefined();
+    // O tipo já obriga o catálogo a ser exaustivo; o que este teste guarda é a
+    // LISTA — que os cinco slugs continuam sendo estes, e que ninguém removeu um
+    // do tipo achando que ninguém usava.
+    const slugs: MercadoDoGrafico[] = ['goals_over_under', 'asian_handicap', 'btts', 'match_winner', 'double_chance'];
+    expect(Object.keys(MERCADOS_NO_GRAFICO).sort()).toEqual([...slugs].sort());
+    for (const slug of slugs) {
+      expect(MERCADOS_NO_GRAFICO[slug].metrica, `${slug} sem métrica`).toBeDefined();
     }
+  });
+
+  it('slug de fora só é aceito se for um dos cinco', () => {
+    // Com `string` solto, um slug de link velho caía calado no mercado padrão.
+    expect(ehMercadoDoGrafico('goals_over_under')).toBe(true);
+    expect(ehMercadoDoGrafico('mercado_que_nao_existe')).toBe(false);
+    expect(ehMercadoDoGrafico(null)).toBe(false);
+    expect(ehMercadoDoGrafico(undefined)).toBe(false);
   });
 });
 
