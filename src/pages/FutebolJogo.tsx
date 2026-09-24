@@ -28,7 +28,7 @@ import { escalacaoDoTime, ultimoJogoDoTime } from '@/utils/futebol-escalacao-ref
 import { formatadorDeData, isFinished, isLive, brtDayOf, fmtDayShort } from '@/utils/futebol-datas';
 import { PARAMS_DA_SAIDA } from '@/utils/futebol-links';
 import type {
-  FutebolEvent, FutebolFormResult, FutebolInjury, FutebolLineupPlayer, FutebolPlayerStat, FutebolTeamStats, FutebolFixtureValueRow, FutebolTeamProfile, ProfileScope, Competition,
+  FutebolEvent, FutebolFormResult, FutebolInjury, FutebolLineupPlayer, FutebolPlayerStat, FutebolTeamStats, FutebolFixtureValueRow, FutebolTeamProfile, FutebolScopeResult, FutebolScopeStats, ProfileScope, Competition,
 } from '@/services/futebol-data.service';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
@@ -255,6 +255,25 @@ function BarrasComparadas({ rows, vazio }: { rows: LinhaComparada[]; vazio: stri
 /** Geral, ou o mando que cada time tem NESTE jogo. */
 type RecorteDoPerfil = 'geral' | 'mando';
 
+/**
+ * A base de jogos de um lado do card de temporada.
+ *
+ * ⚠️ São DUAS fontes, com contagens próprias. Gols marcados, gols sofridos e o
+ * percentual de over saem de `results`; posse, finalizações e escanteios saem
+ * de `stats_avg`, que só conta partida cujo boletim a fonte publicou — e ela
+ * não publica todas. Declarar só a primeira faz a tela afirmar uma base que
+ * METADE das linhas não teve, que é exatamente o defeito que esta linha existe
+ * para não cometer.
+ */
+function baseDoLado(r?: FutebolScopeResult, s?: FutebolScopeStats): string {
+  const jogos = r?.games;
+  const comBoletim = s?.games;
+  if (jogos == null && comBoletim == null) return '—';
+  if (jogos == null) return `${comBoletim} com estatística`;
+  const texto = `${jogos} ${jogos === 1 ? 'jogo' : 'jogos'}`;
+  return comBoletim == null || comBoletim === jogos ? texto : `${texto} · ${comBoletim} com estatística`;
+}
+
 // Estatísticas comparadas da temporada (barras espelhadas) — médias via team_profile
 function StatsCompare({ home, away }: { home?: FutebolTeamProfile; away?: FutebolTeamProfile }) {
   const [recorte, setRecorte] = useState<RecorteDoPerfil>('geral');
@@ -287,11 +306,11 @@ function StatsCompare({ home, away }: { home?: FutebolTeamProfile; away?: Futebo
           mando eles nem são os mesmos jogos dos dois lados — e um número que
           muda de base em silêncio é como "Flamengo em casa, 11 jogos" apareceu
           embaixo de um critério que somava dez. */}
-      {(hr || ar) && (
-        <div className="flex items-center justify-between text-[10.5px] tabular-nums">
-          <span className="font-semibold text-forest">{hr ? `${hr.games} ${hr.games === 1 ? 'jogo' : 'jogos'}` : '—'}</span>
-          <span className="uppercase tracking-[0.1em] font-semibold text-ink-3">base</span>
-          <span className="font-semibold text-ink-2">{ar ? `${ar.games} ${ar.games === 1 ? 'jogo' : 'jogos'}` : '—'}</span>
+      {(hr || ar || hs || as) && (
+        <div className="flex items-center justify-between gap-2 text-[10.5px] tabular-nums">
+          <span className="font-semibold text-forest">{baseDoLado(hr, hs)}</span>
+          <span className="uppercase tracking-[0.1em] font-semibold text-ink-3 shrink-0">base</span>
+          <span className="font-semibold text-ink-2">{baseDoLado(ar, as)}</span>
         </div>
       )}
       <BarrasComparadas
@@ -608,7 +627,7 @@ export default function FutebolJogo() {
           nunca evidência. */}
       <div className="px-5 py-3 border-b border-line">
         <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">Confrontos diretos</div>
-        <div className="text-[10px] text-ink-3 mt-0.5">Contexto do retrospecto. Não entra na leitura do modelo.</div>
+        <div className="text-[10px] text-ink-3 mt-0.5">Contexto dos encontros anteriores. Não entra na leitura do modelo.</div>
       </div>
       <div className="p-5">
         {h2hLoading ? <p className="text-xs text-ink-3">Carregando…</p> : h2h && h2h.length ? (

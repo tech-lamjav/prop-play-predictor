@@ -34,11 +34,11 @@ export interface EscolhaDaEstatistica {
   mando: MandoDaEstatistica;
 }
 
-export const METRICAS_OFERECIDAS: { valor: MetricaDaEstatistica; rotulo: string; curto: string }[] = [
-  { valor: 'gf', rotulo: 'Gols marcados', curto: 'Marcados' },
-  { valor: 'ga', rotulo: 'Gols sofridos', curto: 'Sofridos' },
-  { valor: 'total', rotulo: 'Gols no jogo', curto: 'No jogo' },
-  { valor: 'xg', rotulo: 'Gols esperados', curto: 'Esperados' },
+export const METRICAS_OFERECIDAS: { valor: MetricaDaEstatistica; rotulo: string }[] = [
+  { valor: 'gf', rotulo: 'Gols marcados' },
+  { valor: 'ga', rotulo: 'Gols sofridos' },
+  { valor: 'total', rotulo: 'Gols no jogo' },
+  { valor: 'xg', rotulo: 'Gols esperados' },
 ];
 
 /**

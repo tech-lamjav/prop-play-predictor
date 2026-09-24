@@ -47,6 +47,18 @@ export function EstatisticasDoJogo({
   const series = seriesDaEstatistica(escolha, historico);
   const teto = tetoDaEscala(series);
   const comRotulo = cabeRotulo(series);
+  /**
+   * O time que o recorte deixou de fora, quando o outro sobrou.
+   *
+   * ⚠️ Sem isto a aba desenha UM time calada sobre o outro — e pior, a escala
+   * passa a ser só dele, então a altura das barras deixa de comparar coisa
+   * nenhuma, que é o contrário do que a escala compartilhada promete. O estado
+   * vazio só cobria o caso dos dois ficarem sem jogo.
+   */
+  const semSerie = (['home', 'away'] as const)
+    .map((lado) => historico?.find((r) => r.side === lado)?.team_name)
+    .filter((nome): nome is string => !!nome)
+    .filter((nome) => !series.some((s) => s.teamName === nome));
   const muda = (parte: Partial<EscolhaDaEstatistica>) => setEscolha((atual) => ({ ...atual, ...parte }));
 
   return (
@@ -141,6 +153,13 @@ export function EstatisticasDoJogo({
                 </div>
               ))}
             </div>
+
+            {semSerie.length > 0 && (
+              <div className="text-[11px] leading-relaxed mt-3 text-ink-2">
+                {semSerie.join(' e ')} não tem jogo nesse recorte, então o gráfico mostra um time só — e a
+                escala é a dele, não a dos dois.
+              </div>
+            )}
 
             {/* Uma explicação só embaixo dos dois: as duas séries medem a MESMA
                 coisa aqui, sempre, porque a métrica é uma escolha única. */}

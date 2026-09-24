@@ -49,10 +49,21 @@ export function tetoDaEscala(series: SerieHistorico[], referencia?: number): num
 /**
  * Cabe rótulo de dados em cima de cada barra?
  *
- * Gol é um caractere e cabe quase sempre; o gol esperado tem decimal e é o que
- * aperta. Com a janela em dez jogos são ~25px por barra e o rótulo mede ~17.
+ * A conta é de LARGURA: com a janela do modelo em dez jogos são dois times,
+ * ~25px por barra, e o rótulo mede ~17. Acima de vinte e quatro barras não cabe
+ * mais, e rótulo que não cabe vira borrão em cima de barra fina.
+ *
+ * ⚠️ A regra antiga tinha uma escapatória — `|| toda série diferente de xg` —
+ * que valia enquanto a janela era travada pelo modelo e nunca passava de vinte
+ * barras. Na aba de Estatísticas a janela é escolha de quem olha: vinte jogos
+ * dos dois times são quarenta barras, e pela regra antiga os gols continuavam
+ * com rótulo, em barras de ~17px num aparelho de 360px. A largura não sabe qual
+ * é a métrica, então a conta também não pode saber.
+ *
+ * Nada muda para as premissas: as janelas de lá são dez e cinco, ou seja vinte
+ * barras no máximo, e vinte continua abaixo do corte.
  */
 export function cabeRotulo(series: SerieHistorico[]): boolean {
   const total = series.reduce((n, s) => n + s.jogos.length, 0);
-  return total <= 24 || series.every((s) => s.metrica !== 'xg');
+  return total <= 24;
 }

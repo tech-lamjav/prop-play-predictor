@@ -119,6 +119,26 @@ describe('quando não há o que desenhar', () => {
     expect(screen.getByText(/sem jogos anteriores/i)).toBeInTheDocument();
   });
 
+  it('com um time só sobrando, nomeia quem ficou de fora e avisa da escala', async () => {
+    // O caso que o estado vazio NÃO cobria: ele só falava quando os dois ficavam
+    // sem jogo. Com um sobrando, a aba desenhava um time calada sobre o outro —
+    // e a escala passava a ser a dele, o que derruba a promessa de que altura de
+    // barra compara entre os dois.
+    //
+    // Aqui o visitante também só jogou em casa, então o mando deste confronto,
+    // que o mede FORA, não pega nenhum jogo dele.
+    const visitanteSoEmCasa = HISTORICO.map((j) => (j.side === 'away' ? { ...j, em_casa: true } : j));
+    render(<EstatisticasDoJogo historico={visitanteSoEmCasa} carregando={false} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Mando deste jogo' }));
+
+    expect(screen.getByText(/Palmeiras não tem jogo nesse recorte/)).toBeInTheDocument();
+    expect(screen.getByText(/a escala é a dele, não a dos dois/)).toBeInTheDocument();
+    // E o time que sobrou continua desenhado: o aviso acompanha o gráfico, não
+    // substitui ele.
+    expect(screen.getByText(/Flamengo em casa/)).toBeInTheDocument();
+  });
+
   it('vazio POR CAUSA do mando manda voltar para todos os jogos', async () => {
     // O mandante que só jogou fora, e o visitante que só jogou em casa: o
     // recorte de mando deste confronto não pega nenhum dos dois. Dizer "sem
