@@ -237,7 +237,15 @@ export function EstatisticasDoJogo({
                     className={cn('flex min-w-0', i > 0 && 'pt-4 border-t md:pt-0 md:pl-3 md:border-t-0 md:border-l border-line')}
                     style={{ flexGrow: s.jogos.length, flexBasis: 0 }}
                   >
-                    <BlocoSerie s={s} teto={teto} piso={piso} comRotulo={comRotulo} mostraComoLer={false} />
+                    <BlocoSerie
+                      s={s}
+                      teto={teto}
+                      piso={piso}
+                      comRotulo={comRotulo}
+                      comPlacar
+                      rotuloDentro
+                      mostraComoLer={false}
+                    />
                   </div>
                 ))}
               </div>

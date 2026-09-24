@@ -145,6 +145,41 @@ describe('a linha é referência, e o número declara a janela', () => {
   });
 });
 
+describe('o que fica embaixo de cada barra', () => {
+  it('mostra o placar embaixo do escudo', () => {
+    // Pedido do dono do produto: "com a logo de qual foi o time que foi jogado
+    // contra, quanto foi o resultado". O placar vivia só no `title`, que não
+    // existe no toque — ou seja, invisível justamente no celular.
+    abrir();
+    expect(screen.getByText('4×0')).toBeInTheDocument();
+    // O visitante tem DOIS jogos de 0 a 1, então são dois elementos — busca de
+    // resultado único estoura aqui, e é o placar repetido que prova que ele sai
+    // por jogo e não uma vez só.
+    expect(screen.getAllByText('0×1')).toHaveLength(2);
+  });
+
+  it('com barras demais, o placar e o número sedem lugar', async () => {
+    // Vinte jogos de cada time são quarenta barras: ~6px cada num aparelho de
+    // 360px. Nada legível cabe embaixo disso, e insistir vira borrão.
+    const muitos: FutebolFixtureHistorico[] = [
+      ...Array.from({ length: 20 }, (_, i) =>
+        jogo({ side: 'home', past_fixture_id: i + 1, ordem: i + 1, gols_pro: 4, gols_contra: 0, total_gols: 4 }),
+      ),
+      ...Array.from({ length: 20 }, (_, i) =>
+        jogo({
+          side: 'away', team_id: 9, team_name: 'Palmeiras', past_fixture_id: 100 + i, ordem: i + 1,
+          em_casa: false, gols_pro: 0, gols_contra: 1, total_gols: 1,
+        }),
+      ),
+    ];
+    render(<EstatisticasDoJogo historico={muitos} carregando={false} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Últimos 20' }));
+
+    expect(screen.queryByText('4×0')).not.toBeInTheDocument();
+  });
+});
+
 describe('quem entra no gráfico', () => {
   it('oferece os dois times pelo nome', () => {
     abrir();

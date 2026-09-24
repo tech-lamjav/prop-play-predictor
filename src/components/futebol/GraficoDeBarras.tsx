@@ -80,11 +80,22 @@ export function SerieResultados({ s }: { s: SerieHistorico }) {
 }
 
 /** Um bloco do gráfico unificado: as barras de um time, na escala comum. */
+/**
+ * O placar na forma compacta do eixo. O "×" é o separador que a tela de
+ * confrontos diretos já usa; "4 a 0" não cabe embaixo de uma barra.
+ */
+const placarCurto = (placar: string) => placar.replace(' a ', '×');
+
+/** Abaixo disto a barra não tem altura para segurar o rótulo por dentro. */
+const ALTURA_MINIMA_PARA_ROTULO_DENTRO = 18;
+
 export function BlocoSerie({
   s,
   teto,
   piso = 0,
   comRotulo,
+  comPlacar = false,
+  rotuloDentro = false,
   mostraComoLer,
   referencia,
 }: {
@@ -96,6 +107,18 @@ export function BlocoSerie({
    */
   piso?: number;
   comRotulo: boolean;
+  /**
+   * Placar embaixo do escudo. ⚠️ Desligado por padrão: o gráfico das premissas
+   * não pediu isso, e mudar a aparência dele não é o que esta mudança veio
+   * fazer. Segue a mesma régua de largura do rótulo — abaixo dela não cabe.
+   */
+  comPlacar?: boolean;
+  /**
+   * Rótulo DENTRO da barra, como na tela de jogador da NBA. Também desligado
+   * por padrão, e também só para a aba de Estatísticas. Cai para fora quando a
+   * barra é baixa demais para segurá-lo.
+   */
+  rotuloDentro?: boolean;
   /** As séries do card medem coisas diferentes, então cada uma se explica. */
   mostraComoLer: boolean;
   referencia?: Story['referencia'];
@@ -145,18 +168,36 @@ export function BlocoSerie({
                   j.valor != null ? ` · ${rotuloValor(j.valor, s.metrica)}` : ' · sem dado'
                 }`}
               >
-                {comRotulo && (
-                  <span className="tabular-nums text-[9.5px] font-semibold leading-none mb-1" style={{ color: 'var(--ink-2)' }}>
-                    {j.valor == null ? '·' : rotuloValor(j.valor, s.metrica)}
-                  </span>
-                )}
-                <div
-                  className="w-full rounded-t-[3px]"
-                  style={{
-                    height: j.valor == null ? 3 : Math.max(3, y(j.valor)),
-                    background: j.valor == null ? '#e3e6e0' : j.favorece ? COR_FAVOR : COR_CONTRA,
-                  }}
-                />
+                {(() => {
+                  const alt = j.valor == null ? 3 : Math.max(3, y(j.valor));
+                  const dentro = rotuloDentro && alt >= ALTURA_MINIMA_PARA_ROTULO_DENTRO;
+                  const texto = j.valor == null ? '·' : rotuloValor(j.valor, s.metrica);
+                  return (
+                    <>
+                      {comRotulo && !dentro && (
+                        <span className="tabular-nums text-[9.5px] font-semibold leading-none mb-1" style={{ color: 'var(--ink-2)' }}>
+                          {texto}
+                        </span>
+                      )}
+                      <div
+                        className="w-full rounded-t-[3px] relative"
+                        style={{
+                          height: alt,
+                          background: j.valor == null ? '#e3e6e0' : j.favorece ? COR_FAVOR : COR_CONTRA,
+                        }}
+                      >
+                        {comRotulo && dentro && (
+                          <span
+                            className="absolute left-0 right-0 bottom-[3px] text-center tabular-nums text-[9.5px] font-bold leading-none"
+                            style={{ color: j.favorece ? 'var(--canvas)' : 'var(--ink)' }}
+                          >
+                            {texto}
+                          </span>
+                        )}
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             ))}
           </div>
@@ -178,14 +219,31 @@ export function BlocoSerie({
                       desenhos precisam ser indistinguíveis onde medem a mesma
                       coisa, senão a barra muda de aparência ao trocar de
                       mercado e ninguém descobre por quê. */}
-                  {comRotulo && (
-                    <span
-                      className="absolute left-0 right-0 text-center tabular-nums text-[9.5px] font-semibold leading-none"
-                      style={{ color: 'var(--ink-2)', bottom: base + alt + 4 }}
-                    >
-                      {v == null ? '·' : rotuloValor(v, s.metrica)}
-                    </span>
-                  )}
+                  {comRotulo && (() => {
+                    const dentro = rotuloDentro && alt >= ALTURA_MINIMA_PARA_ROTULO_DENTRO;
+                    // Dentro, o rótulo encosta na LINHA DO ZERO dos dois lados:
+                    // logo acima dela na barra que sobe, logo abaixo na que
+                    // desce. É o que mantém os números alinhados numa fileira só.
+                    const posicao = !dentro
+                      ? base + alt + 4
+                      : v != null && v < 0
+                        ? base + alt - 12
+                        : base + 3;
+                    return (
+                      <span
+                        className={cn(
+                          'absolute left-0 right-0 text-center tabular-nums text-[9.5px] leading-none',
+                          dentro ? 'font-bold' : 'font-semibold',
+                        )}
+                        style={{
+                          color: dentro ? (j.favorece ? 'var(--canvas)' : 'var(--ink)') : 'var(--ink-2)',
+                          bottom: posicao,
+                        }}
+                      >
+                        {v == null ? '·' : rotuloValor(v, s.metrica)}
+                      </span>
+                    );
+                  })()}
                   {/* Arredondada na ponta LIVRE: em cima quando sobe, embaixo
                       quando desce. O mesmo raio de 3px do outro caminho — eram
                       2px e quadrada dos dois lados, e essa foi a primeira
@@ -233,8 +291,13 @@ export function BlocoSerie({
           "esta barra foi contra este time". */}
       <div className="flex items-start gap-[3px] mt-1.5">
         {s.jogos.map((j) => (
-          <div key={`c-${j.ordem}-${j.data}`} className="flex-1 min-w-[6px] max-w-[44px] flex justify-center">
+          <div key={`c-${j.ordem}-${j.data}`} className="flex-1 min-w-[6px] max-w-[44px] flex flex-col items-center gap-0.5">
             <Crest name={j.adversario} id={j.adversarioId} size={comRotulo ? 15 : 11} />
+            {/* O placar, na mesma régua de largura do rótulo: abaixo dela a
+                barra tem seis pixels e nada legível cabe embaixo dela. */}
+            {comPlacar && comRotulo && (
+              <span className="tabular-nums text-[8.5px] leading-none text-ink-3">{placarCurto(j.placar)}</span>
+            )}
           </div>
         ))}
       </div>
