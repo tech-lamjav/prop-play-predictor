@@ -57,6 +57,18 @@ const HISTORICO: FutebolFixtureHistorico[] = [
 const abrir = (props: Partial<React.ComponentProps<typeof EstatisticasDoJogo>> = {}) =>
   render(<EstatisticasDoJogo historico={HISTORICO} carregando={false} {...props} />);
 
+/**
+ * Janela e Mando viraram seletores compactos: o cabeçalho tinha quatro fileiras
+ * empilhadas, que juntas ocupavam quase a altura do gráfico. Escolher agora é
+ * abrir o menu e clicar no item, e não mais tocar num chip solto.
+ */
+const escolherNoMenu = async (gatilho: RegExp, item: string) => {
+  await userEvent.click(screen.getByRole('button', { name: gatilho }));
+  await userEvent.click(screen.getByRole('menuitemcheckbox', { name: item }));
+};
+const escolherJanela = (item: string) => escolherNoMenu(/^Janela/i, item);
+const escolherMando = (item: string) => escolherNoMenu(/^Mando/i, item);
+
 describe('a fronteira com a leitura do modelo', () => {
   it('declara que não é a leitura do modelo', () => {
     abrir();
@@ -98,7 +110,7 @@ describe('mercado com grandeza: barras num gráfico só, com linha', () => {
     abrir();
     expect(screen.getByText(/Janela: últimos 10 de cada time/i)).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Mando deste jogo' }));
+    await escolherMando('Mando deste jogo');
     expect(screen.getByText(/só com o mando deste confronto/i)).toBeInTheDocument();
   });
 
@@ -165,7 +177,7 @@ describe('o que fica embaixo de cada barra', () => {
     ];
     render(<EstatisticasDoJogo historico={muitos} carregando={false} />);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Últimos 20' }));
+    await escolherJanela('Últimos 20');
 
     expect(screen.queryByText('4×0')).not.toBeInTheDocument();
   });
@@ -186,7 +198,7 @@ describe('quando não há o que desenhar', () => {
     const trocado = HISTORICO.map((j) => ({ ...j, em_casa: j.side !== 'home' }));
     render(<EstatisticasDoJogo historico={trocado} carregando={false} />);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Mando deste jogo' }));
+    await escolherMando('Mando deste jogo');
 
     expect(screen.getByText(/experimente todos os jogos/i)).toBeInTheDocument();
   });
@@ -195,7 +207,7 @@ describe('quando não há o que desenhar', () => {
     const visitanteSoEmCasa = HISTORICO.map((j) => (j.side === 'away' ? { ...j, em_casa: true } : j));
     render(<EstatisticasDoJogo historico={visitanteSoEmCasa} carregando={false} />);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Mando deste jogo' }));
+    await escolherMando('Mando deste jogo');
 
     expect(screen.getByText(/Palmeiras não tem jogo nesse recorte/)).toBeInTheDocument();
     expect(screen.getByText(/a escala é a dele, não a dos dois/)).toBeInTheDocument();

@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { cn } from '@/lib/utils';
 import type { FutebolFixtureHistorico } from '@/services/futebol-data.service';
+import { DropdownMenuCheckboxItem } from '@/components/ui/dropdown-menu';
 import {
   ehMercadoDoGrafico,
   ESCOLHA_PADRAO,
@@ -8,12 +8,14 @@ import {
   JANELAS_OFERECIDAS,
   MERCADOS_NO_GRAFICO,
   type EscolhaDaEstatistica,
+  type MandoDaEstatistica,
   type MercadoDoGrafico,
   type QuemNoGrafico,
 } from '@/utils/futebol-estatisticas-da-partida';
 import { cabeRotulo, pisoDaEscala, tetoDaEscala } from '@/utils/futebol-grafico-de-barras';
 import { exato } from '@/utils/futebol-criterio';
 import { Chip } from './Chip';
+import { ITEM_SELETOR, SeletorDeMenu } from './SeletorDeMenu';
 import { BarrasEmSequencia, COR_CONTRA, COR_FAVOR, SerieResultados } from './GraficoDeBarras';
 
 /**
@@ -34,14 +36,12 @@ import { BarrasEmSequencia, COR_CONTRA, COR_FAVOR, SerieResultados } from './Gra
 
 const LABEL = 'text-[10px] uppercase tracking-[0.14em] font-bold text-ink-3';
 
-function Fileira({ rotulo, children }: { rotulo: string; children: React.ReactNode }) {
-  return (
-    <div className="flex items-center gap-2.5 min-w-0">
-      <span className={`${LABEL} shrink-0 w-[56px]`}>{rotulo}</span>
-      <div className="flex items-center gap-1.5 flex-wrap min-w-0">{children}</div>
-    </div>
-  );
-}
+const MANDOS: { valor: MandoDaEstatistica; rotulo: string }[] = [
+  { valor: 'todos', rotulo: 'Todos os jogos' },
+  // Nomeia a REGRA e não um lado: o recorte é o mandante em casa E o visitante
+  // fora, que são mandos opostos.
+  { valor: 'proprio', rotulo: 'Mando deste jogo' },
+];
 
 const fmtLinha = exato;
 
@@ -106,6 +106,7 @@ export function EstatisticasDoJogo({
   };
 
   const iDaLinha = doMercado.paradas.findIndex((p) => p === escolha.linha);
+  const mandoAtual = MANDOS.find((m) => m.valor === escolha.mando)!.rotulo;
   const semSerie = (['home', 'away'] as const)
     .map((lado) => nomeDoLado(lado))
     .filter((nome): nome is string => !!nome)
@@ -121,35 +122,71 @@ export function EstatisticasDoJogo({
       </div>
 
       <div className="p-5">
-        <div className="flex flex-col gap-2.5 mb-4">
-          {/* O TIME vem primeiro, antes do mercado: é a pergunta mais grossa —
-              de quem estamos falando — e as outras se aplicam dentro dela. */}
-          <Fileira rotulo="Times">
-            {doMercado.aceitaOsDois && (
-              <Chip ativo={escolha.quem === 'ambos'} onClick={() => muda({ quem: 'ambos' })}>Os dois</Chip>
-            )}
-            {(['mandante', 'visitante'] as QuemNoGrafico[]).map((q) => (
-              <Chip key={q} ativo={escolha.quem === q} onClick={() => muda({ quem: q })}>
-                {(q === 'mandante' ? mandante : visitante) ?? (q === 'mandante' ? 'Mandante' : 'Visitante')}
-              </Chip>
-            ))}
-          </Fileira>
-          <Fileira rotulo="Mercado">
-            {(Object.keys(MERCADOS_NO_GRAFICO) as MercadoDoGrafico[]).map((slug) => (
-              <Chip key={slug} ativo={escolha.mercado === slug} onClick={() => trocaMercado(slug)}>
-                {MERCADOS_NO_GRAFICO[slug].chip}
-              </Chip>
-            ))}
-          </Fileira>
-          <Fileira rotulo="Janela">
+        {/* ⚠️ DUAS linhas, e não uma fileira rotulada por filtro. Eram quatro
+            empilhadas, e juntas ocupavam quase a altura do próprio gráfico.
+            O mercado é a dimensão principal e fica exposto como aba; o resto
+            cabe numa linha só.
+
+            As abas usam o idioma da barra de abas DESTA PÁGINA, e não o
+            controle do kit: a tela já mostra uma barra de abas duas fileiras
+            acima, e um segundo estilo de aba aqui seriam duas gramáticas para o
+            mesmo gesto. */}
+        <div
+          className="inline-flex min-w-0 max-w-full overflow-x-auto no-scrollbar p-[3px] rounded-[11px] mb-3"
+          style={{ background: 'var(--canvas-2)', border: '1px solid #ded2b6' }}
+        >
+          {(Object.keys(MERCADOS_NO_GRAFICO) as MercadoDoGrafico[]).map((slug) => (
+            <button
+              key={slug}
+              type="button"
+              onClick={() => trocaMercado(slug)}
+              className={`h-8 px-4 shrink-0 whitespace-nowrap rounded-lg text-[13px] cursor-pointer transition border-0 ${
+                escolha.mercado === slug ? 'bg-white text-ink font-semibold shadow-sm' : 'bg-transparent text-ink-2 font-medium'
+              }`}
+            >
+              {MERCADOS_NO_GRAFICO[slug].chip}
+            </button>
+          ))}
+        </div>
+
+        {/* O TIME primeiro: é a pergunta mais grossa — de quem estamos falando —
+            e as outras se aplicam dentro dela. */}
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <span className={`${LABEL} shrink-0`}>Times</span>
+          {doMercado.aceitaOsDois && (
+            <Chip ativo={escolha.quem === 'ambos'} onClick={() => muda({ quem: 'ambos' })}>Os dois</Chip>
+          )}
+          {(['mandante', 'visitante'] as QuemNoGrafico[]).map((q) => (
+            <Chip key={q} ativo={escolha.quem === q} onClick={() => muda({ quem: q })}>
+              {(q === 'mandante' ? mandante : visitante) ?? (q === 'mandante' ? 'Mandante' : 'Visitante')}
+            </Chip>
+          ))}
+
+          <SeletorDeMenu rotulo="Janela" resumo={`Últimos ${escolha.janela}`} largura="sm:w-[168px]">
             {JANELAS_OFERECIDAS.map((j) => (
-              <Chip key={j} ativo={escolha.janela === j} onClick={() => muda({ janela: j })}>{`Últimos ${j}`}</Chip>
+              <DropdownMenuCheckboxItem
+                key={j}
+                checked={escolha.janela === j}
+                onSelect={() => muda({ janela: j })}
+                className={ITEM_SELETOR}
+              >
+                {`Últimos ${j}`}
+              </DropdownMenuCheckboxItem>
             ))}
-          </Fileira>
-          <Fileira rotulo="Mando">
-            <Chip ativo={escolha.mando === 'todos'} onClick={() => muda({ mando: 'todos' })}>Todos os jogos</Chip>
-            <Chip ativo={escolha.mando === 'proprio'} onClick={() => muda({ mando: 'proprio' })}>Mando deste jogo</Chip>
-          </Fileira>
+          </SeletorDeMenu>
+
+          <SeletorDeMenu rotulo="Mando" resumo={mandoAtual} largura="sm:w-[212px]">
+            {MANDOS.map((m) => (
+              <DropdownMenuCheckboxItem
+                key={m.valor}
+                checked={escolha.mando === m.valor}
+                onSelect={() => muda({ mando: m.valor })}
+                className={ITEM_SELETOR}
+              >
+                {m.rotulo}
+              </DropdownMenuCheckboxItem>
+            ))}
+          </SeletorDeMenu>
         </div>
 
         {temLinha && doMercado.paradas.length > 0 && (
