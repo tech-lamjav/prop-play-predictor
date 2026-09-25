@@ -16,6 +16,7 @@
  */
 
 import { opportunityKey } from '@/utils/futebol-history';
+import { FREQUENCIAS, OBJETIVOS } from '@/utils/perfil-declarado';
 
 // ============================================================================
 // Nomes
@@ -42,6 +43,20 @@ export const EVENTOS = {
   apostaRegistrada: 'opportunity_bet_registered',
   /** O site foi aberto por um link de oportunidade do Telegram. */
   chegadaDoTelegram: 'telegram_opportunity_landing_opened',
+  /**
+   * A pesquisa de perfil apareceu para a pessoa (#524).
+   *
+   * ⚠️ O prefixo `profile` não é de produto, e isso é deliberado. A convenção
+   * pede `futebol`/`nba`/`betinho`/`bolao`, mas esta pesquisa não pertence a
+   * produto nenhum — é da conta, e a resposta segue a pessoa por todos eles.
+   * Forçá-la para dentro de um produto faria o funil dizer que quem respondeu é
+   * do futebol, que é justamente a confusão que a pesquisa existe para desfazer.
+   */
+  pesquisaDePerfilExibida: 'profile_survey_shown',
+  /** As duas escolhas foram enviadas. */
+  pesquisaDePerfilRespondida: 'profile_survey_answered',
+  /** A pessoa apertou Pular. Volta na próxima sessão. */
+  pesquisaDePerfilAdiada: 'profile_survey_deferred',
 } as const;
 
 export type NomeDeEvento = (typeof EVENTOS)[keyof typeof EVENTOS];
@@ -94,6 +109,37 @@ export const TIPOS_DE_CAMPANHA = [
   'other',
 ] as const;
 export type TipoDeCampanha = (typeof TIPOS_DE_CAMPANHA)[number];
+
+// ── A pesquisa de perfil (#524) ─────────────────────────────────────────────
+//
+// ⚠️ Os primeiros valores em PORTUGUÊS deste arquivo, e é decisão, não descuido.
+// Todos os outros são em inglês porque nasceram descrevendo superfície de tela
+// (`home_featured`, `register_bet`). Estes oito são outra coisa: são o valor do
+// `check` da tabela `perfil_declarado` ao mesmo tempo que são o valor que chega
+// ao PostHog. Traduzi-los no meio do caminho criaria duas grafias para a mesma
+// opção e oito chances de elas divergirem em silêncio.
+//
+// Vêm importados do catálogo em vez de copiados pelo mesmo motivo: uma terceira
+// cópia dos códigos seria uma terceira chance de divergir.
+
+export const OBJETIVOS_DECLARADOS = [...OBJETIVOS, 'other'] as const;
+export type ObjetivoDeclarado = (typeof OBJETIVOS_DECLARADOS)[number];
+
+export const FREQUENCIAS_DECLARADAS = [...FREQUENCIAS, 'other'] as const;
+export type FrequenciaDeclarada = (typeof FREQUENCIAS_DECLARADAS)[number];
+
+/**
+ * Qual das duas aberturas a pessoa viu — quem chegou agora, ou quem já usava.
+ *
+ * Também em português, e aqui a justificativa é OUTRA: estes dois não vêm do
+ * banco, são inventados na borda. Ficam em português porque `chegada` e `base`
+ * já são as palavras do domínio, usadas no ADR 0005 e no código que decide a
+ * abertura — inventar um par em inglês só para este arquivo criaria uma
+ * terceira grafia para um conceito que já tem nome, e ninguém lembraria qual
+ * das três está numa consulta velha do painel.
+ */
+export const PUBLICOS_DA_PESQUISA = ['chegada', 'base', 'other'] as const;
+export type PublicoDaPesquisa = (typeof PUBLICOS_DA_PESQUISA)[number];
 
 /** Os quatro estados de `FutebolAccessState`, mais o desconhecido. */
 export const SITUACOES_DE_ASSINATURA = [

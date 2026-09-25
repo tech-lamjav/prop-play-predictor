@@ -58,6 +58,34 @@ Valores controlados (fora da lista vira `other`, nunca um valor solto):
   `weekly_summary` · `other`
 - **`subscription_status`**: `anon` · `trial` · `expired` · `subscribed` ·
   `unknown`
+- **`audience`**: `chegada` · `base` · `other`
+- **`goal`**: `oportunidades_prontas` · `entender_o_porque` · `economizar_tempo` ·
+  `aprender_a_analisar` · `other`
+- **`betting_frequency`**: `comecando` · `de_vez_em_quando` · `toda_semana` ·
+  `quase_todo_dia` · `other`
+
+Os três últimos são os únicos em **português** do contrato, por dois motivos
+diferentes. `goal` e `betting_frequency` são ao mesmo tempo o `check` da tabela
+`perfil_declarado` e o valor que chega aqui — traduzi-los no meio do caminho
+criaria duas grafias para a mesma opção. `audience` não vem do banco, mas
+`chegada` e `base` já são as palavras do domínio, no ADR 0005 e no código:
+inventar um par em inglês só para este arquivo seria uma terceira grafia para um
+conceito que já tem nome.
+
+## Propriedades de pessoa
+
+Traços gravados na pessoa, e não no evento. Valem para todo evento futuro dela
+— e, no PostHog, também para segmentar funis anteriores à gravação.
+
+| Propriedade | Quando é gravada | Valores |
+|---|---|---|
+| `profile_goal` | No envio da pesquisa de perfil. | os mesmos de `goal` |
+| `profile_betting_frequency` | No envio da pesquisa de perfil. | os mesmos de `betting_frequency` |
+
+São a **única ponte** entre perfil declarado e campanha: o banco não guarda
+origem, UTM nem referência de entrada, e isso é decisão registrada em
+`docs/crm-socios.md`. O encontro das duas coisas só acontece aqui dentro, onde o
+`distinct_id` é o mesmo dos dois lados.
 
 ## A tabela
 
@@ -72,10 +100,32 @@ Valores controlados (fora da lista vira `other`, nunca um valor solto):
 | `opportunity_cta_clicked` | Ação principal da oportunidade (hoje: abrir o modal de registro). | comuns + `action` | Site |
 | `opportunity_bet_registered` | Aposta gravada **com sucesso** no banco. | comuns + `via`, `channel` | Site **e** bot |
 | `telegram_opportunity_landing_opened` | O site abriu por um link de oportunidade do Telegram. Uma vez por abertura, sobrevivendo ao login. | `delivery_id`, `batch_id`, `link_id`, `campaign_type`, `landing_path`, `is_authenticated` | Site |
+| `profile_survey_shown` | A pesquisa de perfil **apareceu na tela**, depois do atraso — não é o momento em que o sentinela decidiu abrir. | `audience` | Site |
+| `profile_survey_answered` | As duas escolhas foram enviadas. | `goal`, `betting_frequency`, `audience`, `deferrals` | Site |
+| `profile_survey_deferred` | A pessoa apertou Pular. `deferrals` é a contagem **depois** deste adiamento. | `audience`, `deferrals` | Site |
 | `daily_opportunities_sent` | Telegram **aceitou** a mensagem do diário e o estado foi gravado. | `delivery_id`, `batch_id`, `campaign_type`, `segment`, `picks_count`, `top_score`, `sent_status` | Bot |
 | `published_opportunities_sent` | Idem, para o alerta de publicação. | `delivery_id`, `batch_id`, `campaign_type`, `picks_count`, `top_score`, `sent_status` | Bot |
 | `daily_opportunities_click` | Clique no link, registrado pelo redirecionador `go` (assinatura válida). | `delivery_id`, `batch_id`, `link_id`, `campaign_type`, `destination` | Bot |
 | `published_opportunities_click` | Idem, campanha de publicação. | mesmas | Bot |
+
+### A família `profile_*` e as duas propriedades de pessoa
+
+O prefixo **não é de produto**, e isso é deliberado. A convenção pede
+`futebol`/`nba`/`betinho`/`bolao`, mas a pesquisa de perfil é da **conta**: a
+resposta segue a pessoa por todos os produtos, e forçá-la para dentro de um
+faria o funil dizer que quem respondeu é do futebol — justamente a confusão que
+a pesquisa existe para desfazer. Pelo mesmo motivo, nenhum dos três carrega
+`product`.
+
+Os valores de `goal` e `betting_frequency` são os oito códigos de
+`perfil_declarado`, mais o `other` que toda lista controlada tem. O porquê do
+português está na seção de valores controlados, acima.
+
+**`profile_survey_shown` é o denominador da taxa de resposta.** Sem ele não há
+como saber se a distribuição das escolhas descreve a base ou só quem teve
+paciência. E `deferrals` é o que diz se insistir está funcionando: mediana de um
+é o desenho certo; gente com trinta é sinal de parar antes que vire
+cancelamento.
 
 ### `sent_status` não é "lido"
 
