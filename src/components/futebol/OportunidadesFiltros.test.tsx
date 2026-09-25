@@ -27,6 +27,16 @@ describe('OportunidadesFiltros', () => {
     expect(screen.getByRole('button', { name: /Competição Todas/i })).toBeInTheDocument();
   });
 
+  it('não existe mais filtro de valor', () => {
+    // Afirmação POSITIVA da ausência, e não só a remoção do teste antigo: o
+    // seletor saiu com o #520 porque filtrar por um número que a tela não mostra
+    // confunde mais do que o número confundia. Apagar o teste deixaria a volta
+    // dele passar despercebida.
+    render(<OportunidadesFiltros {...props} />);
+
+    expect(screen.queryByRole('button', { name: /Valor/i })).not.toBeInTheDocument();
+  });
+
   // O estado do jogo virou filtro de marcar vários (era o interruptor "Só jogos
   // em aberto", que não tinha como pedir os encerrados nem o que está rolando).
   it('combina estados sem fechar o seletor', async () => {

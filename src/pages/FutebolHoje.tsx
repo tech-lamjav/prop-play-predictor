@@ -144,9 +144,12 @@ function TopValueHero({ o, to, favor, contra, textoScore, carregandoMotivos = fa
                 linha pagando abaixo do justo, prometer valor no selo é mentir
                 com o número negativo logo ao lado. O preço, porém, não é o que
                 põe a linha aqui em cima — quem ordena é o Score. "Melhor
-                oportunidade do dia" é verdade nos dois casos, e a ressalva
-                sobre o preço continua onde ela pesa, na frase do porquê, que
-                segue mudando com `pagaAcima`. */}
+                oportunidade do dia" é verdade nos dois casos.
+
+                A ressalva sobre o preço morava na frase do porquê, que trocava
+                de texto conforme o sinal. Com o valor fora da tela (#519) sobrou
+                um texto só, e ele diz o mesmo de outro jeito: o que sustenta a
+                leitura é o cenário, não o preço. */}
             <Zap className="w-3 h-3" /> Melhor oportunidade do dia
           </span>
           <div className={`text-[11px] uppercase tracking-[0.16em] font-semibold mt-5 ${d ? 'text-white/50' : 'text-ink-3'}`}>{marketLabel(o.market)} · {competitionLabel(o.competition)}</div>
@@ -547,10 +550,16 @@ export default function FutebolHoje() {
   // registrada ANTES da migration 091 não guardou esses números, então ela conta
   // no total do dia — que é o que o painel também conta — mas não vira card com
   // número inventado.
+  // ⚠️ `edge` SAIU desta guarda com o #519, e a saída é o conserto de uma
+  // arbitrariedade, não uma frouxidão nova. A tela exigia vantagem gravada para
+  // montar o destaque e os cartões desde quando ela era desenhada neles; agora
+  // ninguém a desenha, e continuar exigindo-a deixaria uma linha com Score,
+  // faixa e chance de fora por um campo que a página não lê mais — sem erro,
+  // sem aviso, só a oportunidade sumindo da home.
   const comNumeros = useMemo(
     () => dayRows.filter(
       (r): r is FutebolValueBoardRow =>
-        r.score != null && r.faixa != null && r.edge != null && r.prob_justa_fechamento != null,
+        r.score != null && r.faixa != null && r.prob_justa_fechamento != null,
     ),
     [dayRows],
   );
@@ -836,8 +845,13 @@ export default function FutebolHoje() {
           <div className={`${CARD} p-6 flex items-start gap-3`}>
             <Zap className="w-5 h-5 text-ink-3 mt-0.5 shrink-0" />
             <div>
-              <p className="text-sm font-semibold text-ink">Sem valor claro {isToday ? 'hoje' : 'nesse dia'}</p>
-              <p className="text-xs text-ink-2 mt-1">As melhores odds estão perto da linha justa do mercado — nenhuma passou a régua de confiabilidade. Os jogos do dia estão abaixo{days.length > 1 ? '; use as setas pra ver outros dias' : ''}.</p>
+              {/* A ausência é explicada pela RÉGUA, não pelo preço. Dizia "Sem
+                  valor claro" e culpava a odd: "as melhores estão perto da linha
+                  justa do mercado". Só que quem esvazia esta tela é o Score — é
+                  ele que decide o destaque —, e desde o #519 o preço nem
+                  aparece, então explicar por ele seria explicar pelo invisível. */}
+              <p className="text-sm font-semibold text-ink">Nenhuma leitura em destaque {isToday ? 'hoje' : 'nesse dia'}</p>
+              <p className="text-xs text-ink-2 mt-1">Nenhuma linha do dia passou a régua de confiabilidade. Os jogos do dia estão abaixo{days.length > 1 ? '; use as setas pra ver outros dias' : ''}.</p>
             </div>
           </div>
         )}
@@ -1044,7 +1058,7 @@ export default function FutebolHoje() {
         <div data-tour="futebol-metodologia" className="rounded-rebrand-md px-5 py-4 flex items-start gap-3" style={{ background: '#fef7df', border: '1px solid #fde68a' }}>
           <span className="mt-0.5 shrink-0" style={{ color: '#9a6c00' }}><AlertTriangle className="w-4 h-4" /></span>
           <div className="text-[12px] leading-relaxed" style={{ color: '#5a3c00' }}>
-            <span className="font-semibold">Não é recomendação.</span> Mostramos onde a odd paga acima da chance estimada (valor). Score e faixa medem o quanto o cenário sustenta a linha, não garantia de acerto.
+            <span className="font-semibold">Não é recomendação.</span> Score e faixa medem o quanto o cenário sustenta a linha, não garantia de acerto. A decisão de apostar, e por quanto, é sua.
           </div>
         </div>
       </div>

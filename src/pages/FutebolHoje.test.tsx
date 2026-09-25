@@ -30,7 +30,7 @@ const vazio = { data: undefined, isLoading: false };
 const acesso = { unlocked: true, state: 'subscriber' };
 
 /** O acesso é mutável porque a frase do portão só existe no estado travado. */
-const estado = vi.hoisted(() => ({ liberado: true }));
+const estado = vi.hoisted(() => ({ liberado: true, temLinha: true }));
 const acessoAtual = () => (estado.liberado ? acesso : { unlocked: false, state: 'anonymous' });
 
 vi.mock('@/hooks/use-futebol-data', () => ({
@@ -98,7 +98,7 @@ const linha = {
 
 vi.mock('@/utils/futebol-registradas', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/utils/futebol-registradas')>()),
-  oportunidadesDoDia: () => [linha],
+  oportunidadesDoDia: () => (estado.temLinha ? [linha] : []),
 }));
 
 const { default: FutebolHoje } = await import('./FutebolHoje');
@@ -137,8 +137,7 @@ describe('FutebolHoje · o valor não é desenhado', () => {
 
   it('sem acesso, a frase do portão não lista o valor entre o que é de assinante', () => {
     // Esta frase só existe no estado TRAVADO, que nenhum dos testes acima
-    // alcança. A afirmação é sobre A FRASE, e não sobre a tela inteira: o KPI
-    // "Melhor valor" e o rodapé ainda falam em valor, e saem no #520 e no #521.
+    // alcança.
     estado.liberado = false;
     try {
       renderHome();
@@ -147,5 +146,32 @@ describe('FutebolHoje · o valor não é desenhado', () => {
     } finally {
       estado.liberado = true;
     }
+  });
+
+  it('o dia vazio é explicado pela régua, e não pelo preço', () => {
+    // O estado vazio dizia "Sem valor claro hoje" e culpava a odd. Quem esvazia
+    // esta tela é o Score, e o preço nem aparece mais — explicar por ele seria
+    // explicar pelo invisível. Só existe com ZERO linhas, que é o estado que
+    // nenhum dos outros testes monta.
+    estado.temLinha = false;
+    try {
+      renderHome();
+
+      expect(screen.getByText(/Nenhuma leitura em destaque/i)).toBeInTheDocument();
+      expect(screen.queryByText(/sem valor claro/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/linha justa do mercado/i)).not.toBeInTheDocument();
+    } finally {
+      estado.temLinha = true;
+    }
+  });
+
+  it('nenhuma frase da home fala em valor', () => {
+    // Cobre a tela INTEIRA, incluindo o rodapé e o KPI — os dois falavam de
+    // valor e os dois saíram. Vale a pena ser ampla: é a asserção que pega o
+    // texto esquecido num canto, que foi exatamente como o rodapé escapou da
+    // primeira passada.
+    renderHome();
+
+    expect(screen.queryAllByText(/\bvalor\b/i)).toHaveLength(0);
   });
 });

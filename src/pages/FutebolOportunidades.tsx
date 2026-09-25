@@ -210,7 +210,14 @@ function OppMobileCard({ o, to, locked, result, homeGoals, awayGoals, canRegiste
                 "Gols (Over/Under)" em 9px com tracking vira uma tira de ruído. */}
             <div className="flex items-center gap-1.5 min-w-0">
               {!bloqueada && (
-                <span className="min-w-0 truncate px-1.5 h-5 inline-flex items-center rounded text-[9px] font-semibold uppercase tracking-[0.08em] bg-canvas-2 text-ink-2">{marketShort(o.market)}</span>
+                /* O `truncate` vai no SPAN DE DENTRO, e não na etiqueta.
+                   `text-overflow: ellipsis` não se aplica ao texto solto de um
+                   contêiner flex — ele vira item anônimo e a reticência não
+                   aparece, então a etiqueta cortava seco. Com um span próprio,
+                   ele é um item de flex de verdade e trunca como se espera. */
+                <span className="min-w-0 px-1.5 h-5 inline-flex items-center rounded text-[9px] font-semibold uppercase tracking-[0.08em] bg-canvas-2 text-ink-2">
+                  <span className="truncate">{marketShort(o.market)}</span>
+                </span>
               )}
               {!bloqueada && o.faixa != null && (
                 <span className={`shrink-0 px-1.5 h-5 inline-flex items-center rounded text-[9px] font-bold uppercase tracking-[0.1em] ${faixaBadgeCls(o.faixa)}`}>{faixaWord(o.faixa)}</span>
@@ -690,7 +697,10 @@ export default function FutebolOportunidades() {
   // A lista mostra o que o backend publicou. O corte local por número de Score
   // saiu na virada do Score de contexto (spec #301): a régua era calibrada para
   // a fórmula antiga e aplicá-la à escala nova classificaria errado.
-  const comValor = bestRows;
+  // Chamava-se `comValor`, e o nome deixou de nomear coisa nenhuma quando o
+  // filtro de valor saiu (#520): é a lista que vai para a tela, sem recorte de
+  // preço nenhum. Alias de `bestRows` para o modo demonstração entrar no lugar.
+  const listaDoDia = bestRows;
   // A distribuição descreve o DIA, e por isso sai de dayRows e não de bestRows:
   // contar sobre a lista já filtrada faria o resumo dizer "Baixa 0" sempre que o
   // filtro escondesse a faixa Baixa, que é justamente o padrão.
@@ -712,7 +722,7 @@ export default function FutebolOportunidades() {
   const nMedia = distribuicao.filter((o) => o.faixa != null && faixaTone(o.faixa) === 'media').length;
   const nBaixa = distribuicao.filter((o) => o.faixa != null && faixaTone(o.faixa) === 'baixa').length;
 
-  // Contagem de oportunidades COM VALOR por dia (badge do stepper).
+  // Contagem de oportunidades por dia (badge do stepper).
   const countByDay = useMemo(() => {
     const byDay = new Map<string, FutebolValueBoardRow[]>();
     allRows.forEach((r) => {
@@ -756,7 +766,7 @@ export default function FutebolOportunidades() {
   // num dia de seis, com as três sem fixture saindo da conta em silêncio (#323).
   const resumo = useMemo(
     () => (isPastDay
-      ? resumoDoDia(comValor.map((o) => ({
+      ? resumoDoDia(listaDoDia.map((o) => ({
         // Quem sabe se o fixture veio é o mapa, não o `kickoff_utc`: a linha do
         // board traz horário mesmo quando o calendário não trouxe o jogo.
         temFixture: fixtureMap.has(o.fixture_id),
@@ -766,7 +776,7 @@ export default function FutebolOportunidades() {
     // `resultOf` lê os três mapas, e o eslint está desligado aqui: quem esquecer
     // um deles faz a manchete do dia congelar no que o espelho dizia antes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [isPastDay, comValor, goalsMap, fixtureMap, frescoMap],
+    [isPastDay, listaDoDia, goalsMap, fixtureMap, frescoMap],
   );
 
   // Pick publicado num jogo que o calendário não trouxe é anomalia de catálogo,
@@ -864,7 +874,7 @@ export default function FutebolOportunidades() {
                     fala de cenário sustentado, que é outra afirmação e não
                     depende de preço nenhum. */}
                 <h1 className="font-display text-2xl md:text-[28px] font-extrabold tracking-tight text-ink mt-1">
-                  {comValor.length} {comValor.length === 1 ? 'oportunidade' : 'oportunidades'}
+                  {listaDoDia.length} {listaDoDia.length === 1 ? 'oportunidade' : 'oportunidades'}
                   {faixasSelecionadas.length === 1 && faixasSelecionadas[0] === 'baixa' ? ' em faixa baixa' : ''}
                 </h1>
                 <p className="text-[13px] mt-1 text-ink-2">{isPastDay ? 'Resultado das oportunidades publicadas neste dia' : 'Análises pré-jogo com Score, o que sustenta cada leitura e a odd de mercado ao lado.'}</p>
@@ -922,7 +932,7 @@ export default function FutebolOportunidades() {
 
         {isLoading ? (
           <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-16 w-full bg-canvas-2 rounded-rebrand-md" />)}</div>
-        ) : (isPastDay ? comValor.length === 0 : bestRows.length === 0) ? (
+        ) : (isPastDay ? listaDoDia.length === 0 : bestRows.length === 0) ? (
           <div className="rounded-rebrand-md bg-white border border-line p-6 text-center">
             {/* Quando o dia TEM oportunidade e a lista está vazia, quem esvaziou
                 foi o filtro. Culpar o dado nesse caso manda a pessoa embora de
@@ -949,7 +959,7 @@ export default function FutebolOportunidades() {
                 <div>Score ↓</div><div>Faixa</div><div>Aposta</div><div>Mercado</div>
                 <div className="text-right">Chance</div><div className="text-right">Odd</div><div />
               </div>
-              {comValor.map((o, i) => {
+              {listaDoDia.map((o, i) => {
                 const res = resultOf(o);
                 const g = placarDe(o);
                 return (
@@ -994,7 +1004,7 @@ export default function FutebolOportunidades() {
 
             {/* Cards (mobile) */}
             <div className="md:hidden flex flex-col gap-2.5">
-              {comValor.map((o, i) => {
+              {listaDoDia.map((o, i) => {
                 const res = resultOf(o);
                 const g = placarDe(o);
                 return (

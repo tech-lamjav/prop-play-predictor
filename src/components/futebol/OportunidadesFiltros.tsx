@@ -147,7 +147,6 @@ const ESTADOS: { value: EstadoDoJogo; label: string }[] = [
   { value: 'encerrado', label: 'Encerrado' },
 ];
 
-
 /**
  * A competição fala `null` com a tela, e lista com o seletor.
  *

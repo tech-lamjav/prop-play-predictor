@@ -126,6 +126,10 @@ describe('FutebolOportunidades · o valor não é desenhado', () => {
     // continuava na barra de filtros. Com ele fora (#520) dá para cobrar a tela
     // inteira — que é o que se quer de verdade: nem filtro, nem título, nem
     // rodapé, nem legenda falando de um número que não existe mais.
+    //
+    // ⚠️ "A tela" aqui é o que esta montagem renderiza, e o TOUR não entra: ele
+    // é dublê neste arquivo. A copy do tour tem vida própria em `tours.tsx`, e
+    // foi lá que as menções a valor que sobraram foram varridas.
     renderLista();
 
     expect(screen.queryAllByText(/valor/i)).toHaveLength(0);

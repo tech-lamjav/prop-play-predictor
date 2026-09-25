@@ -23,7 +23,11 @@ const IR_PRO_CADASTRO = {
  * Quem está NO teste vê tudo — é o mecanismo inteiro: a pessoa ganha o produto
  * por 48 horas para sentir falta depois. Quem não tem acesso é o deslogado e o
  * expirado, e para esses nada que saia do modelo aparece: a aposta, o mercado,
- * a odd, a chance, a vantagem, o Score, a faixa e as premissas.
+ * a odd, a chance, o Score, a faixa e as premissas.
+ *
+ * A vantagem sobre o preço estava nesta lista até o #519. Ela continua chegando
+ * anulada do banco para quem não assina — o portão não mudou —, mas saiu da
+ * tela para TODO MUNDO, então já não é o que separa assinante de visitante.
  *
  * O que continua aberto é fato público de futebol — quem joga, quando, como
  * terminou —, mais o passado já liquidado, que é registro do que foi publicado
