@@ -9,6 +9,14 @@ import type { FutebolFixturePremissas } from '@/services/futebol-data.service';
 const ehMobile = vi.fn(() => false);
 vi.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => ehMobile() }));
 
+// O CTA de registrar aposta só monta quando há pick visível, e faz consulta
+// própria — montá-lo aqui exigiria QueryClient de um componente que foi feito
+// de propósito para não precisar de um (ver o comentário de `ocultos`). Ele não
+// decide nada do que estes testes afirmam.
+vi.mock('@/components/futebol/RegistrarAposta', () => ({
+  RegistrarApostaCTA: () => null,
+}));
+
 // ============================================================================
 // Os três estados da leitura na faixa da partida
 // ============================================================================
@@ -181,5 +189,49 @@ describe('FaixaPartida · arranjo do cabeçalho', () => {
     renderFaixa();
     expect(screen.getByText('Palmeiras')).toBeInTheDocument();
     expect(screen.getByText('Flamengo')).toBeInTheDocument();
+  });
+});
+
+// ============================================================================
+// O valor saiu da tela (#519)
+// ============================================================================
+// A vantagem sobre o preço justo deixou de ser desenhada para qualquer usuário,
+// assinante incluído: na grande maioria das oportunidades ela é negativa, e um
+// número negativo ao lado de um pick lê-se como contradição.
+//
+// O que ela NÃO deixou de fazer é decidir publicação — o corte de handicap
+// continua de pé, invisível. Por isso o teste é de TELA: ele afirma que o
+// número não é desenhado, e não que o dado sumiu.
+//
+// Fiel à regra do arquivo (#310), nada aqui afirma número: só a presença dos
+// rótulos que ficaram e a ausência do que saiu.
+// ============================================================================
+
+const leituraComPreco = [
+  {
+    market: 'goals_over_under',
+    outcome: 'Under',
+    line_value: 4.5,
+    edge: -0.014,
+    best_odd: 1.95,
+    prob_justa_fechamento: 0.55,
+    score: 63,
+    faixa: 'Alta',
+  },
+] as unknown as Parameters<typeof FaixaPartida>[0]['valueRows'];
+
+describe('FaixaPartida · o valor não é desenhado', () => {
+  it('com preço coletado, a faixa mostra chance e odd, e não mostra valor', () => {
+    renderFaixa({ premissas: premissasDeGols, valueRows: leituraComPreco });
+
+    expect(screen.getByText('Chance')).toBeInTheDocument();
+    expect(screen.getByText('Odd')).toBeInTheDocument();
+    expect(screen.queryByText('Valor')).not.toBeInTheDocument();
+  });
+
+  it('sem acesso, a frase do portão não promete valor', () => {
+    renderFaixa({ premissas: premissasDeGols, valueRows: [], locked: true });
+
+    expect(screen.queryByText(/valor/i)).not.toBeInTheDocument();
   });
 });

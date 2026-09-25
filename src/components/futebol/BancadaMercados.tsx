@@ -821,7 +821,7 @@ export function BancadaMercados({
   //
   // Aqui não dá para esconder campo por campo, e tentar foi o erro: cada rodada
   // sobrava um. Nesta folha TUDO é leitura do modelo — a lista dos cinco
-  // mercados, o título da saída, o seletor de linha, chance, odd, valor, o
+  // mercados, o título da saída, o seletor de linha, chance, odd, o
   // Score, os motivos, as evidências e os gráficos. Esconder um por um deixa o
   // próximo passar, e foi assim que a odd continuou visível depois de duas
   // tentativas.
@@ -837,7 +837,7 @@ export function BancadaMercados({
       >
         <p className="text-[15px] font-semibold text-ink">A leitura deste jogo é de assinante</p>
         <p className="text-[13px] text-ink-2 mt-1.5 max-w-[48ch] mx-auto leading-relaxed">
-          Os cinco mercados, a aposta, a odd, a chance, o valor, o Score e as premissas que
+          Os cinco mercados, a aposta, a odd, a chance, o Score e as premissas que
           sustentam a leitura ficam disponíveis com a assinatura. A escalação e as estatísticas
           do jogo continuam abertas nas abas ao lado.
         </p>
@@ -1132,15 +1132,15 @@ export function BancadaMercados({
 
             {/* O Score é a ÂNCORA, não mais um número da fileira.
                 
-                A grade de quatro colunas iguais que existia aqui resolvia o
-                espaço e estragava a hierarquia: o Score virava o quarto de
-                quatro pares, do mesmo tamanho e peso, quando ele é a leitura
-                principal da folha. No celular ele volta a ser o maior elemento,
-                sozinho de um lado, e chance/odd/valor empilham do outro como
-                ficha técnica — que é o papel delas.
-                
-                No desktop a fileira de sempre: lá há largura para os quatro
-                lado a lado sem que nenhum perca destaque. */}
+                A grade de colunas iguais que existia aqui resolvia o espaço e
+                estragava a hierarquia: o Score virava mais um par, do mesmo
+                tamanho e peso, quando ele é a leitura principal da folha. No
+                celular ele volta a ser o maior elemento, sozinho de um lado, e
+                chance/odd empilham do outro como ficha técnica — que é o papel
+                delas.
+
+                No desktop a fileira de sempre: lá há largura para eles lado a
+                lado sem que nenhum perca destaque. */}
             {noCelular ? (
               <div className="flex items-center gap-4 w-full">
                 {/* Alinhado à ESQUERDA, e não centralizado: centralizado, as três
@@ -1166,7 +1166,7 @@ export function BancadaMercados({
                       : locked ? 'de assinante' : 'sem leitura'}
                   </div>
                 </div>
-                {/* Rótulo à esquerda, número à direita: as três linhas viram uma
+                {/* Rótulo à esquerda, número à direita: as linhas viram uma
                     tabelinha, e os números alinham numa coluna só. */}
                 <div className="flex-1 min-w-0 grid gap-1.5 pl-4 border-l" style={{ borderColor: 'rgba(255,255,255,.15)' }}>
                   {[
@@ -1179,13 +1179,6 @@ export function BancadaMercados({
                       rotulo: 'Odd',
                       valor: cotacaoPrincipal.odd != null ? cotacaoPrincipal.odd.toFixed(2) : '—',
                       cor: '#fff',
-                    },
-                    {
-                      rotulo: 'Valor',
-                      valor: valPrincipal
-                        ? `${valPrincipal.edge >= 0 ? '+' : '−'}${Math.abs(valPrincipal.edge * 100).toFixed(1).replace('.', ',')}%`
-                        : '—',
-                      cor: valPrincipal && valPrincipal.edge > 0 ? '#8ee6b0' : 'rgba(255,255,255,.55)',
                     },
                   ].map(({ rotulo, valor, cor }) => (
                     <div key={rotulo} className="flex items-baseline justify-between gap-2">
@@ -1210,17 +1203,6 @@ export function BancadaMercados({
                 <div className="tabular-nums text-[22px] font-semibold leading-none mt-1 text-white">
                   {cotacaoPrincipal.odd != null
                     ? cotacaoPrincipal.odd.toFixed(2)
-                    : '—'}
-                </div>
-              </div>
-              <div className="min-w-[76px]">
-                <div className="text-[9px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>Valor</div>
-                <div
-                  className="tabular-nums text-[22px] font-semibold leading-none mt-1"
-                  style={{ color: valPrincipal && valPrincipal.edge > 0 ? '#8ee6b0' : 'rgba(255,255,255,.55)' }}
-                >
-                  {valPrincipal
-                    ? `${valPrincipal.edge >= 0 ? '+' : '−'}${Math.abs(valPrincipal.edge * 100).toFixed(1).replace('.', ',')}%`
                     : '—'}
                 </div>
               </div>

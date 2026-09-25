@@ -402,20 +402,11 @@ export function FaixaPartida({
                     {v.best_odd.toFixed(2)}
                   </div>
                 </div>
-                <div>
-                  <div className="text-[9px] uppercase tracking-[0.14em] text-white/45">Valor</div>
-                  <div
-                    className="tabular-nums text-[16px] font-semibold mt-0.5"
-                    style={{ color: v.edge > 0 ? '#8ee6b0' : 'rgba(255,255,255,.55)' }}
-                  >
-                    {`${v.edge >= 0 ? '+' : '−'}${Math.abs(v.edge * 100).toFixed(1).replace('.', ',')}%`}
-                  </div>
-                </div>
               </div>
             ) : (
               <div className="text-[12px] text-white/55 mt-2.5 leading-relaxed">
                 {locked ? (
-                  'Chance, odd, valor e Score são de assinante.'
+                  'Chance, odd e Score são de assinante.'
                 ) : (
                   <>
                     {top ? `${nValem} de ${top.totalQueValem} premissas a favor` : 'Sem premissas suficientes'} · as odds entram

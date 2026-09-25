@@ -19,11 +19,10 @@ import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 import { competitionLabel, sortCompetitions, fixtureScopesFor } from '@/utils/futebol-competitions';
 import { VerAnaliseCTA } from '@/components/futebol/VerAnaliseCTA';
 import {
-  pickLabel, marketLabel, fmtEdgeScore,
-  faixaBadgeCls, faixaWord, faixaTone, chancePct, edgeToneCls,
+  pickLabel, marketLabel, marketShort,
+  faixaBadgeCls, faixaWord, faixaTone, chancePct,
   opcoesDeFaixa, passaNoFiltroDeFaixas, versaoDaJanela, compararOportunidades,
   FAIXAS_FILTRO_PADRAO, type Faixa,
-  FILTRO_DE_VALOR_PADRAO, passaNoFiltroDeValor, type FiltroDeValor,
   ESTADOS_DO_JOGO, passaNoFiltroDeEstado, type EstadoDoJogo,
 } from '@/utils/futebol-score';
 import { settleFutebol, resultBadge, resumoDoDia, type BetResult } from '@/utils/futebol-settlement';
@@ -103,7 +102,7 @@ function textoDoFiltroQueEsvaziou(escondidas: number, vazios: readonly string[])
   return `${quantas} em outro filtro. Troque o filtro para ver.`;
 }
 
-const GRID = 'grid grid-cols-[56px_64px_1fr_140px_64px_80px_72px_28px] gap-3 items-center';
+const GRID = 'grid grid-cols-[56px_64px_1fr_140px_64px_80px_28px] gap-3 items-center';
 
 // Linha da tabela (desktop)
 function OppRow({ o, to, muted, locked, result, homeGoals, awayGoals, aoClicar, aoAparecer }: {
@@ -166,13 +165,11 @@ function OppRow({ o, to, muted, locked, result, homeGoals, awayGoals, aoClicar, 
         <>
           <div className="text-right"><ValorBloqueado /></div>
           <div className="text-right"><ValorBloqueado /></div>
-          <div className="text-right"><ValorBloqueado /></div>
         </>
       ) : (
         <>
           <div className="text-right tabular-nums text-[13px] font-semibold text-ink">{chance != null ? `${chance}%` : '—'}</div>
           <div className="text-right tabular-nums text-[13px] font-semibold text-ink">{o.best_odd.toFixed(2)}</div>
-          <div className={`text-right tabular-nums text-[14px] font-bold ${edgeToneCls(o.edge)}`}>{o.edge != null ? fmtEdgeScore(o.edge) : '—'}</div>
         </>
       )}
       <ChevronRight className="w-4 h-4 text-ink-3 justify-self-end" />
@@ -202,54 +199,67 @@ function OppMobileCard({ o, to, locked, result, homeGoals, awayGoals, canRegiste
             <Crest teamId={o.away_team_id} name={o.away_team_name} size={24} />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 flex-wrap">
+            {/* UMA linha, e não `flex-wrap`. Com três etiquetas — mercado,
+                faixa e o selo do resultado — a terceira caía sozinha para a
+                linha de baixo, e o cartão ficava com um GREEN órfão embaixo de
+                tudo.
+
+                Quem cede é o MERCADO, que é a mais longa e a menos decisiva das
+                três: ela trunca, e faixa e resultado ficam inteiros. O nome
+                curto é o mesmo que a agenda usa no celular, pelo mesmo motivo —
+                "Gols (Over/Under)" em 9px com tracking vira uma tira de ruído. */}
+            <div className="flex items-center gap-1.5 min-w-0">
               {!bloqueada && (
-                <span className="px-1.5 h-5 inline-flex items-center rounded text-[9px] font-semibold uppercase tracking-[0.08em] bg-canvas-2 text-ink-2">{marketLabel(o.market)}</span>
+                /* O `truncate` vai no SPAN DE DENTRO, e não na etiqueta.
+                   `text-overflow: ellipsis` não se aplica ao texto solto de um
+                   contêiner flex — ele vira item anônimo e a reticência não
+                   aparece, então a etiqueta cortava seco. Com um span próprio,
+                   ele é um item de flex de verdade e trunca como se espera. */
+                <span className="min-w-0 px-1.5 h-5 inline-flex items-center rounded text-[9px] font-semibold uppercase tracking-[0.08em] bg-canvas-2 text-ink-2">
+                  <span className="truncate">{marketShort(o.market)}</span>
+                </span>
               )}
               {!bloqueada && o.faixa != null && (
-                <span className={`px-1.5 h-5 inline-flex items-center rounded text-[9px] font-bold uppercase tracking-[0.1em] ${faixaBadgeCls(o.faixa)}`}>{faixaWord(o.faixa)}</span>
+                <span className={`shrink-0 px-1.5 h-5 inline-flex items-center rounded text-[9px] font-bold uppercase tracking-[0.1em] ${faixaBadgeCls(o.faixa)}`}>{faixaWord(o.faixa)}</span>
               )}
               {result && <ResultBadge r={result} />}
             </div>
             <div className={`text-[15px] font-semibold tracking-tight mt-1.5 ${bloqueada ? 'text-ink-3' : 'text-ink'}`}>
               {bloqueada ? 'Aposta de assinante' : pick}
             </div>
+            {/* Times numa linha, horário na seguinte — o mesmo arranjo do cartão
+                da home. Juntos, num confronto de nomes longos, o `truncate`
+                comia o nome do time para caber a hora. */}
             <div className="text-[11px] text-ink-3 truncate">
               {hasScore
-                ? `${o.home_team_name} ${homeGoals} × ${awayGoals} ${o.away_team_name} · ${fmtHour(o.kickoff_utc)}`
-                : `${o.home_team_name} × ${o.away_team_name} · ${fmtHour(o.kickoff_utc)}`}
+                ? `${o.home_team_name} ${homeGoals} × ${awayGoals} ${o.away_team_name}`
+                : `${o.home_team_name} × ${o.away_team_name}`}
             </div>
+            <div className="text-[11px] text-ink-3">{fmtHour(o.kickoff_utc)}</div>
           </div>
+          {/* Chance e Odd embaixo do Score, e não numa faixa no pé do cartão —
+              o mesmo arranjo da home (#520). Eram três números lado a lado lá
+              embaixo; com a saída do valor sobraram dois, e duas colunas onde
+              cabiam três abriam um vão no meio do cartão. */}
           <div className="text-right shrink-0">
             <div className="text-[8px] uppercase tracking-[0.14em] font-semibold text-ink-3">Score</div>
             <div className={`text-[22px] font-bold tabular-nums tracking-tight leading-none ${bloqueada ? 'text-ink-3' : 'text-forest'}`}>
               {bloqueada ? <ValorBloqueado /> : o.score ?? '—'}
             </div>
-          </div>
-        </div>
-        <div className="grid grid-cols-3 gap-1 mt-3 pt-2.5 border-t border-line">
-          {/* A cor do Valor sai de `edgeToneCls`, a mesma da linha do desktop:
-              verde só quando positivo, neutro em zero ou negativo. Verde fixo
-              aqui pintava de vantagem uma diferença que não existe. */}
-          {(bloqueada
-            ? [
-                { label: 'Chance', valor: null, cls: '' },
-                { label: 'Odd', valor: null, cls: '' },
-                { label: 'Valor', valor: null, cls: '' },
-              ]
-            : [
-                { label: 'Chance', valor: chance != null ? `${chance}%` : '—', cls: 'text-ink' },
-                { label: 'Odd', valor: o.best_odd.toFixed(2), cls: 'text-ink' },
-                { label: 'Valor', valor: o.edge != null ? fmtEdgeScore(o.edge) : '—', cls: edgeToneCls(o.edge) },
-              ]
-          ).map(({ label, valor, cls }) => (
-            <div key={label}>
-              <div className="text-[8px] uppercase tracking-[0.14em] font-semibold text-ink-3">{label}</div>
-              <div className={`text-[13px] font-semibold tabular-nums leading-none mt-0.5 ${cls}`}>
-                {valor ?? <ValorBloqueado />}
-              </div>
+            <div className="mt-2 grid gap-1">
+              {[
+                { label: 'Chance', valor: bloqueada ? null : chance != null ? `${chance}%` : '—' },
+                { label: 'Odd', valor: bloqueada ? null : o.best_odd.toFixed(2) },
+              ].map(({ label, valor }) => (
+                <div key={label} className="flex items-baseline justify-end gap-2">
+                  <span className="text-[8px] uppercase tracking-[0.14em] font-semibold text-ink-3">{label}</span>
+                  <span className="text-[12px] font-bold tabular-nums leading-none text-ink">
+                    {valor ?? <ValorBloqueado />}
+                  </span>
+                </div>
+              ))}
             </div>
-          ))}
+          </div>
         </div>
         {/* Só no celular, e só para quem tem a leitura.
             No desktop a linha da tabela termina num chevron e a coluna inteira
@@ -354,7 +364,6 @@ export default function FutebolOportunidades() {
   // está caçando aposta agora tira "Encerrados"; quem quer conferir como o dia
   // fechou deixa só ele — o que o interruptor "Só jogos em aberto" não permitia.
   const [estadosSelecionados, setEstadosSelecionados] = useState<EstadoDoJogo[]>([...ESTADOS_DO_JOGO]);
-  const [valor, setValor] = useState<FiltroDeValor>(FILTRO_DE_VALOR_PADRAO);
   // `null` significa todas: acompanha automaticamente as competições daquele dia.
   const [competicoesSelecionadas, setCompeticoesSelecionadas] = useState<string[] | null>(null);
   // Mesma URL da home e da agenda, para o dia sobreviver à navegação e ao F5.
@@ -661,7 +670,6 @@ export default function FutebolOportunidades() {
       if (mercado !== 'all' && r.market !== mercado) return false;
       // Sem faixa não dá pra classificar, então o filtro de faixa a esconde.
       if (!passaNoFiltroDeFaixas(faixasSelecionadas, r.faixa)) return false;
-      if (!passaNoFiltroDeValor(valor, r.edge)) return false;
       if (competicoesSelecionadas && !competicoesSelecionadas.includes(r.competition)) return false;
       // Em aberto, ao vivo ou encerrado: a regra mora em futebol-score.ts, junto
       // das outras do painel, e decide pelo relógio antes do status — que vem do
@@ -674,7 +682,7 @@ export default function FutebolOportunidades() {
     // elas, o filtro continuaria mostrando o recorte de antes de o placar
     // fresco chegar. O eslint não cobra estas dependências aqui (a regra está
     // desligada no arquivo), então elas são responsabilidade de quem edita.
-    [dayRows, mercado, faixasSelecionadas, valor, competicoesSelecionadas, estadosSelecionados, agora, fixtureMap, frescoMap]
+    [dayRows, mercado, faixasSelecionadas, competicoesSelecionadas, estadosSelecionados, agora, fixtureMap, frescoMap]
   );
 
   // Uma linha por oportunidade (sem colapsar por jogo), ranqueado por Score.
@@ -689,7 +697,10 @@ export default function FutebolOportunidades() {
   // A lista mostra o que o backend publicou. O corte local por número de Score
   // saiu na virada do Score de contexto (spec #301): a régua era calibrada para
   // a fórmula antiga e aplicá-la à escala nova classificaria errado.
-  const comValor = bestRows;
+  // Chamava-se `comValor`, e o nome deixou de nomear coisa nenhuma quando o
+  // filtro de valor saiu (#520): é a lista que vai para a tela, sem recorte de
+  // preço nenhum. Alias de `bestRows` para o modo demonstração entrar no lugar.
+  const listaDoDia = bestRows;
   // A distribuição descreve o DIA, e por isso sai de dayRows e não de bestRows:
   // contar sobre a lista já filtrada faria o resumo dizer "Baixa 0" sempre que o
   // filtro escondesse a faixa Baixa, que é justamente o padrão.
@@ -711,7 +722,7 @@ export default function FutebolOportunidades() {
   const nMedia = distribuicao.filter((o) => o.faixa != null && faixaTone(o.faixa) === 'media').length;
   const nBaixa = distribuicao.filter((o) => o.faixa != null && faixaTone(o.faixa) === 'baixa').length;
 
-  // Contagem de oportunidades COM VALOR por dia (badge do stepper).
+  // Contagem de oportunidades por dia (badge do stepper).
   const countByDay = useMemo(() => {
     const byDay = new Map<string, FutebolValueBoardRow[]>();
     allRows.forEach((r) => {
@@ -755,7 +766,7 @@ export default function FutebolOportunidades() {
   // num dia de seis, com as três sem fixture saindo da conta em silêncio (#323).
   const resumo = useMemo(
     () => (isPastDay
-      ? resumoDoDia(comValor.map((o) => ({
+      ? resumoDoDia(listaDoDia.map((o) => ({
         // Quem sabe se o fixture veio é o mapa, não o `kickoff_utc`: a linha do
         // board traz horário mesmo quando o calendário não trouxe o jogo.
         temFixture: fixtureMap.has(o.fixture_id),
@@ -765,7 +776,7 @@ export default function FutebolOportunidades() {
     // `resultOf` lê os três mapas, e o eslint está desligado aqui: quem esquecer
     // um deles faz a manchete do dia congelar no que o espelho dizia antes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [isPastDay, comValor, goalsMap, fixtureMap, frescoMap],
+    [isPastDay, listaDoDia, goalsMap, fixtureMap, frescoMap],
   );
 
   // Pick publicado num jogo que o calendário não trouxe é anomalia de catálogo,
@@ -847,33 +858,26 @@ export default function FutebolOportunidades() {
               </>
             ) : (
               <>
-                {/* O título só afirma "com valor" quando isso é verdade na
-                    lista que está na tela.
+                {/* O título não promete mais valor, em nenhuma combinação.
 
-                    Ele dizia "N oportunidades com valor" sempre. Depois da
-                    virada de 03/09 a porta de preço saiu do gate: o board
-                    publica a linha independente de a odd pagar acima do justo,
-                    e em 04/09 as cinco primeiras do dia pagavam ABAIXO. A tela
-                    afirmava valor em cima de um número que dizia o contrário,
-                    três centímetros ao lado.
+                    Ele já disse "N oportunidades com valor" sempre, e depois só
+                    quando o filtro pedia as que pagam acima do justo — a frase
+                    tinha de descrever a lista que estava na tela. Com o filtro
+                    fora (#520) não há mais recorte que a sustente, e o número
+                    que ela afirmava também saiu.
 
                     "Oportunidade" continua certo, e é o termo do CONTEXT.md:
                     candidata aprovada pelas regras de publicação VIGENTES. Quem
-                    mudou foram as regras, não o nome. O que sai é a promessa de
-                    valor — que volta quando o filtro pede só as que pagam acima
-                    do justo, porque aí a frase descreve a lista.
+                    mudou foram as regras, não o nome.
 
-                    A faixa Baixa continua calando a frase, e as duas condições
-                    valem juntas: preço acima do justo é uma afirmação, cenário
-                    sustentado é outra, e o título só promete valor quando as duas
-                    são verdade na lista que está na tela. */}
+                    A faixa Baixa continua qualificando o título: ali a frase
+                    fala de cenário sustentado, que é outra afirmação e não
+                    depende de preço nenhum. */}
                 <h1 className="font-display text-2xl md:text-[28px] font-extrabold tracking-tight text-ink mt-1">
-                  {comValor.length} {comValor.length === 1 ? 'oportunidade' : 'oportunidades'}
-                  {faixasSelecionadas.length === 1 && faixasSelecionadas[0] === 'baixa'
-                    ? ' em faixa baixa'
-                    : valor === 'positivo' && !faixasSelecionadas.includes('baixa') ? ' com valor' : ''}
+                  {listaDoDia.length} {listaDoDia.length === 1 ? 'oportunidade' : 'oportunidades'}
+                  {faixasSelecionadas.length === 1 && faixasSelecionadas[0] === 'baixa' ? ' em faixa baixa' : ''}
                 </h1>
-                <p className="text-[13px] mt-1 text-ink-2">{isPastDay ? 'Resultado das oportunidades publicadas neste dia' : 'Análises pré-jogo com Score, o que sustenta cada leitura e o preço de mercado ao lado. O filtro de valor separa as que pagam acima do preço justo.'}</p>
+                <p className="text-[13px] mt-1 text-ink-2">{isPastDay ? 'Resultado das oportunidades publicadas neste dia' : 'Análises pré-jogo com Score, o que sustenta cada leitura e a odd de mercado ao lado.'}</p>
               </>
             )}
           </div>
@@ -921,8 +925,6 @@ export default function FutebolOportunidades() {
           onEstadosChange={setEstadosSelecionados}
           faixasSelecionadas={faixasSelecionadas}
           onFaixasChange={setFaixasSelecionadas}
-          valor={valor}
-          onValorChange={setValor}
           competicoesSelecionadas={competicoesSelecionadas}
           onCompeticoesChange={setCompeticoesSelecionadas}
           competicaoOptions={compOptions}
@@ -930,7 +932,7 @@ export default function FutebolOportunidades() {
 
         {isLoading ? (
           <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-16 w-full bg-canvas-2 rounded-rebrand-md" />)}</div>
-        ) : (isPastDay ? comValor.length === 0 : bestRows.length === 0) ? (
+        ) : (isPastDay ? listaDoDia.length === 0 : bestRows.length === 0) ? (
           <div className="rounded-rebrand-md bg-white border border-line p-6 text-center">
             {/* Quando o dia TEM oportunidade e a lista está vazia, quem esvaziou
                 foi o filtro. Culpar o dado nesse caso manda a pessoa embora de
@@ -955,9 +957,9 @@ export default function FutebolOportunidades() {
             <div className="hidden md:block rounded-rebrand-md overflow-hidden bg-white border border-line">
               <div className={`${GRID} px-5 py-2.5 text-[10px] uppercase tracking-[0.14em] font-semibold text-ink-3 bg-canvas-2`}>
                 <div>Score ↓</div><div>Faixa</div><div>Aposta</div><div>Mercado</div>
-                <div className="text-right">Chance</div><div className="text-right">Odd</div><div className="text-right">Valor</div><div />
+                <div className="text-right">Chance</div><div className="text-right">Odd</div><div />
               </div>
-              {comValor.map((o, i) => {
+              {listaDoDia.map((o, i) => {
                 const res = resultOf(o);
                 const g = placarDe(o);
                 return (
@@ -1002,7 +1004,7 @@ export default function FutebolOportunidades() {
 
             {/* Cards (mobile) */}
             <div className="md:hidden flex flex-col gap-2.5">
-              {comValor.map((o, i) => {
+              {listaDoDia.map((o, i) => {
                 const res = resultOf(o);
                 const g = placarDe(o);
                 return (
@@ -1041,7 +1043,7 @@ export default function FutebolOportunidades() {
         <div className="rounded-rebrand-md px-5 py-4 flex items-start gap-3" style={{ background: '#fef7df', border: '1px solid #fde68a' }}>
           <span className="mt-0.5 shrink-0" style={{ color: '#9a6c00' }}><AlertTriangle className="w-4 h-4" /></span>
           <div className="text-[12px] leading-relaxed" style={{ color: '#5a3c00' }}>
-            <span className="font-semibold">Não é recomendação.</span> Valor = quanto a odd paga acima ou abaixo do preço justo. Publicamos a leitura do cenário mesmo quando o preço não ajuda — o filtro de valor mostra só as que pagam acima.
+            <span className="font-semibold">Não é recomendação.</span> Publicamos a leitura do cenário, e ela não é promessa de que o preço está bom: a decisão de apostar, e por quanto, é sua.
           </div>
         </div>
 
@@ -1050,7 +1052,7 @@ export default function FutebolOportunidades() {
           <div className="rounded-rebrand-md bg-white border border-line p-4">
             <div className={LABEL}>Como ler o Score</div>
             <p className="text-[12px] text-ink-2 mt-2 leading-relaxed">
-              O <b className="text-ink">Score (0–100)</b> resume <b className="text-ink">quanto do cenário desta linha foi confirmado pelas premissas do modelo</b>. Ele não é chance de acerto e não inclui odd ou preço. Os argumentos a favor e contra mostram o que sustenta a leitura; chance estimada, odd e valor aparecem ao lado, cada um com uma função diferente.
+              O <b className="text-ink">Score (0–100)</b> resume <b className="text-ink">quanto do cenário desta linha foi confirmado pelas premissas do modelo</b>. Ele não é chance de acerto e não inclui odd ou preço. Os argumentos a favor e contra mostram o que sustenta a leitura; chance estimada e odd aparecem ao lado, cada uma com uma função diferente.
             </p>
           </div>
           <div className="rounded-rebrand-md bg-white border border-line p-4">

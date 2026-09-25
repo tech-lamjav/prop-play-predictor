@@ -72,7 +72,7 @@ export function makeFutebolSteps({ hasDayBar }: { hasDayBar: boolean }): Step[] 
       placement: 'center',
       title: 'Bem-vindo ao Futebol',
       content:
-        'Esta é a sua central do dia. Todo dia a gente cruza as odds das casas com o nosso método e destaca onde existe valor de verdade. Decisão com dado, não com achismo.',
+        'Esta é a sua central do dia. Todo dia a gente cruza as odds das casas com o nosso método e destaca as leituras que o cenário do jogo sustenta. Decisão com dado, não com achismo.',
     },
   ];
 
@@ -94,7 +94,7 @@ export function makeFutebolSteps({ hasDayBar }: { hasDayBar: boolean }): Step[] 
       placement: 'bottom',
       title: 'O raio-x do dia',
       content:
-        'Quatro números: os jogos na agenda, as oportunidades publicadas no dia, quantas estão na faixa Alta — as de cenário melhor sustentado pelas premissas — e a maior diferença para o preço justo, que vira "preço mais perto do justo" nos dias em que nenhuma paga acima.',
+        'Quatro números: os jogos na agenda, as oportunidades publicadas no dia, e quantas estão em cada faixa — a Alta, de cenário melhor sustentado pelas premissas, e a Média, de sustentação parcial.',
     },
     {
       id: 'futebol-oportunidades',
@@ -104,7 +104,7 @@ export function makeFutebolSteps({ hasDayBar }: { hasDayBar: boolean }): Step[] 
       spotlightPadding: 14,
       title: 'As oportunidades do dia',
       content:
-        'Aqui ficam as principais leituras do dia, ordenadas pelo Score. Quanto maior o Score, mais o cenário do jogo sustenta aquela linha — o preço não entra nessa nota: a odd e o valor aparecem ao lado, separados. Cada cartão diz de que campeonato é a aposta, e o botão "Ver análise completa" abre o jogo já na leitura daquela linha.',
+        'Aqui ficam as principais leituras do dia, ordenadas pelo Score. Quanto maior o Score, mais o cenário do jogo sustenta aquela linha — o preço não entra nessa nota: a odd aparece ao lado, separada. Cada cartão diz de que campeonato é a aposta, e o botão "Ver análise completa" abre o jogo já na leitura daquela linha.',
     },
     {
       id: 'futebol-jogos',
@@ -121,7 +121,7 @@ export function makeFutebolSteps({ hasDayBar }: { hasDayBar: boolean }): Step[] 
       placement: 'top',
       title: 'Leitura, não garantia',
       content:
-        'Importante: o Score e a faixa medem o quanto o cenário do jogo sustenta a linha — não são chance de acerto nem garantia. Quem mostra se o preço compensa é o valor, ao lado. A decisão final é sempre sua.',
+        'Importante: o Score e a faixa medem o quanto o cenário do jogo sustenta a linha — não são chance de acerto nem garantia. Se o preço compensa, quem julga é você, com a odd ao lado. A decisão final é sempre sua.',
     },
   );
 
@@ -147,7 +147,7 @@ export function makeFutebolOportunidadesSteps({
       placement: 'center',
       title: 'Todas as oportunidades',
       content:
-        'Aqui está a lista completa do dia, ordenada do Score mais alto pro mais baixo. O filtro de valor separa as que pagam acima do preço justo.',
+        'Aqui está a lista completa do dia, ordenada do Score mais alto pro mais baixo.',
     },
   ];
 
@@ -167,7 +167,7 @@ export function makeFutebolOportunidadesSteps({
     placement: 'bottom',
     title: 'Filtre do seu jeito',
     content:
-      'Cinco recortes: o mercado (resultado, gols, handicap e mais), o estado do jogo (em aberto, ao vivo, encerrados), a faixa do cenário, o valor — que separa o que paga acima do preço justo — e a competição. Os de marcar vários deixam combinar à vontade, e desmarcar tudo esvazia a lista de propósito.',
+      'Quatro recortes: o mercado (resultado, gols, handicap e mais), o estado do jogo (em aberto, ao vivo, encerrados), a faixa do cenário e a competição. Os de marcar vários deixam combinar à vontade, e desmarcar tudo esvazia a lista de propósito.',
   });
 
   if (hasBoard) {
@@ -177,7 +177,7 @@ export function makeFutebolOportunidadesSteps({
       placement: 'top',
       title: 'Como ler cada linha',
       content:
-        'Cada linha é uma aposta: o Score e a faixa, a aposta em si, a chance estimada, a melhor odd e o valor (o quanto a odd paga acima da chance). A ordem é do Score mais alto para o mais baixo. Toque na linha — ou, no celular, no botão "Ver análise completa" — para abrir a análise do jogo.',
+        'Cada linha é uma aposta: o Score e a faixa, a aposta em si, a chance estimada e a melhor odd. A ordem é do Score mais alto para o mais baixo. Toque na linha — ou, no celular, no botão "Ver análise completa" — para abrir a análise do jogo.',
     });
   }
 
@@ -259,7 +259,7 @@ export function makeFutebolJogoSteps({
       placement: ladoALado ? 'left' : 'center',
       title: 'A folha do mercado',
       content:
-        'Clique num mercado e ele abre aqui: a aposta, a chance, a odd, a vantagem sobre o preço e o veredito em uma frase.',
+        'Clique num mercado e ele abre aqui: a aposta, a chance, a odd e o veredito em uma frase.',
     },
   ];
 

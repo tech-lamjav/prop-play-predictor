@@ -3,7 +3,7 @@ import { ChevronRight } from 'lucide-react';
 import { DropdownMenuCheckboxItem } from '@/components/ui/dropdown-menu';
 import { Chip } from './Chip';
 import { ITEM_SELETOR as ITEM_CLS, SeletorDeMenu } from './SeletorDeMenu';
-import type { EstadoDoJogo, Faixa, FiltroDeValor } from '@/utils/futebol-score';
+import type { EstadoDoJogo, Faixa } from '@/utils/futebol-score';
 
 export type MarketFilter = 'all' | 'match_winner' | 'goals_over_under' | 'asian_handicap' | 'btts' | 'double_chance';
 
@@ -147,41 +147,6 @@ const ESTADOS: { value: EstadoDoJogo; label: string }[] = [
   { value: 'encerrado', label: 'Encerrado' },
 ];
 
-const VALORES: { value: FiltroDeValor; label: string }[] = [
-  { value: 'todos', label: 'Todos' },
-  { value: 'positivo', label: 'Acima do justo' },
-  { value: 'perto', label: 'Até 2% abaixo' },
-  { value: 'abaixo', label: 'Mais de 2% abaixo' },
-];
-
-/**
- * Seleção ÚNICA, ao contrário de faixa, estado e competição: as três opções são
- * um intervalo contínuo, e marcar "acima do justo" junto com "mais de 2%
- * abaixo" descreveria um recorte que ninguém procura. Quem quer os dois
- * extremos quer, na prática, todos.
- *
- * E por ser única, ela FECHA ao escolher. O menu de marcar vários fica aberto
- * porque o próximo clique é esperado; aqui não há próximo clique, e continuar
- * aberto era o motivo de o seletor de Valor parecer travado.
- */
-function ValorSelect({ valor, onChange }: { valor: FiltroDeValor; onChange: (value: FiltroDeValor) => void }) {
-  const label = VALORES.find((item) => item.value === valor)?.label ?? 'Todos';
-  return (
-    <SeletorDeMenu rotulo="Valor" resumo={label} largura="sm:w-[196px]">
-      {VALORES.map((item) => (
-        <DropdownMenuCheckboxItem
-          key={item.value}
-          checked={valor === item.value}
-          onSelect={() => onChange(item.value)}
-          className={ITEM_CLS}
-        >
-          {item.label}
-        </DropdownMenuCheckboxItem>
-      ))}
-    </SeletorDeMenu>
-  );
-}
-
 /**
  * A competição fala `null` com a tela, e lista com o seletor.
  *
@@ -221,13 +186,11 @@ export function OportunidadesFiltros({
   mercado, onMercadoChange,
   estadosSelecionados, onEstadosChange,
   faixasSelecionadas, onFaixasChange,
-  valor, onValorChange,
   competicoesSelecionadas, onCompeticoesChange, competicaoOptions,
 }: {
   mercado: MarketFilter; onMercadoChange: (value: MarketFilter) => void;
   estadosSelecionados: readonly EstadoDoJogo[]; onEstadosChange: (value: EstadoDoJogo[]) => void;
   faixasSelecionadas: readonly Faixa[]; onFaixasChange: (value: Faixa[]) => void;
-  valor: FiltroDeValor; onValorChange: (value: FiltroDeValor) => void;
   competicoesSelecionadas: readonly string[] | null; onCompeticoesChange: (value: string[] | null) => void; competicaoOptions: SelectOption[];
 }) {
   return (
@@ -236,12 +199,15 @@ export function OportunidadesFiltros({
         <MarketChips value={mercado} onChange={onMercadoChange} />
       </div>
       <div className="h-px bg-line/70 sm:hidden" />
-      {/* Grade de dois no celular, fileira no desktop.
-          A fileira rolava na horizontal, e com quatro controles de largura fixa
-          era preciso arrastar para chegar ao último — arrastando justamente por
-          cima de botões que abrem menu ao toque. Empilhados numa grade, os
-          quatro aparecem de uma vez e não há arrasto disputando o gesto. */}
-      <div data-testid="filtros-visualizacao" className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-2 sm:shrink-0">
+      {/* Uma FILEIRA, no celular e no desktop.
+          Já foi grade de dois no celular, e isso resolvia um problema que não
+          existe mais: eram QUATRO controles de largura fixa, a fileira rolava, e
+          chegar ao último exigia arrastar por cima de botões que abrem menu ao
+          toque. Com a saída do filtro de valor (#520) sobraram três, e a grade
+          passou a deixar um órfão sozinho na segunda linha — mais feio do que o
+          arrasto que ela evitava. Três lado a lado cabem, e o `overflow-x-auto`
+          segura o caso extremo sem obrigar ninguém a arrastar no caso normal. */}
+      <div data-testid="filtros-visualizacao" className="flex items-center gap-2 overflow-x-auto scrollbar-hide -my-1 py-1 sm:overflow-visible sm:shrink-0">
         <MultiSelect
           rotulo="Estado"
           opcoes={ESTADOS}
@@ -262,7 +228,6 @@ export function OportunidadesFiltros({
           plural="faixas"
           largura="sm:w-[168px]"
         />
-        <ValorSelect valor={valor} onChange={onValorChange} />
         <CompeticaoMultiSelect options={competicaoOptions} selecionadas={competicoesSelecionadas} onChange={onCompeticoesChange} />
       </div>
     </div>

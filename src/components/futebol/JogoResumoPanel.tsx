@@ -113,10 +113,11 @@ export function JogoResumoPanel({
   // O valor que o modelo comparou (#464). No tour não existe, e não faz falta:
   // ausência cai na rota seguinte, como em jogo gravado antes do deploy.
   const { data: insumos } = useFutebolFixtureInsumos(demo ? undefined : fixture.fixture_id);
-  // A camada de VALOR é paga, e este painel era o furo: chance, odd e vantagem
-  // apareciam limpas para quem não tem acesso, enquanto as MESMAS três estão
-  // borradas na tela de Oportunidades e na folha do jogo. Uma tela dava de
-  // graça o que a outra cobrava.
+  // A camada paga do modelo, e este painel era o furo: chance e odd apareciam
+  // limpas para quem não tem acesso, enquanto as MESMAS estão fechadas na tela
+  // de Oportunidades e na folha do jogo. Uma tela dava de graça o que a outra
+  // cobrava. (A vantagem sobre o preço estava nesta lista até o #519, quando
+  // saiu da tela para todo mundo — assinante incluído.)
   //
   // A regra é a das outras duas, incluindo a exceção: linha já liquidada não
   // borra. O passado é registro do que foi publicado, não pick para apostar.
@@ -398,18 +399,10 @@ export function JogoResumoPanel({
                       {best.best_odd.toFixed(2)}
                     </div>
                   </div>
-                  <div>
-                    <div className="text-[8.5px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>Valor</div>
-                    <div className="tabular-nums text-[15px] font-semibold mt-0.5" style={{ color: best.edge > 0 ? '#8ee6b0' : 'rgba(255,255,255,.55)' }}>
-                      
-                        {`${best.edge >= 0 ? '+' : '−'}${Math.abs(best.edge * 100).toFixed(1).replace('.', ',')}%`}
-                      
-                    </div>
-                  </div>
                 </div>
               ) : bloqueadoSemLeitura ? (
                 <div className="text-[12px] mt-2.5" style={{ color: 'rgba(255,255,255,.55)' }}>
-                  chance, odd e valor são de assinante
+                  chance e odd são de assinante
                 </div>
               ) : (
                 <div className="text-[12px] mt-2.5" style={{ color: 'rgba(255,255,255,.55)' }}>
