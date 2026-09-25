@@ -62,16 +62,20 @@ export function SerieResultados({ s, corPor = 'resultado' }: { s: SerieHistorico
         return (
           <div
             key={`${j.ordem}-${j.data}`}
-            className="rounded-lg px-2 py-1.5"
+            // ⚠️ Largura FIXA. Sem ela a caixa media o nome do adversário, e
+            // "CRB" ao lado de "Athletic Club" dava quadros de tamanhos
+            // diferentes na mesma fileira — a forma variando por um motivo que
+            // não tem nada a ver com o que o quadro informa.
+            className="rounded-lg px-2 py-1.5 w-[92px] shrink-0"
             style={{ background: c.bg }}
             title={`${dia(j.data)} · ${j.emCasa ? 'em casa' : 'fora'} contra ${j.adversario}`}
           >
             <div className="tabular-nums text-[12.5px] font-bold leading-none text-center" style={{ color: c.fg }}>
               {j.placar}
             </div>
-            <div className="flex items-center gap-1 mt-1.5">
+            <div className="flex items-center justify-center gap-1 mt-1.5 min-w-0">
               <Crest name={j.adversario} id={j.adversarioId} size={13} />
-              <span className="text-[9.5px] truncate max-w-[58px]" style={{ color: c.fg, opacity: 0.8 }}>
+              <span className="text-[9.5px] truncate" style={{ color: c.fg, opacity: 0.8 }}>
                 {j.adversario}
               </span>
             </div>
