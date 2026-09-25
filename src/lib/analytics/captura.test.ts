@@ -38,6 +38,7 @@ import {
   identificar,
   jogoClicado,
   oportunidadeExibida,
+  guardarNaPessoa,
   perfilDeclaradoDaPessoa,
   pesquisaDePerfilAdiada,
   pesquisaDePerfilExibida,
@@ -287,5 +288,59 @@ describe('a pesquisa de perfil', () => {
     expect(() =>
       perfilDeclaradoDaPessoa({ goal: 'economizar_tempo', betting_frequency: 'de_vez_em_quando' }),
     ).not.toThrow();
+  });
+});
+
+describe('o traço de pessoa tem a mesma guarda do evento', () => {
+  // Um evento com dado pessoal suja uma linha; um TRAÇO com dado pessoal gruda
+  // na pessoa e passa a acompanhar todo evento futuro dela. Se a guarda valia
+  // para `capturar`, valia mais ainda aqui.
+  it('avisa em DEV quando o payload carrega chave pessoal', () => {
+    const aviso = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    guardarNaPessoa({ email: 'alguem@exemplo.com', profile_goal: 'economizar_tempo' });
+
+    expect(aviso).toHaveBeenCalledWith(expect.stringContaining('email'));
+    aviso.mockRestore();
+  });
+
+  it('e não avisa quando o payload está limpo', () => {
+    const aviso = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    guardarNaPessoa({ profile_goal: 'economizar_tempo' });
+
+    expect(aviso).not.toHaveBeenCalled();
+    aviso.mockRestore();
+  });
+});
+
+describe('o que não está na lista não suja a base', () => {
+  // Quem monta a resposta guarda as escolhas num mapa de string e afirma o tipo
+  // com um `as`. Afirmação de tipo não é garantia de valor: se a frase da tela
+  // vazar para o lugar do código, o compilador não vê. A conversão é o que
+  // impede que isso vire uma categoria nova, para sempre.
+  it('um texto de tela no lugar do código vira o escape', () => {
+    pesquisaDePerfilRespondida({
+      goal: 'Economizar tempo na análise' as never,
+      betting_frequency: 'toda_semana',
+      audience: 'chegada',
+      deferrals: 0,
+    });
+
+    const [, props] = posthogMock.capture.mock.calls[0];
+    expect(props.goal).toBe('other');
+    expect(props.betting_frequency).toBe('toda_semana');
+  });
+
+  it('e o traço da pessoa também não aceita', () => {
+    perfilDeclaradoDaPessoa({
+      goal: 'economizar_tempo',
+      betting_frequency: 'Toda semana' as never,
+    });
+
+    expect(posthogMock.setPersonProperties).toHaveBeenCalledWith({
+      profile_goal: 'economizar_tempo',
+      profile_betting_frequency: 'other',
+    });
   });
 });

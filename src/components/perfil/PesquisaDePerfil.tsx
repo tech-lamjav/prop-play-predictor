@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
 import { usePerfilDeclarado } from '@/hooks/use-perfil-declarado';
@@ -75,12 +75,12 @@ function marcar(chave: string): void {
 export const PesquisaDePerfil: React.FC = () => {
   const location = useLocation();
   const { user, isLoading } = useAuth();
-  const { carregando, respondeu, leituraFalhou, adiamentos, adiar, responder } = usePerfilDeclarado(
-    user?.id,
-  );
+  const { carregando, respondeu, leituraFalhou, adiamentos, proximoAdiamento, adiar, responder } =
+    usePerfilDeclarado(user?.id);
 
   const [adiouNestaSessao, setAdiouNestaSessao] = useState(() => marcado(CHAVE_DE_ADIAMENTO));
   const [aberto, setAberto] = useState(false);
+  const jaContouExibicao = useRef(false);
 
   const temPessoa = !isLoading && !!user;
 
@@ -135,6 +135,13 @@ export const PesquisaDePerfil: React.FC = () => {
       // decide abrir: entre as duas coisas há 1200ms em que a pessoa pode ter
       // trocado de tela, e contar essas seria inflar o denominador da taxa de
       // resposta com gente que nunca viu a pergunta.
+      //
+      // ⚠️ E sai UMA VEZ por sessão. Este efeito reage a `deveAbrir`, que
+      // oscila com a rota: sair para uma tela barrada e voltar o religa. Sem a
+      // trava, uma ida e volta contaria duas exibições da mesma pergunta — e
+      // este evento é justamente o denominador da taxa de resposta.
+      if (jaContouExibicao.current) return;
+      jaContouExibicao.current = true;
       pesquisaDePerfilExibida({ audience: abertura });
     }, ATRASO_MS);
     return () => clearTimeout(relogio);
@@ -159,9 +166,15 @@ export const PesquisaDePerfil: React.FC = () => {
   const aoPular = () => {
     marcar(CHAVE_DE_ADIAMENTO);
     setAdiouNestaSessao(true);
-    // A contagem relatada é a de DEPOIS deste adiamento, igual à que vai para o
-    // banco: as duas precisam contar a mesma coisa para poderem ser comparadas.
-    pesquisaDePerfilAdiada({ audience: abertura, deferrals: adiamentos + 1 });
+    // A contagem relatada é a de DEPOIS deste adiamento, e vem do mesmo número
+    // que o hook manda para o banco — somar de novo aqui seriam duas contas
+    // para o mesmo valor, e um dia elas discordariam calado.
+    //
+    // ⚠️ "Mesmo número" não é "mesmo resultado": a gravação pode falhar, e o
+    // hook ignora o erro de propósito. O evento então relata N+1 com o banco
+    // parado em N. Para a pergunta que este número responde — insistir está
+    // incomodando? — o evento é a fonte melhor, porque ele conta a tentativa.
+    pesquisaDePerfilAdiada({ audience: abertura, deferrals: proximoAdiamento });
     void adiar();
   };
 

@@ -35,8 +35,16 @@ export interface PerfilDeclarado {
    * timeout. É a diferença entre não saber e saber que não.
    */
   leituraFalhou: boolean;
-  /** Quantas vezes já apertou Pular antes de agora. É o que a telemetria reporta. */
+  /** Quantas vezes já apertou Pular antes de agora. */
   adiamentos: number;
+  /**
+   * Quanto a contagem vai valer se a pessoa adiar agora.
+   *
+   * Exposto em vez de somado de novo lá fora: o banco e o evento precisam
+   * contar a mesma coisa para poderem ser comparados, e duas somas em dois
+   * arquivos são duas chances de discordarem em silêncio.
+   */
+  proximoAdiamento: number;
   /** Apertou Pular: soma um à contagem e segue. */
   adiar: () => Promise<void>;
   /** Respondeu: grava as duas escolhas com o carimbo. */
@@ -103,10 +111,11 @@ export function usePerfilDeclarado(userId: string | undefined): PerfilDeclarado 
     };
   }, [userId]);
 
+  const proximoAdiamento = adiamentos + 1;
+
   const adiar = useCallback(async () => {
     if (!userId) return;
-    const proximo = adiamentos + 1;
-    setAdiamentos(proximo);
+    setAdiamentos(proximoAdiamento);
     // Sem try/catch em volta do await: o cliente devolve o erro em `error` em
     // vez de lançar. O retorno é ignorado de propósito — não conseguir contar
     // um adiamento não é motivo para segurar ninguém na porta.
@@ -119,8 +128,12 @@ export function usePerfilDeclarado(userId: string | undefined): PerfilDeclarado 
     // incrementar um contador de diagnóstico não se paga.
     await createClient()
       .from('perfil_declarado')
-      .upsert({ user_id: userId, adiamentos: proximo, atualizado_em: new Date().toISOString() });
-  }, [adiamentos, userId]);
+      .upsert({
+        user_id: userId,
+        adiamentos: proximoAdiamento,
+        atualizado_em: new Date().toISOString(),
+      });
+  }, [proximoAdiamento, userId]);
 
   const responder = useCallback(
     async (resposta: RespostaDoPerfil) => {
@@ -143,5 +156,13 @@ export function usePerfilDeclarado(userId: string | undefined): PerfilDeclarado 
     [userId],
   );
 
-  return { carregando, respondeu, leituraFalhou, adiamentos, adiar, responder };
+  return {
+    carregando,
+    respondeu,
+    leituraFalhou,
+    adiamentos,
+    proximoAdiamento,
+    adiar,
+    responder,
+  };
 }
