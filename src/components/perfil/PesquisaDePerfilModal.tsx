@@ -58,24 +58,38 @@ export const PesquisaDePerfilModal: React.FC<PesquisaDePerfilModalProps> = ({
         onInteractOutside={(evento) => evento.preventDefault()}
         onEscapeKeyDown={(evento) => evento.preventDefault()}
         showCloseButton={false}
-        className="theme-bolao bg-canvas border border-line w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] sm:max-w-md p-0 overflow-hidden rounded-rebrand-xl"
+        // Três colunas verticais: cabeçalho, miolo rolável, rodapé. O teto é a
+        // altura da janela menos uma folga — sem ele, oito opções mais dois
+        // botões estouram a tela numa janela baixa, e o primeiro a sumir é
+        // justamente o Enviar. `dvh` e não `vh` por causa da barra do navegador
+        // no celular, que muda de altura conforme se rola.
+        className="theme-bolao bg-canvas border border-line w-[calc(100vw-1.5rem)] max-w-[calc(100vw-1.5rem)] sm:max-w-sm p-0 gap-0 overflow-hidden rounded-rebrand-xl flex flex-col max-h-[calc(100dvh-2rem)]"
       >
-        <div className="px-6 py-6">
-          <DialogTitle className="font-display text-[20px] font-bold text-ink leading-tight">
+        <div className="px-5 pt-5 pb-3 shrink-0">
+          <DialogTitle className="font-display text-[17px] font-bold text-ink leading-tight">
             {ABERTURAS[abertura]}
           </DialogTitle>
           <DialogDescription className="sr-only">
             Duas perguntas de escolha única sobre o que você busca e com que frequência aposta.
           </DialogDescription>
+        </div>
 
-          {PERGUNTAS.map((pergunta) => {
+        {/* `min-h-0` é o que deixa este filho encolher dentro do flex e ativar a
+            própria rolagem — sem ele o item flex usa a altura do conteúdo como
+            mínimo, e a caixa volta a crescer para fora da tela. */}
+        <div className="px-5 overflow-y-auto flex-1 min-h-0">
+          {PERGUNTAS.map((pergunta, indice) => {
             const rotulo = `pergunta-${pergunta.campo}`;
             return (
-              <div key={pergunta.campo} className="mt-6">
-                <p id={rotulo} className="text-[14px] font-bold text-ink leading-snug">
+              <div key={pergunta.campo} className={indice === 0 ? '' : 'mt-4'}>
+                <p id={rotulo} className="text-[13px] font-bold text-ink leading-snug">
                   {pergunta.enunciado}
                 </p>
-                <div role="radiogroup" aria-labelledby={rotulo} className="mt-3 flex flex-col gap-2">
+                <div
+                  role="radiogroup"
+                  aria-labelledby={rotulo}
+                  className="mt-2 flex flex-col gap-1.5"
+                >
                   {pergunta.opcoes.map((opcao) => {
                     const marcada = escolhas[pergunta.campo] === opcao.codigo;
                     return (
@@ -87,7 +101,7 @@ export const PesquisaDePerfilModal: React.FC<PesquisaDePerfilModalProps> = ({
                         onClick={() =>
                           setEscolhas((atual) => ({ ...atual, [pergunta.campo]: opcao.codigo }))
                         }
-                        className={`w-full text-left px-4 py-3 rounded-rebrand-md border text-[14px] transition-colors ${
+                        className={`w-full text-left px-3.5 py-2.5 rounded-rebrand-md border text-[13px] leading-snug transition-colors ${
                           marcada
                             ? 'border-amber bg-amber/[0.12] text-ink font-bold'
                             : 'border-line bg-transparent text-ink-2 hover:border-ink-2'
@@ -101,12 +115,14 @@ export const PesquisaDePerfilModal: React.FC<PesquisaDePerfilModalProps> = ({
               </div>
             );
           })}
+        </div>
 
+        <div className="px-5 pt-3 pb-4 shrink-0 border-t border-line">
           <button
             type="button"
             onClick={enviar}
             disabled={!completo}
-            className="w-full h-12 mt-6 rounded-rebrand-md bg-amber text-white hover:bg-amber-2 disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center font-bold text-[13px] transition-colors"
+            className="w-full h-11 rounded-rebrand-md bg-amber text-white hover:bg-amber-2 disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center font-bold text-[13px] transition-colors"
           >
             Enviar
           </button>
@@ -114,7 +130,7 @@ export const PesquisaDePerfilModal: React.FC<PesquisaDePerfilModalProps> = ({
           <button
             type="button"
             onClick={onPular}
-            className="w-full mt-3 text-[13px] text-ink-2 hover:text-ink transition-colors"
+            className="w-full mt-2 py-1 text-[13px] text-ink-2 hover:text-ink transition-colors"
           >
             Pular
           </button>
