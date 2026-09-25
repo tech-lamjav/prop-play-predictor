@@ -323,3 +323,250 @@ describe('a posição do valor medido na porta única', () => {
     expect(chamar([linha()])?.texto).toContain('2º');
   });
 });
+
+// ============================================================================
+// Handicap asiático (AE#202) — 4 das 8 premissas
+// ============================================================================
+// O mart passou a publicar `asian_handicap` em `fact_insumos_medidos`. A rota
+// já era agnóstica de mercado (a chave do mapa é `mercado:slug`), então isto é
+// só o mapa aprendendo quatro formas novas.
+//
+// As regras estão em `int_futebol_premissas_ah.sql`, e são elas que decidem
+// cada frase — não o rótulo do catálogo:
+//
+//   supremacia             is_favorito AND (o_rank - s_rank >= 8
+//                                           OR s_ppg >= 1.5 * o_ppg)
+//   sem_rodizio            is_favorito AND <liga de pontos corridos>
+//                                       AND (s_rank <= 6 OR s_rank >= n_teams - 3)
+//   adversario_fragil_fora is_favorito AND o_ga_venue >= 1.6
+//   defesa_fora_solida     is_azarao   AND s_ga_venue <= 1.1
+// ============================================================================
+
+describe('o handicap asiático lê o valor medido', () => {
+  const ah = (over: Partial<InsumoMedido> = {}): InsumoMedido =>
+    linha({ market: 'asian_handicap', ...over });
+
+  const tabela = (over: Partial<InsumoMedido> = {}) => [
+    ah({ premissa: 'supremacia', insumo: 's_rank', valor: 2, ...over }),
+    ah({ premissa: 'supremacia', insumo: 's_ppg', valor: 2.24, ...over }),
+    ah({ premissa: 'supremacia', insumo: 'o_rank', valor: 20, ...over }),
+    ah({ premissa: 'supremacia', insumo: 'o_ppg', valor: 1.42, ...over }),
+  ];
+
+  it('a supremacia mostra os quatro números que o critério olhou', () => {
+    // O critério é um OU: oito posições de distância OU 50% mais pontos por
+    // jogo. A frase mostra os quatro números e NÃO afirma qual ramo acendeu —
+    // dizer "está 18 posições à frente" esconderia que o outro ramo existe.
+    expect(evidenciaDoInsumoMedido('asian_handicap', 'supremacia', 'home', tabela())?.texto)
+      .toBe('2º com 2,24 pontos por jogo, contra 20º e 1,42 do adversário');
+  });
+
+  it('e a barra dela compara pontos por jogo, com a posição no rótulo', () => {
+    expect(
+      evidenciaDoInsumoMedido('asian_handicap', 'supremacia', 'home', tabela(), {
+        time: 'Casa',
+        adversario: 'Fora',
+      })?.comparacao,
+    ).toEqual({
+      esqLabel: 'Casa, 2º',
+      esqValor: 2.24,
+      dirLabel: 'Fora, 20º',
+      dirValor: 1.42,
+      destaque: 'esq',
+    });
+  });
+
+  it('faltando um dos quatro, devolve nulo em vez de meia frase', () => {
+    expect(
+      evidenciaDoInsumoMedido('asian_handicap', 'supremacia', 'home', [
+        ah({ premissa: 'supremacia', insumo: 's_rank', valor: 2 }),
+        ah({ premissa: 'supremacia', insumo: 's_ppg', valor: 2.24 }),
+      ]),
+    ).toBeNull();
+  });
+
+  it('linha repetida em cada handicap não vira frase repetida', () => {
+    // ⚠️ Grão da AE#202: o valor é gravado em TODA linha de handicap do jogo
+    // (~850 mil linhas a mais), porque quais premissas se aplicam depende da
+    // linha, mas o valor não. Medido no banco: zero divergência entre linhas.
+    //
+    // Por isso `InsumoMedido` NÃO carrega `line_value`, embora a RPC devolva, e
+    // `insumosDaPremissa` case só por mercado, premissa e saída. Isto é uma
+    // dependência declarada do invariante lá de cima, não descuido: se algum
+    // dia o valor passar a variar por linha, o mapa passaria a pegar um
+    // arbitrário, e é aqui que a suposição está escrita para ser reconsiderada.
+    // Quem já filtra por lado antes desta rota é o `premissasDaSaida`.
+    expect(evidenciaDoInsumoMedido('asian_handicap', 'supremacia', 'home', [...tabela(), ...tabela()])?.texto)
+      .toBe('2º com 2,24 pontos por jogo, contra 20º e 1,42 do adversário');
+  });
+
+  it('o sem rodízio mostra a posição contra o tamanho da liga', () => {
+    // `s_rank <= 6 OR s_rank >= n_teams - 3`: topo brigando por algo, ou parte
+    // de baixo brigando contra o rebaixamento. Nos dois o time não poupa. Os
+    // dois números do corte são a posição e o tamanho da liga, e é isso que sai.
+    expect(
+      evidenciaDoInsumoMedido('asian_handicap', 'sem_rodizio', 'home', [
+        ah({ premissa: 'sem_rodizio', insumo: 's_rank', valor: 3 }),
+        ah({ premissa: 'sem_rodizio', insumo: 'n_teams', valor: 20 }),
+      ])?.texto,
+    ).toBe('3º entre 20 times');
+  });
+
+  it('e não ganha barra: é a posição do time contra o tamanho da liga', () => {
+    // Não existe segundo lado. Uma barra aqui compararia o time com o número de
+    // times da liga, que não é comparação nenhuma.
+    expect(
+      evidenciaDoInsumoMedido('asian_handicap', 'sem_rodizio', 'home', [
+        ah({ premissa: 'sem_rodizio', insumo: 's_rank', valor: 18 }),
+        ah({ premissa: 'sem_rodizio', insumo: 'n_teams', valor: 20 }),
+      ])?.comparacao,
+    ).toBeUndefined();
+  });
+
+  it('faltando o tamanho da liga, devolve nulo', () => {
+    expect(
+      evidenciaDoInsumoMedido('asian_handicap', 'sem_rodizio', 'home', [
+        ah({ premissa: 'sem_rodizio', insumo: 's_rank', valor: 3 }),
+      ]),
+    ).toBeNull();
+  });
+
+  it('o adversário frágil mostra o gol sofrido NO MANDO DELE', () => {
+    // `o_ga_venue >= 1.6` — `venue` está no nome da coluna. Apostando no
+    // mandante, o adversário é quem joga fora, e é o dado de fora que o modelo
+    // comparou. Dizer "por jogo" declararia janela mais larga que a medida.
+    expect(
+      evidenciaDoInsumoMedido(
+        'asian_handicap',
+        'adversario_fragil_fora',
+        'home',
+        [ah({ premissa: 'adversario_fragil_fora', insumo: 'o_ga_venue', valor: 1.8 })],
+        { time: 'Casa', adversario: 'Fora' },
+      )?.texto,
+    ).toBe('Fora sofre 1,80 fora');
+  });
+
+  it('e o mando dele inverte quando a aposta é no visitante', () => {
+    expect(
+      evidenciaDoInsumoMedido(
+        'asian_handicap',
+        'adversario_fragil_fora',
+        'away',
+        [ah({ outcome: 'Away', premissa: 'adversario_fragil_fora', insumo: 'o_ga_venue', valor: 1.8 })],
+        { time: 'Fora', adversario: 'Casa' },
+      )?.texto,
+    ).toBe('Casa sofre 1,80 em casa');
+  });
+
+  it('a defesa sólida mostra o gol sofrido no mando do PRÓPRIO time', () => {
+    // `s_ga_venue <= 1.1`, premissa de azarão. Apostando no visitante, o número
+    // que acendeu é o dele jogando fora.
+    expect(
+      evidenciaDoInsumoMedido(
+        'asian_handicap',
+        'defesa_fora_solida',
+        'away',
+        [ah({ outcome: 'Away', premissa: 'defesa_fora_solida', insumo: 's_ga_venue', valor: 0.9 })],
+        { time: 'Fora', adversario: 'Casa' },
+      )?.texto,
+    ).toBe('Fora sofre 0,90 fora');
+  });
+
+  it('e é em casa quando o azarão é o mandante', () => {
+    expect(
+      evidenciaDoInsumoMedido(
+        'asian_handicap',
+        'defesa_fora_solida',
+        'home',
+        [ah({ premissa: 'defesa_fora_solida', insumo: 's_ga_venue', valor: 0.9 })],
+        { time: 'Casa', adversario: 'Fora' },
+      )?.texto,
+    ).toBe('Casa sofre 0,90 em casa');
+  });
+
+  it('sem nome de time, as quatro ainda saem, sem inventar nome', () => {
+    expect(
+      evidenciaDoInsumoMedido('asian_handicap', 'adversario_fragil_fora', 'home', [
+        ah({ premissa: 'adversario_fragil_fora', insumo: 'o_ga_venue', valor: 1.8 }),
+      ])?.texto,
+    ).toBe('Adversário sofre 1,80 fora');
+  });
+
+  // ── As três que NÃO entram, pela regra que excluiu a `mando` do Resultado ──
+  // Em todas, o gráfico ao lado não sabe desenhar a grandeza do critério. Hoje
+  // frase e gráfico estão errados e CONCORDAM; consertar metade é pior, porque
+  // põe o número certo a se desmentir com o desenho logo abaixo.
+
+  it('o mando_forte NÃO entra: o critério é percentual de pontos', () => {
+    // `pct_pts_home` contra um corte percentual, enquanto `SPECS.mando_forte`
+    // desenha `metrica: 'resultado'` — grade de vitória, empate e derrota. É o
+    // mesmo defeito da `mando` no Resultado, e o tipo `Metrica` não tem ponto.
+    //
+    // ⚠️ E ela carrega uma segunda pendência: a analytics-engineering#200
+    // mostrou que o recorte de mando é inválido em jogo de seleção, podendo
+    // estar INVERTIDO na Copa (4 dos 15 jogos com anfitrião).
+    expect(
+      evidenciaDoInsumoMedido('asian_handicap', 'mando_forte', 'home', [
+        ah({ premissa: 'mando_forte', insumo: 'pct_pts_home', valor: 62 }),
+      ]),
+    ).toBeNull();
+  });
+
+  it('a raramente_perde_por_2 NÃO entra: hoje frase e gráfico saem da MESMA amostra', () => {
+    // ⚠️ O motivo aqui NÃO é "a frase está errada" — e dizer isso mandaria a
+    // próxima fatia copiar um motivo falso.
+    //
+    // `evidenciaDoHistorico` tem um ramo dedicado a ela (futebol-historico.ts,
+    // `slug === 'raramente_perde_por_2'`) que já diz "perdeu por dois ou mais
+    // em k dos N jogos": a grandeza exata do critério, sobre a janela do
+    // modelo. A frase de hoje está CERTA.
+    //
+    // E é por isso que ela fica de fora: essa frase é contada das MESMAS linhas
+    // que o gráfico desenha, então as duas não têm como divergir. Trocar a
+    // fonte para o mart entregaria o número que de fato acendeu, mas abriria
+    // mão dessa garantia num card cujo gráfico (`metrica: 'resultado'`) não
+    // sabe mostrar margem de derrota. É o princípio de uma origem só que o
+    // `futebol-criterio.ts` documenta: duas derivações do mesmo número
+    // divergem, e uma origem só é a única forma que não depende de vigilância.
+    expect(
+      evidenciaDoInsumoMedido('asian_handicap', 'raramente_perde_por_2', 'away', [
+        ah({ outcome: 'Away', premissa: 'raramente_perde_por_2', insumo: 's_lost2', valor: 1 }),
+        ah({ outcome: 'Away', premissa: 'raramente_perde_por_2', insumo: 's_n_games', valor: 10 }),
+      ]),
+    ).toBeNull();
+  });
+
+  it('a tende_golear NÃO entra: o gráfico desenha o adversário, e o mart o time', () => {
+    // O mart publica `s_gf_venue` e `s_ga_venue` — os DOIS do time, que juntos
+    // são saldo. `SPECS.tende_golear` desenha gf do time e ga do ADVERSÁRIO:
+    // assunto diferente no segundo traço. Arrumar isso muda o que o gráfico
+    // desenha hoje, e isso é mudança de comportamento com teste próprio.
+    expect(
+      evidenciaDoInsumoMedido('asian_handicap', 'tende_golear', 'home', [
+        ah({ premissa: 'tende_golear', insumo: 's_gf_venue', valor: 2.1 }),
+        ah({ premissa: 'tende_golear', insumo: 's_ga_venue', valor: 0.7 }),
+      ]),
+    ).toBeNull();
+  });
+
+  it('a favorito_irregular NÃO entra: a tela a esconde de propósito', () => {
+    // Ela não é lacuna de catálogo: está na lista de premissas suprimidas do
+    // `futebol-premissas.ts`, com o motivo ao lado — acende em 43% das linhas e
+    // vale 0 ponto. Há teste de contrato garantindo que ela não entra no Score.
+    //
+    // Sem este teste, o comentário do mapa afirmaria que as QUATRO excluídas
+    // têm guarda quando só três teriam.
+    expect(
+      evidenciaDoInsumoMedido('asian_handicap', 'favorito_irregular', 'away', [
+        ah({ outcome: 'Away', premissa: 'favorito_irregular', insumo: 'o_n_games', valor: 10 }),
+        ah({ outcome: 'Away', premissa: 'favorito_irregular', insumo: 'o_won2', valor: 3 }),
+      ]),
+    ).toBeNull();
+  });
+
+  it('a supremacia do handicap não responde pelo mercado de Resultado', () => {
+    // A chave é mercado+slug. `supremacia` só existe no handicap; pedir ela no
+    // 1X2 tem que devolver nulo, e não a forma da `superioridade_tabela`.
+    expect(evidenciaDoInsumoMedido('match_winner', 'supremacia', 'home', tabela())).toBeNull();
+  });
+});

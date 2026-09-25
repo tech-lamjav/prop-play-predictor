@@ -78,6 +78,61 @@ export interface NomesDoConfronto {
   adversario?: string | null;
 }
 
+/**
+ * Onde cada lado joga NESTE jogo.
+ *
+ * `venue` no nome da coluna (`s_ga_venue`, `o_ga_venue`, `s_gf_venue`) significa
+ * que o insumo foi recortado por mando, e a frase tem de dizer qual — senão
+ * declara janela mais larga que a medida, que pelo glossário é o gráfico
+ * desmentindo o número que ele deveria explicar.
+ */
+function ondeCadaUmJoga(lado: 'home' | 'away'): { doTime: string; doAdversario: string } {
+  return lado === 'home'
+    ? { doTime: 'em casa', doAdversario: 'fora' }
+    : { doTime: 'fora', doAdversario: 'em casa' };
+}
+
+/**
+ * Posição e pontos por jogo dos dois lados — a forma das premissas de TABELA.
+ *
+ * Duas premissas leem a classificação com os MESMOS quatro insumos e cortes
+ * diferentes: `superioridade_tabela` (Resultado) e `supremacia` (Handicap, que
+ * acende com `o_rank - s_rank >= 8` OU `s_ppg >= 1.5 * o_ppg`).
+ *
+ * A frase mostra os quatro números e não afirma qual condição acendeu: eleger
+ * uma esconderia que a outra existe, e a tela passaria a dizer um critério que
+ * o modelo pode não ter usado.
+ *
+ * A barra compara a mesma grandeza da frase, com a posição no rótulo. Mais
+ * pontos por jogo é o lado bom da aposta, daí o destaque à esquerda.
+ *
+ * ⚠️ O destaque é dos PONTOS, e as duas premissas acendem também por POSIÇÃO.
+ * Quando é o ramo do rank que acende e o adversário tem ppg igual ou maior, o
+ * destaque à esquerda pinta a barra menor como lado bom. É defeito herdado da
+ * `superioridade_tabela` e não introduzido aqui — só mais exposto, porque o
+ * corte de razão do Handicap é 1,5 contra 1,3 do 1X2.
+ *
+ * Pela ADR 0008 do dbt (`analytics-engineering`, numeração de LÁ — este
+ * repositório tem a sua própria em `docs/adr/`), classificação é sempre
+ * COMPETIÇÃO-SCOPED: a posição sai da tabela daquele campeonato, nunca de um
+ * ranking juntado.
+ */
+function formaDaTabela(v: Record<string, number>, n: NomesDoConfronto): Evidencia | null {
+  if (v.s_rank == null || v.o_rank == null || v.s_ppg == null || v.o_ppg == null) return null;
+  return {
+    texto:
+      `${numero(v.s_rank)}º com ${numero(v.s_ppg)} pontos por jogo, contra ` +
+      `${numero(v.o_rank)}º e ${numero(v.o_ppg)} do adversário`,
+    comparacao: {
+      esqLabel: `${n.time ?? 'O time'}, ${numero(v.s_rank)}º`,
+      esqValor: v.s_ppg,
+      dirLabel: `${n.adversario ?? 'Adversário'}, ${numero(v.o_rank)}º`,
+      dirValor: v.o_ppg,
+      destaque: 'esq',
+    },
+  };
+}
+
 const FORMAS: Record<
   string,
   (v: Record<string, number>, n: NomesDoConfronto, lado: 'home' | 'away' | null) => Evidencia | null
@@ -86,23 +141,9 @@ const FORMAS: Record<
   // temporada ("76 pontos"), que é outra grandeza. Era um número verdadeiro que
   // não é o insumo — o que o glossário chama de ilustrar sem explicar.
   //
-  // A barra compara a mesma grandeza da frase, com a posição no rótulo. Mais
-  // pontos por jogo é o lado bom da aposta, daí o destaque à esquerda.
-  'match_winner:superioridade_tabela': (v, n) => {
-    if (v.s_rank == null || v.o_rank == null || v.s_ppg == null || v.o_ppg == null) return null;
-    return {
-      texto:
-        `${numero(v.s_rank)}º com ${numero(v.s_ppg)} pontos por jogo, contra ` +
-        `${numero(v.o_rank)}º e ${numero(v.o_ppg)} do adversário`,
-      comparacao: {
-        esqLabel: `${n.time ?? 'O time'}, ${numero(v.s_rank)}º`,
-        esqValor: v.s_ppg,
-        dirLabel: `${n.adversario ?? 'Adversário'}, ${numero(v.o_rank)}º`,
-        dirValor: v.o_ppg,
-        destaque: 'esq',
-      },
-    };
-  },
+  // O desenho da frase e da barra vive no `formaDaTabela`, compartilhado com a
+  // `supremacia` do Handicap: mesmos quatro insumos, cortes diferentes.
+  'match_winner:superioridade_tabela': formaDaTabela,
 
   // Sem barra, de propósito. O mart dá vitórias e TOTAL; entre as duas existem
   // os empates, e daqui não dá para separar empate de derrota. A barra só
@@ -143,8 +184,7 @@ const FORMAS: Record<
   // do adversário é o lado "bom" da comparação.
   'match_winner:forca_mismatch': (v, n, lado) => {
     if (v.s_gf_venue == null || v.o_ga_venue == null || lado == null) return null;
-    const ondeTime = lado === 'home' ? 'em casa' : 'fora';
-    const ondeAdv = lado === 'home' ? 'fora' : 'em casa';
+    const { doTime: ondeTime, doAdversario: ondeAdv } = ondeCadaUmJoga(lado);
     return {
       texto:
         `${n.time ?? 'O time'} marca ${numero(v.s_gf_venue)} ${ondeTime} e ` +
@@ -179,6 +219,59 @@ const FORMAS: Record<
         dirValor: v.o_missing,
         destaque: 'nenhum',
       },
+    };
+  },
+
+  // ── Handicap asiático (AE#202) ──────────────────────────────────────────────
+  // Quatro das oito. As outras quatro estão fora por motivo declarado, e o teste
+  // de cada uma guarda o motivo:
+  //
+  //   `mando_forte`            o critério é percentual de pontos e o gráfico
+  //                            desenha `metrica: 'resultado'`. Mesma regra que
+  //                            excluiu a `mando` do Resultado.
+  //   `raramente_perde_por_2`  ⚠️ NÃO é "frase errada": a rota do histórico já
+  //                            diz a grandeza certa. Fica de fora porque essa
+  //                            frase sai das MESMAS linhas que o gráfico
+  //                            desenha, e trocar a fonte para o mart quebraria
+  //                            essa garantia de origem única.
+  //   `tende_golear`           o mart mede os dois insumos do TIME e
+  //                            `SPECS.tende_golear` desenha o ga do ADVERSÁRIO.
+  //   `favorito_irregular`     a tela a esconde de propósito: vale 0 ponto e
+  //                            acende em 43% das linhas.
+
+  // Mesmos quatro insumos da `superioridade_tabela`, corte diferente: aqui
+  // acende com oito posições de distância OU 50% mais pontos por jogo.
+  'asian_handicap:supremacia': formaDaTabela,
+
+  // `s_rank <= 6 OR s_rank >= n_teams - 3`, e só em liga de pontos corridos: o
+  // time está no topo brigando por algo, ou embaixo brigando contra a queda —
+  // nos dois casos não poupa jogador. Os dois números do corte são a posição e
+  // o tamanho da liga, e são eles que a frase mostra.
+  //
+  // Sem barra: não existe segundo lado. Comparar o time com o número de times
+  // da liga não é comparação, é categoria contra contagem.
+  'asian_handicap:sem_rodizio': (v) => {
+    if (v.s_rank == null || v.n_teams == null) return null;
+    const times = v.n_teams === 1 ? 'time' : 'times';
+    return { texto: `${numero(v.s_rank)}º entre ${numero(v.n_teams)} ${times}` };
+  },
+
+  // `o_ga_venue >= 1.6`, e o `venue` é do ADVERSÁRIO: apostando no mandante, o
+  // número que acendeu é o dele jogando fora. Sem barra — é um número contra um
+  // corte, e o time da aposta não entra nessa conta.
+  'asian_handicap:adversario_fragil_fora': (v, n, lado) => {
+    if (v.o_ga_venue == null || lado == null) return null;
+    return {
+      texto: `${n.adversario ?? 'Adversário'} sofre ${numero(v.o_ga_venue)} ${ondeCadaUmJoga(lado).doAdversario}`,
+    };
+  },
+
+  // `s_ga_venue <= 1.1`, premissa de azarão, recortada no mando do PRÓPRIO
+  // time. Sem barra pelo mesmo motivo da de cima.
+  'asian_handicap:defesa_fora_solida': (v, n, lado) => {
+    if (v.s_ga_venue == null || lado == null) return null;
+    return {
+      texto: `${n.time ?? 'O time'} sofre ${numero(v.s_ga_venue)} ${ondeCadaUmJoga(lado).doTime}`,
     };
   },
 };
