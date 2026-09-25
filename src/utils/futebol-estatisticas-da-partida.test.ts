@@ -122,12 +122,11 @@ describe('o mercado manda na métrica', () => {
     }
   });
 
-  it('TODO mercado aceita os dois times', () => {
-    // Os binários já não aceitaram, com o argumento de que sem escala não há
-    // altura para comparar. Na tela não se sustentou: os quadros saem em dois
-    // blocos nomeados, e ver os dois de uma vez é o que se quer num confronto.
+  it('TODO mercado desenha os dois times', () => {
+    // A tela não oferece mais escolher um time: os dois estão sempre lá. Num
+    // confronto, ver um de cada vez obriga a lembrar do outro para comparar —
+    // trabalho que a escala compartilhada faz de graça.
     for (const slug of Object.keys(MERCADOS_NO_GRAFICO) as MercadoDoGrafico[]) {
-      expect(MERCADOS_NO_GRAFICO[slug].aceitaOsDois, slug).toBe(true);
       const g = graficoDaEstatistica(escolha({ mercado: slug, quem: 'ambos' }), [...QUATRO, ...DO_VISITANTE]);
       expect(g.series.map((s) => s.teamName), slug).toEqual(['Flamengo', 'Palmeiras']);
     }

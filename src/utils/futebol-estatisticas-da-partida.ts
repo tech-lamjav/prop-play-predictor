@@ -73,8 +73,6 @@ export const MERCADOS_NO_GRAFICO: Record<
     chip: string;
     paradas: number[];
     padrao: number | null;
-    /** Faz sentido ver os dois times na mesma visualização? */
-    aceitaOsDois: boolean;
   }
 > = {
   // `padrao` é DECLARADO por mercado, e não "a parada do meio da lista": o meio
@@ -82,11 +80,11 @@ export const MERCADOS_NO_GRAFICO: Record<
   // tudo nascer abaixo da linha e parecer defeito.
   goals_over_under: {
     metrica: 'total', temLinha: true, rotulo: 'Gols no jogo', chip: 'Gols',
-    paradas: [0.5, 1.5, 2.5, 3.5, 4.5, 5.5], padrao: 2.5, aceitaOsDois: true,
+    paradas: [0.5, 1.5, 2.5, 3.5, 4.5, 5.5], padrao: 2.5,
   },
   asian_handicap: {
     metrica: 'saldo', temLinha: true, rotulo: 'Saldo de gols', chip: 'Handicap',
-    paradas: [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5], padrao: -0.5, aceitaOsDois: true,
+    paradas: [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5], padrao: -0.5,
   },
   // ── Os BINÁRIOS ──────────────────────────────────────────────────────────
   // Resultado, Dupla chance e Ambos marcam não têm grandeza que uma linha
@@ -100,15 +98,15 @@ export const MERCADOS_NO_GRAFICO: Record<
   // se quer num confronto.
   match_winner: {
     metrica: 'resultado', temLinha: false, rotulo: 'Resultado', chip: 'Resultado',
-    paradas: [], padrao: null, aceitaOsDois: true,
+    paradas: [], padrao: null,
   },
   double_chance: {
     metrica: 'resultado', temLinha: false, rotulo: 'Resultado', chip: 'Dupla chance',
-    paradas: [], padrao: null, aceitaOsDois: true,
+    paradas: [], padrao: null,
   },
   btts: {
     metrica: 'ambos', temLinha: false, rotulo: 'Os dois marcaram', chip: 'Ambos marcam',
-    paradas: [], padrao: null, aceitaOsDois: true,
+    paradas: [], padrao: null,
   },
 };
 

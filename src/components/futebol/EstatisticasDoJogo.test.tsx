@@ -83,19 +83,17 @@ describe('a fronteira com a leitura do modelo', () => {
   });
 });
 
-describe('o time vem antes do mercado', () => {
-  it('oferece os dois times pelo nome, e os dois juntos', () => {
+describe('os dois times estão sempre na tela', () => {
+  it('não há seletor de time, e os dois aparecem nomeados no gráfico', () => {
+    // O seletor existiu e saiu: num confronto, ver um time de cada vez obriga a
+    // lembrar do outro para comparar. O nome de cada um fica sobre as barras
+    // dele, então o chip só ocupava linha de filtro sem informar nada novo.
     abrir();
-    expect(screen.getByRole('button', { name: 'Os dois' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Flamengo' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Palmeiras' })).toBeInTheDocument();
-  });
 
-  it('escolher um time deixa só ele no gráfico', async () => {
-    abrir();
-    await userEvent.click(screen.getByRole('button', { name: 'Flamengo' }));
+    expect(screen.queryByRole('button', { name: 'Os dois' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Flamengo' })).not.toBeInTheDocument();
     expect(screen.getByText(/Flamengo, últimos 4 jogos/)).toBeInTheDocument();
-    expect(screen.queryByText(/Palmeiras, últimos/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Palmeiras, últimos 2 jogos/)).toBeInTheDocument();
   });
 });
 
@@ -146,12 +144,9 @@ describe('mercado binário: quadro de jogo, sem linha e um time por vez', () => 
   });
 
   it('mostra os DOIS times, em blocos nomeados', async () => {
-    // Os binários já não aceitaram os dois juntos. Na tela não se sustentou:
-    // num confronto, ver os dois de uma vez é justamente o ponto.
     abrir();
     await userEvent.click(screen.getByRole('button', { name: 'Resultado' }));
 
-    expect(screen.getByRole('button', { name: 'Os dois' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByText(/Flamengo, últimos 4 jogos/)).toBeInTheDocument();
     expect(screen.getByText(/Palmeiras, últimos 2 jogos/)).toBeInTheDocument();
   });

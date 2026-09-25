@@ -10,7 +10,6 @@ import {
   type EscolhaDaEstatistica,
   type MandoDaEstatistica,
   type MercadoDoGrafico,
-  type QuemNoGrafico,
 } from '@/utils/futebol-estatisticas-da-partida';
 import { cabeRotulo, pisoDaEscala, tetoDaEscala } from '@/utils/futebol-grafico-de-barras';
 import { exato } from '@/utils/futebol-criterio';
@@ -80,9 +79,6 @@ export function EstatisticasDoJogo({
   const ehQuadro = doMercado.metrica === 'resultado' || doMercado.metrica === 'ambos';
 
   const nomeDoLado = (lado: 'home' | 'away') => historico?.find((r) => r.side === lado)?.team_name ?? null;
-  const mandante = nomeDoLado('home');
-  const visitante = nomeDoLado('away');
-  const quemNoTexto = escolha.quem === 'mandante' ? mandante : escolha.quem === 'visitante' ? visitante : null;
 
   const muda = (parte: Partial<EscolhaDaEstatistica>) => setEscolha((atual) => ({ ...atual, ...parte }));
 
@@ -125,25 +121,16 @@ export function EstatisticasDoJogo({
             gramáticas no mesmo cabeçalho: aba, chip e seletor. Agora mercado e
             time são chips; a hierarquia vem do rótulo e da ordem, não de widgets
             diferentes. */}
-        <div className="flex flex-wrap items-center gap-2 mb-2">
+        {/* ⚠️ UMA linha de filtro só, e SEM seletor de time: os dois times estão
+            sempre na tela. O seletor existiu e saiu — num confronto, ver um time
+            de cada vez obriga a lembrar do outro para comparar, que é
+            exatamente o trabalho que a escala compartilhada faz de graça.
+            O nome de cada time aparece sobre as barras dele, no gráfico. */}
+        <div className="flex flex-wrap items-center gap-2 mb-3">
           <span className={LABEL}>Mercado</span>
           {(Object.keys(MERCADOS_NO_GRAFICO) as MercadoDoGrafico[]).map((slug) => (
             <Chip key={slug} ativo={escolha.mercado === slug} onClick={() => trocaMercado(slug)}>
               {MERCADOS_NO_GRAFICO[slug].chip}
-            </Chip>
-          ))}
-        </div>
-
-        {/* O TIME é a pergunta mais grossa — de quem estamos falando — e janela e
-            mando se aplicam dentro dela. */}
-        <div className="flex flex-wrap items-center gap-2 mb-4">
-          <span className={LABEL}>Times</span>
-          {doMercado.aceitaOsDois && (
-            <Chip ativo={escolha.quem === 'ambos'} onClick={() => muda({ quem: 'ambos' })}>Os dois</Chip>
-          )}
-          {(['mandante', 'visitante'] as QuemNoGrafico[]).map((q) => (
-            <Chip key={q} ativo={escolha.quem === q} onClick={() => muda({ quem: q })}>
-              {(q === 'mandante' ? mandante : visitante) ?? (q === 'mandante' ? 'Mandante' : 'Visitante')}
             </Chip>
           ))}
 
@@ -235,9 +222,8 @@ export function EstatisticasDoJogo({
                 não se contradizem porque cada um diz de onde saiu. */}
             {contagem && contagem.de > 0 && (
               <div className="text-[12px] text-ink-2 mt-3">
-                <strong className="font-bold text-ink">{contagem.acima}</strong> dos {contagem.de} jogos{' '}
-                {escolha.quem === 'ambos' ? 'dos dois times' : `do ${quemNoTexto ?? 'time'}`} passaram de{' '}
-                {fmtLinha(referencia as number)}.
+                <strong className="font-bold text-ink">{contagem.acima}</strong> dos {contagem.de} jogos dos dois
+                times passaram de {fmtLinha(referencia as number)}.
                 <span className="block text-[10.5px] text-ink-3 mt-0.5">
                   Janela: últimos {escolha.janela} de cada time
                   {escolha.mando === 'proprio' ? ', só com o mando deste confronto' : ''}.

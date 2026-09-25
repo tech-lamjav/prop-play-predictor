@@ -164,7 +164,11 @@ export function BarrasEmSequencia({
         ))}
       </div>
 
-      <div className="relative" style={{ height: PLOT }}>
+      {/* ⚠️ `altura`, e NÃO a constante. A barra é calculada contra `util`, que
+          sai de `altura`; deixar o contêiner em `PLOT` fazia barra de 164px
+          dentro de caixa de 96px — e ela subia por cima do título e da legenda.
+          Os dois números têm de vir da mesma fonte. */}
+      <div className="relative" style={{ height: altura }}>
         <div className="absolute inset-0 flex gap-[3px]">
           {series.map((s, i) => (
             <div key={`p-${s.chave}`} style={fatia(s)} className={cn('flex items-end gap-[3px] min-w-0', divisor(i))}>
@@ -215,14 +219,20 @@ export function BarrasEmSequencia({
         {/* O valor GRUDADO na linha, como na referência da NBA. Fora dela, o
             número vivia num painel acima do gráfico, e era preciso casar dois
             lugares para saber onde a linha estava. */}
+        {/* ⚠️ ÂMBAR, e não preto. Preto sobre a barra verde-escura tem tonalidade
+            quase igual à do preenchimento e a linha some justamente onde mais
+            importa — em cima das barras que passaram dela. É o mesmo defeito que
+            o card do critério já registrou: "um tracinho âmbar sem contorno
+            desaparecia dentro da barra cheia". Âmbar contrasta com o verde
+            escuro, com o cinza e com o branco. */}
         {referencia != null && (
           <div
             className="absolute left-0 right-0 border-t-2 border-dashed pointer-events-none"
-            style={{ borderColor: 'var(--ink)', bottom: posDe(referencia) }}
+            style={{ borderColor: '#d4a017', bottom: posDe(referencia) }}
           >
             <span
               className="absolute right-0 -translate-y-1/2 tabular-nums text-[10px] font-bold px-1.5 py-0.5 rounded text-canvas"
-              style={{ background: 'var(--ink)' }}
+              style={{ background: '#b8870f' }}
             >
               {String(referencia).replace('.', ',')}
             </span>
