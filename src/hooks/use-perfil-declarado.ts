@@ -35,6 +35,8 @@ export interface PerfilDeclarado {
    * timeout. É a diferença entre não saber e saber que não.
    */
   leituraFalhou: boolean;
+  /** Quantas vezes já apertou Pular antes de agora. É o que a telemetria reporta. */
+  adiamentos: number;
   /** Apertou Pular: soma um à contagem e segue. */
   adiar: () => Promise<void>;
   /** Respondeu: grava as duas escolhas com o carimbo. */
@@ -141,5 +143,5 @@ export function usePerfilDeclarado(userId: string | undefined): PerfilDeclarado 
     [userId],
   );
 
-  return { carregando, respondeu, leituraFalhou, adiar, responder };
+  return { carregando, respondeu, leituraFalhou, adiamentos, adiar, responder };
 }

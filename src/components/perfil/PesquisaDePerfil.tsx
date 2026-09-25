@@ -4,6 +4,12 @@ import { useAuth } from '@/hooks/use-auth';
 import { usePerfilDeclarado } from '@/hooks/use-perfil-declarado';
 import { marcarPesquisaPendente } from '@/hooks/use-pesquisa-pendente';
 import {
+  perfilDeclaradoDaPessoa,
+  pesquisaDePerfilAdiada,
+  pesquisaDePerfilExibida,
+  pesquisaDePerfilRespondida,
+} from '@/lib/analytics';
+import {
   aberturaPara,
   deveAbrirAPesquisa,
   voltandoDeUmPagamento,
@@ -69,7 +75,9 @@ function marcar(chave: string): void {
 export const PesquisaDePerfil: React.FC = () => {
   const location = useLocation();
   const { user, isLoading } = useAuth();
-  const { carregando, respondeu, leituraFalhou, adiar, responder } = usePerfilDeclarado(user?.id);
+  const { carregando, respondeu, leituraFalhou, adiamentos, adiar, responder } = usePerfilDeclarado(
+    user?.id,
+  );
 
   const [adiouNestaSessao, setAdiouNestaSessao] = useState(() => marcado(CHAVE_DE_ADIAMENTO));
   const [aberto, setAberto] = useState(false);
@@ -114,16 +122,35 @@ export const PesquisaDePerfil: React.FC = () => {
   // armar pelo resto da vida da aba.
   useEffect(() => () => marcarPesquisaPendente(false), []);
 
+  const abertura = aberturaPara(user?.created_at);
+
   useEffect(() => {
     if (!deveAbrir) {
       setAberto(false);
       return;
     }
-    const relogio = setTimeout(() => setAberto(true), ATRASO_MS);
+    const relogio = setTimeout(() => {
+      setAberto(true);
+      // O evento sai JUNTO com a caixa aparecendo, e não quando o sentinela
+      // decide abrir: entre as duas coisas há 1200ms em que a pessoa pode ter
+      // trocado de tela, e contar essas seria inflar o denominador da taxa de
+      // resposta com gente que nunca viu a pergunta.
+      pesquisaDePerfilExibida({ audience: abertura });
+    }, ATRASO_MS);
     return () => clearTimeout(relogio);
-  }, [deveAbrir]);
+  }, [deveAbrir, abertura]);
 
   const aoResponder = (resposta: RespostaDoPerfil) => {
+    pesquisaDePerfilRespondida({
+      goal: resposta.objetivo,
+      betting_frequency: resposta.frequencia,
+      audience: abertura,
+      deferrals: adiamentos,
+    });
+    // A resposta também vira traço da pessoa. É o que permite segmentar por
+    // perfil funis que já existiam antes de ela responder — e é a única ponte
+    // com campanha, porque o banco não guarda origem nenhuma.
+    perfilDeclaradoDaPessoa({ goal: resposta.objetivo, betting_frequency: resposta.frequencia });
     // `responder` marca a pessoa como respondida na hora, antes de a gravação
     // voltar — é isso que fecha o pop-up sem esperar a rede.
     void responder(resposta);
@@ -132,6 +159,9 @@ export const PesquisaDePerfil: React.FC = () => {
   const aoPular = () => {
     marcar(CHAVE_DE_ADIAMENTO);
     setAdiouNestaSessao(true);
+    // A contagem relatada é a de DEPOIS deste adiamento, igual à que vai para o
+    // banco: as duas precisam contar a mesma coisa para poderem ser comparadas.
+    pesquisaDePerfilAdiada({ audience: abertura, deferrals: adiamentos + 1 });
     void adiar();
   };
 
@@ -140,7 +170,7 @@ export const PesquisaDePerfil: React.FC = () => {
   return (
     <PesquisaDePerfilModal
       open={aberto}
-      abertura={aberturaPara(user?.created_at)}
+      abertura={abertura}
       onResponder={aoResponder}
       onPular={aoPular}
     />

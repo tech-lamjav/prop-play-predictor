@@ -1,13 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import {
   CHAVES_PESSOAIS,
+  EVENTOS,
+  FREQUENCIAS_DECLARADAS,
+  OBJETIVOS_DECLARADOS,
   ORIGENS_DO_JOGO,
+  PUBLICOS_DA_PESQUISA,
   TIPOS_DE_CAMPANHA,
   chavesPessoaisEm,
   idDaOportunidade,
   propsDaOportunidade,
   valorControlado,
 } from './eventos';
+import { FREQUENCIAS, OBJETIVOS } from '@/utils/perfil-declarado';
 
 // ============================================================================
 // O contrato dos eventos, travado por teste
@@ -177,5 +182,39 @@ describe('a guarda de dado pessoal', () => {
     for (const chave of ['email', 'whatsapp_number', 'telegram_chat_id', 'telegram_username']) {
       expect(CHAVES_PESSOAIS).toContain(chave);
     }
+  });
+});
+
+// ============================================================================
+// Os valores da pesquisa de perfil (#524)
+// ============================================================================
+
+describe('os códigos do perfil declarado', () => {
+  it('são os do catálogo, mais o escape da lista', () => {
+    // A garantia que importa: estes valores chegam ao PostHog E são o `check`
+    // da tabela `perfil_declarado`. Se as duas listas puderem divergir, um dia
+    // o banco aceita um código que o funil não conhece — ou o contrário.
+    expect(OBJETIVOS_DECLARADOS).toEqual([...OBJETIVOS, 'other']);
+    expect(FREQUENCIAS_DECLARADAS).toEqual([...FREQUENCIAS, 'other']);
+  });
+
+  it('o que não está na lista vira o escape, em vez de sujar a base', () => {
+    expect(valorControlado('economizar_tempo', OBJETIVOS_DECLARADOS, 'other')).toBe(
+      'economizar_tempo',
+    );
+    expect(valorControlado('Economizar tempo na análise', OBJETIVOS_DECLARADOS, 'other')).toBe(
+      'other',
+    );
+    expect(valorControlado(null, FREQUENCIAS_DECLARADAS, 'other')).toBe('other');
+  });
+
+  it('os dois públicos, e o escape', () => {
+    expect(PUBLICOS_DA_PESQUISA).toEqual(['chegada', 'base', 'other']);
+  });
+
+  it('os três eventos têm o prefixo de conta, e não o de produto', () => {
+    expect(EVENTOS.pesquisaDePerfilExibida).toBe('profile_survey_shown');
+    expect(EVENTOS.pesquisaDePerfilRespondida).toBe('profile_survey_answered');
+    expect(EVENTOS.pesquisaDePerfilAdiada).toBe('profile_survey_deferred');
   });
 });

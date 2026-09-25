@@ -16,10 +16,13 @@ import {
   EVENTOS,
   chavesPessoaisEm,
   type AcaoDaOportunidade,
+  type FrequenciaDeclarada,
   type ModoDeAbertura,
   type NomeDeEvento,
+  type ObjetivoDeclarado,
   type OrigemDoJogo,
   type PropsComunsDaOportunidade,
+  type PublicoDaPesquisa,
   type SituacaoDeAssinatura,
   type TipoDeCampanha,
 } from './eventos';
@@ -100,6 +103,28 @@ export function identificar(
     posthog.identify(userId, semIndefinidos(propriedadesDaPessoa));
   } catch (e) {
     console.debug('[analytics] identify falhou:', (e as Error)?.message);
+  }
+}
+
+/**
+ * Guarda um atributo na PESSOA, sem reidentificar ninguém.
+ *
+ * Diferente de `identificar`: aquele amarra o navegador a um id e só é chamado
+ * no login. Este acrescenta um traço a quem já está identificado, e o traço
+ * passa a valer para todo evento futuro dela — inclusive para segmentar funis
+ * que já existiam antes da resposta.
+ *
+ * É o que torna possível cruzar o perfil declarado com campanha: no banco não
+ * existe nenhum campo de origem (decisão registrada em `docs/crm-socios.md` e
+ * trancada por teste do CRM), então o encontro das duas coisas só acontece aqui
+ * dentro, onde o `distinct_id` é o mesmo dos dois lados.
+ */
+export function guardarNaPessoa(propriedades: Props): void {
+  if (!analyticsLigado()) return;
+  try {
+    posthog.setPersonProperties(semIndefinidos(propriedades));
+  } catch (e) {
+    console.debug('[analytics] setPersonProperties falhou:', (e as Error)?.message);
   }
 }
 
@@ -216,6 +241,66 @@ export function apostaRegistrada(
   },
 ): void {
   capturar(EVENTOS.apostaRegistrada, props);
+}
+
+// ============================================================================
+// A pesquisa de perfil (#524)
+// ============================================================================
+
+/**
+ * O pop-up apareceu de verdade — não é "o sentinela decidiu abrir".
+ *
+ * Dispara no momento em que a caixa entra na tela, depois do atraso. É o
+ * denominador da taxa de resposta: sem ele não dá para saber se a distribuição
+ * das escolhas descreve a base ou só quem teve paciência.
+ *
+ * Nenhuma propriedade de produto aqui, de propósito: a pesquisa é da conta, e
+ * anotar em qual tela ela calhou de abrir convidaria a ler "perfil de quem usa
+ * o futebol" num dado que não diz isso.
+ */
+export function pesquisaDePerfilExibida(props: { audience: PublicoDaPesquisa }): void {
+  capturar(EVENTOS.pesquisaDePerfilExibida, props);
+}
+
+/** As duas escolhas foram enviadas. Os valores são os códigos, nunca o texto da tela. */
+export function pesquisaDePerfilRespondida(props: {
+  goal: ObjetivoDeclarado;
+  betting_frequency: FrequenciaDeclarada;
+  audience: PublicoDaPesquisa;
+  /** Quantas vezes essa pessoa tinha adiado antes de responder. */
+  deferrals: number;
+}): void {
+  capturar(EVENTOS.pesquisaDePerfilRespondida, props);
+}
+
+/**
+ * A pessoa apertou Pular.
+ *
+ * `deferrals` é a contagem DEPOIS deste adiamento. É o número que diz se
+ * insistir está funcionando ou só incomodando — mediana de um é o desenho
+ * certo; gente com trinta é sinal de parar antes que vire cancelamento.
+ */
+export function pesquisaDePerfilAdiada(props: {
+  audience: PublicoDaPesquisa;
+  deferrals: number;
+}): void {
+  capturar(EVENTOS.pesquisaDePerfilAdiada, props);
+}
+
+/**
+ * O perfil declarado vira traço da pessoa.
+ *
+ * Sem isto a resposta ficaria só no banco, e o banco não sabe de campanha
+ * nenhuma — é aqui que perfil e origem se encontram.
+ */
+export function perfilDeclaradoDaPessoa(props: {
+  goal: ObjetivoDeclarado;
+  betting_frequency: FrequenciaDeclarada;
+}): void {
+  guardarNaPessoa({
+    profile_goal: props.goal,
+    profile_betting_frequency: props.betting_frequency,
+  });
 }
 
 // ============================================================================
