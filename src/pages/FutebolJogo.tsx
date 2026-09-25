@@ -734,10 +734,16 @@ export default function FutebolJogo() {
 
             {!finished && showValue && <FutebolAccessBanner access={access} className="mt-5" />}
 
-            {/* Três abas. A de Times fazia o papel de três coisas ao mesmo tempo:
-                médias da temporada, confronto direto e escalação, empilhadas numa
-                rolagem só. A escalação é a que o assinante procura perto do jogo, e
-                ficava por último, embaixo de tudo.
+            {/* Três abas, nesta ordem: o que o modelo lê, como os times vêm
+                jogando, e quem entra em campo. A escalação fecha porque só existe
+                perto do apito — antes dela ser publicada a aba mostra a do último
+                jogo, como referência.
+
+                ⚠️ Isto NÃO é voltar ao que era. A escalação já esteve enterrada
+                no fim de uma rolagem dentro de uma aba que fazia três papéis ao
+                mesmo tempo — médias da temporada, confronto direto e escalação
+                empilhadas. Ter aba própria é o que a tirou de lá; a posição na
+                fileira é outra conversa.
 
                 O antigo "Resumo" virou a própria faixa da partida mais a coluna de
                 mercados, então deixou de ser uma aba. */}
@@ -768,8 +774,8 @@ export default function FutebolJogo() {
                 {(
                   [
                     ['mercados', 'Leitura & mercados'],
-                    ['escalacoes', 'Escalações'],
                     ['estatisticas', 'Estatísticas'],
+                    ['escalacoes', 'Escalações'],
                   ] as const
                 ).map(([k, label]) => (
                   <button
