@@ -263,10 +263,13 @@ function consultaDeEscolha({ quantos, amostraCurta }) {
 }
 
 async function escolherJogos({ casos, forcados }) {
-  // Os forçados ENTRAM ALÉM do sorteio, e não no lugar dele. Um caso relatado
-  // é a razão de a captura existir, mas capturar só ele daria um arquivo que
-  // prova a derivação no exemplo em que ela já se sabe errada e em nenhum
-  // outro. E o sorteio sozinho pode não pegá-lo nunca.
+  // Os forçados não SUBSTITUEM o sorteio: ele continua acontecendo ao lado, e
+  // eles ocupam vaga dentro de `--casos`. Pedir 24 com um forçado dá 24, dos
+  // quais 23 sorteados.
+  //
+  // Capturar só o caso relatado daria um arquivo que prova a derivação no
+  // exemplo em que ela já se sabe errada e em nenhum outro; e o sorteio sozinho
+  // pode não pegá-lo nunca.
   //
   // ⚠️ E ELES NÃO PASSAM PELA GUARDA DE JOGO ENCERRADO. Não passam de
   // propósito: o caso relatado costuma ser o de amanhã, e foi assim no Turquia

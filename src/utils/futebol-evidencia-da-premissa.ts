@@ -83,6 +83,6 @@ export function evidenciaDaPremissa({
   if (medido) return medido;
   return (
     evidenciaDoHistorico(mercado, slug, historico, lado, linha) ??
-    evidenciaDe(slug, numeros, lado, acesa, linha)
+    evidenciaDe(mercado, slug, numeros, lado, acesa, linha)
   );
 }

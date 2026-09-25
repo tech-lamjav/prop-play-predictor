@@ -226,6 +226,19 @@ export const SPECS: Record<string, SerieSpec[]> = {
   'goals_over_under:historico_under': [{ quem: 'ambos', metrica: 'total', mando: 'todos', direcao: 'menor', ultimos: JANELA_DE_CONTAGEM, competicoes: 'qualquer', mostraMedia: false }],
 
   // ── Resultado ──
+  //
+  // ⚠️ Duas destas quatro estão na lista de MÉTRICA ERRADA da #361, e a regra
+  // deste mapa é a nota ficar na entrada:
+  //
+  // `mando`            compara `pct_pts_home >= 55` (ou `aprov_fora >= 45`) — o
+  //                    APROVEITAMENTO percentual de pontos, e o corte muda com o
+  //                    mando. O gráfico aqui desenha a grade de vitória, empate
+  //                    e derrota, que é de onde o aproveitamento sai mas não é
+  //                    ele.
+  // `superioridade_xg` compara `s_xg_for - o_xg_against >= 0.3` — a DIFERENÇA
+  //                    entre o xG que o time cria e o que o adversário sofre. O
+  //                    gráfico aqui põe lado a lado o xG CRIADO pelos dois, que
+  //                    é outra subtração.
   'match_winner:forma': [{ quem: 'time', metrica: 'resultado', mando: 'todos', direcao: 'maior', ultimos: 5, competicoes: 'qualquer' }],
   'match_winner:mando': [{ quem: 'time', metrica: 'resultado', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
   'match_winner:superioridade_xg': [{ quem: 'ambos', metrica: 'xg', mando: 'todos', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
@@ -235,6 +248,18 @@ export const SPECS: Record<string, SerieSpec[]> = {
   ],
 
   // ── Handicap ──
+  //
+  // ⚠️ Duas na lista de métrica errada da #361:
+  //
+  // `mando_forte`           compara `pct_pts_home >= 60`, aproveitamento
+  //                         percentual — mesma confusão do `mando` acima, com
+  //                         outro corte.
+  // `raramente_perde_por_2` compara `s_lost2 / s_n_games < 0.30` sobre os
+  //                         últimos 10, com PISO de 5 jogos. A frase daqui conta
+  //                         derrotas por dois ou mais sobre tudo que foi
+  //                         buscado, sem virar percentual e sem o piso — e o
+  //                         piso não é detalhe: abaixo dele a premissa não
+  //                         acende nem com o número do lado certo do corte.
   'asian_handicap:mando_forte': [{ quem: 'time', metrica: 'resultado', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
   'asian_handicap:tende_golear': [
     { quem: 'time', metrica: 'gf', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' },
@@ -246,7 +271,7 @@ export const SPECS: Record<string, SerieSpec[]> = {
 
   // ── Ambos marcam ──
   //
-  // ⚠️ AS QUATRO ESTÃO ERRADAS, e ficam assim neste commit de propósito: ele
+  // ⚠️ TRÊS DAS QUATRO ESTÃO ERRADAS, e ficam assim neste commit de propósito: ele
   // rechaveia o mapa e não muda pixel nenhum na tela. O conserto é a transcrição
   // dos critérios, que vem depois e apaga estas entradas. Os critérios abaixo
   // foram lidos do dbt e estão na #361.
@@ -271,6 +296,12 @@ export const SPECS: Record<string, SerieSpec[]> = {
   'btts:defesas_vazaveis': GRAFICO_DEFESAS_VAZAVEIS_DE_GOLS,
 
   // ── Dupla chance ──
+  //
+  // ⚠️ `adversario_limitado` também está na lista da #361: compara
+  // `o_aproveitamento < 45` OU o veredito do h2h, e o gráfico aqui desenha
+  // média de gols marcados do adversário. Nem a grandeza nem a estrutura batem
+  // — é uma premissa COMPOSTA, com um braço que é outra premissa, e a #361
+  // trata essa família como desenho novo.
   'double_chance:invicto_recente': [{ quem: 'time', metrica: 'resultado', mando: 'todos', direcao: 'maior', ultimos: 5, competicoes: 'qualquer' }],
   'double_chance:adversario_limitado': [{ quem: 'adversario', metrica: 'gf', mando: 'todos', direcao: 'menor', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
 };

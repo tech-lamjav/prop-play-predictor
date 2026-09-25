@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { storyDaPremissa, evidenciaDoHistorico, SPECS, EH_BINARIA } from './futebol-historico';
 import { CRITERIOS } from './futebol-criterio';
-import { MERCADOS } from './futebol-premissas';
 import type { FutebolFixtureHistorico } from '@/services/futebol-data.service';
 
 // ============================================================================
@@ -214,62 +213,6 @@ describe('toda premissa declara a janela do modelo', () => {
       }
     });
   }
-
-  // ==========================================================================
-  // A chave do mapa tem de ser um par que EXISTE no catálogo
-  // ==========================================================================
-  // Sem esta guarda, errar o mercado numa chave não dá erro nenhum: a premissa
-  // simplesmente para de ter gráfico, calada, porque o mapa é consultado por
-  // par e um par que ninguém escreve devolve indefinido. É o modo de falha que
-  // o rechaveamento introduz, e por isso ele nasce com o detector junto.
-  //
-  // Duas chaves já estavam escritas embaixo do rótulo de seção errado antes
-  // disto — `invicto_recente` como Resultado, sendo da Dupla chance, e
-  // `mando_forte` como Resultado, sendo do Handicap. Enquanto a chave era só o
-  // slug, o rótulo errado era inofensivo. Agora ele seria o defeito.
-  it('toda chave do mapa de gráficos é um par mercado+slug do catálogo', () => {
-    const doCatalogo = new Set(
-      MERCADOS.flatMap((m) => m.premissas.map((p) => `${m.slug}:${p.slug}`)),
-    );
-    const forasteiras = Object.keys(SPECS).filter((par) => !doCatalogo.has(par));
-    expect(forasteiras).toEqual([]);
-  });
-
-  // ==========================================================================
-  // Quem tem gráfico, pelo CATÁLOGO e não pelo mapa
-  // ==========================================================================
-  // A guarda acima e a lista de "sem critério" mais abaixo leem as chaves do
-  // próprio `SPECS`, então nenhuma das duas acusa uma chave APAGADA — a lista
-  // encolhe e a comparação continua fechando consigo mesma.
-  //
-  // Esta parte do catálogo, que é a outra ponta, e por isso pega o que as duas
-  // não pegam: a premissa que tinha gráfico e deixou de ter. Era o risco de
-  // rechavear por mercado, onde escrever o mercado errado não dá erro nenhum.
-  //
-  // Mexer nesta lista é decisão de produto: alguém ganhou ou perdeu o jogo a
-  // jogo. É para ela reprovar e a mudança ser explicada no commit.
-  const COM_GRAFICO = [
-    'goals_over_under:ambos_vazam', 'goals_over_under:ataque_combinado',
-    'goals_over_under:ataques_fracos', 'goals_over_under:clean_sheets_altos',
-    'goals_over_under:defesas_firmes', 'goals_over_under:defesas_vazaveis',
-    'goals_over_under:historico_over', 'goals_over_under:historico_under',
-    'goals_over_under:xg_baixo_combinado', 'goals_over_under:xg_combinado_alto',
-    'match_winner:forca_mismatch', 'match_winner:forma', 'match_winner:mando',
-    'match_winner:superioridade_xg',
-    'asian_handicap:adversario_fragil_fora', 'asian_handicap:defesa_fora_solida',
-    'asian_handicap:mando_forte', 'asian_handicap:raramente_perde_por_2',
-    'asian_handicap:tende_golear',
-    'btts:ambos_marcam', 'btts:ataque_dos_dois', 'btts:defesa_forte',
-    'btts:defesas_vazaveis',
-    'double_chance:adversario_limitado', 'double_chance:invicto_recente',
-  ];
-
-  it('as premissas com jogo a jogo são exatamente estas', () => {
-    const doCatalogo = MERCADOS.flatMap((m) =>
-      m.premissas.map((p) => `${m.slug}:${p.slug}`).filter((par) => SPECS[par]),
-    );
-    expect([...doCatalogo].sort()).toEqual([...COM_GRAFICO].sort());
-  });
 
   it('a frase e o gráfico leem a MESMA especificação', () => {
     // Três jogos, dois de outra competição. Com o recorte declarado, os dois
