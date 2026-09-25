@@ -7,8 +7,9 @@ import { seriesDaEspecificacao, type Metrica, type SerieHistorico, type SerieSpe
  * Duas regras sustentam este módulo, e as duas são de domínio:
  *
  * 1. O que ele desenha é **estatística da partida**, não **evidência** de
- *    premissa. Por isso a janela, o mando e o time são escolha de quem olha,
- *    enquanto no gráfico das premissas os três são travados pelo modelo.
+ *    premissa. Por isso o mercado, a janela e o mando são escolha de quem olha,
+ *    enquanto no gráfico das premissas eles são travados pelo modelo. O TIME não
+ *    é escolha: os dois estão sempre na tela.
  *
  * 2. A LINHA é uma **referência**, não uma aposta. Ela não vem de preço, não
  *    tem lado escolhido e nada aqui é liquidado: mexer nela repinta as barras e
@@ -48,7 +49,14 @@ export function ehMercadoDoGrafico(slug: string | null | undefined): slug is Mer
 export interface EscolhaDaEstatistica {
   /** Slug do mercado, o mesmo da bancada. */
   mercado: MercadoDoGrafico;
-  /** A referência da cor. `null` mostra a média no lugar dela. */
+  /**
+   * A referência da cor. `null` nos mercados binários, que não têm régua — e aí
+   * quem pinta é o fato, não uma linha.
+   *
+   * ⚠️ Já dizia que `null` "mostra a média no lugar dela". Não mostra: o
+   * desenhista desta aba nunca leu a média, e a bandeira que mandava exibi-la
+   * era código morto com teste verde guardando.
+   */
   linha: number | null;
   quem: QuemNoGrafico;
   /** Quantos dos jogos mais recentes entram. */
@@ -69,7 +77,6 @@ export const MERCADOS_NO_GRAFICO: Record<
   {
     metrica: Metrica;
     temLinha: boolean;
-    rotulo: string;
     chip: string;
     paradas: number[];
     padrao: number | null;
@@ -79,11 +86,11 @@ export const MERCADOS_NO_GRAFICO: Record<
   // das seis paradas de gols é 3,5 e a linha canônica é 2,5, o que faria quase
   // tudo nascer abaixo da linha e parecer defeito.
   goals_over_under: {
-    metrica: 'total', temLinha: true, rotulo: 'Gols no jogo', chip: 'Gols',
+    metrica: 'total', temLinha: true, chip: 'Gols',
     paradas: [0.5, 1.5, 2.5, 3.5, 4.5, 5.5], padrao: 2.5,
   },
   asian_handicap: {
-    metrica: 'saldo', temLinha: true, rotulo: 'Saldo de gols', chip: 'Handicap',
+    metrica: 'saldo', temLinha: true, chip: 'Handicap',
     paradas: [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5], padrao: -0.5,
   },
   // ── Os BINÁRIOS ──────────────────────────────────────────────────────────
@@ -97,15 +104,15 @@ export const MERCADOS_NO_GRAFICO: Record<
   // blocos nomeados, um por time, e ver os dois de uma vez é justamente o que
   // se quer num confronto.
   match_winner: {
-    metrica: 'resultado', temLinha: false, rotulo: 'Resultado', chip: 'Resultado',
+    metrica: 'resultado', temLinha: false, chip: 'Resultado',
     paradas: [], padrao: null,
   },
   double_chance: {
-    metrica: 'resultado', temLinha: false, rotulo: 'Resultado', chip: 'Dupla chance',
+    metrica: 'resultado', temLinha: false, chip: 'Dupla chance',
     paradas: [], padrao: null,
   },
   btts: {
-    metrica: 'ambos', temLinha: false, rotulo: 'Os dois marcaram', chip: 'Ambos marcam',
+    metrica: 'ambos', temLinha: false, chip: 'Ambos marcam',
     paradas: [], padrao: null,
   },
 };
@@ -195,18 +202,13 @@ export function graficoDaEstatistica(
   // numérica, então a régua da cor é recalculada aqui — sem tocar no caminho
   // das premissas.
   const cruas = seriesDaEspecificacao([spec], hist, papel.lado, null, 'estatistica');
-  // Mercado com régua usa a linha escolhida; o binário usa a referência fixa do
-  // catálogo, que não aparece como controle mas ainda decide a cor.
+  // Só mercado com régua tem referência. Nos binários `padrao` é nulo e a cor
+  // vem do próprio fato — quem pinta é o `corPor` do quadro, não uma linha.
   const referencia = doMercado.temLinha ? escolha.linha : doMercado.padrao;
 
   const series = cruas.map((s) => ({
     ...s,
     comoLer: COMO_LER[doMercado.metrica],
-    // ⚠️ A média SAI quando existe linha. Os dois são tracejados, e dois
-    // tracejados com significados diferentes no mesmo gráfico é pior que
-    // nenhum: quem arrasta a régua vê um traço que não se mexe e conclui que a
-    // régua não funciona.
-    mostraMedia: referencia == null,
     jogos:
       referencia == null
         ? s.jogos

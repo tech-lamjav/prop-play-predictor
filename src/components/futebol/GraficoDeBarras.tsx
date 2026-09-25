@@ -19,10 +19,14 @@ import { Crest } from './Crest';
  * diferentes, e ninguém compara duas abas lado a lado para notar.
  *
  * O que cada elemento existe para responder:
- *   rótulo em cima da barra → quanto foi naquele jogo
- *   escudo embaixo         → contra quem foi
- *   linha tracejada âmbar  → a média da série
- *   rótulo na ponta da linha → qual é essa média, sem precisar medir no olho
+ *   rótulo na barra  → quanto foi naquele jogo
+ *   escudo embaixo   → contra quem foi
+ *   linha tracejada âmbar → a régua da série, e ela NÃO é a mesma nos dois
+ *     desenhos: em `BlocoSerie` é a média, que é o número da premissa; em
+ *     `BarrasEmSequencia` é a linha de referência que a pessoa arrasta. Chamar
+ *     as duas de "média" aqui era a legenda do módulo desmentindo metade dos
+ *     gráficos que ele desenha.
+ *   selo na ponta da linha → o valor dessa régua, sem precisar medir no olho
  */
 
 /**
@@ -51,12 +55,33 @@ const COR_RES: Record<'V' | 'E' | 'D', { bg: string; fg: string }> = {
  * empate —, então desenhá-la como barra é a tela afirmando uma grandeza que não
  * existe. Quem tem série de resultado usa isto, não barra.
  */
-export function SerieResultados({ s, corPor = 'resultado' }: { s: SerieHistorico; corPor?: 'resultado' | 'valor' }) {
+export function SerieResultados({
+  s,
+  corPor = 'resultado',
+  comData = false,
+  larguraFixa = false,
+}: {
+  s: SerieHistorico;
+  corPor?: 'resultado' | 'valor';
+  /**
+   * ⚠️ Desligados por padrão, como `comPlacar` e `rotuloDentro`.
+   *
+   * Os dois nasceram para a aba de Estatísticas e foram para o gráfico das
+   * premissas junto, SEM trava — e com isso derrubaram a justificativa de
+   * manter dois desenhistas de barra separados neste arquivo, que era não mexer
+   * um pixel naquela tela. A regra aqui é: diferença entre abas passa por
+   * propriedade, senão a separação custa quinhentas linhas e não protege nada.
+   */
+  comData?: boolean;
+  /**
+   * Caixa de 84px com respiro de 4px: dez jogos somam 876px, que é exatamente a
+   * largura que nove quadros de 92px já ocupavam. Sem ela, a caixa mede o nome
+   * do adversário e a fileira fica com quadros de tamanhos diferentes.
+   */
+  larguraFixa?: boolean;
+}) {
   return (
-    // Respiro de 4px, e não 6: junto com a caixa de 84px, dez jogos somam 876px
-    // — que é exatamente a largura que NOVE quadros de 92px já ocupavam. Ou
-    // seja, cabe numa linha na mesma tela em que hoje o décimo quebra.
-    <div className="flex flex-wrap gap-1">
+    <div className={cn('flex flex-wrap', larguraFixa ? 'gap-1' : 'gap-1.5')}>
       {s.jogos.map((j) => {
         // Em "ambos marcam" a cor não é vitória nem derrota: é o fato ter
         // acontecido ou não. Pintar de verde uma vitória em que só um time
@@ -69,24 +94,29 @@ export function SerieResultados({ s, corPor = 'resultado' }: { s: SerieHistorico
             // "CRB" ao lado de "Athletic Club" dava quadros de tamanhos
             // diferentes na mesma fileira — a forma variando por um motivo que
             // não tem nada a ver com o que o quadro informa.
-            className="rounded-lg px-2 py-1.5 w-[84px] shrink-0"
+            className={cn('rounded-lg px-2 py-1.5', larguraFixa && 'w-[84px] shrink-0')}
             style={{ background: c.bg }}
             title={`${dia(j.data)} · ${j.emCasa ? 'em casa' : 'fora'} contra ${j.adversario}`}
           >
             <div className="tabular-nums text-[12.5px] font-bold leading-none text-center" style={{ color: c.fg }}>
               {j.placar}
             </div>
-            <div className="flex items-center justify-center gap-1 mt-1.5 min-w-0">
+            <div className={cn('flex items-center gap-1 mt-1.5 min-w-0', larguraFixa && 'justify-center')}>
               <Crest name={j.adversario} id={j.adversarioId} size={13} />
-              <span className="text-[9.5px] truncate" style={{ color: c.fg, opacity: 0.8 }}>
+              <span
+                className={cn('text-[9.5px] truncate', !larguraFixa && 'max-w-[58px]')}
+                style={{ color: c.fg, opacity: 0.8 }}
+              >
                 {j.adversario}
               </span>
             </div>
             {/* A DATA, porque sem ela o quadro não diz qual jogo é o mais
                 recente — e num histórico a ordem é metade da informação. */}
-            <div className="tabular-nums text-[9px] mt-0.5 text-center" style={{ color: c.fg, opacity: 0.65 }}>
-              {dia(j.data)}
-            </div>
+            {comData && (
+              <div className="tabular-nums text-[9px] mt-0.5 text-center" style={{ color: c.fg, opacity: 0.65 }}>
+                {dia(j.data)}
+              </div>
+            )}
           </div>
         );
       })}
@@ -103,6 +133,15 @@ const placarCurto = (placar: string) => placar.replace(' a ', '×');
 
 /** Abaixo disto a barra não tem altura para segurar o rótulo por dentro. */
 const ALTURA_MINIMA_PARA_ROTULO_DENTRO = 18;
+
+/**
+ * A calha à direita onde mora o selo do valor da linha.
+ *
+ * ⚠️ UM número só. O recuo do desenho e o deslocamento do selo têm de ser
+ * iguais, e estavam escritos duas vezes — mudar um e esquecer o outro põe o selo
+ * de volta em cima da barra, sem nada que avise.
+ */
+const CALHA_DO_SELO = 42;
 
 /**
  * UM gráfico só, com as séries em sequência na mesma área de desenho.
@@ -163,7 +202,7 @@ export function BarrasEmSequencia({
     // cortaria. Aqui o recuo vale para o cabeçalho, o desenho e o eixo ao mesmo
     // tempo — os três encolhem juntos e seguem alinhados sozinhos, que é o que
     // mantém cada escudo debaixo da sua própria barra.
-    <div className="pr-[42px]">
+    <div style={{ paddingRight: CALHA_DO_SELO }}>
       {/* Um rótulo por grupo, na mesma proporção das barras, para o nome ficar
           sobre as barras que ele nomeia. */}
       <div className="flex gap-[3px] mb-2">
@@ -240,13 +279,13 @@ export function BarrasEmSequencia({
         {referencia != null && (
           <div
             className="absolute left-0 right-0 border-t-2 border-dashed pointer-events-none"
-            style={{ borderColor: '#d4a017', bottom: posDe(referencia) }}
+            style={{ borderColor: 'var(--amber)', bottom: posDe(referencia) }}
           >
             {/* Fora da área de desenho, dentro da calha: o selo deixa de
                 cobrir a barra que ele deveria explicar. */}
             <span
               className="absolute -translate-y-1/2 tabular-nums text-[10px] font-bold px-1.5 py-0.5 rounded text-canvas whitespace-nowrap"
-              style={{ background: '#b8870f', right: -42 }}
+              style={{ background: 'var(--amber-2)', right: -CALHA_DO_SELO }}
             >
               {String(referencia).replace('.', ',')}
             </span>

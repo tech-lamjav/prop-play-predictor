@@ -48,9 +48,14 @@ export const rotuloMedia = (v: number, metrica: SerieHistorico['metrica']) =>
  * crescer para cima desenharia "perdeu de 2" com a mesma altura mínima de
  * "empatou". Onde não há negativo o piso é zero e nada muda.
  */
-export function pisoDaEscala(series: SerieHistorico[]): number {
+export function pisoDaEscala(series: SerieHistorico[], referencia?: number): number {
   const valores = series.flatMap((s) => s.jogos.map((j) => j.valor)).filter((v): v is number => v != null);
-  return Math.min(0, ...valores);
+  // ⚠️ A REFERÊNCIA entra no piso, do mesmo jeito que entra no teto. Sem isso a
+  // escala era assimétrica: no handicap, que abre em −0,5, um time sem saldo
+  // negativo na janela dava piso zero — e a linha âmbar era desenhada ABAIXO do
+  // gráfico, em cima da fileira de escudos, sem nem a linha do zero para
+  // ancorá-la. É o estado inicial do mercado para um time invicto.
+  return Math.min(0, ...valores, referencia ?? 0);
 }
 
 export function tetoDaEscala(series: SerieHistorico[], referencia?: number): number {

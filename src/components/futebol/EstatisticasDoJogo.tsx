@@ -22,9 +22,10 @@ import { BarrasEmSequencia, COR_CONTRA, COR_FAVOR, SerieResultados } from './Gra
  * O jogo a jogo dos dois times, na aba de Estatísticas.
  *
  * ⚠️ O que ele mostra é **estatística da partida**, e não **evidência** de
- * premissa. É essa fronteira que autoriza mercado, janela, mando e time a serem
+ * premissa. É essa fronteira que autoriza mercado, janela e mando a serem
  * escolha de quem olha: o gráfico da aba de mercados tem tudo travado pelo
- * modelo, porque lá ele responde por um número que o modelo calculou.
+ * modelo, porque lá ele responde por um número que o modelo calculou. O time
+ * não entra na lista — os dois aparecem sempre.
  *
  * A LINHA aqui é referência, não aposta: nada é liquidado, não há lado escolhido
  * e não há preço. Mexer nela repinta as barras e não toca nos valores.
@@ -74,7 +75,7 @@ export function EstatisticasDoJogo({
   const doMercado = MERCADOS_NO_GRAFICO[escolha.mercado];
   const { series, contagem, referencia, temLinha } = graficoDaEstatistica(escolha, historico);
   const teto = tetoDaEscala(series, referencia ?? undefined);
-  const piso = pisoDaEscala(series);
+  const piso = pisoDaEscala(series, referencia ?? undefined);
   const comRotulo = cabeRotulo(series);
   /** Mercado binário não tem grandeza: vira quadro de jogo, não barra. */
   const ehQuadro = doMercado.metrica === 'resultado' || doMercado.metrica === 'ambos';
@@ -167,7 +168,11 @@ export function EstatisticasDoJogo({
             gráfico, então repeti-lo aqui em tamanho grande era dizer duas vezes. */}
         {temLinha && doMercado.paradas.length > 0 && (
           <div className="flex items-center gap-2.5 mb-3">
-            <span className={LABEL}>Linha</span>
+            {/* "Linha de referência", e não "Linha": o glossário reserva a
+                palavra solta para a linha da aposta, e nesta mesma página ela
+                já significa isso. O nome acessível do controle sempre disse o
+                certo; o texto visível é que estava fora. */}
+            <span className={LABEL}>Linha de referência</span>
             <ReguaDeLinhas
               paradas={doMercado.paradas}
               valor={escolha.linha}
@@ -193,7 +198,12 @@ export function EstatisticasDoJogo({
             {series.map((s) => (
               <div key={s.chave}>
                 <div className="text-[11.5px] font-semibold text-ink truncate mb-2">{s.titulo}</div>
-                <SerieResultados s={s} corPor={doMercado.metrica === 'ambos' ? 'valor' : 'resultado'} />
+                <SerieResultados
+                  s={s}
+                  corPor={doMercado.metrica === 'ambos' ? 'valor' : 'resultado'}
+                  comData
+                  larguraFixa
+                />
               </div>
             ))}
             <div className="text-[11px] leading-relaxed" style={{ color: '#8d8672' }}>{series[0].comoLer}</div>
@@ -225,11 +235,17 @@ export function EstatisticasDoJogo({
 
             {/* O número SEMPRE declara a base: existe premissa contando os
                 últimos cinco contra a linha, e dois números da mesma forma só
-                não se contradizem porque cada um diz de onde saiu. */}
+                não se contradizem porque cada um diz de onde saiu.
+
+                ⚠️ E "dos dois times" só quando são dois. Com um time só no
+                recorte, esta frase afirmava dois enquanto o aviso logo abaixo
+                dizia "o gráfico mostra um time só" — duas frases vizinhas se
+                contradizendo. */}
             {contagem && contagem.de > 0 && (
               <div className="text-[12px] text-ink-2 mt-3">
-                <strong className="font-bold text-ink">{contagem.acima}</strong> dos {contagem.de} jogos dos dois
-                times passaram de {fmtLinha(referencia as number)}.
+                <strong className="font-bold text-ink">{contagem.acima}</strong> dos {contagem.de} jogos{' '}
+                {series.length > 1 ? 'dos dois times' : `do ${series[0].teamName}`} passaram de{' '}
+                {fmtLinha(referencia as number)}.
                 <span className="block text-[10.5px] text-ink-3 mt-0.5">
                   Janela: últimos {escolha.janela} de cada time
                   {escolha.mando === 'proprio' ? ', só com o mando deste confronto' : ''}.
