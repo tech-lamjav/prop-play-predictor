@@ -106,11 +106,19 @@ function ondeCadaUmJoga(lado: 'home' | 'away'): { doTime: string; doAdversario: 
  * A barra compara a mesma grandeza da frase, com a posição no rótulo. Mais
  * pontos por jogo é o lado bom da aposta, daí o destaque à esquerda.
  *
- * ⚠️ O destaque é dos PONTOS, e as duas premissas acendem também por POSIÇÃO.
- * Quando é o ramo do rank que acende e o adversário tem ppg igual ou maior, o
- * destaque à esquerda pinta a barra menor como lado bom. É defeito herdado da
- * `superioridade_tabela` e não introduzido aqui — só mais exposto, porque o
- * corte de razão do Handicap é 1,5 contra 1,3 do 1X2.
+ * ⚠️ O destaque só sai quando o lado da aposta TEM o número maior, e é por isso
+ * que ele é condicional. As duas premissas acendem também por POSIÇÃO, e nesse
+ * ramo o adversário pode ter mais pontos por jogo — destacar a esquerda ali
+ * pintaria de verde a barra MENOR, dizendo ao assinante que a vantagem está no
+ * lado que tem menos.
+ *
+ * Medido no mart: acontece em 46 dos 6.716 acendimentos do Resultado e em 38
+ * dos 5.404 do Handicap. Quase todos na fase de liga da Champions, onde os
+ * times jogaram números diferentes de partidas e a posição descola do
+ * aproveitamento — o caso extremo é um 20º colocado com 3,00 pontos por jogo.
+ *
+ * Sem número maior, `destaque: 'nenhum'`: a barra continua mostrando os dois
+ * lados e deixa de afirmar qual é o bom, em vez de afirmar errado.
  *
  * Pela ADR 0008 do dbt (`analytics-engineering`, numeração de LÁ — este
  * repositório tem a sua própria em `docs/adr/`), classificação é sempre
@@ -128,7 +136,7 @@ function formaDaTabela(v: Record<string, number>, n: NomesDoConfronto): Evidenci
       esqValor: v.s_ppg,
       dirLabel: `${n.adversario ?? 'Adversário'}, ${numero(v.o_rank)}º`,
       dirValor: v.o_ppg,
-      destaque: 'esq',
+      destaque: v.s_ppg > v.o_ppg ? 'esq' : 'nenhum',
     },
   };
 }

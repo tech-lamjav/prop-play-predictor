@@ -102,6 +102,37 @@ describe('a evidência do valor medido', () => {
       .toMatchObject({ esqLabel: 'O time, 2º', dirLabel: 'Adversário, 20º' });
   });
 
+  it('acendendo pela POSIÇÃO com o adversário de ppg maior, a barra não destaca ninguém', () => {
+    // Caso real medido no mart: Lille (7º, 1,20) contra Real Madrid (20º,
+    // 3,00) na fase de liga da Champions. O Real jogou menos e ganhou tudo,
+    // então está atrás na tabela com o dobro do aproveitamento.
+    //
+    // A premissa acende pelo ramo do rank (13 posições), e o destaque à
+    // esquerda pintaria de verde os 1,20 do Lille contra 3,00 — dizendo que a
+    // vantagem está no lado que tem menos da metade. 46 dos 6.716
+    // acendimentos deste mercado caem aqui.
+    const ev = evidenciaDoInsumoMedido('match_winner', 'superioridade_tabela', 'home', [
+      linha({ insumo: 's_rank', valor: 7 }),
+      linha({ insumo: 's_ppg', valor: 1.2 }),
+      linha({ insumo: 'o_rank', valor: 20 }),
+      linha({ insumo: 'o_ppg', valor: 3 }),
+    ], { time: 'Lille', adversario: 'Real Madrid' });
+
+    expect(ev?.texto).toBe('7º com 1,20 pontos por jogo, contra 20º e 3 do adversário');
+    expect(ev?.comparacao?.destaque).toBe('nenhum');
+  });
+
+  it('e empate de ppg também não destaca: ninguém tem o número maior', () => {
+    expect(
+      evidenciaDoInsumoMedido('match_winner', 'superioridade_tabela', 'home', [
+        linha({ insumo: 's_rank', valor: 3 }),
+        linha({ insumo: 's_ppg', valor: 1.5 }),
+        linha({ insumo: 'o_rank', valor: 12 }),
+        linha({ insumo: 'o_ppg', valor: 1.5 }),
+      ])?.comparacao?.destaque,
+    ).toBe('nenhum');
+  });
+
   it('lê o confronto direto em vitórias sobre total, e sem barra', () => {
     // Sem barra de propósito: o mart dá vitórias e total, e entre as duas estão
     // os empates. "Vitórias contra o resto" seria outra afirmação.
@@ -374,6 +405,29 @@ describe('o handicap asiático lê o valor medido', () => {
       dirValor: 1.42,
       destaque: 'esq',
     });
+  });
+
+  it('no handicap a barra segue a mesma regra: sem número maior, sem destaque', () => {
+    // Caso real medido no mart: Kairat Almaty (5º, 1,33) contra Real Madrid
+    // (18º, 3,00). Acende pelas 13 posições, e o ppg do adversário é o dobro.
+    // 38 dos 5.404 acendimentos do Handicap caem aqui.
+    const ev = evidenciaDoInsumoMedido(
+      'asian_handicap',
+      'supremacia',
+      'home',
+      [
+        ah({ premissa: 'supremacia', insumo: 's_rank', valor: 5 }),
+        ah({ premissa: 'supremacia', insumo: 's_ppg', valor: 1.33 }),
+        ah({ premissa: 'supremacia', insumo: 'o_rank', valor: 18 }),
+        ah({ premissa: 'supremacia', insumo: 'o_ppg', valor: 3 }),
+      ],
+      { time: 'Kairat Almaty', adversario: 'Real Madrid' },
+    );
+
+    expect(ev?.comparacao?.destaque).toBe('nenhum');
+    // A barra não some: ela continua mostrando os dois lados, só deixa de
+    // afirmar qual é o bom.
+    expect(ev?.comparacao).toMatchObject({ esqValor: 1.33, dirValor: 3 });
   });
 
   it('faltando um dos quatro, devolve nulo em vez de meia frase', () => {
