@@ -115,40 +115,50 @@ export function EstatisticasDoJogo({
       </div>
 
       <div className="p-5">
-        {/* ⚠️ UMA linguagem de controle só. O mercado já foi barra de abas aqui,
-            copiada da barra da página — que usa raio e borda cravados na mão, e
-            não os tokens do rebrand. Além de fora do sistema, punha TRÊS
-            gramáticas no mesmo cabeçalho: aba, chip e seletor. Agora mercado e
-            time são chips; a hierarquia vem do rótulo e da ordem, não de widgets
-            diferentes. */}
-        {/* ⚠️ UMA linha de filtro só, e SEM seletor de time: os dois times estão
-            sempre na tela. O seletor existiu e saiu — num confronto, ver um time
-            de cada vez obriga a lembrar do outro para comparar, que é
-            exatamente o trabalho que a escala compartilhada faz de graça.
-            O nome de cada time aparece sobre as barras dele, no gráfico. */}
-        <div className="flex flex-wrap items-center gap-2 mb-3">
-          <span className={LABEL}>Mercado</span>
-          {(Object.keys(MERCADOS_NO_GRAFICO) as MercadoDoGrafico[]).map((slug) => (
-            <Chip key={slug} ativo={escolha.mercado === slug} onClick={() => trocaMercado(slug)}>
-              {MERCADOS_NO_GRAFICO[slug].chip}
-            </Chip>
-          ))}
+        {/* ⚠️ SEM seletor de time: os dois estão sempre na tela, e o nome de
+            cada um aparece sobre as barras dele. Num confronto, ver um de cada
+            vez obriga a lembrar do outro para comparar — trabalho que a escala
+            compartilhada já faz de graça.
 
-          <SeletorDeMenu rotulo="Janela" resumo={`Últimos ${escolha.janela}`} largura="sm:w-[168px]">
-            {JANELAS_OFERECIDAS.map((j) => (
-              <DropdownMenuCheckboxItem key={j} checked={escolha.janela === j} onSelect={() => muda({ janela: j })} className={ITEM_SELETOR}>
-                {`Últimos ${j}`}
-              </DropdownMenuCheckboxItem>
-            ))}
-          </SeletorDeMenu>
+            ⚠️ E o celular NÃO quebra em fileiras. Quebrando, os cinco chips mais
+            os dois seletores viravam quatro linhas empilhadas, que é justamente
+            o que esta tela já tinha e foi consertado no desktop. Aqui valem os
+            dois idiomas que esta casa já usa para o mesmo aperto: a fileira que
+            ROLA na horizontal (a barra de abas da página e os mercados de
+            Oportunidades fazem assim) e os seletores lado a lado numa grade de
+            dois (a fileira de Oportunidades, de novo). No desktop tudo volta
+            para uma linha só. */}
+        <div className="flex flex-col gap-2 mb-3 sm:flex-row sm:flex-wrap sm:items-center">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className={LABEL}>Mercado</span>
+            {/* `-my-1 py-1` dá respiro vertical para o anel de foco do chip não
+                ser cortado pela caixa que rola. */}
+            <div className="flex items-center gap-1.5 min-w-0 overflow-x-auto no-scrollbar -my-1 py-1">
+              {(Object.keys(MERCADOS_NO_GRAFICO) as MercadoDoGrafico[]).map((slug) => (
+                <Chip key={slug} ativo={escolha.mercado === slug} onClick={() => trocaMercado(slug)}>
+                  {MERCADOS_NO_GRAFICO[slug].chip}
+                </Chip>
+              ))}
+            </div>
+          </div>
 
-          <SeletorDeMenu rotulo="Mando" resumo={mandoAtual} largura="sm:w-[212px]">
-            {MANDOS.map((m) => (
-              <DropdownMenuCheckboxItem key={m.valor} checked={escolha.mando === m.valor} onSelect={() => muda({ mando: m.valor })} className={ITEM_SELETOR}>
-                {m.rotulo}
-              </DropdownMenuCheckboxItem>
-            ))}
-          </SeletorDeMenu>
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-2 sm:shrink-0">
+            <SeletorDeMenu rotulo="Janela" resumo={`Últimos ${escolha.janela}`} largura="sm:w-[168px]">
+              {JANELAS_OFERECIDAS.map((j) => (
+                <DropdownMenuCheckboxItem key={j} checked={escolha.janela === j} onSelect={() => muda({ janela: j })} className={ITEM_SELETOR}>
+                  {`Últimos ${j}`}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </SeletorDeMenu>
+
+            <SeletorDeMenu rotulo="Mando" resumo={mandoAtual} largura="sm:w-[212px]">
+              {MANDOS.map((m) => (
+                <DropdownMenuCheckboxItem key={m.valor} checked={escolha.mando === m.valor} onSelect={() => muda({ mando: m.valor })} className={ITEM_SELETOR}>
+                  {m.rotulo}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </SeletorDeMenu>
+          </div>
         </div>
 
         {/* ⚠️ Uma FAIXA, não um painel. Este controle já foi uma caixa creme mais
