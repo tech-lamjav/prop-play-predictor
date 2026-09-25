@@ -112,12 +112,31 @@ describe('o mercado manda na métrica', () => {
     expect(g.temLinha).toBe(false);
   });
 
-  it('resultado não tem quantidade nem linha', () => {
-    const g = graficoDaEstatistica(escolha({ mercado: 'match_winner' }), QUATRO);
+  it('resultado e dupla chance medem o saldo, e ganham linha', () => {
+    // Eles já caíram em quadros sem linha, com o argumento de que "resultado não
+    // tem quantidade". Tem: é o saldo, que é o que separa vitória de empate e de
+    // derrota. O que muda entre os dois é só a linha padrão.
+    const doisJogos = [
+      jogo({ side: 'home', past_fixture_id: 1, ordem: 1, gols_pro: 3, gols_contra: 1 }),
+      jogo({ side: 'home', past_fixture_id: 2, ordem: 2, gols_pro: 0, gols_contra: 2 }),
+    ];
 
-    expect(g.series[0].metrica).toBe('resultado');
-    expect(g.temLinha).toBe(false);
-    expect(g.contagem).toBeNull();
+    for (const mercado of ['match_winner', 'double_chance'] as MercadoDoGrafico[]) {
+      const g = graficoDaEstatistica(escolha({ mercado }), doisJogos);
+      expect(g.series[0].jogos.map((j) => j.valor), mercado).toEqual([2, -2]);
+      expect(g.temLinha, mercado).toBe(true);
+    }
+  });
+
+  it('NENHUM mercado fica sem gráfico', () => {
+    // A guarda que faltava. Sem ela, Resultado e Dupla chance puderam cair em
+    // quadros sem barra e sem linha — três dos cinco mercados sem a coisa que
+    // esta aba existe para ter — e nenhum teste reclamou.
+    for (const slug of Object.keys(MERCADOS_NO_GRAFICO) as MercadoDoGrafico[]) {
+      const g = graficoDaEstatistica(escolha({ mercado: slug }), QUATRO);
+      expect(g.series.length, `${slug} não desenhou nada`).toBeGreaterThan(0);
+      expect(g.series[0].metrica, `${slug} caiu fora da barra`).not.toBe('resultado');
+    }
   });
 
   it('todo mercado do catálogo tem métrica declarada', () => {

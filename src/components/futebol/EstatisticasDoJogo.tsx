@@ -14,7 +14,7 @@ import {
 import { cabeRotulo, pisoDaEscala, tetoDaEscala } from '@/utils/futebol-grafico-de-barras';
 import { exato } from '@/utils/futebol-criterio';
 import { Chip } from './Chip';
-import { BlocoSerie, COR_CONTRA, COR_FAVOR, SerieResultados } from './GraficoDeBarras';
+import { BlocoSerie, COR_CONTRA, COR_FAVOR } from './GraficoDeBarras';
 
 /**
  * O jogo a jogo dos dois times, na aba de Estatísticas.
@@ -78,22 +78,31 @@ export function EstatisticasDoJogo({
   const mandante = nomeDoLado('home');
   const visitante = nomeDoLado('away');
   const quemNoTexto = escolha.quem === 'mandante' ? mandante : escolha.quem === 'visitante' ? visitante : null;
-  /** Resultado não tem quantidade: vitória não é "mais alto" que empate. */
-  const ehResultado = series[0]?.metrica === 'resultado';
 
   const muda = (parte: Partial<EscolhaDaEstatistica>) => setEscolha((atual) => ({ ...atual, ...parte }));
 
-  /** Trocar de mercado troca a métrica, então a linha antiga pode não existir lá. */
+  /**
+   * Trocar de mercado pode trocar a GRANDEZA, e aí a linha antiga não vale.
+   *
+   * ⚠️ Não basta perguntar se o número existe nas paradas do novo mercado. Ele
+   * costuma existir: 2,5 é parada em Gols e nos de saldo. Só que 2,5 em Gols é
+   * "dois gols e meio na partida" e 2,5 em Dupla chance é "vencer por três" —
+   * mesmo número, grandezas diferentes, e a tela trocaria uma pela outra sem
+   * dizer nada. Carrega só quando a métrica é a mesma; fora isso, a padrão do
+   * mercado novo.
+   */
   const trocaMercado = (slug: MercadoDoGrafico) => {
-    const { paradas, padrao } = MERCADOS_NO_GRAFICO[slug];
-    setEscolha((atual) => ({
-      ...atual,
-      mercado: slug,
-      linha: atual.linha != null && paradas.includes(atual.linha) ? atual.linha : padrao,
-    }));
+    const destino = MERCADOS_NO_GRAFICO[slug];
+    setEscolha((atual) => {
+      const mesmaGrandeza = MERCADOS_NO_GRAFICO[atual.mercado].metrica === destino.metrica;
+      const mantem = mesmaGrandeza && atual.linha != null && destino.paradas.includes(atual.linha);
+      return { ...atual, mercado: slug, linha: mantem ? atual.linha : destino.padrao };
+    });
   };
 
   const iDaLinha = doMercado.paradas.findIndex((p) => p === escolha.linha);
+  /** A cor diz o quê. No binário não há "linha", há o fato de os dois marcarem. */
+  const legendaAcima = temLinha ? 'acima da linha' : 'os dois marcaram';
 
   /**
    * O time que o recorte deixou de fora, quando o outro sobrou. Sem isto a aba
@@ -198,58 +207,37 @@ export function EstatisticasDoJogo({
           </p>
         ) : (
           <>
-            {/* Resultado não ganha legenda de cor: os quadros já dizem o que
-                são, e "acima da linha" não significa nada num jogo ganho. */}
-            {!ehResultado && (
-              <div className="flex flex-col items-start gap-1 mb-3 md:flex-row md:items-center md:gap-3">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: COR_FAVOR }} />
-                  <span className="text-[10.5px] text-ink-2">{temLinha ? 'acima da linha' : 'acima da média do time'}</span>
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: COR_CONTRA }} />
-                  <span className="text-[10.5px] text-ink-3">abaixo</span>
-                </span>
-                <span className="text-[10.5px]" style={{ color: '#8d8672' }}>A cor compara, não diz se foi bom.</span>
-              </div>
-            )}
+            <div className="flex flex-col items-start gap-1 mb-3 md:flex-row md:items-center md:gap-3">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: COR_FAVOR }} />
+                <span className="text-[10.5px] text-ink-2">{legendaAcima}</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: COR_CONTRA }} />
+                <span className="text-[10.5px] text-ink-3">abaixo</span>
+              </span>
+              <span className="text-[10.5px]" style={{ color: '#8d8672' }}>A cor compara, não diz se foi bom.</span>
+            </div>
 
-            {/* ⚠️ Série de RESULTADO não vira barra. Vitória não é "mais alta"
-                que empate, e desenhá-la como barra fazia a tela imprimir "cada
-                quadrado é um jogo" embaixo de barras de saldo de gols — a tela
-                contradizendo a própria legenda. */}
-            {ehResultado ? (
-              <div className="flex flex-col gap-4">
-                {series.map((s) => (
-                  <div key={s.chave}>
-                    <div className="flex items-center gap-1.5 mb-2 min-w-0">
-                      <span className="text-[11.5px] font-semibold text-ink truncate">{s.titulo}</span>
-                    </div>
-                    <SerieResultados s={s} />
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-col md:flex-row items-stretch md:items-start gap-4 md:gap-3">
-                {series.map((s, i) => (
-                  <div
-                    key={s.chave}
-                    className={cn('flex min-w-0', i > 0 && 'pt-4 border-t md:pt-0 md:pl-3 md:border-t-0 md:border-l border-line')}
-                    style={{ flexGrow: s.jogos.length, flexBasis: 0 }}
-                  >
-                    <BlocoSerie
-                      s={s}
-                      teto={teto}
-                      piso={piso}
-                      comRotulo={comRotulo}
-                      comPlacar
-                      rotuloDentro
-                      mostraComoLer={false}
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
+            <div className="flex flex-col md:flex-row items-stretch md:items-start gap-4 md:gap-3">
+              {series.map((s, i) => (
+                <div
+                  key={s.chave}
+                  className={cn('flex min-w-0', i > 0 && 'pt-4 border-t md:pt-0 md:pl-3 md:border-t-0 md:border-l border-line')}
+                  style={{ flexGrow: s.jogos.length, flexBasis: 0 }}
+                >
+                  <BlocoSerie
+                    s={s}
+                    teto={teto}
+                    piso={piso}
+                    comRotulo={comRotulo}
+                    comPlacar
+                    rotuloDentro
+                    mostraComoLer={false}
+                  />
+                </div>
+              ))}
+            </div>
 
             {semSerie.length > 0 && (
               <div className="text-[11px] leading-relaxed mt-3 text-ink-2">

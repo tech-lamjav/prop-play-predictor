@@ -68,9 +68,17 @@ export const MERCADOS_NO_GRAFICO: Record<
   MercadoDoGrafico,
   { metrica: Metrica; temLinha: boolean; rotulo: string; chip: string; paradas: number[]; padrao: number | null }
 > = {
-  // ⚠️ `padrao` é DECLARADO por mercado, e não "a parada do meio da lista".
-  // O meio das seis paradas de gols é 3,5, e a linha canônica do mercado é 2,5:
-  // abrir em 3,5 mostraria quase tudo abaixo da linha e pareceria defeito.
+  // ⚠️ TODO mercado tem barras. A versão anterior mandava Resultado e Dupla
+  // chance para quadros sem linha, com o argumento de que "resultado não tem
+  // quantidade" — e o efeito foi tirar de TRÊS dos cinco mercados justamente o
+  // gráfico que esta aba existe para ter. A quantidade existe: é o SALDO DE
+  // GOLS, que é o que separa vitória de empate e de derrota. Resultado e
+  // Handicap desenham as mesmas barras de propósito, porque handicap é a versão
+  // com linha do resultado; o que muda entre eles é a linha padrão.
+  //
+  // `padrao` é DECLARADO por mercado, e não "a parada do meio da lista": o meio
+  // das seis paradas de gols é 3,5 e a linha canônica é 2,5, o que faria quase
+  // tudo nascer abaixo da linha e parecer defeito.
   goals_over_under: {
     metrica: 'total', temLinha: true, rotulo: 'Gols no jogo', chip: 'Gols',
     paradas: [0.5, 1.5, 2.5, 3.5, 4.5, 5.5], padrao: 2.5,
@@ -79,9 +87,24 @@ export const MERCADOS_NO_GRAFICO: Record<
     metrica: 'saldo', temLinha: true, rotulo: 'Saldo de gols', chip: 'Handicap',
     paradas: [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5], padrao: -0.5,
   },
-  btts: { metrica: 'ambos', temLinha: false, rotulo: 'Os dois marcaram', chip: 'Ambos marcam', paradas: [], padrao: null },
-  match_winner: { metrica: 'resultado', temLinha: false, rotulo: 'Resultado', chip: 'Resultado', paradas: [], padrao: null },
-  double_chance: { metrica: 'resultado', temLinha: false, rotulo: 'Resultado', chip: 'Dupla chance', paradas: [], padrao: null },
+  // Acima de 0,5 o saldo é positivo: jogo vencido.
+  match_winner: {
+    metrica: 'saldo', temLinha: true, rotulo: 'Saldo de gols', chip: 'Resultado',
+    paradas: [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5], padrao: 0.5,
+  },
+  // Acima de −0,5 o saldo é zero ou positivo: jogo não perdido.
+  double_chance: {
+    metrica: 'saldo', temLinha: true, rotulo: 'Saldo de gols', chip: 'Dupla chance',
+    paradas: [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5], padrao: -0.5,
+  },
+  // Binário, e por isso sem régua: não há meio-termo entre os dois marcarem e
+  // não marcarem. Mas ganha referência FIXA em 0,5, senão a cor compararia com
+  // a média — e "acima da média de jogos com os dois marcando" não quer dizer
+  // nada. Com 0,5, verde é o jogo em que os dois marcaram.
+  btts: {
+    metrica: 'ambos', temLinha: false, rotulo: 'Os dois marcaram', chip: 'Ambos marcam',
+    paradas: [], padrao: 0.5,
+  },
 };
 
 /**
@@ -167,7 +190,9 @@ export function graficoDaEstatistica(
   // numérica, então a régua da cor é recalculada aqui — sem tocar no caminho
   // das premissas.
   const cruas = seriesDaEspecificacao([spec], hist, papel.lado, null, 'estatistica');
-  const referencia = doMercado.temLinha ? escolha.linha : null;
+  // Mercado com régua usa a linha escolhida; o binário usa a referência fixa do
+  // catálogo, que não aparece como controle mas ainda decide a cor.
+  const referencia = doMercado.temLinha ? escolha.linha : doMercado.padrao;
 
   const series = cruas.map((s) => ({
     ...s,

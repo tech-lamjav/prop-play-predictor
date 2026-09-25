@@ -83,24 +83,34 @@ describe('o mercado manda no que o gráfico mede', () => {
     expect(screen.getByText(/saldo do time naquele jogo/i)).toBeInTheDocument();
   });
 
-  it('mercado sem quantidade não ganha linha', async () => {
+  it('ambos marcam não ganha régua, e a cor diz o fato', async () => {
+    // Binário não tem meio-termo, então não tem régua. Mas a cor precisa dizer
+    // alguma coisa, e "acima da média de jogos com os dois marcando" não diz.
     abrir();
     await userEvent.click(screen.getByRole('button', { name: 'Ambos marcam' }));
+
     expect(screen.queryByLabelText('Linha de referência')).not.toBeInTheDocument();
+    expect(screen.getByText('os dois marcaram')).toBeInTheDocument();
   });
 
-  it('Resultado vira QUADRO de jogo, e não barra', async () => {
-    // Vitória não é "mais alta" que empate. Desenhar resultado como barra fazia
-    // a tela imprimir "cada quadrado é um jogo" embaixo de barras de saldo de
-    // gols — a legenda desmentindo o desenho logo acima dela. O teste anterior
-    // só olhava a métrica e a linha, e por isso passou verde nesse defeito.
+  it('Resultado também desenha barras, com linha', async () => {
+    // Ele caía em quadradinhos sem linha. Era decisão minha, não pedido: o
+    // efeito foi três dos cinco mercados sem o gráfico que a aba veio ter.
     abrir();
     await userEvent.click(screen.getByRole('button', { name: 'Resultado' }));
 
-    expect(screen.getByText('4 a 0')).toBeInTheDocument();
-    expect(screen.getByText(/Cada quadrado é um jogo/i)).toBeInTheDocument();
-    expect(screen.queryByText(/acima da linha/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/acima da média do time/i)).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Linha de referência')).toBeInTheDocument();
+    expect(screen.getByText(/saldo do time naquele jogo/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Cada quadrado é um jogo/i)).not.toBeInTheDocument();
+  });
+
+  it('Dupla chance idem, e abre numa linha diferente da de Resultado', async () => {
+    abrir();
+    await userEvent.click(screen.getByRole('button', { name: 'Dupla chance' }));
+
+    expect(screen.getByLabelText('Linha de referência')).toBeInTheDocument();
+    // −0,5: acima disso o saldo é zero ou positivo, ou seja, jogo não perdido.
+    expect(screen.getByText('-0,5')).toBeInTheDocument();
   });
 });
 
