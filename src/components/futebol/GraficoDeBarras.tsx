@@ -151,7 +151,12 @@ export function BarrasEmSequencia({
   const divisor = (i: number) => (i > 0 ? 'pl-2 border-l border-line' : '');
 
   return (
-    <div>
+    // ⚠️ A CALHA da direita. O selo da linha ficava em cima da última barra;
+    // empurrá-lo para fora sem mais nada o jogaria contra a borda do card ou o
+    // cortaria. Aqui o recuo vale para o cabeçalho, o desenho e o eixo ao mesmo
+    // tempo — os três encolhem juntos e seguem alinhados sozinhos, que é o que
+    // mantém cada escudo debaixo da sua própria barra.
+    <div className="pr-[42px]">
       {/* Um rótulo por grupo, na mesma proporção das barras, para o nome ficar
           sobre as barras que ele nomeia. */}
       <div className="flex gap-[3px] mb-2">
@@ -230,9 +235,11 @@ export function BarrasEmSequencia({
             className="absolute left-0 right-0 border-t-2 border-dashed pointer-events-none"
             style={{ borderColor: '#d4a017', bottom: posDe(referencia) }}
           >
+            {/* Fora da área de desenho, dentro da calha: o selo deixa de
+                cobrir a barra que ele deveria explicar. */}
             <span
-              className="absolute right-0 -translate-y-1/2 tabular-nums text-[10px] font-bold px-1.5 py-0.5 rounded text-canvas"
-              style={{ background: '#b8870f' }}
+              className="absolute -translate-y-1/2 tabular-nums text-[10px] font-bold px-1.5 py-0.5 rounded text-canvas whitespace-nowrap"
+              style={{ background: '#b8870f', right: -42 }}
             >
               {String(referencia).replace('.', ',')}
             </span>
