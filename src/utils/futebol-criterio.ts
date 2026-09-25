@@ -340,7 +340,7 @@ export function prestacaoDaPremissa(
   if (!criterio) return null;
   if (criterio.corte.de === 'linha' && linha == null) return null;
 
-  const story = storyDaPremissa(slug, hist, lado, linha);
+  const story = storyDaPremissa(mercado, slug, hist, lado, linha);
   if (!story) return null;
 
   return prestacaoDoStory(mercado, slug, criterio, story, linha);
