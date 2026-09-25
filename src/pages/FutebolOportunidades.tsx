@@ -19,8 +19,8 @@ import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 import { competitionLabel, sortCompetitions, fixtureScopesFor } from '@/utils/futebol-competitions';
 import { VerAnaliseCTA } from '@/components/futebol/VerAnaliseCTA';
 import {
-  pickLabel, marketLabel, fmtEdgeScore,
-  faixaBadgeCls, faixaWord, faixaTone, chancePct, edgeToneCls,
+  pickLabel, marketLabel,
+  faixaBadgeCls, faixaWord, faixaTone, chancePct,
   opcoesDeFaixa, passaNoFiltroDeFaixas, versaoDaJanela, compararOportunidades,
   FAIXAS_FILTRO_PADRAO, type Faixa,
   FILTRO_DE_VALOR_PADRAO, passaNoFiltroDeValor, type FiltroDeValor,
@@ -103,7 +103,7 @@ function textoDoFiltroQueEsvaziou(escondidas: number, vazios: readonly string[])
   return `${quantas} em outro filtro. Troque o filtro para ver.`;
 }
 
-const GRID = 'grid grid-cols-[56px_64px_1fr_140px_64px_80px_72px_28px] gap-3 items-center';
+const GRID = 'grid grid-cols-[56px_64px_1fr_140px_64px_80px_28px] gap-3 items-center';
 
 // Linha da tabela (desktop)
 function OppRow({ o, to, muted, locked, result, homeGoals, awayGoals, aoClicar, aoAparecer }: {
@@ -166,13 +166,11 @@ function OppRow({ o, to, muted, locked, result, homeGoals, awayGoals, aoClicar, 
         <>
           <div className="text-right"><ValorBloqueado /></div>
           <div className="text-right"><ValorBloqueado /></div>
-          <div className="text-right"><ValorBloqueado /></div>
         </>
       ) : (
         <>
           <div className="text-right tabular-nums text-[13px] font-semibold text-ink">{chance != null ? `${chance}%` : '—'}</div>
           <div className="text-right tabular-nums text-[13px] font-semibold text-ink">{o.best_odd.toFixed(2)}</div>
-          <div className={`text-right tabular-nums text-[14px] font-bold ${edgeToneCls(o.edge)}`}>{o.edge != null ? fmtEdgeScore(o.edge) : '—'}</div>
         </>
       )}
       <ChevronRight className="w-4 h-4 text-ink-3 justify-self-end" />
@@ -227,20 +225,15 @@ function OppMobileCard({ o, to, locked, result, homeGoals, awayGoals, canRegiste
             </div>
           </div>
         </div>
-        <div className="grid grid-cols-3 gap-1 mt-3 pt-2.5 border-t border-line">
-          {/* A cor do Valor sai de `edgeToneCls`, a mesma da linha do desktop:
-              verde só quando positivo, neutro em zero ou negativo. Verde fixo
-              aqui pintava de vantagem uma diferença que não existe. */}
+        <div className="grid grid-cols-2 gap-1 mt-3 pt-2.5 border-t border-line">
           {(bloqueada
             ? [
                 { label: 'Chance', valor: null, cls: '' },
                 { label: 'Odd', valor: null, cls: '' },
-                { label: 'Valor', valor: null, cls: '' },
               ]
             : [
                 { label: 'Chance', valor: chance != null ? `${chance}%` : '—', cls: 'text-ink' },
                 { label: 'Odd', valor: o.best_odd.toFixed(2), cls: 'text-ink' },
-                { label: 'Valor', valor: o.edge != null ? fmtEdgeScore(o.edge) : '—', cls: edgeToneCls(o.edge) },
               ]
           ).map(({ label, valor, cls }) => (
             <div key={label}>
@@ -955,7 +948,7 @@ export default function FutebolOportunidades() {
             <div className="hidden md:block rounded-rebrand-md overflow-hidden bg-white border border-line">
               <div className={`${GRID} px-5 py-2.5 text-[10px] uppercase tracking-[0.14em] font-semibold text-ink-3 bg-canvas-2`}>
                 <div>Score ↓</div><div>Faixa</div><div>Aposta</div><div>Mercado</div>
-                <div className="text-right">Chance</div><div className="text-right">Odd</div><div className="text-right">Valor</div><div />
+                <div className="text-right">Chance</div><div className="text-right">Odd</div><div />
               </div>
               {comValor.map((o, i) => {
                 const res = resultOf(o);

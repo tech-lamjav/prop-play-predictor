@@ -837,7 +837,7 @@ export function BancadaMercados({
       >
         <p className="text-[15px] font-semibold text-ink">A leitura deste jogo é de assinante</p>
         <p className="text-[13px] text-ink-2 mt-1.5 max-w-[48ch] mx-auto leading-relaxed">
-          Os cinco mercados, a aposta, a odd, a chance, o valor, o Score e as premissas que
+          Os cinco mercados, a aposta, a odd, a chance, o Score e as premissas que
           sustentam a leitura ficam disponíveis com a assinatura. A escalação e as estatísticas
           do jogo continuam abertas nas abas ao lado.
         </p>
@@ -1180,13 +1180,6 @@ export function BancadaMercados({
                       valor: cotacaoPrincipal.odd != null ? cotacaoPrincipal.odd.toFixed(2) : '—',
                       cor: '#fff',
                     },
-                    {
-                      rotulo: 'Valor',
-                      valor: valPrincipal
-                        ? `${valPrincipal.edge >= 0 ? '+' : '−'}${Math.abs(valPrincipal.edge * 100).toFixed(1).replace('.', ',')}%`
-                        : '—',
-                      cor: valPrincipal && valPrincipal.edge > 0 ? '#8ee6b0' : 'rgba(255,255,255,.55)',
-                    },
                   ].map(({ rotulo, valor, cor }) => (
                     <div key={rotulo} className="flex items-baseline justify-between gap-2">
                       <span className="text-[9px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>{rotulo}</span>
@@ -1210,17 +1203,6 @@ export function BancadaMercados({
                 <div className="tabular-nums text-[22px] font-semibold leading-none mt-1 text-white">
                   {cotacaoPrincipal.odd != null
                     ? cotacaoPrincipal.odd.toFixed(2)
-                    : '—'}
-                </div>
-              </div>
-              <div className="min-w-[76px]">
-                <div className="text-[9px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>Valor</div>
-                <div
-                  className="tabular-nums text-[22px] font-semibold leading-none mt-1"
-                  style={{ color: valPrincipal && valPrincipal.edge > 0 ? '#8ee6b0' : 'rgba(255,255,255,.55)' }}
-                >
-                  {valPrincipal
-                    ? `${valPrincipal.edge >= 0 ? '+' : '−'}${Math.abs(valPrincipal.edge * 100).toFixed(1).replace('.', ',')}%`
                     : '—'}
                 </div>
               </div>

@@ -11,13 +11,13 @@ import FutebolDayStepper, { ALTURA_DA_PILULA } from '@/components/FutebolDayStep
 import { CartaoBloqueado, FutebolAccessBanner, ValorBloqueado } from '@/components/futebol/FutebolGate';
 import { linhaBloqueada } from '@/utils/futebol-bloqueio';
 import { AjudaCampo } from '@/components/futebol/AjudaCampo';
-import { textoDoScore, TEXTO_CHANCE, TEXTO_ODD, TEXTO_VALOR } from '@/utils/futebol-ajuda-copy';
+import { textoDoScore, TEXTO_CHANCE, TEXTO_ODD } from '@/utils/futebol-ajuda-copy';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 import { competitionLabel, fixtureScopesFor } from '@/utils/futebol-competitions';
 import { LigaCrest } from '@/components/futebol/LigaCrest';
 import { VerAnaliseCTA } from '@/components/futebol/VerAnaliseCTA';
 import {
-  pickLabel, marketLabel, fmtEdgeScore, groupBoardByFixture,
+  pickLabel, marketLabel, groupBoardByFixture,
   faixaBadgeCls, faixaWord, faixaTone, topEvidencia, chancePct, ehDestaque, compararOportunidades, escalaDeExibicao,
 } from '@/utils/futebol-score';
 import type { FutebolValueBoardRow, FutebolFixture } from '@/services/futebol-data.service';
@@ -94,7 +94,7 @@ function Kpi({ label, value, sub, tone = 'ink', anchor }: { label: string; value
   );
 }
 
-// Número do hero (Chance / Odd / Se paga em / Valor)
+// Número do hero (Chance / Odd / Se paga em)
 function HeroStat({ label, value, dark, ajuda }: { label: string; value: string; dark?: boolean; ajuda?: string }) {
   return (
     <div>
@@ -116,22 +116,16 @@ function TopValueHero({ o, to, favor, contra, textoScore, carregandoMotivos = fa
   const d = true; // hero sempre no fundo forest (mockup); a faixa vai no selo, não na cor do card
   const chance = chancePct(o.prob_justa_fechamento);
   const estado = estadoDosMotivos(favor, contra, carregandoMotivos);
-  // A frase do "por quê" muda com o SINAL da diferença para o preço justo.
+  // A frase do "por quê" já teve DOIS textos, escolhidos pelo sinal da diferença
+  // para o preço justo: um afirmava valor, o outro admitia que o preço estava
+  // abaixo do justo e devolvia o assunto para o cenário.
   //
-  // Ela terminava sempre em "isso paga acima do risco real — é aí que está o
-  // valor". Depois da virada de 03/09 o board publica a linha mesmo sem
-  // vantagem, e o destaque do dia pode ser o MENOS pior: em 04/09 os cinco
-  // primeiros pagavam abaixo do justo. A frase afirmava valor com o número
-  // negativo ao lado dela.
-  //
-  // Quando o preço não ajuda, a tela diz isso e devolve o assunto para onde ele
-  // se sustenta: o cenário. É a mesma honestidade do rodapé da lista.
-  const pagaAcima = o.edge > 0;
+  // Com a vantagem fora da tela (#519) sobra um texto só, e é o segundo — ele
+  // nunca dependeu do número para se sustentar. Manter o primeiro afirmaria uma
+  // vantagem que a tela não mostra mais, e o leitor não teria como conferir.
   const forte = d ? 'text-white' : 'text-ink';
   const porque = chance != null
-    ? pagaAcima
-      ? <>O mercado dá <b className={forte}>~{chance}% de chance</b>; na odd <b className={forte}>{o.best_odd.toFixed(2)}</b> isso paga acima do risco real — é aí que está o valor.</>
-      : <>O mercado dá <b className={forte}>~{chance}% de chance</b>, e na odd <b className={forte}>{o.best_odd.toFixed(2)}</b> o preço fica <b className={forte}>{Math.abs(o.edge * 100).toFixed(1).replace('.', ',')}% abaixo do justo</b>. O que sustenta esta leitura é o cenário, não o preço.</>
+    ? <>O mercado dá <b className={forte}>~{chance}% de chance</b>, e a odd é <b className={forte}>{o.best_odd.toFixed(2)}</b>. O que sustenta esta leitura é o cenário, não o preço.</>
     : <>Na odd <b className={forte}>{o.best_odd.toFixed(2)}</b>, a aposta se paga a partir de <b className={forte}>{Math.round(100 / o.best_odd)}%</b> de acerto — e a leitura do jogo aponta nessa direção.</>;
 
   return (
@@ -263,13 +257,12 @@ function TopValueHero({ o, to, favor, contra, textoScore, carregandoMotivos = fa
               style={d ? { background: 'rgba(220,239,226,0.15)', color: '#dcefe2' } : undefined}>
               <span className="w-1.5 h-1.5 rounded-full" style={{ background: d ? '#fbbf24' : 'var(--amber)' }} />Faixa {faixaWord(o.faixa)}
             </span>
-            {/* Os três numa linha só: eles são a mesma leitura — a chance
-                estimada, o preço e a diferença entre os dois — e lidos em
-                sequência dizem mais do que empilhados. */}
-            <div className="grid grid-cols-3 gap-x-3 gap-y-3 mt-5">
+            {/* Os dois numa linha só: eles são a mesma leitura — a chance
+                estimada e o preço — e lidos em sequência dizem mais do que
+                empilhados. Eram três, e a diferença entre os dois saiu (#519). */}
+            <div className="grid grid-cols-2 gap-x-3 gap-y-3 mt-5">
               {chance != null && <HeroStat label="Chance" value={`${chance}%`} dark={d} ajuda={TEXTO_CHANCE} />}
               <HeroStat label="Odd" value={o.best_odd.toFixed(2)} dark={d} ajuda={TEXTO_ODD} />
-              <HeroStat label="Valor" value={fmtEdgeScore(o.edge)} dark={d} ajuda={TEXTO_VALOR} />
             </div>
           </div>
         </div>
@@ -334,7 +327,7 @@ function OppCard({ o, to, aoClicar, aoAparecer }: { o: FutebolValueBoardRow; to:
           isso com `pt-3` NO BOTÃO: padding onde eu queria espaço acima. Com
           altura fixa, o padding come o botão por dentro e derruba o texto do
           centro. Foi assim que ele subiu torto para a homologação. */}
-      <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-line sm:grow">
+      <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-line sm:grow">
         <div>
           <div className="text-[9px] uppercase tracking-[0.14em] font-semibold text-ink-3">Chance</div>
           <div className="text-[15px] font-bold tabular-nums text-ink mt-0.5">{chance != null ? `${chance}%` : '—'}</div>
@@ -342,10 +335,6 @@ function OppCard({ o, to, aoClicar, aoAparecer }: { o: FutebolValueBoardRow; to:
         <div>
           <div className="text-[9px] uppercase tracking-[0.14em] font-semibold text-ink-3">Odd</div>
           <div className="text-[15px] font-bold tabular-nums text-ink mt-0.5">{o.best_odd.toFixed(2)}</div>
-        </div>
-        <div>
-          <div className="text-[9px] uppercase tracking-[0.14em] font-semibold text-ink-3">Valor</div>
-          <div className="text-[15px] font-bold tabular-nums text-forest mt-0.5">{fmtEdgeScore(o.edge)}</div>
         </div>
       </div>
       <VerAnaliseCTA className="mt-3" />
@@ -803,7 +792,7 @@ export default function FutebolHoje() {
               <p className="text-sm font-semibold text-ink">
                 {nOpps} oportunidade{nOpps === 1 ? '' : 's'} {isToday ? 'hoje' : 'nesse dia'}, bloqueada{nOpps === 1 ? '' : 's'}
               </p>
-              <p className="text-xs text-ink-2 mt-1">A aposta, a odd, a chance, o valor e o Score são de assinante. A agenda dos jogos continua aberta abaixo.</p>
+              <p className="text-xs text-ink-2 mt-1">A aposta, a odd, a chance e o Score são de assinante. A agenda dos jogos continua aberta abaixo.</p>
             </div>
           </div>
         ) : heroOpp ? (

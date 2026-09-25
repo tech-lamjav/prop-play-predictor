@@ -19,8 +19,7 @@ import {
 } from '@/utils/futebol-tendencias';
 import { type SaidaPreferida } from '@/utils/futebol-leitura';
 import {
-  pickLabel, marketLabel, valorVerdict, fmtEdgeScore,
-  faixaWord, faixaBadgeCls, chancePct,
+  pickLabel, marketLabel,
 } from '@/utils/futebol-score';
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
 import { escalacaoExibida, rotuloEscalacao } from '@/utils/futebol-escalacao';

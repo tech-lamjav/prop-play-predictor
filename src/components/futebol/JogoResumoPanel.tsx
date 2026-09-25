@@ -398,18 +398,10 @@ export function JogoResumoPanel({
                       {best.best_odd.toFixed(2)}
                     </div>
                   </div>
-                  <div>
-                    <div className="text-[8.5px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>Valor</div>
-                    <div className="tabular-nums text-[15px] font-semibold mt-0.5" style={{ color: best.edge > 0 ? '#8ee6b0' : 'rgba(255,255,255,.55)' }}>
-                      
-                        {`${best.edge >= 0 ? '+' : '−'}${Math.abs(best.edge * 100).toFixed(1).replace('.', ',')}%`}
-                      
-                    </div>
-                  </div>
                 </div>
               ) : bloqueadoSemLeitura ? (
                 <div className="text-[12px] mt-2.5" style={{ color: 'rgba(255,255,255,.55)' }}>
-                  chance, odd e valor são de assinante
+                  chance e odd são de assinante
                 </div>
               ) : (
                 <div className="text-[12px] mt-2.5" style={{ color: 'rgba(255,255,255,.55)' }}>
