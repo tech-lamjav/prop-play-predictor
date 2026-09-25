@@ -51,6 +51,12 @@ export const COMPETITION_API_IDS: Record<string, number> = {
   serie_a_ita: 135,
   la_liga: 140,
   nations_league: 5,
+  // Competição de INSUMO (data-engineering#96): alimenta a forma das seleções e
+  // nunca gera oportunidade. Entra aqui só pelo brasão — o rótulo já sai certo
+  // do humanize ("amistosos" → "Amistosos") e a ordem do seletor também, porque
+  // quem está fora de ALL_COMPETITIONS cai no fim, que é o lugar de uma
+  // competição sem oportunidade nenhuma.
+  amistosos: 10,
 };
 
 // Ordem canônica nos seletores que buscam por slug (pickers). Copa do Mundo por
