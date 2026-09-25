@@ -66,7 +66,16 @@ export interface EscolhaDaEstatistica {
  */
 export const MERCADOS_NO_GRAFICO: Record<
   MercadoDoGrafico,
-  { metrica: Metrica; temLinha: boolean; rotulo: string; chip: string; paradas: number[]; padrao: number | null }
+  {
+    metrica: Metrica;
+    temLinha: boolean;
+    rotulo: string;
+    chip: string;
+    paradas: number[];
+    padrao: number | null;
+    /** Faz sentido ver os dois times na mesma visualização? */
+    aceitaOsDois: boolean;
+  }
 > = {
   // ⚠️ TODO mercado tem barras. A versão anterior mandava Resultado e Dupla
   // chance para quadros sem linha, com o argumento de que "resultado não tem
@@ -81,29 +90,33 @@ export const MERCADOS_NO_GRAFICO: Record<
   // tudo nascer abaixo da linha e parecer defeito.
   goals_over_under: {
     metrica: 'total', temLinha: true, rotulo: 'Gols no jogo', chip: 'Gols',
-    paradas: [0.5, 1.5, 2.5, 3.5, 4.5, 5.5], padrao: 2.5,
+    paradas: [0.5, 1.5, 2.5, 3.5, 4.5, 5.5], padrao: 2.5, aceitaOsDois: true,
   },
   asian_handicap: {
     metrica: 'saldo', temLinha: true, rotulo: 'Saldo de gols', chip: 'Handicap',
-    paradas: [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5], padrao: -0.5,
+    paradas: [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5], padrao: -0.5, aceitaOsDois: true,
   },
-  // Acima de 0,5 o saldo é positivo: jogo vencido.
+  // ── Os BINÁRIOS ──────────────────────────────────────────────────────────
+  // Resultado, Dupla chance e Ambos marcam não têm grandeza que uma linha
+  // recorte: entre vencer e empatar não existe meio-termo para arrastar. Eles
+  // mostram COMO FOI cada jogo, em quadros, sem régua.
+  //
+  // ⚠️ E não aceitam os dois times juntos. Num gráfico de quantidade, empilhar
+  // as duas séries na mesma escala compara altura — é o que a escala
+  // compartilhada existe para fazer. Num quadro de "venceu, empatou, perdeu"
+  // não há escala nenhuma, então juntar os dois só produz uma fileira mais
+  // longa em que ninguém sabe onde um time acaba e o outro começa.
   match_winner: {
-    metrica: 'saldo', temLinha: true, rotulo: 'Saldo de gols', chip: 'Resultado',
-    paradas: [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5], padrao: 0.5,
+    metrica: 'resultado', temLinha: false, rotulo: 'Resultado', chip: 'Resultado',
+    paradas: [], padrao: null, aceitaOsDois: false,
   },
-  // Acima de −0,5 o saldo é zero ou positivo: jogo não perdido.
   double_chance: {
-    metrica: 'saldo', temLinha: true, rotulo: 'Saldo de gols', chip: 'Dupla chance',
-    paradas: [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5], padrao: -0.5,
+    metrica: 'resultado', temLinha: false, rotulo: 'Resultado', chip: 'Dupla chance',
+    paradas: [], padrao: null, aceitaOsDois: false,
   },
-  // Binário, e por isso sem régua: não há meio-termo entre os dois marcarem e
-  // não marcarem. Mas ganha referência FIXA em 0,5, senão a cor compararia com
-  // a média — e "acima da média de jogos com os dois marcando" não quer dizer
-  // nada. Com 0,5, verde é o jogo em que os dois marcaram.
   btts: {
     metrica: 'ambos', temLinha: false, rotulo: 'Os dois marcaram', chip: 'Ambos marcam',
-    paradas: [], padrao: 0.5,
+    paradas: [], padrao: null, aceitaOsDois: false,
   },
 };
 
@@ -135,7 +148,9 @@ export const ESCOLHA_PADRAO: EscolhaDaEstatistica = {
 const COMO_LER: Record<Metrica, string> = {
   total: 'Cada barra é o total de gols daquele jogo, somando os dois times. A linha é uma referência: mexer nela repinta as barras.',
   saldo: 'Cada barra é o saldo do time naquele jogo, positivo na vitória e negativo na derrota. A linha é uma referência: mexer nela repinta as barras.',
-  ambos: 'Cada barra é um jogo: cheia quando os dois times marcaram, vazia quando algum passou em branco.',
+  // ⚠️ Fala de QUADRO, não de barra: este mercado é binário e desenha quadro.
+  // Dizer "barra" aqui seria a legenda desmentindo o desenho logo acima dela.
+  ambos: 'Cada quadrado é um jogo, com o placar e o adversário. Verde quando os dois marcaram, vermelho quando algum passou em branco.',
   resultado: 'Cada quadrado é um jogo, com o placar e o adversário. Verde é vitória, cinza empate, vermelho derrota.',
   gf: 'Cada barra é um jogo: quanto mais alta, mais gols o time marcou. A linha é uma referência.',
   ga: 'Cada barra é um jogo: quanto mais alta, mais gols o time sofreu. A linha é uma referência.',

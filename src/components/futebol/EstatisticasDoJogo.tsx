@@ -14,7 +14,7 @@ import {
 import { cabeRotulo, pisoDaEscala, tetoDaEscala } from '@/utils/futebol-grafico-de-barras';
 import { exato } from '@/utils/futebol-criterio';
 import { Chip } from './Chip';
-import { BlocoSerie, COR_CONTRA, COR_FAVOR } from './GraficoDeBarras';
+import { BarrasEmSequencia, COR_CONTRA, COR_FAVOR, SerieResultados } from './GraficoDeBarras';
 
 /**
  * O jogo a jogo dos dois times, na aba de Estatísticas.
@@ -24,8 +24,12 @@ import { BlocoSerie, COR_CONTRA, COR_FAVOR } from './GraficoDeBarras';
  * escolha de quem olha: o gráfico da aba de mercados tem tudo travado pelo
  * modelo, porque lá ele responde por um número que o modelo calculou.
  *
- * E a LINHA aqui é referência, não aposta: nada é liquidado, não há lado
- * escolhido e não há preço. Mexer nela repinta as barras e não toca nos valores.
+ * A LINHA aqui é referência, não aposta: nada é liquidado, não há lado escolhido
+ * e não há preço. Mexer nela repinta as barras e não toca nos valores.
+ *
+ * Dois desenhos, escolhidos pelo MERCADO: mercado com grandeza vira barras num
+ * gráfico só, com a linha atravessando; mercado binário vira quadro de jogos,
+ * sem linha e um time por vez.
  */
 
 const LABEL = 'text-[10px] uppercase tracking-[0.14em] font-bold text-ink-3';
@@ -39,10 +43,6 @@ function Fileira({ rotulo, children }: { rotulo: string; children: React.ReactNo
   );
 }
 
-/**
- * A linha sai como está: 1,75 é 1,75, não 1,8. É o `exato` do módulo do
- * critério — havia uma cópia desta expressão aqui, e ela já é a função de lá.
- */
 const fmtLinha = exato;
 
 export function EstatisticasDoJogo({
@@ -60,19 +60,18 @@ export function EstatisticasDoJogo({
 }) {
   const [escolha, setEscolha] = useState<EscolhaDaEstatistica>(() => {
     const mercado = ehMercadoDoGrafico(mercadoInicial) ? mercadoInicial : ESCOLHA_PADRAO.mercado;
-    const { paradas, padrao } = MERCADOS_NO_GRAFICO[mercado];
-    // A linha do link só vale se existir na régua deste mercado; fora disso, a
-    // padrão. Nunca nula num mercado que tem linha: nascer sem ela desligaria
-    // justamente a coisa que este gráfico veio fazer.
+    const { paradas, padrao, aceitaOsDois } = MERCADOS_NO_GRAFICO[mercado];
     const linha = linhaInicial != null && paradas.includes(linhaInicial) ? linhaInicial : padrao;
-    return { ...ESCOLHA_PADRAO, mercado, linha };
+    return { ...ESCOLHA_PADRAO, mercado, linha, quem: aceitaOsDois ? ESCOLHA_PADRAO.quem : 'mandante' };
   });
 
+  const doMercado = MERCADOS_NO_GRAFICO[escolha.mercado];
   const { series, contagem, referencia, temLinha } = graficoDaEstatistica(escolha, historico);
   const teto = tetoDaEscala(series, referencia ?? undefined);
   const piso = pisoDaEscala(series);
   const comRotulo = cabeRotulo(series);
-  const doMercado = MERCADOS_NO_GRAFICO[escolha.mercado];
+  /** Mercado binário não tem grandeza: vira quadro de jogo, não barra. */
+  const ehQuadro = doMercado.metrica === 'resultado' || doMercado.metrica === 'ambos';
 
   const nomeDoLado = (lado: 'home' | 'away') => historico?.find((r) => r.side === lado)?.team_name ?? null;
   const mandante = nomeDoLado('home');
@@ -84,31 +83,29 @@ export function EstatisticasDoJogo({
   /**
    * Trocar de mercado pode trocar a GRANDEZA, e aí a linha antiga não vale.
    *
-   * ⚠️ Não basta perguntar se o número existe nas paradas do novo mercado. Ele
-   * costuma existir: 2,5 é parada em Gols e nos de saldo. Só que 2,5 em Gols é
-   * "dois gols e meio na partida" e 2,5 em Dupla chance é "vencer por três" —
-   * mesmo número, grandezas diferentes, e a tela trocaria uma pela outra sem
-   * dizer nada. Carrega só quando a métrica é a mesma; fora isso, a padrão do
-   * mercado novo.
+   * ⚠️ Não basta perguntar se o número existe nas paradas do novo mercado: 2,5 é
+   * parada em Gols e nos de saldo, mas em Gols é "dois gols e meio na partida" e
+   * no saldo é "vencer por três". Mesmo número, grandezas diferentes.
+   *
+   * E mercado binário não aceita os dois times juntos: quem estava em "os dois"
+   * cai no mandante, senão o seletor ficaria com um estado que o desenho não
+   * sabe mostrar.
    */
   const trocaMercado = (slug: MercadoDoGrafico) => {
     const destino = MERCADOS_NO_GRAFICO[slug];
     setEscolha((atual) => {
       const mesmaGrandeza = MERCADOS_NO_GRAFICO[atual.mercado].metrica === destino.metrica;
       const mantem = mesmaGrandeza && atual.linha != null && destino.paradas.includes(atual.linha);
-      return { ...atual, mercado: slug, linha: mantem ? atual.linha : destino.padrao };
+      return {
+        ...atual,
+        mercado: slug,
+        linha: mantem ? atual.linha : destino.padrao,
+        quem: destino.aceitaOsDois || atual.quem !== 'ambos' ? atual.quem : 'mandante',
+      };
     });
   };
 
   const iDaLinha = doMercado.paradas.findIndex((p) => p === escolha.linha);
-  /** A cor diz o quê. No binário não há "linha", há o fato de os dois marcarem. */
-  const legendaAcima = temLinha ? 'acima da linha' : 'os dois marcaram';
-
-  /**
-   * O time que o recorte deixou de fora, quando o outro sobrou. Sem isto a aba
-   * desenha um time calada sobre o outro — e a escala passa a ser só dele, o
-   * contrário do que a escala compartilhada promete.
-   */
   const semSerie = (['home', 'away'] as const)
     .map((lado) => nomeDoLado(lado))
     .filter((nome): nome is string => !!nome)
@@ -125,18 +122,22 @@ export function EstatisticasDoJogo({
 
       <div className="p-5">
         <div className="flex flex-col gap-2.5 mb-4">
+          {/* O TIME vem primeiro, antes do mercado: é a pergunta mais grossa —
+              de quem estamos falando — e as outras se aplicam dentro dela. */}
+          <Fileira rotulo="Times">
+            {doMercado.aceitaOsDois && (
+              <Chip ativo={escolha.quem === 'ambos'} onClick={() => muda({ quem: 'ambos' })}>Os dois</Chip>
+            )}
+            {(['mandante', 'visitante'] as QuemNoGrafico[]).map((q) => (
+              <Chip key={q} ativo={escolha.quem === q} onClick={() => muda({ quem: q })}>
+                {(q === 'mandante' ? mandante : visitante) ?? (q === 'mandante' ? 'Mandante' : 'Visitante')}
+              </Chip>
+            ))}
+          </Fileira>
           <Fileira rotulo="Mercado">
             {(Object.keys(MERCADOS_NO_GRAFICO) as MercadoDoGrafico[]).map((slug) => (
               <Chip key={slug} ativo={escolha.mercado === slug} onClick={() => trocaMercado(slug)}>
                 {MERCADOS_NO_GRAFICO[slug].chip}
-              </Chip>
-            ))}
-          </Fileira>
-          <Fileira rotulo="Times">
-            <Chip ativo={escolha.quem === 'ambos'} onClick={() => muda({ quem: 'ambos' })}>Os dois</Chip>
-            {(['mandante', 'visitante'] as QuemNoGrafico[]).map((q) => (
-              <Chip key={q} ativo={escolha.quem === q} onClick={() => muda({ quem: q })}>
-                {(q === 'mandante' ? mandante : visitante) ?? (q === 'mandante' ? 'Mandante' : 'Visitante')}
               </Chip>
             ))}
           </Fileira>
@@ -147,8 +148,6 @@ export function EstatisticasDoJogo({
           </Fileira>
           <Fileira rotulo="Mando">
             <Chip ativo={escolha.mando === 'todos'} onClick={() => muda({ mando: 'todos' })}>Todos os jogos</Chip>
-            {/* Nomeia a REGRA e não um lado: o recorte é o mandante em casa E o
-                visitante fora, que são mandos opostos. */}
             <Chip ativo={escolha.mando === 'proprio'} onClick={() => muda({ mando: 'proprio' })}>Mando deste jogo</Chip>
           </Fileira>
         </div>
@@ -171,18 +170,9 @@ export function EstatisticasDoJogo({
               onChange={(e) => muda({ linha: doMercado.paradas[Number(e.target.value)] })}
               className="w-full h-11 cursor-pointer accent-[color:var(--forest)]"
             />
-            {/* O número SEMPRE nomeia a própria base. Existe premissa que conta
-                os últimos cinco contra a linha, com janela travada pelo modelo:
-                dois números da mesma forma só não se contradizem porque cada um
-                declara de onde saiu. */}
-            {/* ⚠️ A frase declara a BASE inteira, e não só um número.
-                Ela dizia "N dos últimos M", com M somando as barras dos DOIS
-                times — então com janela 10 e os dois no gráfico ela anunciava
-                "os últimos 20", uma janela que ninguém escolheu, sem dizer de
-                quais times nem que o recorte de mando estava ligado.
-                Existe premissa que conta os últimos cinco contra a linha, com
-                janela travada pelo modelo: dois números da mesma forma só não se
-                contradizem porque cada um diz de onde saiu. */}
+            {/* O número SEMPRE declara a base: existe premissa contando os
+                últimos cinco contra a linha, e dois números da mesma forma só
+                não se contradizem porque cada um diz de onde saiu. */}
             {contagem && contagem.de > 0 && (
               <div className="text-[12px] text-ink-2 mt-1">
                 <strong className="font-bold text-ink">{contagem.acima}</strong> dos {contagem.de} jogos{' '}
@@ -205,12 +195,22 @@ export function EstatisticasDoJogo({
               ? 'Nenhum dos jogos recentes bate com o mando deste confronto. Experimente todos os jogos.'
               : 'Sem jogos anteriores para estes times.'}
           </p>
+        ) : ehQuadro ? (
+          <div className="flex flex-col gap-4">
+            {series.map((s) => (
+              <div key={s.chave}>
+                <div className="text-[11.5px] font-semibold text-ink truncate mb-2">{s.titulo}</div>
+                <SerieResultados s={s} corPor={doMercado.metrica === 'ambos' ? 'valor' : 'resultado'} />
+              </div>
+            ))}
+            <div className="text-[11px] leading-relaxed" style={{ color: '#8d8672' }}>{series[0].comoLer}</div>
+          </div>
         ) : (
           <>
             <div className="flex flex-col items-start gap-1 mb-3 md:flex-row md:items-center md:gap-3">
               <span className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: COR_FAVOR }} />
-                <span className="text-[10.5px] text-ink-2">{legendaAcima}</span>
+                <span className="text-[10.5px] text-ink-2">acima da linha</span>
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: COR_CONTRA }} />
@@ -219,29 +219,15 @@ export function EstatisticasDoJogo({
               <span className="text-[10.5px]" style={{ color: '#8d8672' }}>A cor compara, não diz se foi bom.</span>
             </div>
 
-            <div className="flex flex-col md:flex-row items-stretch md:items-start gap-4 md:gap-3">
-              {series.map((s, i) => (
-                <div
-                  key={s.chave}
-                  className={cn('flex min-w-0', i > 0 && 'pt-4 border-t md:pt-0 md:pl-3 md:border-t-0 md:border-l border-line')}
-                  style={{ flexGrow: s.jogos.length, flexBasis: 0 }}
-                >
-                  {/* A linha DESENHADA sobre as barras. Ela existia como
-                      controle e como cor, e não como traço — que é o elemento
-                      mais reconhecível do gráfico que serviu de referência. */}
-                  <BlocoSerie
-                    s={s}
-                    teto={teto}
-                    piso={piso}
-                    comRotulo={comRotulo}
-                    comPlacar
-                    rotuloDentro
-                    mostraComoLer={false}
-                    referencia={referencia == null ? undefined : { valor: referencia, label: `linha ${fmtLinha(referencia)}` }}
-                  />
-                </div>
-              ))}
-            </div>
+            <BarrasEmSequencia
+              series={series}
+              teto={teto}
+              piso={piso}
+              comRotulo={comRotulo}
+              comPlacar
+              rotuloDentro
+              referencia={referencia}
+            />
 
             {semSerie.length > 0 && (
               <div className="text-[11px] leading-relaxed mt-3 text-ink-2">

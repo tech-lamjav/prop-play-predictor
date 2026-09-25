@@ -7,14 +7,15 @@ import type { FutebolFixtureHistorico } from '@/services/futebol-data.service';
 // ============================================================================
 // O jogo a jogo da aba de Estatísticas
 // ============================================================================
-// Duas afirmações de domínio são o que estes testes guardam, e nenhuma delas é
-// estética:
+// Duas afirmações de domínio, e nenhuma é estética:
 //
-//   · isto é ESTATÍSTICA DA PARTIDA, não evidência de premissa — e é isso que
+//   · isto é ESTATÍSTICA DA PARTIDA, não evidência de premissa — e é o que
 //     autoriza mercado, janela, mando e time a serem escolha de quem olha;
-//   · a LINHA é referência, não aposta: nada é liquidado, não há lado nem preço,
-//     e o número que ela produz declara sempre a própria janela, porque existe
-//     premissa contando os últimos cinco contra a linha.
+//   · a LINHA é referência, não aposta: sem lado, sem preço, nada liquidado.
+//
+// E uma regra de desenho que já foi quebrada duas vezes: a legenda não pode
+// desmentir o desenho. Mercado com grandeza vira BARRA num gráfico só; mercado
+// binário vira QUADRO, sem linha e com um time por vez.
 // ============================================================================
 
 const jogo = (over: Partial<FutebolFixtureHistorico> = {}): FutebolFixtureHistorico => ({
@@ -40,7 +41,7 @@ const jogo = (over: Partial<FutebolFixtureHistorico> = {}): FutebolFixtureHistor
   ...over,
 });
 
-/** Mandante com quatro jogos de 1, 2, 3 e 4 gols; visitante com dois de 1 gol. */
+/** Mandante com quatro jogos de 1 a 4 gols; visitante com dois de 1 gol. */
 const HISTORICO: FutebolFixtureHistorico[] = [
   ...[1, 2, 3, 4].map((n) =>
     jogo({ side: 'home', past_fixture_id: n, ordem: n, gols_pro: n, gols_contra: 0, total_gols: n }),
@@ -70,107 +71,87 @@ describe('a fronteira com a leitura do modelo', () => {
   });
 });
 
-describe('o mercado manda no que o gráfico mede', () => {
-  it('abre em gols, com linha de referência', () => {
+describe('o time vem antes do mercado', () => {
+  it('oferece os dois times pelo nome, e os dois juntos', () => {
     abrir();
-    expect(screen.getByLabelText('Linha de referência')).toBeInTheDocument();
-    expect(screen.getByText(/total de gols daquele jogo/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Os dois' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Flamengo' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Palmeiras' })).toBeInTheDocument();
   });
 
-  it('handicap passa a medir o saldo do time', async () => {
+  it('escolher um time deixa só ele no gráfico', async () => {
     abrir();
-    await userEvent.click(screen.getByRole('button', { name: 'Handicap' }));
-    expect(screen.getByText(/saldo do time naquele jogo/i)).toBeInTheDocument();
-  });
-
-  it('ambos marcam não ganha régua, e a cor diz o fato', async () => {
-    // Binário não tem meio-termo, então não tem régua. Mas a cor precisa dizer
-    // alguma coisa, e "acima da média de jogos com os dois marcando" não diz.
-    abrir();
-    await userEvent.click(screen.getByRole('button', { name: 'Ambos marcam' }));
-
-    expect(screen.queryByLabelText('Linha de referência')).not.toBeInTheDocument();
-    expect(screen.getByText('os dois marcaram')).toBeInTheDocument();
-  });
-
-  it('Resultado também desenha barras, com linha', async () => {
-    // Ele caía em quadradinhos sem linha. Era decisão minha, não pedido: o
-    // efeito foi três dos cinco mercados sem o gráfico que a aba veio ter.
-    abrir();
-    await userEvent.click(screen.getByRole('button', { name: 'Resultado' }));
-
-    expect(screen.getByLabelText('Linha de referência')).toBeInTheDocument();
-    expect(screen.getByText(/saldo do time naquele jogo/i)).toBeInTheDocument();
-    expect(screen.queryByText(/Cada quadrado é um jogo/i)).not.toBeInTheDocument();
-  });
-
-  it('Dupla chance idem, e abre numa linha diferente da de Resultado', async () => {
-    abrir();
-    await userEvent.click(screen.getByRole('button', { name: 'Dupla chance' }));
-
-    expect(screen.getByLabelText('Linha de referência')).toBeInTheDocument();
-    // −0,5: acima disso o saldo é zero ou positivo, ou seja, jogo não perdido.
-    expect(screen.getByText('-0,5')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Flamengo' }));
+    expect(screen.getByText(/Flamengo, últimos 4 jogos/)).toBeInTheDocument();
+    expect(screen.queryByText(/Palmeiras, últimos/)).not.toBeInTheDocument();
   });
 });
 
-describe('a linha é referência, e o número declara a janela', () => {
-  it('abre JÁ com uma linha, e conta quantos passaram dela', () => {
-    // O gráfico nascia sem linha nenhuma, o que desligava justamente o que ele
-    // veio fazer. Gols abre em 2,5, que é a linha canônica do mercado.
-    // Mandante 1, 2, 3 e 4 gols; visitante 1 e 1. Acima de 2,5: só 3 e 4.
+describe('mercado com grandeza: barras num gráfico só, com linha', () => {
+  it('abre em gols, com a régua e a contagem', () => {
     abrir();
+    expect(screen.getByLabelText('Linha de referência')).toBeInTheDocument();
     expect(screen.getByText(/dos 6 jogos dos dois times passaram de 2,5/i)).toHaveTextContent('2 dos 6 jogos');
   });
 
-  it('a frase declara a BASE inteira, não só o número', () => {
-    // Ela dizia "dos últimos 6" somando as barras dos dois times — com janela 10
-    // isso anunciaria "os últimos 20", uma janela que ninguém escolheu. Existe
-    // premissa contando os últimos cinco contra a linha: dois números da mesma
-    // forma só não se contradizem porque cada um diz de onde saiu.
+  it('a frase declara a janela, e o mando quando está ligado', async () => {
     abrir();
     expect(screen.getByText(/Janela: últimos 10 de cada time/i)).toBeInTheDocument();
-  });
 
-  it('e diz quando o recorte de mando está ligado', async () => {
-    abrir();
     await userEvent.click(screen.getByRole('button', { name: 'Mando deste jogo' }));
     expect(screen.getByText(/só com o mando deste confronto/i)).toBeInTheDocument();
   });
 
-  it('com um time só, a frase nomeia o time', async () => {
+  it('mexer na linha muda a conta', () => {
     abrir();
-    await userEvent.click(screen.getByRole('button', { name: 'Flamengo' }));
-    expect(screen.getByText(/dos 4 jogos do Flamengo passaram de 2,5/i)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Linha de referência'), { target: { value: '1' } });
+    expect(screen.getByText(/dos 6 jogos dos dois times passaram de 1,5/i)).toHaveTextContent('3 dos 6 jogos');
   });
 
-  it('mexer na linha muda a conta, sem mexer nas barras', () => {
+  it('handicap mede o saldo do time', async () => {
     abrir();
-    const regua = screen.getByLabelText('Linha de referência');
+    await userEvent.click(screen.getByRole('button', { name: 'Handicap' }));
+    expect(screen.getByText(/saldo do time naquele jogo/i)).toBeInTheDocument();
+    expect(screen.getByLabelText('Linha de referência')).toBeInTheDocument();
+  });
+});
 
-    // Índice 1 nas paradas de gols é 1,5: passam 2, 3 e 4.
-    fireEvent.change(regua, { target: { value: '1' } });
+describe('mercado binário: quadro de jogo, sem linha e um time por vez', () => {
+  it.each([
+    ['Resultado', /Verde é vitória/i],
+    ['Dupla chance', /Verde é vitória/i],
+    ['Ambos marcam', /Verde quando os dois marcaram/i],
+  ])('%s vira quadro, sem régua', async (chip, legenda) => {
+    abrir();
+    await userEvent.click(screen.getByRole('button', { name: chip }));
 
-    expect(screen.getByText(/dos 6 jogos dos dois times passaram de 1,5/i)).toHaveTextContent('3 dos 6 jogos');
+    expect(screen.queryByLabelText('Linha de referência')).not.toBeInTheDocument();
+    expect(screen.getByText('4 a 0')).toBeInTheDocument();
+    // ⚠️ A legenda tem de falar de QUADRO. Ela já disse "cada barra" embaixo de
+    // quadrados uma vez, e é a tela desmentindo o próprio desenho.
+    expect(screen.getByText(legenda)).toBeInTheDocument();
+    expect(screen.getByText(/Cada quadrado é um jogo/i)).toBeInTheDocument();
+  });
+
+  it('não oferece os dois times juntos, e tira quem já estava neles', async () => {
+    abrir();
+    expect(screen.getByRole('button', { name: 'Os dois' })).toHaveAttribute('aria-pressed', 'true');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Resultado' }));
+
+    expect(screen.queryByRole('button', { name: 'Os dois' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Flamengo' })).toHaveAttribute('aria-pressed', 'true');
   });
 });
 
 describe('o que fica embaixo de cada barra', () => {
   it('mostra o placar embaixo do escudo', () => {
-    // Pedido do dono do produto: "com a logo de qual foi o time que foi jogado
-    // contra, quanto foi o resultado". O placar vivia só no `title`, que não
-    // existe no toque — ou seja, invisível justamente no celular.
     abrir();
     expect(screen.getByText('4×0')).toBeInTheDocument();
-    // O visitante tem DOIS jogos de 0 a 1, então são dois elementos — busca de
-    // resultado único estoura aqui, e é o placar repetido que prova que ele sai
-    // por jogo e não uma vez só.
     expect(screen.getAllByText('0×1')).toHaveLength(2);
   });
 
-  it('com barras demais, o placar e o número sedem lugar', async () => {
-    // Vinte jogos de cada time são quarenta barras: ~6px cada num aparelho de
-    // 360px. Nada legível cabe embaixo disso, e insistir vira borrão.
+  it('com barras demais, o placar e o número cedem lugar', async () => {
     const muitos: FutebolFixtureHistorico[] = [
       ...Array.from({ length: 20 }, (_, i) =>
         jogo({ side: 'home', past_fixture_id: i + 1, ordem: i + 1, gols_pro: 4, gols_contra: 0, total_gols: 4 }),
@@ -190,43 +171,6 @@ describe('o que fica embaixo de cada barra', () => {
   });
 });
 
-describe('quem entra no gráfico', () => {
-  it('oferece os dois times pelo nome', () => {
-    abrir();
-    expect(screen.getByRole('button', { name: 'Flamengo' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Palmeiras' })).toBeInTheDocument();
-  });
-
-  it('escolher um time deixa só ele no gráfico', async () => {
-    abrir();
-    await userEvent.click(screen.getByRole('button', { name: 'Flamengo' }));
-    expect(screen.getByText(/Flamengo, últimos 4 jogos/)).toBeInTheDocument();
-    expect(screen.queryByText(/Palmeiras, últimos/)).not.toBeInTheDocument();
-  });
-});
-
-describe('o recorte de mando', () => {
-  it('aparece no título da série', async () => {
-    abrir();
-    await userEvent.click(screen.getByRole('button', { name: 'Mando deste jogo' }));
-    expect(screen.getByText(/Flamengo em casa/)).toBeInTheDocument();
-    expect(screen.getByText(/Palmeiras fora/)).toBeInTheDocument();
-  });
-
-  it('com um time só sobrando, nomeia quem ficou de fora e avisa da escala', async () => {
-    // O visitante também só jogou em casa: o mando deste confronto, que o mede
-    // FORA, não pega nenhum jogo dele.
-    const visitanteSoEmCasa = HISTORICO.map((j) => (j.side === 'away' ? { ...j, em_casa: true } : j));
-    render(<EstatisticasDoJogo historico={visitanteSoEmCasa} carregando={false} />);
-
-    await userEvent.click(screen.getByRole('button', { name: 'Mando deste jogo' }));
-
-    expect(screen.getByText(/Palmeiras não tem jogo nesse recorte/)).toBeInTheDocument();
-    expect(screen.getByText(/a escala é a dele, não a dos dois/)).toBeInTheDocument();
-    expect(screen.getByText(/Flamengo em casa/)).toBeInTheDocument();
-  });
-});
-
 describe('quando não há o que desenhar', () => {
   it('diz que está carregando, em vez de afirmar ausência cedo demais', () => {
     abrir({ historico: undefined, carregando: true });
@@ -236,6 +180,25 @@ describe('quando não há o que desenhar', () => {
   it('sem jogo anterior nenhum, diz isso', () => {
     abrir({ historico: [], carregando: false });
     expect(screen.getByText(/sem jogos anteriores/i)).toBeInTheDocument();
+  });
+
+  it('vazio POR CAUSA do mando manda voltar para todos os jogos', async () => {
+    const trocado = HISTORICO.map((j) => ({ ...j, em_casa: j.side !== 'home' }));
+    render(<EstatisticasDoJogo historico={trocado} carregando={false} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Mando deste jogo' }));
+
+    expect(screen.getByText(/experimente todos os jogos/i)).toBeInTheDocument();
+  });
+
+  it('com um time só sobrando, nomeia quem ficou de fora e avisa da escala', async () => {
+    const visitanteSoEmCasa = HISTORICO.map((j) => (j.side === 'away' ? { ...j, em_casa: true } : j));
+    render(<EstatisticasDoJogo historico={visitanteSoEmCasa} carregando={false} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Mando deste jogo' }));
+
+    expect(screen.getByText(/Palmeiras não tem jogo nesse recorte/)).toBeInTheDocument();
+    expect(screen.getByText(/a escala é a dele, não a dos dois/)).toBeInTheDocument();
   });
 });
 

@@ -112,30 +112,26 @@ describe('o mercado manda na métrica', () => {
     expect(g.temLinha).toBe(false);
   });
 
-  it('resultado e dupla chance medem o saldo, e ganham linha', () => {
-    // Eles já caíram em quadros sem linha, com o argumento de que "resultado não
-    // tem quantidade". Tem: é o saldo, que é o que separa vitória de empate e de
-    // derrota. O que muda entre os dois é só a linha padrão.
-    const doisJogos = [
-      jogo({ side: 'home', past_fixture_id: 1, ordem: 1, gols_pro: 3, gols_contra: 1 }),
-      jogo({ side: 'home', past_fixture_id: 2, ordem: 2, gols_pro: 0, gols_contra: 2 }),
-    ];
-
-    for (const mercado of ['match_winner', 'double_chance'] as MercadoDoGrafico[]) {
-      const g = graficoDaEstatistica(escolha({ mercado }), doisJogos);
-      expect(g.series[0].jogos.map((j) => j.valor), mercado).toEqual([2, -2]);
-      expect(g.temLinha, mercado).toBe(true);
+  it('os binários mostram o jogo, sem linha e sem os dois juntos', () => {
+    // Entre vencer e empatar não há meio-termo para arrastar, então não há
+    // régua. E sem escala não há o que comparar entre dois times na mesma
+    // fileira — juntá-los só faria uma fileira mais longa sem divisa visível.
+    for (const mercado of ['match_winner', 'double_chance', 'btts'] as MercadoDoGrafico[]) {
+      const g = graficoDaEstatistica(escolha({ mercado, quem: 'mandante' }), QUATRO);
+      expect(g.temLinha, mercado).toBe(false);
+      expect(g.contagem, mercado).toBeNull();
+      expect(MERCADOS_NO_GRAFICO[mercado].aceitaOsDois, mercado).toBe(false);
     }
   });
 
-  it('NENHUM mercado fica sem gráfico', () => {
-    // A guarda que faltava. Sem ela, Resultado e Dupla chance puderam cair em
-    // quadros sem barra e sem linha — três dos cinco mercados sem a coisa que
-    // esta aba existe para ter — e nenhum teste reclamou.
+  it('NENHUM mercado fica sem desenho', () => {
+    // A guarda que faltava quando três dos cinco mercados ficaram sem nada na
+    // tela. Ela não exige BARRA — exige série: o binário desenha quadro, e isso
+    // também é desenho.
     for (const slug of Object.keys(MERCADOS_NO_GRAFICO) as MercadoDoGrafico[]) {
-      const g = graficoDaEstatistica(escolha({ mercado: slug }), QUATRO);
+      const g = graficoDaEstatistica(escolha({ mercado: slug, quem: 'mandante' }), QUATRO);
       expect(g.series.length, `${slug} não desenhou nada`).toBeGreaterThan(0);
-      expect(g.series[0].metrica, `${slug} caiu fora da barra`).not.toBe('resultado');
+      expect(g.series[0].jogos.length, `${slug} sem jogo nenhum`).toBeGreaterThan(0);
     }
   });
 

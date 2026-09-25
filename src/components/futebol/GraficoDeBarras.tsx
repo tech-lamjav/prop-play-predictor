@@ -51,11 +51,14 @@ const COR_RES: Record<'V' | 'E' | 'D', { bg: string; fg: string }> = {
  * empate —, então desenhá-la como barra é a tela afirmando uma grandeza que não
  * existe. Quem tem série de resultado usa isto, não barra.
  */
-export function SerieResultados({ s }: { s: SerieHistorico }) {
+export function SerieResultados({ s, corPor = 'resultado' }: { s: SerieHistorico; corPor?: 'resultado' | 'valor' }) {
   return (
     <div className="flex flex-wrap gap-1.5">
       {s.jogos.map((j) => {
-        const c = COR_RES[j.resultado];
+        // Em "ambos marcam" a cor não é vitória nem derrota: é o fato ter
+        // acontecido ou não. Pintar de verde uma vitória em que só um time
+        // marcou seria a cor respondendo outra pergunta que a do seletor.
+        const c = corPor === 'valor' ? (j.valor ? COR_RES.V : COR_RES.D) : COR_RES[j.resultado];
         return (
           <div
             key={`${j.ordem}-${j.data}`}
@@ -88,6 +91,142 @@ const placarCurto = (placar: string) => placar.replace(' a ', '×');
 
 /** Abaixo disto a barra não tem altura para segurar o rótulo por dentro. */
 const ALTURA_MINIMA_PARA_ROTULO_DENTRO = 18;
+
+/**
+ * UM gráfico só, com as séries em sequência na mesma área de desenho.
+ *
+ * A diferença para `BlocoSerie` não é de estilo: lá cada série tem a PRÓPRIA
+ * caixa, aqui existe uma caixa só. É isso que faz a linha de referência
+ * atravessar os dois times de ponta a ponta, em vez de virar dois traços
+ * paralelos que o olho tem de casar sozinho.
+ *
+ * Em SEQUÊNCIA, e não emparelhado nem intercalado por data: emparelhar sugere
+ * que o primeiro jogo de um time "corresponde" ao primeiro do outro, e eles não
+ * têm relação nenhuma; intercalar mistura duas linhas do tempo que os times não
+ * compartilham.
+ *
+ * ⚠️ A geometria da barra está escrita aqui e também em `BlocoSerie`.
+ * Duplicação consciente: reformar o `BlocoSerie` mexeria no gráfico das
+ * premissas, que é a tela de maior tráfego e cuja aparência ninguém pediu para
+ * mudar. Fundir os dois exige poder conferir pixel.
+ */
+export function BarrasEmSequencia({
+  series,
+  teto,
+  piso = 0,
+  comRotulo,
+  comPlacar = false,
+  rotuloDentro = false,
+  referencia,
+}: {
+  series: SerieHistorico[];
+  teto: number;
+  piso?: number;
+  comRotulo: boolean;
+  comPlacar?: boolean;
+  rotuloDentro?: boolean;
+  referencia?: number | null;
+}) {
+  const util = PLOT - TOPO_ROTULO;
+  const amplitude = teto - piso || 1;
+  const zero = ((0 - piso) / amplitude) * util;
+  const alturaDe = (v: number) => (Math.abs(v) / amplitude) * util;
+  const posDe = (v: number) => zero + (v / amplitude) * util;
+  const temNegativo = piso < 0;
+  /** Cada grupo ocupa a fatia de largura proporcional aos jogos que tem. */
+  const fatia = (s: SerieHistorico) => ({ flexGrow: s.jogos.length, flexBasis: 0 });
+  const divisor = (i: number) => (i > 0 ? 'pl-2 border-l border-line' : '');
+
+  return (
+    <div>
+      {/* Um rótulo por grupo, na mesma proporção das barras, para o nome ficar
+          sobre as barras que ele nomeia. */}
+      <div className="flex gap-[3px] mb-2">
+        {series.map((s, i) => (
+          <div key={`h-${s.chave}`} style={fatia(s)} className={cn('flex items-center gap-1.5 min-w-0', divisor(i))}>
+            <Crest name={s.teamName} id={s.teamId} size={16} />
+            <span className="text-[11.5px] font-semibold text-ink truncate">{s.titulo}</span>
+            {s.sub && <span className="text-[10.5px] text-ink-3 shrink-0">{s.sub}</span>}
+          </div>
+        ))}
+      </div>
+
+      <div className="relative" style={{ height: PLOT }}>
+        <div className="absolute inset-0 flex gap-[3px]">
+          {series.map((s, i) => (
+            <div key={`p-${s.chave}`} style={fatia(s)} className={cn('flex items-end gap-[3px] min-w-0', divisor(i))}>
+              {s.jogos.map((j) => {
+                const v = j.valor;
+                const alt = v == null ? 3 : Math.max(3, alturaDe(v));
+                const base = v == null || v >= 0 ? zero : zero - alt;
+                const dentro = rotuloDentro && alt >= ALTURA_MINIMA_PARA_ROTULO_DENTRO;
+                return (
+                  <div
+                    key={`${j.ordem}-${j.data}`}
+                    className="relative flex-1 min-w-[6px] max-w-[44px] h-full"
+                    title={`${dia(j.data)} · ${j.emCasa ? 'em casa' : 'fora'} contra ${j.adversario} · ${j.placar}${
+                      v != null ? ` · ${rotuloValor(v, s.metrica)}` : ' · sem dado'
+                    }`}
+                  >
+                    {comRotulo && (
+                      <span
+                        className={cn(
+                          'absolute left-0 right-0 text-center tabular-nums text-[9.5px] leading-none',
+                          dentro ? 'font-bold' : 'font-semibold',
+                        )}
+                        style={{
+                          color: dentro ? (j.favorece ? 'var(--canvas)' : 'var(--ink)') : 'var(--ink-2)',
+                          bottom: dentro ? (v != null && v < 0 ? base + alt - 12 : base + 3) : base + alt + 4,
+                        }}
+                      >
+                        {v == null ? '·' : rotuloValor(v, s.metrica)}
+                      </span>
+                    )}
+                    <div
+                      className={cn('absolute left-0 right-0', v != null && v < 0 ? 'rounded-b-[3px]' : 'rounded-t-[3px]')}
+                      style={{
+                        bottom: base,
+                        height: alt,
+                        background: v == null ? '#e3e6e0' : j.favorece ? COR_FAVOR : COR_CONTRA,
+                      }}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+
+        {/* A linha atravessa o gráfico INTEIRO. É a continuidade que o desenho
+            em duas caixas não conseguia dar. */}
+        {referencia != null && (
+          <div
+            className="absolute left-0 right-0 border-t-2 border-dashed pointer-events-none"
+            style={{ borderColor: 'var(--ink)', bottom: posDe(referencia) }}
+          />
+        )}
+        {temNegativo && (
+          <div className="absolute left-0 right-0 border-t pointer-events-none" style={{ borderColor: 'var(--ink-3)', bottom: zero }} />
+        )}
+      </div>
+
+      <div className="flex gap-[3px] mt-1.5">
+        {series.map((s, i) => (
+          <div key={`e-${s.chave}`} style={fatia(s)} className={cn('flex items-start gap-[3px] min-w-0', divisor(i))}>
+            {s.jogos.map((j) => (
+              <div key={`c-${j.ordem}-${j.data}`} className="flex-1 min-w-[6px] max-w-[44px] flex flex-col items-center gap-0.5">
+                <Crest name={j.adversario} id={j.adversarioId} size={comRotulo ? 15 : 11} />
+                {comPlacar && comRotulo && (
+                  <span className="tabular-nums text-[8.5px] leading-none text-ink-3">{placarCurto(j.placar)}</span>
+                )}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function BlocoSerie({
   s,

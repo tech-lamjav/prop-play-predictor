@@ -805,7 +805,12 @@ export default function FutebolJogo() {
               {aba === 'escalacoes' && escalacaoCard}
 
               {aba === 'estatisticas' && (
-                <div data-tour="fut-jogo-contexto" className="flex flex-col gap-5">
+                <div data-tour="fut-jogo-contexto" className="grid lg:grid-cols-[7fr_3fr] gap-5 items-start">
+                  {/* 70/30: o gráfico é o que a aba veio mostrar e fica com a
+                      coluna larga; as caixas de resumo sobem para a estreita em
+                      vez de empilharem embaixo dele. No celular vira uma coluna
+                      só, e o gráfico continua vindo primeiro. */}
+                  <div className="min-w-0 flex flex-col gap-5">
                   {/* O jogo a jogo vem primeiro e ocupa a largura inteira: é o
                       que a aba veio mostrar, e é o único bloco daqui que deixa
                       CONFERIR um número em vez de aceitá-lo. As duas caixas de
@@ -825,7 +830,8 @@ export default function FutebolJogo() {
                     mercadoInicial={preferida?.market ?? mercadoAtivo}
                     linhaInicial={preferida?.line_value ?? null}
                   />
-                  <div className="grid lg:grid-cols-2 gap-5 items-start">
+                  </div>
+                  <div className="min-w-0 flex flex-col gap-5">
                     {statsCard}
                     {h2hCard}
                   </div>
