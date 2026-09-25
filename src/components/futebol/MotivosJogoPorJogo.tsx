@@ -672,7 +672,7 @@ export function MotivosJogoPorJogo({
           // histórico jogo a jogo e o card lia o perfil de temporada, a tela
           // mostrava 2,3 e 2,4 para a mesma afirmação, um embaixo do outro.
           ev: evidenciaDaPremissa({ mercado, slug: p.slug, numeros, historico, insumos, lado, linha, acesa }),
-          story: storyDaPremissa(p.slug, historico, lado, linha),
+          story: storyDaPremissa(mercado, p.slug, historico, lado, linha),
         };
       }),
     [mercado, premissas, numeros, historico, insumos, lado, linha, acesa],

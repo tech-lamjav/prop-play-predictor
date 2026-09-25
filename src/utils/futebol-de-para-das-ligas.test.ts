@@ -82,4 +82,17 @@ describe('de-para de ligas entre o front e o espelho de brasões', () => {
     expect(doFront.nations_league).toBe(5);
     expect(doEspelho.nations_league).toBe(5);
   });
+
+  it('os amistosos entraram nos dois, com o id 10', () => {
+    // Segundo caso concreto. Amistoso é competição de INSUMO
+    // (data-engineering#96): alimenta a forma das seleções e nunca gera
+    // oportunidade. Entra no de-para só pelo brasão.
+    //
+    // ⚠️ Se o brasão da liga 10 vier cinza do CDN, a decisão certa é a mesma da
+    // Copa do Mundo — sair do mapa do ESPELHO e ficar só no do front. Este
+    // teste continua valendo nessa hipótese: ele exige que os dois concordem
+    // NO ID, e a guarda de cima é que permite a exclusão de um lado só.
+    expect(doFront.amistosos).toBe(10);
+    expect(doEspelho.amistosos).toBe(10);
+  });
 });
