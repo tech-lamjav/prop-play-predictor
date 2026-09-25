@@ -145,14 +145,23 @@ describe('mercado binário: quadro de jogo, sem linha e um time por vez', () => 
     expect(screen.getByText(/Cada quadrado é um jogo/i)).toBeInTheDocument();
   });
 
-  it('não oferece os dois times juntos, e tira quem já estava neles', async () => {
+  it('mostra os DOIS times, em blocos nomeados', async () => {
+    // Os binários já não aceitaram os dois juntos. Na tela não se sustentou:
+    // num confronto, ver os dois de uma vez é justamente o ponto.
     abrir();
-    expect(screen.getByRole('button', { name: 'Os dois' })).toHaveAttribute('aria-pressed', 'true');
-
     await userEvent.click(screen.getByRole('button', { name: 'Resultado' }));
 
-    expect(screen.queryByRole('button', { name: 'Os dois' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Flamengo' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Os dois' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByText(/Flamengo, últimos 4 jogos/)).toBeInTheDocument();
+    expect(screen.getByText(/Palmeiras, últimos 2 jogos/)).toBeInTheDocument();
+  });
+
+  it('cada quadro diz a data, para saber qual é o mais recente', async () => {
+    abrir();
+    await userEvent.click(screen.getByRole('button', { name: 'Resultado' }));
+
+    // Os jogos do fixture são todos de 01/08; o que importa é a data aparecer.
+    expect(screen.getAllByText('01/08').length).toBeGreaterThan(0);
   });
 });
 

@@ -28,13 +28,19 @@ import { BarrasEmSequencia, COR_CONTRA, COR_FAVOR, SerieResultados } from './Gra
  *
  * A LINHA aqui é referência, não aposta: nada é liquidado, não há lado escolhido
  * e não há preço. Mexer nela repinta as barras e não toca nos valores.
- *
- * Dois desenhos, escolhidos pelo MERCADO: mercado com grandeza vira barras num
- * gráfico só, com a linha atravessando; mercado binário vira quadro de jogos,
- * sem linha e um time por vez.
  */
 
-const LABEL = 'text-[10px] uppercase tracking-[0.14em] font-bold text-ink-3';
+const LABEL = 'text-[10px] uppercase tracking-[0.14em] font-bold text-ink-3 shrink-0';
+
+/**
+ * A altura da área de desenho nesta aba.
+ *
+ * O padrão do desenhista são 96px, que nasceram para o gráfico embaixo de uma
+ * premissa — ali ele divide o card com texto, corte e prestação de contas. Numa
+ * aba dedicada isso deixa a barra achatada, e barra achatada não deixa comparar
+ * altura, que é a única coisa que ela sabe fazer.
+ */
+const ALTURA_DO_GRAFICO = 180;
 
 const MANDOS: { valor: MandoDaEstatistica; rotulo: string }[] = [
   { valor: 'todos', rotulo: 'Todos os jogos' },
@@ -60,9 +66,9 @@ export function EstatisticasDoJogo({
 }) {
   const [escolha, setEscolha] = useState<EscolhaDaEstatistica>(() => {
     const mercado = ehMercadoDoGrafico(mercadoInicial) ? mercadoInicial : ESCOLHA_PADRAO.mercado;
-    const { paradas, padrao, aceitaOsDois } = MERCADOS_NO_GRAFICO[mercado];
+    const { paradas, padrao } = MERCADOS_NO_GRAFICO[mercado];
     const linha = linhaInicial != null && paradas.includes(linhaInicial) ? linhaInicial : padrao;
-    return { ...ESCOLHA_PADRAO, mercado, linha, quem: aceitaOsDois ? ESCOLHA_PADRAO.quem : 'mandante' };
+    return { ...ESCOLHA_PADRAO, mercado, linha };
   });
 
   const doMercado = MERCADOS_NO_GRAFICO[escolha.mercado];
@@ -86,22 +92,13 @@ export function EstatisticasDoJogo({
    * ⚠️ Não basta perguntar se o número existe nas paradas do novo mercado: 2,5 é
    * parada em Gols e nos de saldo, mas em Gols é "dois gols e meio na partida" e
    * no saldo é "vencer por três". Mesmo número, grandezas diferentes.
-   *
-   * E mercado binário não aceita os dois times juntos: quem estava em "os dois"
-   * cai no mandante, senão o seletor ficaria com um estado que o desenho não
-   * sabe mostrar.
    */
   const trocaMercado = (slug: MercadoDoGrafico) => {
     const destino = MERCADOS_NO_GRAFICO[slug];
     setEscolha((atual) => {
       const mesmaGrandeza = MERCADOS_NO_GRAFICO[atual.mercado].metrica === destino.metrica;
       const mantem = mesmaGrandeza && atual.linha != null && destino.paradas.includes(atual.linha);
-      return {
-        ...atual,
-        mercado: slug,
-        linha: mantem ? atual.linha : destino.padrao,
-        quem: destino.aceitaOsDois || atual.quem !== 'ambos' ? atual.quem : 'mandante',
-      };
+      return { ...atual, mercado: slug, linha: mantem ? atual.linha : destino.padrao };
     });
   };
 
@@ -122,37 +119,25 @@ export function EstatisticasDoJogo({
       </div>
 
       <div className="p-5">
-        {/* ⚠️ DUAS linhas, e não uma fileira rotulada por filtro. Eram quatro
-            empilhadas, e juntas ocupavam quase a altura do próprio gráfico.
-            O mercado é a dimensão principal e fica exposto como aba; o resto
-            cabe numa linha só.
-
-            As abas usam o idioma da barra de abas DESTA PÁGINA, e não o
-            controle do kit: a tela já mostra uma barra de abas duas fileiras
-            acima, e um segundo estilo de aba aqui seriam duas gramáticas para o
-            mesmo gesto. */}
-        <div
-          className="inline-flex min-w-0 max-w-full overflow-x-auto no-scrollbar p-[3px] rounded-[11px] mb-3"
-          style={{ background: 'var(--canvas-2)', border: '1px solid #ded2b6' }}
-        >
+        {/* ⚠️ UMA linguagem de controle só. O mercado já foi barra de abas aqui,
+            copiada da barra da página — que usa raio e borda cravados na mão, e
+            não os tokens do rebrand. Além de fora do sistema, punha TRÊS
+            gramáticas no mesmo cabeçalho: aba, chip e seletor. Agora mercado e
+            time são chips; a hierarquia vem do rótulo e da ordem, não de widgets
+            diferentes. */}
+        <div className="flex flex-wrap items-center gap-2 mb-2">
+          <span className={LABEL}>Mercado</span>
           {(Object.keys(MERCADOS_NO_GRAFICO) as MercadoDoGrafico[]).map((slug) => (
-            <button
-              key={slug}
-              type="button"
-              onClick={() => trocaMercado(slug)}
-              className={`h-8 px-4 shrink-0 whitespace-nowrap rounded-lg text-[13px] cursor-pointer transition border-0 ${
-                escolha.mercado === slug ? 'bg-white text-ink font-semibold shadow-sm' : 'bg-transparent text-ink-2 font-medium'
-              }`}
-            >
+            <Chip key={slug} ativo={escolha.mercado === slug} onClick={() => trocaMercado(slug)}>
               {MERCADOS_NO_GRAFICO[slug].chip}
-            </button>
+            </Chip>
           ))}
         </div>
 
-        {/* O TIME primeiro: é a pergunta mais grossa — de quem estamos falando —
-            e as outras se aplicam dentro dela. */}
+        {/* O TIME é a pergunta mais grossa — de quem estamos falando — e janela e
+            mando se aplicam dentro dela. */}
         <div className="flex flex-wrap items-center gap-2 mb-4">
-          <span className={`${LABEL} shrink-0`}>Times</span>
+          <span className={LABEL}>Times</span>
           {doMercado.aceitaOsDois && (
             <Chip ativo={escolha.quem === 'ambos'} onClick={() => muda({ quem: 'ambos' })}>Os dois</Chip>
           )}
@@ -164,12 +149,7 @@ export function EstatisticasDoJogo({
 
           <SeletorDeMenu rotulo="Janela" resumo={`Últimos ${escolha.janela}`} largura="sm:w-[168px]">
             {JANELAS_OFERECIDAS.map((j) => (
-              <DropdownMenuCheckboxItem
-                key={j}
-                checked={escolha.janela === j}
-                onSelect={() => muda({ janela: j })}
-                className={ITEM_SELETOR}
-              >
+              <DropdownMenuCheckboxItem key={j} checked={escolha.janela === j} onSelect={() => muda({ janela: j })} className={ITEM_SELETOR}>
                 {`Últimos ${j}`}
               </DropdownMenuCheckboxItem>
             ))}
@@ -177,26 +157,20 @@ export function EstatisticasDoJogo({
 
           <SeletorDeMenu rotulo="Mando" resumo={mandoAtual} largura="sm:w-[212px]">
             {MANDOS.map((m) => (
-              <DropdownMenuCheckboxItem
-                key={m.valor}
-                checked={escolha.mando === m.valor}
-                onSelect={() => muda({ mando: m.valor })}
-                className={ITEM_SELETOR}
-              >
+              <DropdownMenuCheckboxItem key={m.valor} checked={escolha.mando === m.valor} onSelect={() => muda({ mando: m.valor })} className={ITEM_SELETOR}>
                 {m.rotulo}
               </DropdownMenuCheckboxItem>
             ))}
           </SeletorDeMenu>
         </div>
 
+        {/* ⚠️ Uma FAIXA, não um painel. Este controle já foi uma caixa creme mais
+            alta que o próprio gráfico — o comando ocupando mais espaço que a
+            coisa comandada. O valor também aparece grudado na linha, dentro do
+            gráfico, então repeti-lo aqui em tamanho grande era dizer duas vezes. */}
         {temLinha && doMercado.paradas.length > 0 && (
-          <div className="rounded-rebrand-md bg-canvas-2 px-4 py-3 mb-4">
-            <div className="flex items-center justify-between gap-3 mb-1.5">
-              <span className={LABEL}>Linha de referência</span>
-              <span className="tabular-nums text-[15px] font-bold text-ink">
-                {escolha.linha == null ? '—' : fmtLinha(escolha.linha)}
-              </span>
-            </div>
+          <div className="flex items-center gap-2.5 mb-3">
+            <span className={LABEL}>Linha</span>
             <input
               type="range"
               min={0}
@@ -205,22 +179,11 @@ export function EstatisticasDoJogo({
               value={iDaLinha < 0 ? 0 : iDaLinha}
               aria-label="Linha de referência"
               onChange={(e) => muda({ linha: doMercado.paradas[Number(e.target.value)] })}
-              className="w-full h-11 cursor-pointer accent-[color:var(--forest)]"
+              className="flex-1 min-w-0 h-9 cursor-pointer accent-[color:var(--forest)]"
             />
-            {/* O número SEMPRE declara a base: existe premissa contando os
-                últimos cinco contra a linha, e dois números da mesma forma só
-                não se contradizem porque cada um diz de onde saiu. */}
-            {contagem && contagem.de > 0 && (
-              <div className="text-[12px] text-ink-2 mt-1">
-                <strong className="font-bold text-ink">{contagem.acima}</strong> dos {contagem.de} jogos{' '}
-                {escolha.quem === 'ambos' ? 'dos dois times' : `do ${quemNoTexto ?? 'time'}`} passaram de{' '}
-                {fmtLinha(referencia as number)}.
-                <span className="block text-[10.5px] text-ink-3 mt-0.5">
-                  Janela: últimos {escolha.janela} de cada time
-                  {escolha.mando === 'proprio' ? ', só com o mando deste confronto' : ''}.
-                </span>
-              </div>
-            )}
+            <span className="tabular-nums text-[13px] font-bold text-ink shrink-0">
+              {escolha.linha == null ? '—' : fmtLinha(escolha.linha)}
+            </span>
           </div>
         )}
 
@@ -244,7 +207,7 @@ export function EstatisticasDoJogo({
           </div>
         ) : (
           <>
-            <div className="flex flex-col items-start gap-1 mb-3 md:flex-row md:items-center md:gap-3">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-3">
               <span className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: COR_FAVOR }} />
                 <span className="text-[10.5px] text-ink-2">acima da linha</span>
@@ -260,11 +223,27 @@ export function EstatisticasDoJogo({
               series={series}
               teto={teto}
               piso={piso}
+              altura={ALTURA_DO_GRAFICO}
               comRotulo={comRotulo}
               comPlacar
               rotuloDentro
               referencia={referencia}
             />
+
+            {/* O número SEMPRE declara a base: existe premissa contando os
+                últimos cinco contra a linha, e dois números da mesma forma só
+                não se contradizem porque cada um diz de onde saiu. */}
+            {contagem && contagem.de > 0 && (
+              <div className="text-[12px] text-ink-2 mt-3">
+                <strong className="font-bold text-ink">{contagem.acima}</strong> dos {contagem.de} jogos{' '}
+                {escolha.quem === 'ambos' ? 'dos dois times' : `do ${quemNoTexto ?? 'time'}`} passaram de{' '}
+                {fmtLinha(referencia as number)}.
+                <span className="block text-[10.5px] text-ink-3 mt-0.5">
+                  Janela: últimos {escolha.janela} de cada time
+                  {escolha.mando === 'proprio' ? ', só com o mando deste confronto' : ''}.
+                </span>
+              </div>
+            )}
 
             {semSerie.length > 0 && (
               <div className="text-[11px] leading-relaxed mt-3 text-ink-2">

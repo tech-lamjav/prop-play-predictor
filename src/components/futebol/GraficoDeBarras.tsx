@@ -75,6 +75,11 @@ export function SerieResultados({ s, corPor = 'resultado' }: { s: SerieHistorico
                 {j.adversario}
               </span>
             </div>
+            {/* A DATA, porque sem ela o quadro não diz qual jogo é o mais
+                recente — e num histórico a ordem é metade da informação. */}
+            <div className="tabular-nums text-[9px] mt-0.5 text-center" style={{ color: c.fg, opacity: 0.65 }}>
+              {dia(j.data)}
+            </div>
           </div>
         );
       })}
@@ -114,6 +119,7 @@ export function BarrasEmSequencia({
   series,
   teto,
   piso = 0,
+  altura = PLOT,
   comRotulo,
   comPlacar = false,
   rotuloDentro = false,
@@ -122,12 +128,19 @@ export function BarrasEmSequencia({
   series: SerieHistorico[];
   teto: number;
   piso?: number;
+  /**
+   * A altura da área de desenho. Parâmetro, e não a constante: os 96px nasceram
+   * para o gráfico embaixo de uma premissa, que divide espaço com o card
+   * inteiro. Numa aba dedicada isso deixa as barras achatadas e o eixo curto
+   * demais para comparar altura, que é a única coisa que a barra sabe fazer.
+   */
+  altura?: number;
   comRotulo: boolean;
   comPlacar?: boolean;
   rotuloDentro?: boolean;
   referencia?: number | null;
 }) {
-  const util = PLOT - TOPO_ROTULO;
+  const util = altura - TOPO_ROTULO;
   const amplitude = teto - piso || 1;
   const zero = ((0 - piso) / amplitude) * util;
   const alturaDe = (v: number) => (Math.abs(v) / amplitude) * util;
@@ -199,11 +212,21 @@ export function BarrasEmSequencia({
 
         {/* A linha atravessa o gráfico INTEIRO. É a continuidade que o desenho
             em duas caixas não conseguia dar. */}
+        {/* O valor GRUDADO na linha, como na referência da NBA. Fora dela, o
+            número vivia num painel acima do gráfico, e era preciso casar dois
+            lugares para saber onde a linha estava. */}
         {referencia != null && (
           <div
             className="absolute left-0 right-0 border-t-2 border-dashed pointer-events-none"
             style={{ borderColor: 'var(--ink)', bottom: posDe(referencia) }}
-          />
+          >
+            <span
+              className="absolute right-0 -translate-y-1/2 tabular-nums text-[10px] font-bold px-1.5 py-0.5 rounded text-canvas"
+              style={{ background: 'var(--ink)' }}
+            >
+              {String(referencia).replace('.', ',')}
+            </span>
+          </div>
         )}
         {temNegativo && (
           <div className="absolute left-0 right-0 border-t pointer-events-none" style={{ borderColor: 'var(--ink-3)', bottom: zero }} />

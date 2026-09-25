@@ -77,14 +77,6 @@ export const MERCADOS_NO_GRAFICO: Record<
     aceitaOsDois: boolean;
   }
 > = {
-  // ⚠️ TODO mercado tem barras. A versão anterior mandava Resultado e Dupla
-  // chance para quadros sem linha, com o argumento de que "resultado não tem
-  // quantidade" — e o efeito foi tirar de TRÊS dos cinco mercados justamente o
-  // gráfico que esta aba existe para ter. A quantidade existe: é o SALDO DE
-  // GOLS, que é o que separa vitória de empate e de derrota. Resultado e
-  // Handicap desenham as mesmas barras de propósito, porque handicap é a versão
-  // com linha do resultado; o que muda entre eles é a linha padrão.
-  //
   // `padrao` é DECLARADO por mercado, e não "a parada do meio da lista": o meio
   // das seis paradas de gols é 3,5 e a linha canônica é 2,5, o que faria quase
   // tudo nascer abaixo da linha e parecer defeito.
@@ -101,22 +93,22 @@ export const MERCADOS_NO_GRAFICO: Record<
   // recorte: entre vencer e empatar não existe meio-termo para arrastar. Eles
   // mostram COMO FOI cada jogo, em quadros, sem régua.
   //
-  // ⚠️ E não aceitam os dois times juntos. Num gráfico de quantidade, empilhar
-  // as duas séries na mesma escala compara altura — é o que a escala
-  // compartilhada existe para fazer. Num quadro de "venceu, empatou, perdeu"
-  // não há escala nenhuma, então juntar os dois só produz uma fileira mais
-  // longa em que ninguém sabe onde um time acaba e o outro começa.
+  // Aceitam os dois times, como todos os outros. Já não aceitaram: o argumento
+  // era que sem escala não há altura para comparar, então juntar só faria uma
+  // fileira mais longa. Na tela isso não se sustentou — os quadros saem em dois
+  // blocos nomeados, um por time, e ver os dois de uma vez é justamente o que
+  // se quer num confronto.
   match_winner: {
     metrica: 'resultado', temLinha: false, rotulo: 'Resultado', chip: 'Resultado',
-    paradas: [], padrao: null, aceitaOsDois: false,
+    paradas: [], padrao: null, aceitaOsDois: true,
   },
   double_chance: {
     metrica: 'resultado', temLinha: false, rotulo: 'Resultado', chip: 'Dupla chance',
-    paradas: [], padrao: null, aceitaOsDois: false,
+    paradas: [], padrao: null, aceitaOsDois: true,
   },
   btts: {
     metrica: 'ambos', temLinha: false, rotulo: 'Os dois marcaram', chip: 'Ambos marcam',
-    paradas: [], padrao: null, aceitaOsDois: false,
+    paradas: [], padrao: null, aceitaOsDois: true,
   },
 };
 

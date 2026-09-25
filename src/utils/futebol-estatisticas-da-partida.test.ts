@@ -112,15 +112,24 @@ describe('o mercado manda na métrica', () => {
     expect(g.temLinha).toBe(false);
   });
 
-  it('os binários mostram o jogo, sem linha e sem os dois juntos', () => {
+  it('os binários mostram o jogo, sem linha', () => {
     // Entre vencer e empatar não há meio-termo para arrastar, então não há
-    // régua. E sem escala não há o que comparar entre dois times na mesma
-    // fileira — juntá-los só faria uma fileira mais longa sem divisa visível.
+    // régua — e sem régua não há contagem de "quantos passaram".
     for (const mercado of ['match_winner', 'double_chance', 'btts'] as MercadoDoGrafico[]) {
       const g = graficoDaEstatistica(escolha({ mercado, quem: 'mandante' }), QUATRO);
       expect(g.temLinha, mercado).toBe(false);
       expect(g.contagem, mercado).toBeNull();
-      expect(MERCADOS_NO_GRAFICO[mercado].aceitaOsDois, mercado).toBe(false);
+    }
+  });
+
+  it('TODO mercado aceita os dois times', () => {
+    // Os binários já não aceitaram, com o argumento de que sem escala não há
+    // altura para comparar. Na tela não se sustentou: os quadros saem em dois
+    // blocos nomeados, e ver os dois de uma vez é o que se quer num confronto.
+    for (const slug of Object.keys(MERCADOS_NO_GRAFICO) as MercadoDoGrafico[]) {
+      expect(MERCADOS_NO_GRAFICO[slug].aceitaOsDois, slug).toBe(true);
+      const g = graficoDaEstatistica(escolha({ mercado: slug, quem: 'ambos' }), [...QUATRO, ...DO_VISITANTE]);
+      expect(g.series.map((s) => s.teamName), slug).toEqual(['Flamengo', 'Palmeiras']);
     }
   });
 
