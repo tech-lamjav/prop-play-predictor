@@ -206,7 +206,7 @@ describe('a evidência do valor medido', () => {
     // ⚠️ EXCLUSÃO DELIBERADA, pela mesma regra da `superioridade_xg`.
     //
     // O mart publica `pct_pts_home` e `aprov_fora`, e a frase sairia fácil. Mas
-    // `SPECS.mando` desenha `metrica: 'resultado'` — grade de vitórias, empates
+    // `SPECS['match_winner:mando']` desenha `metrica: 'resultado'` — grade de vitórias, empates
     // e derrotas —, e o critério compara APROVEITAMENTO percentual contra 55 em
     // casa e 45 fora. Escrever só a frase deixaria o número certo com o gráfico
     // errado logo abaixo, se desmentindo na tela.

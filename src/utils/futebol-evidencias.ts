@@ -118,9 +118,24 @@ function porLado(ctx: Ctx): { time?: FutebolFixtureNumeros; adv?: FutebolFixture
 
 type Builder = (ctx: Ctx) => Evidencia | null;
 
-const BUILDERS: Record<string, Builder> = {
+/**
+ * A frase do PERFIL DE TEMPORADA, por mercado e slug.
+ *
+ * ⚠️ A chave é o par, e não o slug — pelo mesmo motivo do mapa de gráficos em
+ * `futebol-historico.ts`, e este mapa é o segundo seam que a #361 pede.
+ *
+ * O primeiro conserto mexeu só no gráfico, e ficaria pela metade: aqui mora a
+ * MESMA colisão. `defesas_vazaveis` existe em Gols e em Ambos marcam, e a do
+ * Ambos marcam cai nesta frase quando a rota do histórico não tem o que dizer.
+ *
+ * Hoje ela quase nunca cai, porque a premissa ainda tem gráfico e o gráfico vem
+ * antes. Mas é a transcrição dos critérios que vai apagar esse gráfico — e no
+ * dia em que apagar, esta rota assume. Fosse depois, a colisão entraria embutida
+ * no conserto: é exatamente o que a #361 chama de pré-requisito.
+ */
+export const BUILDERS: Record<string, Builder> = {
   // ── Resultado ──────────────────────────────────────────────
-  forma: (ctx) => {
+  'match_winner:forma': (ctx) => {
     const { time } = porLado(ctx);
     if (!time?.forma) return null;
     const c = contaForma(time.forma, 5);
@@ -129,7 +144,7 @@ const BUILDERS: Record<string, Builder> = {
     };
   },
 
-  mando: (ctx) => {
+  'match_winner:mando': (ctx) => {
     const { time, emCasa } = porLado(ctx);
     if (!time) return null;
     const j = emCasa ? time.jogos_casa : time.jogos_fora;
@@ -152,7 +167,7 @@ const BUILDERS: Record<string, Builder> = {
     };
   },
 
-  superioridade_tabela: (ctx) => {
+  'match_winner:superioridade_tabela': (ctx) => {
     const { time, adv } = porLado(ctx);
     if (!time?.posicao || !adv?.posicao) return null;
     const dif = Math.abs((time.pontos ?? 0) - (adv.pontos ?? 0));
@@ -172,7 +187,7 @@ const BUILDERS: Record<string, Builder> = {
     };
   },
 
-  forca_mismatch: (ctx) => {
+  'match_winner:forca_mismatch': (ctx) => {
     const { time, adv, emCasa } = porLado(ctx);
     if (!time || !adv) return null;
     const ataque = emCasa ? time.gf_casa : time.gf_fora;
@@ -192,7 +207,7 @@ const BUILDERS: Record<string, Builder> = {
     };
   },
 
-  h2h_favoravel: (ctx) => {
+  'match_winner:h2h_favoravel': (ctx) => {
     const { time, adv } = porLado(ctx);
     if (!time?.h2h_jogos) return null;
     const v = time.h2h_vitorias ?? 0;
@@ -210,10 +225,10 @@ const BUILDERS: Record<string, Builder> = {
     };
   },
 
-  invicto_recente: (ctx) => BUILDERS.forma(ctx),
+  'double_chance:invicto_recente': (ctx) => BUILDERS['match_winner:forma'](ctx),
 
   // ── Gols ───────────────────────────────────────────────────
-  ataque_combinado: (ctx) => {
+  'goals_over_under:ataque_combinado': (ctx) => {
     if (!ctx.casa || !ctx.fora) return null;
     const a = ctx.casa.gf_casa ?? ctx.casa.gf_total;
     const b = ctx.fora.gf_fora ?? ctx.fora.gf_total;
@@ -230,15 +245,15 @@ const BUILDERS: Record<string, Builder> = {
     };
   },
 
-  ataques_fracos: (ctx) => {
+  'goals_over_under:ataques_fracos': (ctx) => {
     if (!ctx.casa || !ctx.fora) return null;
     const a = ctx.casa.gf_casa ?? ctx.casa.gf_total;
     const b = ctx.fora.gf_fora ?? ctx.fora.gf_total;
     if (a == null || b == null) return null;
-    return BUILDERS.ataque_combinado({ ...ctx, acesa: false });
+    return BUILDERS['goals_over_under:ataque_combinado']({ ...ctx, acesa: false });
   },
 
-  defesas_vazaveis: (ctx) => {
+  'goals_over_under:defesas_vazaveis': (ctx) => {
     if (!ctx.casa || !ctx.fora) return null;
     const a = ctx.casa.ga_casa ?? ctx.casa.ga_total;
     const b = ctx.fora.ga_fora ?? ctx.fora.ga_total;
@@ -255,15 +270,15 @@ const BUILDERS: Record<string, Builder> = {
     };
   },
 
-  defesas_firmes: (ctx) => {
+  'goals_over_under:defesas_firmes': (ctx) => {
     if (!ctx.casa || !ctx.fora) return null;
     const a = ctx.casa.ga_casa ?? ctx.casa.ga_total;
     const b = ctx.fora.ga_fora ?? ctx.fora.ga_total;
     if (a == null || b == null) return null;
-    return BUILDERS.defesas_vazaveis({ ...ctx, acesa: false });
+    return BUILDERS['goals_over_under:defesas_vazaveis']({ ...ctx, acesa: false });
   },
 
-  clean_sheets_altos: (ctx) => {
+  'goals_over_under:clean_sheets_altos': (ctx) => {
     if (!ctx.casa || !ctx.fora) return null;
     if (ctx.casa.clean_sheets == null || ctx.fora.clean_sheets == null) return null;
     return {
@@ -279,13 +294,13 @@ const BUILDERS: Record<string, Builder> = {
   },
 
   // ── Handicap ───────────────────────────────────────────────
-  supremacia: (ctx) => BUILDERS.superioridade_tabela(ctx),
-  mando_forte: (ctx) => BUILDERS.mando(ctx),
+  'asian_handicap:supremacia': (ctx) => BUILDERS['match_winner:superioridade_tabela'](ctx),
+  'asian_handicap:mando_forte': (ctx) => BUILDERS['match_winner:mando'](ctx),
 
   // O adversário joga no mando OPOSTO ao do time apostado. Com `ga_fora` fixo, a
   // aposta no visitante mostrava a defesa do mandante FORA de casa, num jogo em que
   // ele joga em casa.
-  adversario_fragil_fora: (ctx) => {
+  'asian_handicap:adversario_fragil_fora': (ctx) => {
     const { adv, emCasa } = porLado(ctx);
     if (!adv) return null;
     const ga = emCasa ? adv.ga_fora : adv.ga_casa;
@@ -298,7 +313,7 @@ const BUILDERS: Record<string, Builder> = {
 
   // Mesma correção do outro lado: o azarão pode ser o mandante, e aí a defesa que
   // importa é a de casa.
-  defesa_fora_solida: (ctx) => {
+  'asian_handicap:defesa_fora_solida': (ctx) => {
     const { time, emCasa } = porLado(ctx);
     if (!time) return null;
     const ga = emCasa ? time.ga_casa : time.ga_fora;
@@ -309,7 +324,7 @@ const BUILDERS: Record<string, Builder> = {
     };
   },
 
-  tende_golear: (ctx) => {
+  'asian_handicap:tende_golear': (ctx) => {
     const { time, adv, emCasa } = porLado(ctx);
     if (!time || !adv) return null;
     const ataque = emCasa ? time.gf_casa : time.gf_fora;
@@ -328,7 +343,7 @@ const BUILDERS: Record<string, Builder> = {
   },
 
   // ── Ambos marcam ───────────────────────────────────────────
-  ambos_marcam: (ctx) => {
+  'btts:ambos_marcam': (ctx) => {
     if (!ctx.casa || !ctx.fora) return null;
     if (ctx.casa.sem_marcar == null || ctx.fora.sem_marcar == null) return null;
     return {
@@ -343,12 +358,20 @@ const BUILDERS: Record<string, Builder> = {
     };
   },
 
-  ataque_dos_dois: (ctx) => BUILDERS.ataque_combinado(ctx),
-  defesa_forte: (ctx) => BUILDERS.defesas_vazaveis(ctx),
+  'btts:ataque_dos_dois': (ctx) => BUILDERS['goals_over_under:ataque_combinado'](ctx),
+  'btts:defesa_forte': (ctx) => BUILDERS['goals_over_under:defesas_vazaveis'](ctx),
+  // ⚠️ A colisão, agora escrita. Antes ela era servida pela chave de Gols só
+  // porque o nome coincide; a linha existe para o comportamento não mudar neste
+  // commit, e para a entrada errada ter onde ser apagada no conserto.
+  //
+  // O que ela desenha: "Somados, sofrem X gols por jogo". O que o critério
+  // compara: `home_cs_pct < 35 AND away_cs_pct < 35`, o percentual de jogos sem
+  // sofrer gol de CADA time. Duas perguntas diferentes.
+  'btts:defesas_vazaveis': (ctx) => BUILDERS['goals_over_under:defesas_vazaveis'](ctx),
 
   // ── Dupla chance ───────────────────────────────────────────
-  lado_coberto_forte: (ctx) => BUILDERS.superioridade_tabela(ctx),
-  adversario_limitado: (ctx) => {
+  'double_chance:lado_coberto_forte': (ctx) => BUILDERS['match_winner:superioridade_tabela'](ctx),
+  'double_chance:adversario_limitado': (ctx) => {
     const { adv } = porLado(ctx);
     if (!adv || adv.gf_total == null) return null;
     // Sem posição a frase PARA no aproveitamento, em vez de escrever "está em
@@ -367,6 +390,7 @@ const BUILDERS: Record<string, Builder> = {
  * do que inventar um.
  */
 export function evidenciaDe(
+  mercado: string,
   slug: string,
   numeros: FutebolFixtureNumeros[] | undefined,
   lado: 'home' | 'away' | null,
@@ -381,7 +405,7 @@ export function evidenciaDe(
     acesa,
     linha,
   };
-  const b = BUILDERS[slug];
+  const b = BUILDERS[`${mercado}:${slug}`];
   if (!b) return null;
   try {
     return b(ctx);

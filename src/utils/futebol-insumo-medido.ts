@@ -171,7 +171,7 @@ const FORMAS: Record<
   // "3 vitórias, 1 empate e 1 derrota", montada do `form` da API: verdadeira, e
   // não era o insumo. Empate e derrota não entram na conta que acende.
   //
-  // O gráfico (`SPECS.forma`) desenha os 5 jogos por resultado, e esta frase
+  // O gráfico (`SPECS['match_winner:forma']`) desenha os 5 jogos por resultado, e esta frase
   // conta as vitórias DESSES jogos: mesma grandeza, uma resumindo a outra.
   'match_winner:forma': (v) => {
     if (v.n_wins_last5 == null) return null;

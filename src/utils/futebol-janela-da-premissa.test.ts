@@ -62,17 +62,17 @@ describe('as três premissas de média combinada recortam por mando', () => {
     ['defesas_firmes', 0],
     ['defesas_vazaveis', 0],
   ])('%s usa só os jogos em casa do mandante', (slug, esperada) => {
-    const story = storyDaPremissa(slug, SEIS_JOGOS, 'home', 3.25);
+    const story = storyDaPremissa('goals_over_under', slug, SEIS_JOGOS, 'home', 3.25);
     expect(story?.series[0].media).toBe(esperada);
   });
 
   it('ataque_combinado idem, do outro lado da métrica', () => {
-    const story = storyDaPremissa('ataque_combinado', SEIS_JOGOS, 'home', 3.25);
+    const story = storyDaPremissa('goals_over_under', 'ataque_combinado', SEIS_JOGOS, 'home', 3.25);
     expect(story?.series[0].media).toBe(2);
   });
 
   it('o rótulo nomeia o mando e conta os jogos', () => {
-    const story = storyDaPremissa('defesas_firmes', SEIS_JOGOS, 'home', 3.25);
+    const story = storyDaPremissa('goals_over_under', 'defesas_firmes', SEIS_JOGOS, 'home', 3.25);
     // Título só: qual recorte e sobre quantos jogos. O subtítulo saiu porque
     // dizia a janela (10), que é a mesma em toda a tela e não muda nada aqui.
     expect(story?.series[0].titulo).toBe('Flamengo em casa, 3 jogos');
@@ -86,7 +86,7 @@ describe('as outras sete premissas de gols não olham mando', () => {
   it.each(['ataques_fracos', 'clean_sheets_altos', 'ambos_vazam', 'xg_combinado_alto', 'xg_baixo_combinado'])(
     '%s vê os seis jogos',
     (slug) => {
-      const story = storyDaPremissa(slug, SEIS_JOGOS, 'home', 3.25);
+      const story = storyDaPremissa('goals_over_under', slug, SEIS_JOGOS, 'home', 3.25);
       expect(story?.series[0].titulo).toBe('Flamengo, últimos 6 jogos');
       expect(story?.series[0].jogos).toHaveLength(6);
     },
@@ -104,7 +104,7 @@ describe('a janela é de jogos, e o mando recorta dentro dela', () => {
   );
 
   it('recorta os 10 mais recentes antes de aplicar o mando', () => {
-    const story = storyDaPremissa('defesas_firmes', DOZE, 'home', 3.25);
+    const story = storyDaPremissa('goals_over_under', 'defesas_firmes', DOZE, 'home', 3.25);
 
     expect(story?.series[0].jogos).toHaveLength(5);
     expect(story?.series[0].titulo).toBe('Flamengo em casa, 5 jogos');
@@ -121,7 +121,7 @@ describe('o mando sobrevive onde o critério de fato olha o mando', () => {
     // Afirma o título esperado, e não só a ausência do outro: `not.toContain`
     // passaria com título vazio, que é o modo mais comum de um teste destes
     // deixar de provar o que promete.
-    const story = storyDaPremissa('defesa_fora_solida', SEIS_JOGOS, 'home', null);
+    const story = storyDaPremissa('asian_handicap', 'defesa_fora_solida', SEIS_JOGOS, 'home', null);
     expect(story?.series[0].titulo).toBe('Flamengo em casa, 3 jogos');
     // E o recorte é real: só os três jogos em casa entram, não os seis.
     expect(story?.series[0].jogos).toHaveLength(3);
@@ -132,7 +132,7 @@ describe('base de jogos', () => {
   it('histórico mais curto que o teto ainda rende gráfico', () => {
     // Dois jogos, um em casa e um fora: `defesas_firmes` deriva do único de casa
     // e declara a base, em vez de sumir.
-    const story = storyDaPremissa('defesas_firmes', SEIS_JOGOS.slice(0, 2), 'home', 3.25);
+    const story = storyDaPremissa('goals_over_under', 'defesas_firmes', SEIS_JOGOS.slice(0, 2), 'home', 3.25);
     expect(story?.series[0].jogos).toHaveLength(1);
     expect(story?.series[0].titulo).toBe('Flamengo em casa, 1 jogo');
   });
@@ -141,12 +141,12 @@ describe('base de jogos', () => {
     // Um time que só jogou fora não tem média em casa. Melhor não desenhar do que
     // desenhar zero, que seria "não sofre gol nenhum".
     const soFora = SEIS_JOGOS.filter((r) => !r.em_casa);
-    expect(storyDaPremissa('defesas_firmes', soFora, 'home', 3.25)).toBeNull();
+    expect(storyDaPremissa('goals_over_under', 'defesas_firmes', soFora, 'home', 3.25)).toBeNull();
   });
 
   it('histórico vazio não vira gráfico', () => {
-    expect(storyDaPremissa('defesas_firmes', [], 'home', 3.25)).toBeNull();
-    expect(storyDaPremissa('defesas_firmes', undefined, 'home', 3.25)).toBeNull();
+    expect(storyDaPremissa('goals_over_under', 'defesas_firmes', [], 'home', 3.25)).toBeNull();
+    expect(storyDaPremissa('goals_over_under', 'defesas_firmes', undefined, 'home', 3.25)).toBeNull();
   });
 });
 
@@ -163,11 +163,11 @@ describe('o número da evidência usa a mesma janela do gráfico', () => {
   ];
 
   it('a média do card bate com a do gráfico', () => {
-    const story = storyDaPremissa('xg_baixo_combinado', XG_POR_MANDO, 'home', 3.25);
+    const story = storyDaPremissa('goals_over_under', 'xg_baixo_combinado', XG_POR_MANDO, 'home', 3.25);
     const daSerie = (story?.series ?? []).map((s) => s.media ?? 0);
     const somaDoGrafico = daSerie.reduce((a, b) => a + b, 0);
 
-    const ev = evidenciaDoHistorico('xg_baixo_combinado', XG_POR_MANDO, 'home', 3.25);
+    const ev = evidenciaDoHistorico('goals_over_under', 'xg_baixo_combinado', XG_POR_MANDO, 'home', 3.25);
 
     // Os dois times somam 1,0 + 1,0 = 2,0 na janela inteira. Com o recorte de
     // mando o card diria 2,0 + 1,0 = 3,0, e o gráfico continuaria em 2,0.
@@ -198,18 +198,18 @@ describe('toda premissa declara a janela do modelo', () => {
 
   const RECORTE_ESPECIAL: Record<string, number> = {
     // Contam quantos dos ÚLTIMOS CINCO ficaram de um lado da linha.
-    historico_over: 5,
-    historico_under: 5,
+    'goals_over_under:historico_over': 5,
+    'goals_over_under:historico_under': 5,
     // Saem do `n_wins_last5` do modelo, que é de cinco por construção.
-    forma: 5,
-    invicto_recente: 5,
+    'match_winner:forma': 5,
+    'double_chance:invicto_recente': 5,
   };
 
-  for (const [slug, series] of Object.entries(SPECS)) {
-    it(`${slug} declara competição e recorte`, () => {
+  for (const [par, series] of Object.entries(SPECS)) {
+    it(`${par} declara competição e recorte`, () => {
       for (const spec of series) {
-        expect(spec.competicoes, `${slug} não declara competição`).toBe('qualquer');
-        expect(spec.ultimos, `${slug} não declara recorte`).toBe(RECORTE_ESPECIAL[slug] ?? 10);
+        expect(spec.competicoes, `${par} não declara competição`).toBe('qualquer');
+        expect(spec.ultimos, `${par} não declara recorte`).toBe(RECORTE_ESPECIAL[par] ?? 10);
       }
     });
   }
@@ -229,8 +229,8 @@ describe('toda premissa declara a janela do modelo', () => {
     // `superioridade_xg` porque ela tem gráfico E frase — a maioria das
     // premissas só tem um dos dois, e só onde há os dois é que a divergência
     // aparecia na tela.
-    const story = storyDaPremissa('superioridade_xg', misturado, 'home', null);
-    const ev = evidenciaDoHistorico('superioridade_xg', misturado, 'home', null);
+    const story = storyDaPremissa('match_winner', 'superioridade_xg', misturado, 'home', null);
+    const ev = evidenciaDoHistorico('match_winner', 'superioridade_xg', misturado, 'home', null);
 
     expect(story?.series[0].jogos).toHaveLength(3);
     expect(ev?.texto).toBeTruthy();
@@ -268,25 +268,33 @@ describe('a frase nunca sai de um recorte diferente do gráfico', () => {
   //
   // São as premissas de `SPECS` que não estão em `CRITERIOS`: têm gráfico, não
   // têm prestação de contas, e por isso dependem da frase montada do histórico.
+  //
+  // A lista é de PARES, e a de slugs que estava aqui escondia uma delas. O
+  // filtro abaixo perguntava por `goals_over_under:${slug}` em todas — o mercado
+  // fixo no gabarito —, então `defesas_vazaveis` respondia "tem critério" pelo
+  // critério de GOLS mesmo quando a premissa em questão era a do Ambos marcam,
+  // que não tem nenhum. Com o par, ela aparece onde sempre esteve.
   const COM_GRAFICO_E_SEM_CRITERIO = [
-    'adversario_fragil_fora', 'adversario_limitado', 'ambos_marcam', 'ataque_dos_dois',
-    'defesa_fora_solida', 'defesa_forte', 'forca_mismatch', 'forma',
-    'invicto_recente', 'mando', 'mando_forte', 'raramente_perde_por_2',
-    'superioridade_xg', 'tende_golear',
+    'asian_handicap:adversario_fragil_fora', 'asian_handicap:defesa_fora_solida',
+    'asian_handicap:mando_forte', 'asian_handicap:raramente_perde_por_2',
+    'asian_handicap:tende_golear', 'btts:ambos_marcam', 'btts:ataque_dos_dois',
+    'btts:defesa_forte', 'btts:defesas_vazaveis', 'double_chance:adversario_limitado',
+    'double_chance:invicto_recente', 'match_winner:forca_mismatch', 'match_winner:forma',
+    'match_winner:mando', 'match_winner:superioridade_xg',
   ];
 
   it('a lista cobre TODAS as que dependem da frase, e não uma amostra', () => {
     // Sem isto, alguém acrescenta premissa sem critério e a guarda acima segue
     // verde por não conhecê-la.
-    const comGrafico = Object.keys(SPECS);
-    const semCriterio = comGrafico.filter((slug) => !CRITERIOS[`goals_over_under:${slug}`]);
+    const semCriterio = Object.keys(SPECS).filter((par) => !CRITERIOS[par]);
     expect([...COM_GRAFICO_E_SEM_CRITERIO].sort()).toEqual([...semCriterio].sort());
   });
 
-  for (const slug of COM_GRAFICO_E_SEM_CRITERIO) {
-    it(`${slug} tem frase vinda do gráfico`, () => {
-      const story = storyDaPremissa(slug, doisLados, 'home', 2.5);
-      const ev = evidenciaDoHistorico(slug, doisLados, 'home', 2.5);
+  for (const par of COM_GRAFICO_E_SEM_CRITERIO) {
+    const [mercado, slug] = par.split(':');
+    it(`${par} tem frase vinda do gráfico`, () => {
+      const story = storyDaPremissa(mercado, slug, doisLados, 'home', 2.5);
+      const ev = evidenciaDoHistorico(mercado, slug, doisLados, 'home', 2.5);
       // Se há gráfico, há frase — e é da mesma amostra.
       if (!story) return;
       expect(ev?.texto, `${slug} ficou sem frase e cairia no perfil de temporada`).toBeTruthy();
@@ -329,14 +337,14 @@ describe('a premissa que compara ataque com defesa se explica', () => {
   ];
 
   it('cada gráfico diz qual métrica desenha', () => {
-    const story = storyDaPremissa('forca_mismatch', duelo, 'home', null);
+    const story = storyDaPremissa('match_winner', 'forca_mismatch', duelo, 'home', null);
     expect(story?.series).toHaveLength(2);
     expect(story!.series[0].titulo).toContain('gols marcados');
     expect(story!.series[1].titulo).toContain('gols sofridos');
   });
 
   it('cada gráfico carrega a própria explicação, e não há uma só para os dois', () => {
-    const story = storyDaPremissa('forca_mismatch', duelo, 'home', null);
+    const story = storyDaPremissa('match_winner', 'forca_mismatch', duelo, 'home', null);
     // Vazio na story: uma frase só embaixo dos dois estaria errada para um.
     expect(story!.comoLer).toBe('');
     expect(story!.series[0].comoLer).toContain('marcou');
@@ -344,13 +352,13 @@ describe('a premissa que compara ataque com defesa se explica', () => {
   });
 
   it('a frase usa o verbo de cada métrica', () => {
-    const ev = evidenciaDoHistorico('forca_mismatch', duelo, 'home', null);
+    const ev = evidenciaDoHistorico('match_winner', 'forca_mismatch', duelo, 'home', null);
     expect(ev?.texto).toMatch(/marca/);
     expect(ev?.texto).toMatch(/sofre/);
   });
 
   it('onde as séries medem a mesma coisa, a explicação continua sendo uma só', () => {
-    const story = storyDaPremissa('defesas_firmes', duelo, 'home', 2.5);
+    const story = storyDaPremissa('goals_over_under', 'defesas_firmes', duelo, 'home', 2.5);
     expect(story!.comoLer).not.toBe('');
     expect(story!.series[0].titulo).not.toContain('gols sofridos');
   });
