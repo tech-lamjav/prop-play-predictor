@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { OportunidadesFiltros, type MarketFilter } from './OportunidadesFiltros';
-import { ESTADOS_DO_JOGO, type FiltroDeValor } from '@/utils/futebol-score';
+import { ESTADOS_DO_JOGO } from '@/utils/futebol-score';
 
 const props = {
   mercado: 'all' as MarketFilter,
@@ -14,8 +14,6 @@ const props = {
   competicoesSelecionadas: null,
   onCompeticoesChange: vi.fn(),
   competicaoOptions: [{ value: 'brasileirao', label: 'Brasileirão' }],
-  valor: 'todos' as FiltroDeValor,
-  onValorChange: vi.fn(),
 };
 
 describe('OportunidadesFiltros', () => {
@@ -27,7 +25,6 @@ describe('OportunidadesFiltros', () => {
     expect(screen.getByRole('button', { name: /Estado Todos/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Faixa Alta e Média/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Competição Todas/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Valor Todos/i })).toBeInTheDocument();
   });
 
   // O estado do jogo virou filtro de marcar vários (era o interruptor "Só jogos
@@ -101,16 +98,6 @@ describe('OportunidadesFiltros', () => {
     expect(todas).toHaveAttribute('data-state', 'checked');
     await userEvent.click(todas);
     expect(onFaixasChange).toHaveBeenCalledWith([]);
-  });
-
-  // O filtro de valor é seleção ÚNICA: clicar numa opção troca, não acumula.
-  it('troca a faixa de valor por seleção única', async () => {
-    const onValorChange = vi.fn();
-    render(<OportunidadesFiltros {...props} onValorChange={onValorChange} />);
-
-    await userEvent.click(screen.getByRole('button', { name: /Valor Todos/i }));
-    await userEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Acima do justo' }));
-    expect(onValorChange).toHaveBeenCalledWith('positivo');
   });
 
   it('abre com todos os campeonatos marcados e permite tirar um sem fechar o seletor', async () => {

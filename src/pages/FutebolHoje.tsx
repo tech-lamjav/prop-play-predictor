@@ -285,14 +285,16 @@ function OppCard({ o, to, aoClicar, aoAparecer }: { o: FutebolValueBoardRow; to:
     // longos) empurrava só o botão dela. Com o botão em `mt-auto`, a fileira
     // inteira termina na mesma linha.
     <Link ref={refDeImpressao} to={to} onClick={aoClicar} className={`${CARD} group flex h-full flex-col p-4 text-left hover:shadow-sm hover:border-line-2 transition w-full`}>
-      <div className="flex items-start justify-between gap-3">
-        {/* A esquerda do topo é uma PILHA, e não uma linha, por causa do Score.
-            O número de 26px deixa o bloco da direita com quase o dobro da
-            altura das etiquetas, e com as duas colunas começando no topo
-            sobrava um vão embaixo delas. A competição ocupa esse vão com o que
-            o cartão não dizia: de que campeonato é a oportunidade. Até a #478
-            dava para supor pelo escudo, porque quase tudo era brasileiro; com
-            oito competições ligadas, supor deixou de funcionar. */}
+      {/* O cartão é de DUAS COLUNAS, e a da esquerda leva o texto inteiro —
+          etiquetas, competição, aposta, times e data.
+
+          Foi a segunda tentativa. Na primeira só as etiquetas e a competição
+          ficavam aqui, e a aposta vinha depois da linha inteira: como a coluna
+          da direita passou a ter quatro alturas (rótulo, Score de 26px, chance e
+          odd), a linha herdava a altura dela e a aposta começava lá embaixo, com
+          um vão de uma linha e meia no meio do cartão. Com o texto todo de um
+          lado, cada coluna tem a própria altura e não há vão nenhum. */}
+      <div className="flex items-start justify-between gap-3 sm:grow">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
             <span className="px-1.5 h-5 inline-flex items-center rounded text-[10px] font-semibold uppercase tracking-[0.1em] bg-canvas-2 text-ink-2">{marketLabel(o.market)}</span>
@@ -307,36 +309,45 @@ function OppCard({ o, to, aoClicar, aoAparecer }: { o: FutebolValueBoardRow; to:
             <LigaCrest slug={o.competition} size={16} />
             <span className="truncate">{competitionLabel(o.competition)}</span>
           </div>
+          <div className="text-[16px] font-semibold tracking-tight mt-2 text-ink">{pick}</div>
+          <div className="flex items-center gap-1.5 text-[12px] mt-1 text-ink-3 min-w-0">
+            <Crest teamId={o.home_team_id} name={o.home_team_name} size={16} />
+            <span className="truncate">{o.home_team_name} × {o.away_team_name}</span>
+            <Crest teamId={o.away_team_id} name={o.away_team_name} size={16} />
+          </div>
+          {/* A data desceu para a linha de baixo (#519). Ela dividia a linha com
+              os nomes dos times, e num confronto de nomes longos era ela ou o
+              nome que perdia espaço — o `truncate` comia o nome para caber a
+              hora. */}
+          <div className="text-[12px] mt-1 text-ink-3">{fmtDayTime(o.kickoff_utc)}</div>
         </div>
+        {/* Chance e Odd moram AQUI, embaixo do Score, e não numa faixa no pé do
+            cartão. Eram três números lado a lado lá embaixo; com a saída do
+            valor (#519) sobraram dois, e duas colunas onde cabiam três abriam um
+            vão no meio do cartão. Empilhados sob o Score eles viram ficha
+            técnica da leitura — que é o papel deles — e o cartão encurta. */}
         <div className="text-right shrink-0">
           <div className="text-[9px] uppercase tracking-[0.14em] font-semibold text-ink-3">Score</div>
           <div className="text-[26px] font-bold tabular-nums tracking-tight leading-none mt-0.5 text-forest">{o.score}</div>
+          <div className="mt-2.5 grid gap-1">
+            {/* Rótulo à esquerda, número à direita, como a tabelinha da bancada:
+                os valores alinham numa coluna só. */}
+            <div className="flex items-baseline justify-end gap-2">
+              <span className="text-[9px] uppercase tracking-[0.14em] font-semibold text-ink-3">Chance</span>
+              <span className="text-[13px] font-bold tabular-nums text-ink">{chance != null ? `${chance}%` : '—'}</span>
+            </div>
+            <div className="flex items-baseline justify-end gap-2">
+              <span className="text-[9px] uppercase tracking-[0.14em] font-semibold text-ink-3">Odd</span>
+              <span className="text-[13px] font-bold tabular-nums text-ink">{o.best_odd.toFixed(2)}</span>
+            </div>
+          </div>
         </div>
       </div>
-      <div className="text-[16px] font-semibold tracking-tight mt-2 text-ink">{pick}</div>
-      <div className="flex items-center gap-1.5 text-[12px] mt-1 text-ink-3">
-        <Crest teamId={o.home_team_id} name={o.home_team_name} size={16} />
-        <span className="truncate">{o.home_team_name} × {o.away_team_name}</span>
-        <Crest teamId={o.away_team_id} name={o.away_team_name} size={16} />
-        <span className="shrink-0 opacity-80">· {fmtDayTime(o.kickoff_utc)}</span>
-      </div>
-      {/* `sm:grow` é o que empurra o botão para o pé do cartão: este bloco
-          estica e ocupa a sobra, em vez de o botão ganhar margem automática.
-          É aqui e não no botão porque margem `auto` no botão não convive com
-          uma margem mínima — ou uma ou outra —, e a primeira tentativa resolveu
-          isso com `pt-3` NO BOTÃO: padding onde eu queria espaço acima. Com
-          altura fixa, o padding come o botão por dentro e derruba o texto do
-          centro. Foi assim que ele subiu torto para a homologação. */}
-      <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-line sm:grow">
-        <div>
-          <div className="text-[9px] uppercase tracking-[0.14em] font-semibold text-ink-3">Chance</div>
-          <div className="text-[15px] font-bold tabular-nums text-ink mt-0.5">{chance != null ? `${chance}%` : '—'}</div>
-        </div>
-        <div>
-          <div className="text-[9px] uppercase tracking-[0.14em] font-semibold text-ink-3">Odd</div>
-          <div className="text-[15px] font-bold tabular-nums text-ink mt-0.5">{o.best_odd.toFixed(2)}</div>
-        </div>
-      </div>
+      {/* O `sm:grow` está na LINHA das duas colunas, acima: ela estica e ocupa a
+          sobra, e é o que mantém os botões da fileira terminando na mesma
+          altura. No botão não serve — margem `auto` não convive com uma margem
+          mínima, e resolver com padding no botão come o texto por dentro e o
+          derruba do centro. Foi assim que ele subiu torto para a homologação. */}
       <VerAnaliseCTA className="mt-3" />
     </Link>
   );
@@ -660,11 +671,11 @@ export default function FutebolHoje() {
     () => selecionarJogosDaGrade(gameList, agora),
     [gameList, agora],
   );
+  // As duas contagens da régua, lado a lado nos KPIs. Saem da MESMA lista e da
+  // mesma função, para não existir a chance de uma contar sobre um recorte e a
+  // outra sobre outro — que foi o defeito que juntou `emDestaque` num lugar só.
   const alta = oppsByFixture.filter((o) => faixaTone(o.faixa) === 'alta').length;
-  // melhor valor entre as oportunidades realmente exibidas, não o edge bruto de longshots
-  // (`emDestaque`, derivada junto com a conta do convite: eram dois filtros
-  // idênticos no mesmo arquivo, e dois filtros idênticos acabam divergindo.)
-  const melhorValor = emDestaque.length ? Math.round(Math.max(...emDestaque.map((o) => o.edge)) * 100) : null;
+  const media = oppsByFixture.filter((o) => faixaTone(o.faixa) === 'media').length;
 
   // contagem de jogos por dia (BRT) — pros chips do stepper
   const gamesByDay = useMemo(() => {
@@ -758,16 +769,22 @@ export default function FutebolHoje() {
                 do modelo: sem acesso elas chegam nulas, e imprimir "0" e "—"
                 afirmaria sobre o dia algo que a tela não sabe. */}
             <Kpi label="Faixa Alta" value={loading ? '—' : locked ? <ValorBloqueado /> : alta} sub="maior confiança" anchor />
-            {/* Verde é promessa. Num dia em que a melhor diferença do dia é
-                NEGATIVA — e depois da virada de 03/09 isso é o normal, não a
-                exceção — o cartão verde dizia boa notícia com número de má
-                notícia. O tom segue o sinal, e o rótulo deixa de prometer valor
-                onde ele não existe. */}
+            {/* Este cartão era a maior diferença do dia para o preço justo, e
+                antes disso "Melhor valor" — o rótulo alternava conforme o sinal,
+                porque num dia de diferença negativa (o normal desde 03/09) o
+                verde dizia boa notícia com número de má notícia.
+
+                Com o valor fora da tela (#519) ele perdeu o objeto: o número
+                não existe mais em lugar nenhum do produto, e um KPI sozinho não
+                pode ser o único a mostrá-lo. No lugar entra a contagem da faixa
+                Média, que é a companheira natural da faixa Alta ao lado — as
+                duas leem a mesma régua e respondem a mesma pergunta: quanto do
+                dia sustenta a leitura. */}
             <Kpi
-              label={melhorValor != null && melhorValor < 0 ? 'Preço mais perto do justo' : 'Melhor valor'}
-              value={loading ? '—' : locked ? <ValorBloqueado /> : melhorValor == null ? '—' : `${melhorValor >= 0 ? '+' : '−'}${Math.abs(melhorValor)}%`}
-              sub="maior diferença do dia"
-              tone={melhorValor != null && melhorValor >= 0 ? 'green' : undefined}
+              label="Faixa Média"
+              value={loading ? '—' : locked ? <ValorBloqueado /> : media}
+              sub="sustentação parcial"
+              tone="amber"
             />
           </div>
         </div>

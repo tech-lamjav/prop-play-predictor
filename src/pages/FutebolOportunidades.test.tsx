@@ -112,9 +112,6 @@ describe('FutebolOportunidades · o valor não é desenhado', () => {
   it('a tabela não tem coluna Valor, e mantém Chance e Odd', () => {
     const { container } = renderLista();
 
-    // Escopado à LISTA de propósito: o seletor de Valor na barra de filtros
-    // ainda existe e sai no #520. Afirmar sobre a tela inteira aqui faria este
-    // teste cobrar de um ticket o que é dever do outro.
     const lista = container.querySelector('[data-tour="fut-opp-lista"]');
     expect(lista).not.toBeNull();
     const naLista = within(lista as HTMLElement);
@@ -122,6 +119,16 @@ describe('FutebolOportunidades · o valor não é desenhado', () => {
     expect(naLista.getAllByText('Chance').length).toBeGreaterThan(0);
     expect(naLista.getAllByText('Odd').length).toBeGreaterThan(0);
     expect(naLista.queryAllByText('Valor')).toHaveLength(0);
+  });
+
+  it('a palavra valor não aparece em lugar nenhum da tela', () => {
+    // Esta afirmação já foi escopada só à lista, porque o seletor de Valor
+    // continuava na barra de filtros. Com ele fora (#520) dá para cobrar a tela
+    // inteira — que é o que se quer de verdade: nem filtro, nem título, nem
+    // rodapé, nem legenda falando de um número que não existe mais.
+    renderLista();
+
+    expect(screen.queryAllByText(/valor/i)).toHaveLength(0);
   });
 
   it('a oportunidade continua na tela: esconder o número não esconde a linha', () => {
