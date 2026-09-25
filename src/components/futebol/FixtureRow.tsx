@@ -219,17 +219,28 @@ export function FixtureRow({
           altura da leitura pronta. A lista fica mais alta do que era — e imóvel,
           que é o que se quis comprar. */}
       <div data-testid="linha-coluna-leitura" className="w-[96px] sm:w-[160px] shrink-0 text-right min-w-0 grid">
+        {/* Os fantasmas espelham as linhas REAIS, e as duas telas têm linhas
+            diferentes: no desktop mercado, aposta e odd; no celular, a aposta em
+            duas linhas e nada de odd. Espelhar errado é pior que não reservar —
+            a reserva fica menor que o conteúdo e a agenda volta a pular. */}
         <div aria-hidden className="invisible col-start-1 row-start-1">
           <span className="hidden sm:block text-[9px] uppercase tracking-[0.14em] font-semibold">M</span>
           <span className="block sm:mt-0.5 text-[11.5px] sm:text-[12.5px] font-semibold">M</span>
-          <span className="block mt-px text-[10.5px] sm:text-[11px] tabular-nums">M</span>
+          <span className="block sm:hidden text-[11.5px] font-semibold">M</span>
+          <span className="hidden sm:block mt-px text-[11px] tabular-nums">M</span>
         </div>
-        <div className="col-start-1 row-start-1">
+        {/* ⚠️ `min-w-0` é o que faz o `truncate` lá dentro funcionar.
+            Item de grade nasce com `min-width: auto`, e isso o proíbe de
+            encolher abaixo do próprio conteúdo: a coluna tem largura fixa, mas
+            o item crescia por fora dela e a aposta ("Ambos marcam: Sim") passava
+            por cima do selo do Score. Os `truncate` das linhas de baixo já
+            estavam lá o tempo todo — sem isto eles nunca chegavam a agir. */}
+        <div className="col-start-1 row-start-1 min-w-0">
         {leituraCarregando ? (
-          // As barras espelham as linhas que vão chegar: no celular a aposta e
-          // a odd; no desktop, o rótulo do mercado antes delas. Elas não mandam
-          // mais na altura — os fantasmas mandam —, então aqui só precisam
-          // caber.
+          // As barras espelham as linhas que vão chegar: no celular as duas
+          // linhas da aposta; no desktop, o mercado, a aposta e a odd. Elas não
+          // mandam mais na altura — os fantasmas mandam —, então aqui só
+          // precisam caber.
           <div data-testid="linha-leitura-carregando" aria-busy="true" className="flex flex-col items-end">
             <Skeleton className="hidden sm:block h-[14px] w-[52px] bg-canvas-2" />
             <Skeleton className="h-[17px] sm:h-[18px] sm:mt-0.5 w-[74px] bg-canvas-2" />
@@ -252,12 +263,20 @@ export function FixtureRow({
           </span>
         ) : best ? (
           <>
-            <span className="block sm:mt-0.5 text-[11.5px] sm:text-[12.5px] font-semibold text-ink truncate">
+            {/* No CELULAR a aposta quebra em duas linhas; no desktop trunca.
+                Em 96px de coluna, "Ambos marcam: Não" truncava em "Ambos
+                marca…" — e o que sobrava não identificava a aposta, que é a
+                única coisa que esta coluna existe para dizer. Duas linhas cabem
+                porque a odd saiu daqui (ver abaixo), então a altura não muda. */}
+            <span className="block sm:mt-0.5 text-[11.5px] sm:text-[12.5px] font-semibold text-ink line-clamp-2 sm:truncate">
               {pickLabel(best, fixture.home_team_name, fixture.away_team_name)}
             </span>
-            <span className="block mt-px text-[10.5px] sm:text-[11px] tabular-nums truncate" style={{ color: '#8d8672' }}>
+            {/* A odd é só do DESKTOP. No celular ela disputava a coluna com a
+                aposta e ganhava, sobrando reticências no lugar do que importa.
+                Ela continua a um toque de distância, na tela do jogo. */}
+            <span className="hidden sm:block mt-px text-[11px] tabular-nums truncate" style={{ color: '#8d8672' }}>
               odd {best.best_odd.toFixed(2)}
-              {chance != null ? <span className="hidden sm:inline">{` · ${chance}% chance`}</span> : null}
+              {chance != null ? ` · ${chance}% chance` : null}
             </span>
           </>
         ) : (

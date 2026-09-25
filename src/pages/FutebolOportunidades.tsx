@@ -19,7 +19,7 @@ import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 import { competitionLabel, sortCompetitions, fixtureScopesFor } from '@/utils/futebol-competitions';
 import { VerAnaliseCTA } from '@/components/futebol/VerAnaliseCTA';
 import {
-  pickLabel, marketLabel,
+  pickLabel, marketLabel, marketShort,
   faixaBadgeCls, faixaWord, faixaTone, chancePct,
   opcoesDeFaixa, passaNoFiltroDeFaixas, versaoDaJanela, compararOportunidades,
   FAIXAS_FILTRO_PADRAO, type Faixa,
@@ -199,12 +199,21 @@ function OppMobileCard({ o, to, locked, result, homeGoals, awayGoals, canRegiste
             <Crest teamId={o.away_team_id} name={o.away_team_name} size={24} />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 flex-wrap">
+            {/* UMA linha, e não `flex-wrap`. Com três etiquetas — mercado,
+                faixa e o selo do resultado — a terceira caía sozinha para a
+                linha de baixo, e o cartão ficava com um GREEN órfão embaixo de
+                tudo.
+
+                Quem cede é o MERCADO, que é a mais longa e a menos decisiva das
+                três: ela trunca, e faixa e resultado ficam inteiros. O nome
+                curto é o mesmo que a agenda usa no celular, pelo mesmo motivo —
+                "Gols (Over/Under)" em 9px com tracking vira uma tira de ruído. */}
+            <div className="flex items-center gap-1.5 min-w-0">
               {!bloqueada && (
-                <span className="px-1.5 h-5 inline-flex items-center rounded text-[9px] font-semibold uppercase tracking-[0.08em] bg-canvas-2 text-ink-2">{marketLabel(o.market)}</span>
+                <span className="min-w-0 truncate px-1.5 h-5 inline-flex items-center rounded text-[9px] font-semibold uppercase tracking-[0.08em] bg-canvas-2 text-ink-2">{marketShort(o.market)}</span>
               )}
               {!bloqueada && o.faixa != null && (
-                <span className={`px-1.5 h-5 inline-flex items-center rounded text-[9px] font-bold uppercase tracking-[0.1em] ${faixaBadgeCls(o.faixa)}`}>{faixaWord(o.faixa)}</span>
+                <span className={`shrink-0 px-1.5 h-5 inline-flex items-center rounded text-[9px] font-bold uppercase tracking-[0.1em] ${faixaBadgeCls(o.faixa)}`}>{faixaWord(o.faixa)}</span>
               )}
               {result && <ResultBadge r={result} />}
             </div>
