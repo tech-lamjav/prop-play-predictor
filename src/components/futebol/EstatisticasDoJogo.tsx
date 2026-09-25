@@ -226,6 +226,9 @@ export function EstatisticasDoJogo({
                   className={cn('flex min-w-0', i > 0 && 'pt-4 border-t md:pt-0 md:pl-3 md:border-t-0 md:border-l border-line')}
                   style={{ flexGrow: s.jogos.length, flexBasis: 0 }}
                 >
+                  {/* A linha DESENHADA sobre as barras. Ela existia como
+                      controle e como cor, e não como traço — que é o elemento
+                      mais reconhecível do gráfico que serviu de referência. */}
                   <BlocoSerie
                     s={s}
                     teto={teto}
@@ -234,6 +237,7 @@ export function EstatisticasDoJogo({
                     comPlacar
                     rotuloDentro
                     mostraComoLer={false}
+                    referencia={referencia == null ? undefined : { valor: referencia, label: `linha ${fmtLinha(referencia)}` }}
                   />
                 </div>
               ))}

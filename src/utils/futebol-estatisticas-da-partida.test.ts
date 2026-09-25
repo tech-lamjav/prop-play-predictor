@@ -191,6 +191,16 @@ describe('a linha é referência, e repinta as barras', () => {
     expect(contagem).toEqual({ acima: 2, de: 4 });
   });
 
+  it('com linha, a MÉDIA sai do gráfico', () => {
+    // Os dois são tracejados. Deixar os dois faz quem arrasta a régua ver um
+    // traço parado e concluir que a régua não funciona.
+    const comLinha = graficoDaEstatistica(escolha({ mercado: 'goals_over_under', linha: 2.5 }), QUATRO);
+    const semLinha = graficoDaEstatistica(escolha({ mercado: 'goals_over_under', linha: null }), QUATRO);
+
+    expect(comLinha.series[0].mostraMedia).toBe(false);
+    expect(semLinha.series[0].mostraMedia).toBe(true);
+  });
+
   it('sem linha não há contagem', () => {
     const { contagem } = graficoDaEstatistica(
       escolha({ mercado: 'goals_over_under', linha: null }),

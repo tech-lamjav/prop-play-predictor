@@ -197,6 +197,11 @@ export function graficoDaEstatistica(
   const series = cruas.map((s) => ({
     ...s,
     comoLer: COMO_LER[doMercado.metrica],
+    // ⚠️ A média SAI quando existe linha. Os dois são tracejados, e dois
+    // tracejados com significados diferentes no mesmo gráfico é pior que
+    // nenhum: quem arrasta a régua vê um traço que não se mexe e conclui que a
+    // régua não funciona.
+    mostraMedia: referencia == null,
     jogos:
       referencia == null
         ? s.jogos
