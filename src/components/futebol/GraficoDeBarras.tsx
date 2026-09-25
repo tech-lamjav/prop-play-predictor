@@ -53,7 +53,10 @@ const COR_RES: Record<'V' | 'E' | 'D', { bg: string; fg: string }> = {
  */
 export function SerieResultados({ s, corPor = 'resultado' }: { s: SerieHistorico; corPor?: 'resultado' | 'valor' }) {
   return (
-    <div className="flex flex-wrap gap-1.5">
+    // Respiro de 4px, e não 6: junto com a caixa de 84px, dez jogos somam 876px
+    // — que é exatamente a largura que NOVE quadros de 92px já ocupavam. Ou
+    // seja, cabe numa linha na mesma tela em que hoje o décimo quebra.
+    <div className="flex flex-wrap gap-1">
       {s.jogos.map((j) => {
         // Em "ambos marcam" a cor não é vitória nem derrota: é o fato ter
         // acontecido ou não. Pintar de verde uma vitória em que só um time
@@ -66,7 +69,7 @@ export function SerieResultados({ s, corPor = 'resultado' }: { s: SerieHistorico
             // "CRB" ao lado de "Athletic Club" dava quadros de tamanhos
             // diferentes na mesma fileira — a forma variando por um motivo que
             // não tem nada a ver com o que o quadro informa.
-            className="rounded-lg px-2 py-1.5 w-[92px] shrink-0"
+            className="rounded-lg px-2 py-1.5 w-[84px] shrink-0"
             style={{ background: c.bg }}
             title={`${dia(j.data)} · ${j.emCasa ? 'em casa' : 'fora'} contra ${j.adversario}`}
           >
