@@ -3,7 +3,12 @@ import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
 import { usePerfilDeclarado } from '@/hooks/use-perfil-declarado';
 import { marcarPesquisaPendente } from '@/hooks/use-pesquisa-pendente';
-import { aberturaPara, deveAbrirAPesquisa, type RespostaDoPerfil } from '@/utils/perfil-declarado';
+import {
+  aberturaPara,
+  deveAbrirAPesquisa,
+  voltandoDeUmPagamento,
+  type RespostaDoPerfil,
+} from '@/utils/perfil-declarado';
 import { PesquisaDePerfilModal } from './PesquisaDePerfilModal';
 
 /**
@@ -25,6 +30,17 @@ import { PesquisaDePerfilModal } from './PesquisaDePerfilModal';
 const CHAVE_DE_ADIAMENTO = 'sb_pesquisa_perfil_adiada';
 
 /**
+ * Voltou de um pagamento nesta sessão.
+ *
+ * Precisa de memória própria porque **o endereço esquece antes de a pesquisa
+ * abrir**: a tela do bolão reescreve a URL sem `success=true` assim que mostra
+ * a boas-vindas premium, e o pop-up só abre 1200ms depois. Sem isto, a pesquisa
+ * subiria em cima da conclusão do pagamento — que é a única interrupção que
+ * custa dinheiro.
+ */
+const CHAVE_DE_PAGAMENTO = 'sb_pesquisa_perfil_pos_pagamento';
+
+/**
  * Atraso antes de abrir, para não estourar no primeiro paint.
  *
  * O mesmo motivo do cross-sell, e um pouco maior que o dos tours (700ms) de
@@ -33,17 +49,17 @@ const CHAVE_DE_ADIAMENTO = 'sb_pesquisa_perfil_adiada';
  */
 const ATRASO_MS = 1200;
 
-function jaAdiouNestaSessao(): boolean {
+function marcado(chave: string): boolean {
   try {
-    return sessionStorage.getItem(CHAVE_DE_ADIAMENTO) === '1';
+    return sessionStorage.getItem(chave) === '1';
   } catch {
     return false;
   }
 }
 
-function lembrarAdiamentoNestaSessao(): void {
+function marcar(chave: string): void {
   try {
-    sessionStorage.setItem(CHAVE_DE_ADIAMENTO, '1');
+    sessionStorage.setItem(chave, '1');
   } catch {
     /* sessionStorage indisponível — a pergunta volta na próxima navegação, e
        isso é melhor do que derrubar a tela por causa de uma memória de sessão */
@@ -53,25 +69,39 @@ function lembrarAdiamentoNestaSessao(): void {
 export const PesquisaDePerfil: React.FC = () => {
   const location = useLocation();
   const { user, isLoading } = useAuth();
-  const { carregando, respondeu, adiar, responder } = usePerfilDeclarado(user?.id);
+  const { carregando, respondeu, leituraFalhou, adiar, responder } = usePerfilDeclarado(user?.id);
 
-  const [adiouNestaSessao, setAdiouNestaSessao] = useState(jaAdiouNestaSessao);
+  const [adiouNestaSessao, setAdiouNestaSessao] = useState(() => marcado(CHAVE_DE_ADIAMENTO));
   const [aberto, setAberto] = useState(false);
 
   const temPessoa = !isLoading && !!user;
-  const sabendo = temPessoa && !carregando;
+
+  // O pagamento é visto uma vez, na chegada, e lembrado pelo resto da sessão —
+  // o endereço perde a query antes de o pop-up abrir.
+  const [pagamentoNestaSessao, setPagamentoNestaSessao] = useState(() =>
+    marcado(CHAVE_DE_PAGAMENTO),
+  );
+  useEffect(() => {
+    if (!voltandoDeUmPagamento(location.search)) return;
+    marcar(CHAVE_DE_PAGAMENTO);
+    setPagamentoNestaSessao(true);
+  }, [location.search]);
 
   const deveAbrir =
-    sabendo &&
+    !carregando &&
     deveAbrirAPesquisa({
-      logada: true,
-      respondeu,
+      logada: temPessoa,
+      // Falha de leitura cala a pesquisa como se já tivesse sido respondida,
+      // mas as duas coisas chegam separadas do hook de propósito: uma é saber
+      // que não, a outra é não saber.
+      respondeu: respondeu || leituraFalhou,
       adiouNestaSessao,
+      pagamentoNestaSessao,
       pathname: location.pathname,
       search: location.search,
     });
 
-  // O sinal que segura as dezesseis tours. Ele liga ANTES do atraso, e liga
+  // O sinal que segura os dezessete tours. Ele liga ANTES do atraso, e liga
   // também enquanto a leitura não voltou: sem isso um tour de 700ms começaria
   // debaixo de um pop-up de 1200ms, que é a colisão que este bloqueio existe
   // para impedir.
@@ -100,12 +130,12 @@ export const PesquisaDePerfil: React.FC = () => {
   };
 
   const aoPular = () => {
-    lembrarAdiamentoNestaSessao();
+    marcar(CHAVE_DE_ADIAMENTO);
     setAdiouNestaSessao(true);
     void adiar();
   };
 
-  if (!sabendo) return null;
+  if (!temPessoa || carregando) return null;
 
   return (
     <PesquisaDePerfilModal

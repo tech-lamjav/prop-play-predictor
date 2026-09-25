@@ -120,6 +120,15 @@ describe('deveAbrirAPesquisa', () => {
     expect(deveAbrirAPesquisa({ ...BASE, pathname: '/bolao/42' })).toBe(true);
     expect(deveAbrirAPesquisa({ ...BASE, pathname: '/bolao/42', search: '?aba=palpites' })).toBe(true);
   });
+
+  // A tela do bolão reescreve o endereço sem a query assim que mostra a
+  // boas-vindas premium, e o pop-up só abre 1200ms depois. Olhar só a query
+  // deixaria a pesquisa subir exatamente em cima da conclusão do pagamento.
+  it('o pagamento continua barrando depois que o endereço esquece a query', () => {
+    expect(
+      deveAbrirAPesquisa({ ...BASE, pathname: '/bolao/42', pagamentoNestaSessao: true }),
+    ).toBe(false);
+  });
 });
 
 describe('aberturaPara', () => {

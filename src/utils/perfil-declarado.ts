@@ -52,17 +52,25 @@ export interface RespostaDoPerfil {
 // O catálogo
 // ============================================================================
 
-export interface OpcaoDaPergunta {
+export interface OpcaoDaPergunta<C extends string = string> {
   /** O que fica gravado. Fixo para sempre. */
-  readonly codigo: string;
+  readonly codigo: C;
   /** O que a pessoa lê. Livre para reescrever. */
   readonly texto: string;
 }
 
-export interface PerguntaDaPesquisa {
+/**
+ * O parâmetro de tipo existe para o compilador cobrar os códigos.
+ *
+ * Sem ele, `codigo` seria `string` e um erro de digitação no catálogo só
+ * apareceria no teste de sincronia — ou, pior, em produção, como uma opção que
+ * o `check` da tabela recusa na hora de gravar. Com ele, catálogo e lista de
+ * códigos não têm como divergir.
+ */
+export interface PerguntaDaPesquisa<C extends string = string> {
   readonly campo: 'objetivo' | 'frequencia';
   readonly enunciado: string;
-  readonly opcoes: readonly OpcaoDaPergunta[];
+  readonly opcoes: readonly OpcaoDaPergunta<C>[];
 }
 
 /**
@@ -74,28 +82,29 @@ export interface PerguntaDaPesquisa {
  * análises já se declara na primeira pergunta; misturar os dois eixos custaria
  * o corte de volume, que é justamente o que conversa com ativação e retenção.
  */
-export const PERGUNTAS: readonly PerguntaDaPesquisa[] = [
-  {
-    campo: 'objetivo',
-    enunciado: 'O que você mais quer conseguir com a Smart Betting?',
-    opcoes: [
-      { codigo: 'oportunidades_prontas', texto: 'Receber oportunidades prontas' },
-      { codigo: 'entender_o_porque', texto: 'Entender o porquê de cada aposta que eu faço' },
-      { codigo: 'economizar_tempo', texto: 'Economizar tempo na análise' },
-      { codigo: 'aprender_a_analisar', texto: 'Aprender a analisar melhor por conta própria' },
-    ],
-  },
-  {
-    campo: 'frequencia',
-    enunciado: 'Com que frequência você aposta hoje?',
-    opcoes: [
-      { codigo: 'comecando', texto: 'Ainda estou começando' },
-      { codigo: 'de_vez_em_quando', texto: 'De vez em quando' },
-      { codigo: 'toda_semana', texto: 'Toda semana' },
-      { codigo: 'quase_todo_dia', texto: 'Quase todo dia' },
-    ],
-  },
-];
+export const PERGUNTA_DO_OBJETIVO: PerguntaDaPesquisa<Objetivo> = {
+  campo: 'objetivo',
+  enunciado: 'O que você mais quer conseguir com a Smart Betting?',
+  opcoes: [
+    { codigo: 'oportunidades_prontas', texto: 'Receber oportunidades prontas' },
+    { codigo: 'entender_o_porque', texto: 'Entender o porquê de cada aposta que eu faço' },
+    { codigo: 'economizar_tempo', texto: 'Economizar tempo na análise' },
+    { codigo: 'aprender_a_analisar', texto: 'Aprender a analisar melhor por conta própria' },
+  ],
+};
+
+export const PERGUNTA_DA_FREQUENCIA: PerguntaDaPesquisa<Frequencia> = {
+  campo: 'frequencia',
+  enunciado: 'Com que frequência você aposta hoje?',
+  opcoes: [
+    { codigo: 'comecando', texto: 'Ainda estou começando' },
+    { codigo: 'de_vez_em_quando', texto: 'De vez em quando' },
+    { codigo: 'toda_semana', texto: 'Toda semana' },
+    { codigo: 'quase_todo_dia', texto: 'Quase todo dia' },
+  ],
+};
+
+export const PERGUNTAS = [PERGUNTA_DO_OBJETIVO, PERGUNTA_DA_FREQUENCIA] as const;
 
 // ============================================================================
 // A abertura
@@ -188,8 +197,15 @@ export function rotaPermitePesquisa(pathname: string): boolean {
  * carregando `success=true`. Barrar essas rotas inteiras tiraria a pesquisa de
  * telas legítimas; o que não pode ser interrompido é o pagamento, e é ele que
  * aparece na query.
+ *
+ * ⚠️ **A query some antes de a pesquisa abrir.** A tela do bolão, ao mostrar a
+ * boas-vindas premium, reescreve o endereço sem ela (`navigate(..., {replace:
+ * true})`). Como o pop-up só abre 1200ms depois, olhar apenas a query aqui
+ * deixaria a pesquisa subir por cima da conclusão do pagamento. Por isso quem
+ * chama guarda o fato na sessão e o devolve em `pagamentoNestaSessao` — o
+ * endereço esquece, a sessão não.
  */
-function voltandoDeUmPagamento(search: string | undefined): boolean {
+export function voltandoDeUmPagamento(search: string | undefined): boolean {
   if (!search) return false;
   try {
     return new URLSearchParams(search).get('success') === 'true';
@@ -209,6 +225,8 @@ export interface EstadoDaPesquisa {
   respondeu: boolean;
   /** Já apertou Pular nesta sessão — vem da sessão, e é esquecido quando a aba fecha. */
   adiouNestaSessao: boolean;
+  /** Já voltou de um pagamento nesta sessão, mesmo que o endereço já tenha esquecido. */
+  pagamentoNestaSessao?: boolean;
   pathname: string;
   search?: string;
 }
@@ -216,7 +234,7 @@ export interface EstadoDaPesquisa {
 /**
  * Se o pop-up deve abrir agora.
  *
- * As quatro recusas em ordem de custo: sem pessoa não há a quem perguntar; quem
+ * As recusas em ordem de custo: sem pessoa não há a quem perguntar; quem
  * respondeu nunca mais é perguntada; quem adiou agora só volta a ser perguntada
  * na próxima sessão; e o resto é onde a tela não permite.
  */
@@ -225,6 +243,7 @@ export function deveAbrirAPesquisa(estado: EstadoDaPesquisa): boolean {
   if (estado.respondeu) return false;
   if (estado.adiouNestaSessao) return false;
   if (!rotaPermitePesquisa(estado.pathname)) return false;
+  if (estado.pagamentoNestaSessao) return false;
   if (voltandoDeUmPagamento(estado.search)) return false;
   return true;
 }

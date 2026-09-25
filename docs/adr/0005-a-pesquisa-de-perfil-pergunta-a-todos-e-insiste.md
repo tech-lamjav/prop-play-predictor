@@ -48,7 +48,7 @@ acabou de chegar, antes de ver qualquer valor.
 ## Consequências
 
 O estado "já respondeu" precisa viver no **banco**, e não no `localStorage` dos
-dezesseis tours: com memória por navegador, quem trocasse de celular ou limpasse
+dezessete tours: com memória por navegador, quem trocasse de celular ou limpasse
 o navegador seria perguntado para sempre. Esta é a primeira memória de usuário da
 casa que não cabe no navegador.
 
@@ -59,11 +59,21 @@ coisa e pode ser reescrito à vontade.
 
 O cruzamento com campanha **só pode acontecer no PostHog**. O banco não guarda
 origem, UTM nem referência de entrada — é decisão registrada em
-`docs/crm-socios.md` e trancada por teste do CRM —, então a resposta viaja para
-lá como propriedade de pessoa além de ficar gravada aqui.
+`docs/crm-socios.md` e trancada por teste do CRM —, então a resposta precisa
+viajar para lá como propriedade de pessoa além de ficar gravada aqui.
+
+⚠️ **Essa metade ainda não existe.** O ticket #523 entregou a pesquisa
+funcionando e sem nenhuma telemetria; os três eventos e a propriedade de pessoa
+são o ticket #524. Até ele entrar, a resposta está gravada e não é medida — e a
+defesa contra o risco aceito acima, que depende dos eventos, não está de pé.
+
+**Quem acabou de chegar** é quem se cadastrou nas últimas 24 horas. A alternativa
+era uma data fixa de lançamento, rejeitada porque envelhece: quem esquecesse de
+trocá-la deixaria todo mundo com o texto de quem já está dentro, ou pior, todo
+mundo com o de quem acabou de chegar.
 
 E a pesquisa passa a ter **prioridade sobre todo tour**. O bloqueio mora dentro
-do hook de tour, num lugar só, porque espalhá-lo pelos dezesseis pontos de
-chamada garantiria uma décima sétima tela esquecida. Quem responde vê o tour em
+do hook de tour, num lugar só, porque espalhá-lo pelos dezessete pontos de
+chamada garantiria uma décima oitava tela esquecida. Quem responde vê o tour em
 seguida; **quem pula também vê** — o tour não pode ficar refém de uma resposta
 que talvez nunca venha.

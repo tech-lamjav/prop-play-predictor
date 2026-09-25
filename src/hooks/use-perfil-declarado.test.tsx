@@ -159,7 +159,17 @@ describe('quando o banco falha', () => {
     banco.leitura = { data: null, error: { message: 'timeout' } };
     const { result } = renderHook(() => usePerfilDeclarado('u1'));
     await waitFor(() => expect(result.current.carregando).toBe(false));
-    expect(result.current.respondeu).toBe(true);
+    expect(result.current.leituraFalhou).toBe(true);
+  });
+
+  // O hook não tem o direito de afirmar que alguém respondeu quando o que
+  // houve foi um timeout. Quem chama cala a pesquisa nos dois casos, mas os
+  // dois não são a mesma coisa e não podem virar o mesmo booleano.
+  it('e não mente dizendo que a pessoa respondeu', async () => {
+    banco.leitura = { data: null, error: { message: 'timeout' } };
+    const { result } = renderHook(() => usePerfilDeclarado('u1'));
+    await waitFor(() => expect(result.current.carregando).toBe(false));
+    expect(result.current.respondeu).toBe(false);
   });
 });
 

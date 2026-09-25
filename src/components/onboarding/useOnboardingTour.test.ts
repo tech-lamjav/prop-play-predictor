@@ -6,13 +6,16 @@ import { marcarPesquisaPendente } from '@/hooks/use-pesquisa-pendente';
 // ============================================================================
 // A pesquisa de perfil tem prioridade sobre o tour (#523)
 // ============================================================================
-// Dezesseis telas chamam este hook, e o sentinela da pesquisa pode abrir o
+// Dezessete telas chamam este hook, e o sentinela da pesquisa pode abrir o
 // pop-up em cima de qualquer uma delas. Bloquear aqui dentro é o que garante
-// que não exista uma décima sétima tela esquecida.
+// que não exista uma décima oitava tela esquecida.
 //
 // O que estes testes protegem, nesta ordem de importância:
 //
 //   · com a pesquisa na frente, nenhum tour arma;
+//   · um tour que JÁ armou é recolhido quando a pesquisa chega — o sinal só
+//     liga depois que a sessão resolve, e há tela armando em 700ms sem esperar
+//     carregamento nenhum;
 //   · quando ela sai da frente, o tour arma LOGO EM SEGUIDA — respondida ou
 //     adiada, tanto faz, porque o tour não pode ficar refém de uma resposta
 //     que talvez nunca venha;
@@ -86,6 +89,24 @@ describe('com a pesquisa na frente', () => {
     });
 
     expect(result.current.run).toBe(true);
+  });
+
+  // A corrida real: a sessão do usuário demora mais que os 700ms da tela, o
+  // tour sobe primeiro, e só então o sentinela descobre que há pesquisa
+  // pendente. Sem recolher, o tour ficaria rodando debaixo do pop-up.
+  it('recolhe um tour que já tinha começado', () => {
+    const { result } = renderHook(() => useOnboardingTour(TOUR, { delay: 700 }));
+
+    act(() => {
+      vi.advanceTimersByTime(700);
+    });
+    expect(result.current.run).toBe(true);
+
+    act(() => {
+      marcarPesquisaPendente(true);
+    });
+
+    expect(result.current.run).toBe(false);
   });
 
   it('o bloqueio não gasta a marca de "já viu" de ninguém', () => {

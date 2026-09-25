@@ -7,11 +7,11 @@ import { useSyncExternalStore } from 'react';
  *
  * Existe porque duas partes distantes da árvore precisam da mesma resposta: o
  * sentinela que abre o pop-up, que é vizinho das rotas, e o hook de tour, que é
- * chamado de dentro de dezesseis telas. Contexto não serviria sem envolver as
+ * chamado de dentro de dezessete telas. Contexto não serviria sem envolver as
  * rotas inteiras num provedor novo; um sinal de módulo atravessa a árvore sem
  * pedir nada a ela.
  *
- * ⚠️ O padrão é **falso**, e isso é o que mantém as dezesseis telas intactas:
+ * ⚠️ O padrão é **falso**, e isso é o que mantém as dezessete telas intactas:
  * quem não souber deste sinal — inclusive todo teste que já existia — continua
  * armando a tour exatamente como antes.
  */
