@@ -129,21 +129,12 @@ export function pickLabel(s: Saida, homeName: string, awayName: string): string 
   return outcomePt(outcome, homeName, awayName);
 }
 
-/** Palavra do veredito a partir do tamanho do edge (não do Score). */
-export function valorVerdict(edge: number): string {
-  const e = edge * 100;
-  if (e >= 4) return 'Valor forte';
-  if (e >= 2) return 'Valor';
-  return 'Valor leve';
-}
-
 /** Frequência mastigada: "se paga em ~X de 10". */
 export function freqEmDez(odd: number): number {
   return Math.max(1, Math.round(10 / odd));
 }
 
 export const fmtPctScore = (p: number) => `${Math.round(p * 100)}%`;
-export const fmtEdgeScore = (e: number) => `${e >= 0 ? '+' : ''}${(e * 100).toFixed(1)}%`;
 
 /** "Chance" (%) a partir da prob justa devigada (0..1). null se ausente. */
 export function chancePct(prob: number | null | undefined): number | null {
@@ -325,15 +316,6 @@ export function passaNoFiltroDeValor(filtro: FiltroDeValor, edge: number | null 
     case 'perto': return edge > -0.02 && edge <= 0;
     default: return edge <= -0.02;
   }
-}
-
-/**
- * Cor da diferença para o preço justo. Positivo em verde; zero ou negativo em
- * cor neutra, nunca em vermelho: a diferença é informação, e um preço abaixo do
- * justo não é erro da leitura nem desvantagem a ser anunciada.
- */
-export function edgeToneCls(edge: number | null | undefined): string {
-  return typeof edge === 'number' && edge > 0 ? 'text-forest' : 'text-ink-2';
 }
 
 /**

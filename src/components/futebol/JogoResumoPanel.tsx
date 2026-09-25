@@ -113,10 +113,11 @@ export function JogoResumoPanel({
   // O valor que o modelo comparou (#464). No tour não existe, e não faz falta:
   // ausência cai na rota seguinte, como em jogo gravado antes do deploy.
   const { data: insumos } = useFutebolFixtureInsumos(demo ? undefined : fixture.fixture_id);
-  // A camada de VALOR é paga, e este painel era o furo: chance, odd e vantagem
-  // apareciam limpas para quem não tem acesso, enquanto as MESMAS três estão
-  // borradas na tela de Oportunidades e na folha do jogo. Uma tela dava de
-  // graça o que a outra cobrava.
+  // A camada paga do modelo, e este painel era o furo: chance e odd apareciam
+  // limpas para quem não tem acesso, enquanto as MESMAS estão fechadas na tela
+  // de Oportunidades e na folha do jogo. Uma tela dava de graça o que a outra
+  // cobrava. (A vantagem sobre o preço estava nesta lista até o #519, quando
+  // saiu da tela para todo mundo — assinante incluído.)
   //
   // A regra é a das outras duas, incluindo a exceção: linha já liquidada não
   // borra. O passado é registro do que foi publicado, não pick para apostar.

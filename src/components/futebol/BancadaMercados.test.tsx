@@ -80,13 +80,13 @@ const comPreco = [
   },
 ] as unknown as FutebolFixtureValueRow[];
 
-function renderBancada() {
+function renderBancada(locked = false) {
   return render(
     <BancadaMercados
       jogo={jogo}
       valueRows={comPreco}
       cortadas={[]}
-      locked={false}
+      locked={locked}
       mercadoAtivo="goals_over_under"
       onMercado={vi.fn()}
     />,
@@ -109,5 +109,15 @@ describe('BancadaMercados · o valor não é desenhado', () => {
 
     expect(screen.getAllByText('Chance').length).toBeGreaterThan(0);
     expect(screen.queryByText('Valor')).not.toBeInTheDocument();
+  });
+
+  it('sem acesso, a frase do portão não lista o valor entre o que é de assinante', () => {
+    // Esta frase só existe no estado TRAVADO, e é por isso que ela tem teste
+    // próprio: os dois acima rodam destravados e nunca a alcançariam.
+    ehMobile.mockReturnValue(false);
+    renderBancada(true);
+
+    expect(screen.getByText(/a aposta, a odd, a chance, o Score e as premissas/i)).toBeInTheDocument();
+    expect(screen.queryByText(/o valor/i)).not.toBeInTheDocument();
   });
 });

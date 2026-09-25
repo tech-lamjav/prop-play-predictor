@@ -29,10 +29,14 @@ const lista = { data: [], isLoading: false };
 const vazio = { data: undefined, isLoading: false };
 const acesso = { unlocked: true, state: 'subscriber' };
 
+/** O acesso é mutável porque a frase do portão só existe no estado travado. */
+const estado = vi.hoisted(() => ({ liberado: true }));
+const acessoAtual = () => (estado.liberado ? acesso : { unlocked: false, state: 'anonymous' });
+
 vi.mock('@/hooks/use-futebol-data', () => ({
   useFutebolValueBoard: () => lista,
   useFutebolValueHistory: () => lista,
-  useFutebolAccess: () => ({ data: acesso }),
+  useFutebolAccess: () => ({ data: acessoAtual() }),
   useFutebolFixturesMulti: () => lista,
   useFutebolAlertedPicks: () => lista,
   useFutebolCompetitions: () => vazio,
@@ -43,7 +47,7 @@ vi.mock('@/hooks/use-futebol-data', () => ({
 }));
 
 vi.mock('@/hooks/use-faixa-de-acesso', () => ({
-  useFaixaDeAcesso: () => acesso,
+  useFaixaDeAcesso: () => acessoAtual(),
   esquecerFaixaDeAcesso: vi.fn(),
 }));
 
@@ -129,5 +133,19 @@ describe('FutebolHoje · o valor não é desenhado', () => {
     renderHome();
 
     expect(screen.getAllByText(/Palmeiras/).length).toBeGreaterThan(0);
+  });
+
+  it('sem acesso, a frase do portão não lista o valor entre o que é de assinante', () => {
+    // Esta frase só existe no estado TRAVADO, que nenhum dos testes acima
+    // alcança. A afirmação é sobre A FRASE, e não sobre a tela inteira: o KPI
+    // "Melhor valor" e o rodapé ainda falam em valor, e saem no #520 e no #521.
+    estado.liberado = false;
+    try {
+      renderHome();
+
+      expect(screen.getByText(/A aposta, a odd, a chance e o Score são de assinante/i)).toBeInTheDocument();
+    } finally {
+      estado.liberado = true;
+    }
   });
 });

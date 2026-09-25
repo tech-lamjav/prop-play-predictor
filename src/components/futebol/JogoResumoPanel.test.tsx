@@ -23,8 +23,15 @@ import type { FutebolFixtureByDay, FutebolValueBoardRow } from '@/services/futeb
 
 const vazio = { data: undefined, isLoading: false };
 
+/**
+ * Acesso e premissas são mutáveis porque a frase do portão só existe num estado
+ * bem estreito: travado, sem linha do board E com leitura vinda das premissas.
+ * Sem premissa o painel conclui "Sem leitura para este jogo" antes de chegar lá.
+ */
+const estado = vi.hoisted(() => ({ liberado: true, premissas: undefined as unknown }));
+
 vi.mock('@/hooks/use-futebol-data', () => ({
-  useFutebolFixturePremissas: () => vazio,
+  useFutebolFixturePremissas: () => ({ data: estado.premissas, isLoading: false }),
   useFutebolFixtureNumeros: () => vazio,
   useFutebolFixtureInjuries: () => vazio,
   useFutebolFixtureHistorico: () => vazio,
@@ -32,7 +39,7 @@ vi.mock('@/hooks/use-futebol-data', () => ({
   useFutebolFixtureCortadas: () => ({ data: [], isLoading: false }),
   useFutebolFixtureInsumos: () => vazio,
   useVitrine: () => ({ vitrine: [], ocultos: [], isLoading: false }),
-  useFutebolAccess: () => ({ data: { unlocked: true } }),
+  useFutebolAccess: () => ({ data: { unlocked: estado.liberado } }),
 }));
 
 // O CTA de registrar aposta tem consulta própria e não decide nada aqui.
@@ -92,5 +99,32 @@ describe('JogoResumoPanel · o valor não é desenhado', () => {
     renderPainel();
 
     expect(screen.queryByText(/valor/i)).not.toBeInTheDocument();
+  });
+
+  it('sem acesso e sem leitura, a frase do portão não lista o valor', () => {
+    // Esta frase só existe no estado TRAVADO e sem linha no board, que é
+    // exatamente onde nenhum dos testes acima chega.
+    estado.liberado = false;
+    estado.premissas = [
+      {
+        market: 'goals_over_under',
+        outcome: 'Under',
+        line_value: 4.5,
+        pts_premissas: 0,
+        penalidades_pts: 0,
+        acesas: ['defesas_firmes', 'xg_baixo_combinado', 'ataques_fracos', 'historico_under'],
+        apagadas: [],
+        penalidades: [],
+      },
+    ];
+    try {
+      renderPainel(null);
+
+      expect(screen.getByText(/chance e odd são de assinante/i)).toBeInTheDocument();
+      expect(screen.queryByText(/valor/i)).not.toBeInTheDocument();
+    } finally {
+      estado.liberado = true;
+      estado.premissas = undefined;
+    }
   });
 });

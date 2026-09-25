@@ -821,7 +821,7 @@ export function BancadaMercados({
   //
   // Aqui não dá para esconder campo por campo, e tentar foi o erro: cada rodada
   // sobrava um. Nesta folha TUDO é leitura do modelo — a lista dos cinco
-  // mercados, o título da saída, o seletor de linha, chance, odd, valor, o
+  // mercados, o título da saída, o seletor de linha, chance, odd, o
   // Score, os motivos, as evidências e os gráficos. Esconder um por um deixa o
   // próximo passar, e foi assim que a odd continuou visível depois de duas
   // tentativas.
@@ -1132,15 +1132,15 @@ export function BancadaMercados({
 
             {/* O Score é a ÂNCORA, não mais um número da fileira.
                 
-                A grade de quatro colunas iguais que existia aqui resolvia o
-                espaço e estragava a hierarquia: o Score virava o quarto de
-                quatro pares, do mesmo tamanho e peso, quando ele é a leitura
-                principal da folha. No celular ele volta a ser o maior elemento,
-                sozinho de um lado, e chance/odd/valor empilham do outro como
-                ficha técnica — que é o papel delas.
-                
-                No desktop a fileira de sempre: lá há largura para os quatro
-                lado a lado sem que nenhum perca destaque. */}
+                A grade de colunas iguais que existia aqui resolvia o espaço e
+                estragava a hierarquia: o Score virava mais um par, do mesmo
+                tamanho e peso, quando ele é a leitura principal da folha. No
+                celular ele volta a ser o maior elemento, sozinho de um lado, e
+                chance/odd empilham do outro como ficha técnica — que é o papel
+                delas.
+
+                No desktop a fileira de sempre: lá há largura para eles lado a
+                lado sem que nenhum perca destaque. */}
             {noCelular ? (
               <div className="flex items-center gap-4 w-full">
                 {/* Alinhado à ESQUERDA, e não centralizado: centralizado, as três
@@ -1166,7 +1166,7 @@ export function BancadaMercados({
                       : locked ? 'de assinante' : 'sem leitura'}
                   </div>
                 </div>
-                {/* Rótulo à esquerda, número à direita: as três linhas viram uma
+                {/* Rótulo à esquerda, número à direita: as linhas viram uma
                     tabelinha, e os números alinham numa coluna só. */}
                 <div className="flex-1 min-w-0 grid gap-1.5 pl-4 border-l" style={{ borderColor: 'rgba(255,255,255,.15)' }}>
                   {[
