@@ -113,8 +113,13 @@ describe('mercado com grandeza: barras num gráfico só, com linha', () => {
   });
 
   it('mexer na linha muda a conta', () => {
+    // A régua virou controle próprio, com bolinha por parada: ela responde a
+    // ponteiro e a TECLADO, e o teclado é o caminho determinístico aqui —
+    // arrasto depende de medida de trilha, que não existe sem layout.
     abrir();
-    fireEvent.change(screen.getByLabelText('Linha de referência'), { target: { value: '1' } });
+    // Abre em 2,5, que é o índice 2 das paradas de gols; uma seta à esquerda
+    // leva a 1,5, e aí passam 2, 3 e 4.
+    fireEvent.keyDown(screen.getByLabelText('Linha de referência'), { key: 'ArrowLeft' });
     expect(screen.getByText(/dos 6 jogos dos dois times passaram de 1,5/i)).toHaveTextContent('3 dos 6 jogos');
   });
 

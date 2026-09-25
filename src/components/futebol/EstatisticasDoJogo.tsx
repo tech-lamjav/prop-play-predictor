@@ -15,6 +15,7 @@ import { cabeRotulo, pisoDaEscala, tetoDaEscala } from '@/utils/futebol-grafico-
 import { exato } from '@/utils/futebol-criterio';
 import { Chip } from './Chip';
 import { ITEM_SELETOR, SeletorDeMenu } from './SeletorDeMenu';
+import { ReguaDeLinhas } from './ReguaDeLinhas';
 import { BarrasEmSequencia, COR_CONTRA, COR_FAVOR, SerieResultados } from './GraficoDeBarras';
 
 /**
@@ -98,7 +99,6 @@ export function EstatisticasDoJogo({
     });
   };
 
-  const iDaLinha = doMercado.paradas.findIndex((p) => p === escolha.linha);
   const mandoAtual = MANDOS.find((m) => m.valor === escolha.mando)!.rotulo;
   const semSerie = (['home', 'away'] as const)
     .map((lado) => nomeDoLado(lado))
@@ -158,15 +158,11 @@ export function EstatisticasDoJogo({
         {temLinha && doMercado.paradas.length > 0 && (
           <div className="flex items-center gap-2.5 mb-3">
             <span className={LABEL}>Linha</span>
-            <input
-              type="range"
-              min={0}
-              max={doMercado.paradas.length - 1}
-              step={1}
-              value={iDaLinha < 0 ? 0 : iDaLinha}
-              aria-label="Linha de referência"
-              onChange={(e) => muda({ linha: doMercado.paradas[Number(e.target.value)] })}
-              className="flex-1 min-w-0 h-9 cursor-pointer accent-[color:var(--forest)]"
+            <ReguaDeLinhas
+              paradas={doMercado.paradas}
+              valor={escolha.linha}
+              onEscolher={(v) => muda({ linha: v })}
+              rotulo={fmtLinha}
             />
             <span className="tabular-nums text-[13px] font-bold text-ink shrink-0">
               {escolha.linha == null ? '—' : fmtLinha(escolha.linha)}
