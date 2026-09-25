@@ -8,8 +8,10 @@ import { type JogoInfo } from '@/components/futebol/jogo-info';
 import { FaixaPartida } from '@/components/futebol/FaixaPartida';
 import { BancadaMercados } from '@/components/futebol/BancadaMercados';
 import { CampoEscalacao } from '@/components/futebol/CampoEscalacao';
+import { EstatisticasDoJogo } from '@/components/futebol/EstatisticasDoJogo';
+import { Chip } from '@/components/futebol/Chip';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useVitrine, useFutebolFixtureDetail, useFutebolFixtureExtras, useFutebolMatchupTendencies, useFutebolFixtureValue, useFutebolFixtureCortadas, useFutebolH2H, useFutebolFixtureInjuries, useFutebolFixturePremissas, useFutebolTeamProfile, useFutebolAccess, useJogosComPlacarFresco } from '@/hooks/use-futebol-data';
+import { useVitrine, useFutebolFixtureDetail, useFutebolFixtureExtras, useFutebolMatchupTendencies, useFutebolFixtureValue, useFutebolFixtureCortadas, useFutebolH2H, useFutebolFixtureHistorico, useFutebolFixtureInjuries, useFutebolFixturePremissas, useFutebolTeamProfile, useFutebolAccess, useJogosComPlacarFresco } from '@/hooks/use-futebol-data';
 import { useNow } from '@/hooks/use-now';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
 import {
@@ -26,7 +28,7 @@ import { escalacaoDoTime, ultimoJogoDoTime } from '@/utils/futebol-escalacao-ref
 import { formatadorDeData, isFinished, isLive, brtDayOf, fmtDayShort } from '@/utils/futebol-datas';
 import { PARAMS_DA_SAIDA } from '@/utils/futebol-links';
 import type {
-  FutebolEvent, FutebolFormResult, FutebolInjury, FutebolLineupPlayer, FutebolPlayerStat, FutebolTeamStats, FutebolFixtureValueRow, FutebolTeamProfile, Competition,
+  FutebolEvent, FutebolFormResult, FutebolInjury, FutebolLineupPlayer, FutebolPlayerStat, FutebolTeamStats, FutebolFixtureValueRow, FutebolTeamProfile, FutebolScopeResult, FutebolScopeStats, ProfileScope, Competition,
 } from '@/services/futebol-data.service';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
@@ -155,15 +157,26 @@ function FormChips({ form }: { form: FutebolFormResult[] }) {
   );
 }
 
-const STAT_ROWS: { key: keyof FutebolTeamStats; label: string }[] = [
-  { key: 'ball_possession', label: 'Posse de bola (%)' },
-  { key: 'expected_goals', label: 'xG (gols esperados)' },
-  { key: 'total_shots', label: 'Finalizações' },
-  { key: 'shots_on_goal', label: 'No gol' },
-  { key: 'corner_kicks', label: 'Escanteios' },
-  { key: 'fouls', label: 'Faltas' },
-  { key: 'yellow_cards', label: 'Cartões amarelos' },
-  { key: 'passes_pct', label: 'Passes certos (%)' },
+/** Percentual, decimal ou contagem. O número decide sozinho como se escreve. */
+type FormatoDaLinha = 'pct' | 'dec' | 'int';
+
+/**
+ * A caixa da partida encerrada.
+ *
+ * O mapa já existia neste arquivo e não era desenhado por ninguém desde que a
+ * aba foi reorganizada: o dado chegava ao navegador pela mesma consulta do
+ * detalhe do jogo e a tela o jogava fora. O rótulo perdeu o "(%)" porque o
+ * valor já sai com o sinal.
+ */
+const STAT_ROWS: { key: keyof FutebolTeamStats; label: string; f: FormatoDaLinha }[] = [
+  { key: 'ball_possession', label: 'Posse de bola', f: 'pct' },
+  { key: 'expected_goals', label: 'Gols esperados', f: 'dec' },
+  { key: 'total_shots', label: 'Finalizações', f: 'int' },
+  { key: 'shots_on_goal', label: 'No gol', f: 'int' },
+  { key: 'corner_kicks', label: 'Escanteios', f: 'int' },
+  { key: 'fouls', label: 'Faltas', f: 'int' },
+  { key: 'yellow_cards', label: 'Cartões amarelos', f: 'int' },
+  { key: 'passes_pct', label: 'Passes certos', f: 'pct' },
 ];
 
 function RatingBadge({ value }: { value: number }) {
@@ -201,22 +214,21 @@ function ResultBadge({ r, big }: { r: BetResult; big?: boolean }) {
   );
 }
 
-// Estatísticas comparadas da temporada (barras espelhadas) — médias via team_profile
-function StatsCompare({ home, away }: { home?: FutebolTeamProfile; away?: FutebolTeamProfile }) {
-  const hr = home?.results.find((r) => r.scope === 'geral');
-  const ar = away?.results.find((r) => r.scope === 'geral');
-  const hs = home?.stats_avg.find((s) => s.scope === 'geral');
-  const as = away?.stats_avg.find((s) => s.scope === 'geral');
-  const rows = [
-    { l: 'Gols marcados / jogo', a: hr?.avg_gf, b: ar?.avg_gf, pct: false },
-    { l: 'Gols sofridos / jogo', a: hr?.avg_ga, b: ar?.avg_ga, pct: false },
-    { l: 'Posse de bola', a: hs?.avg_possession, b: as?.avg_possession, pct: true },
-    { l: 'Finalizações / jogo', a: hs?.avg_shots, b: as?.avg_shots, pct: false },
-    { l: 'Escanteios / jogo', a: hs?.avg_corners, b: as?.avg_corners, pct: false },
-    { l: '% jogos Over 2.5', a: hr?.over25_pct, b: ar?.over25_pct, pct: true },
-  ].filter((r) => r.a != null && r.b != null) as { l: string; a: number; b: number; pct: boolean }[];
-  if (!rows.length) return <p className="text-sm text-ink-3 text-center py-4">Médias da temporada indisponíveis.</p>;
-  const fmt = (v: number, pct: boolean) => pct ? `${Math.round(v)}%` : v.toFixed(1);
+type LinhaComparada = { l: string; a: number; b: number; f: FormatoDaLinha };
+
+/**
+ * As barras espelhadas, e só elas.
+ *
+ * Saiu de dentro do card de temporada quando a caixa da partida encerrada
+ * passou a precisar do mesmo desenho. É a terceira vez nesta tela que o mesmo
+ * padrão aparece — série, barra e agora isto —, e nas duas anteriores a cópia
+ * teria divergido em pixel sem ninguém notar, porque ninguém compara dois
+ * cards lado a lado procurando diferença de padding.
+ */
+function BarrasComparadas({ rows, vazio }: { rows: LinhaComparada[]; vazio: string }) {
+  if (!rows.length) return <p className="text-sm text-ink-3 text-center py-4">{vazio}</p>;
+  const fmt = (v: number, f: FormatoDaLinha) =>
+    f === 'pct' ? `${Math.round(v)}%` : f === 'int' ? String(Math.round(v)) : v.toFixed(1);
   return (
     <div className="flex flex-col gap-3">
       {rows.map((s) => {
@@ -225,9 +237,9 @@ function StatsCompare({ home, away }: { home?: FutebolTeamProfile; away?: Futebo
         return (
           <div key={s.l}>
             <div className="flex items-center justify-between text-[12px] tabular-nums mb-1">
-              <span className="font-semibold text-forest">{fmt(s.a, s.pct)}</span>
+              <span className="font-semibold text-forest">{fmt(s.a, s.f)}</span>
               <span className="text-[10px] uppercase tracking-[0.1em] font-semibold text-ink-3">{s.l}</span>
-              <span className="font-semibold text-ink-2">{fmt(s.b, s.pct)}</span>
+              <span className="font-semibold text-ink-2">{fmt(s.b, s.f)}</span>
             </div>
             <div className="flex items-center gap-1 h-2">
               <div className="flex-1 h-full rounded-l-full overflow-hidden flex justify-end bg-canvas-2"><div style={{ width: `${aPct}%`, background: 'var(--forest)', height: '100%' }} /></div>
@@ -238,6 +250,92 @@ function StatsCompare({ home, away }: { home?: FutebolTeamProfile; away?: Futebo
       })}
     </div>
   );
+}
+
+/** Geral, ou o mando que cada time tem NESTE jogo. */
+type RecorteDoPerfil = 'geral' | 'mando';
+
+/**
+ * A base de jogos de um lado do card de temporada.
+ *
+ * ⚠️ São DUAS fontes, com contagens próprias. Gols marcados, gols sofridos e o
+ * percentual de over saem de `results`; posse, finalizações e escanteios saem
+ * de `stats_avg`, que só conta partida cujo boletim a fonte publicou — e ela
+ * não publica todas. Declarar só a primeira faz a tela afirmar uma base que
+ * METADE das linhas não teve, que é exatamente o defeito que esta linha existe
+ * para não cometer.
+ */
+function baseDoLado(r?: FutebolScopeResult, s?: FutebolScopeStats): string {
+  const jogos = r?.games;
+  const comBoletim = s?.games;
+  if (jogos == null && comBoletim == null) return '—';
+  if (jogos == null) return `${comBoletim} com estatística`;
+  const texto = `${jogos} ${jogos === 1 ? 'jogo' : 'jogos'}`;
+  return comBoletim == null || comBoletim === jogos ? texto : `${texto} · ${comBoletim} com estatística`;
+}
+
+// Estatísticas comparadas da temporada (barras espelhadas) — médias via team_profile
+function StatsCompare({ home, away }: { home?: FutebolTeamProfile; away?: FutebolTeamProfile }) {
+  const [recorte, setRecorte] = useState<RecorteDoPerfil>('geral');
+  // ⚠️ "Mando deste jogo" são recortes OPOSTOS: o mandante medido em casa e o
+  // visitante medido fora. Por isso o rótulo nomeia a regra e não um lado — e
+  // por isso não existe chip de "casa" solto, que para o visitante descreveria
+  // jogos sem relação nenhuma com esta partida.
+  const escopoMandante: ProfileScope = recorte === 'mando' ? 'casa' : 'geral';
+  const escopoVisitante: ProfileScope = recorte === 'mando' ? 'fora' : 'geral';
+  const hr = home?.results.find((r) => r.scope === escopoMandante);
+  const ar = away?.results.find((r) => r.scope === escopoVisitante);
+  const hs = home?.stats_avg.find((s) => s.scope === escopoMandante);
+  const as = away?.stats_avg.find((s) => s.scope === escopoVisitante);
+  const rows = [
+    { l: 'Gols marcados / jogo', a: hr?.avg_gf, b: ar?.avg_gf, f: 'dec' },
+    { l: 'Gols sofridos / jogo', a: hr?.avg_ga, b: ar?.avg_ga, f: 'dec' },
+    { l: 'Posse de bola', a: hs?.avg_possession, b: as?.avg_possession, f: 'pct' },
+    { l: 'Finalizações / jogo', a: hs?.avg_shots, b: as?.avg_shots, f: 'dec' },
+    { l: 'Escanteios / jogo', a: hs?.avg_corners, b: as?.avg_corners, f: 'dec' },
+    { l: '% jogos Over 2.5', a: hr?.over25_pct, b: ar?.over25_pct, f: 'pct' },
+  ].filter((r) => r.a != null && r.b != null) as LinhaComparada[];
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <Chip ativo={recorte === 'geral'} onClick={() => setRecorte('geral')}>Geral</Chip>
+        <Chip ativo={recorte === 'mando'} onClick={() => setRecorte('mando')}>Mando deste jogo</Chip>
+      </div>
+      {/* A BASE, sempre à vista, e no mesmo arranjo das barras: valor, rótulo,
+          valor. Trocar o recorte muda quantos jogos sustentam cada número — no
+          mando eles nem são os mesmos jogos dos dois lados — e um número que
+          muda de base em silêncio é como "Flamengo em casa, 11 jogos" apareceu
+          embaixo de um critério que somava dez. */}
+      {(hr || ar || hs || as) && (
+        <div className="flex items-center justify-between gap-2 text-[10.5px] tabular-nums">
+          <span className="font-semibold text-forest">{baseDoLado(hr, hs)}</span>
+          <span className="uppercase tracking-[0.1em] font-semibold text-ink-3 shrink-0">base</span>
+          <span className="font-semibold text-ink-2">{baseDoLado(ar, as)}</span>
+        </div>
+      )}
+      <BarrasComparadas
+        rows={rows}
+        vazio={recorte === 'mando' ? 'Sem médias para o mando deste confronto.' : 'Médias da temporada indisponíveis.'}
+      />
+    </div>
+  );
+}
+
+/**
+ * O que aconteceu NESTA partida, quando ela já terminou.
+ *
+ * É **estatística da partida**: fato público de futebol, e por isso vem da
+ * mesma consulta aberta do detalhe do jogo, sem passar pelo portão. Não diz
+ * nada sobre aposta, e não é insumo de premissa nenhuma.
+ */
+function CaixaDoJogo({ home, away }: { home?: FutebolTeamStats; away?: FutebolTeamStats }) {
+  const rows = STAT_ROWS.map((r) => ({
+    l: r.label,
+    a: home?.[r.key] as number | null | undefined,
+    b: away?.[r.key] as number | null | undefined,
+    f: r.f,
+  })).filter((r) => r.a != null && r.b != null) as LinhaComparada[];
+  return <BarrasComparadas rows={rows} vazio="A fonte não publicou estatística desta partida." />;
 }
 
 export default function FutebolJogo() {
@@ -279,6 +377,10 @@ export default function FutebolJogo() {
   const [fixtureFresco] = useJogosComPlacarFresco(soEsteJogo, agora);
   const fixture = fixtureFresco ?? fixtureDoEspelho;
   const { data: h2h, isLoading: h2hLoading } = useFutebolH2H(fixture?.home_team_id, fixture?.away_team_id);
+  // O jogo a jogo dos dois times, para a aba de Estatísticas. Mesma consulta que
+  // a bancada já faz para o gráfico das premissas, então sai do cache do
+  // react-query sem ida extra à rede — e é fato público, sem portão.
+  const { data: historico, isLoading: historicoCarregando } = useFutebolFixtureHistorico(fid);
   const { data: injuries } = useFutebolFixtureInjuries(fid);
   const { data: realTend } = useFutebolMatchupTendencies(
     fixture?.home_team_id, fixture?.away_team_id, fixture?.competition, fixture?.season
@@ -517,7 +619,16 @@ export default function FutebolJogo() {
 
   const h2hCard = fixture ? (
     <div className="rounded-rebrand-xl overflow-hidden bg-white border border-line">
-      <div className="px-5 py-3 border-b border-line"><div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">Confrontos diretos</div></div>
+      {/* A declaração não é enfeite. O confronto direto é uma série curta,
+          espalhada por anos, às vezes com elenco e treinador trocados — e ele
+          fica ao lado da leitura do modelo, que é onde um número vira razão de
+          apostar sem ninguém ter dito que virou. O glossário define o termo
+          exatamente assim: contexto, com o número de encontros à vista, e
+          nunca evidência. */}
+      <div className="px-5 py-3 border-b border-line">
+        <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">Confrontos diretos</div>
+        <div className="text-[10px] text-ink-3 mt-0.5">Contexto dos encontros anteriores. Não entra na leitura do modelo.</div>
+      </div>
       <div className="p-5">
         {h2hLoading ? <p className="text-xs text-ink-3">Carregando…</p> : h2h && h2h.length ? (
           <>
@@ -544,6 +655,18 @@ export default function FutebolJogo() {
           </>
         ) : <p className="text-xs text-ink-3">Sem confrontos diretos no histórico.</p>}
       </div>
+    </div>
+  ) : null;
+
+  // Só depois do apito: antes dele não existe estatística desta partida, e um
+  // card vazio anunciando "como foi" no jogo por vir leria como defeito.
+  const jogoCard = fixture && finished && (home || away) ? (
+    <div className="rounded-rebrand-xl overflow-hidden bg-white border border-line">
+      <div className="px-5 py-3 flex items-center justify-between border-b border-line">
+        <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">Como foi esta partida</div>
+        <span className="text-[10px] flex items-center gap-2"><span className="text-forest font-semibold truncate max-w-[90px]">{fixture.home_team_name}</span><span className="text-ink-3 truncate max-w-[90px]">{fixture.away_team_name}</span></span>
+      </div>
+      <div className="p-5"><CaixaDoJogo home={home} away={away} /></div>
     </div>
   ) : null;
 
@@ -611,10 +734,16 @@ export default function FutebolJogo() {
 
             {!finished && showValue && <FutebolAccessBanner access={access} className="mt-5" />}
 
-            {/* Três abas. A de Times fazia o papel de três coisas ao mesmo tempo:
-                médias da temporada, confronto direto e escalação, empilhadas numa
-                rolagem só. A escalação é a que o assinante procura perto do jogo, e
-                ficava por último, embaixo de tudo.
+            {/* Três abas, nesta ordem: o que o modelo lê, como os times vêm
+                jogando, e quem entra em campo. A escalação fecha porque só existe
+                perto do apito — antes dela ser publicada a aba mostra a do último
+                jogo, como referência.
+
+                ⚠️ Isto NÃO é voltar ao que era. A escalação já esteve enterrada
+                no fim de uma rolagem dentro de uma aba que fazia três papéis ao
+                mesmo tempo — médias da temporada, confronto direto e escalação
+                empilhadas. Ter aba própria é o que a tirou de lá; a posição na
+                fileira é outra conversa.
 
                 O antigo "Resumo" virou a própria faixa da partida mais a coluna de
                 mercados, então deixou de ser uma aba. */}
@@ -645,8 +774,8 @@ export default function FutebolJogo() {
                 {(
                   [
                     ['mercados', 'Leitura & mercados'],
-                    ['escalacoes', 'Escalações'],
                     ['estatisticas', 'Estatísticas'],
+                    ['escalacoes', 'Escalações'],
                   ] as const
                 ).map(([k, label]) => (
                   <button
@@ -682,9 +811,36 @@ export default function FutebolJogo() {
               {aba === 'escalacoes' && escalacaoCard}
 
               {aba === 'estatisticas' && (
-                <div data-tour="fut-jogo-contexto" className="grid lg:grid-cols-2 gap-5 items-start">
-                  {statsCard}
-                  {h2hCard}
+                <div data-tour="fut-jogo-contexto" className="grid lg:grid-cols-[7fr_3fr] gap-5 items-start">
+                  {/* 70/30: o gráfico é o que a aba veio mostrar e fica com a
+                      coluna larga; as caixas de resumo sobem para a estreita em
+                      vez de empilharem embaixo dele. No celular vira uma coluna
+                      só, e o gráfico continua vindo primeiro. */}
+                  <div className="min-w-0 flex flex-col gap-5">
+                  {/* O jogo a jogo vem primeiro e ocupa a largura inteira: é o
+                      que a aba veio mostrar, e é o único bloco daqui que deixa
+                      CONFERIR um número em vez de aceitá-lo. As duas caixas de
+                      resumo seguem embaixo, lado a lado como estavam. */}
+                  {/* No jogo encerrado, o que aconteceu em campo vem antes de
+                      qualquer média: é a coisa mais concreta da aba, e some
+                      sozinho no jogo por vir. */}
+                  {jogoCard}
+                  {/* Nasce no mercado e na linha que a pessoa vinha lendo, para
+                      a aba não recomeçar do zero. Daí em diante é independente:
+                      a régua da bancada escolhe QUAL APOSTA ler, esta escolhe
+                      onde cortar a cor, e acoplar as duas juntaria conceitos
+                      diferentes. */}
+                  <EstatisticasDoJogo
+                    historico={historico}
+                    carregando={historicoCarregando}
+                    mercadoInicial={preferida?.market ?? mercadoAtivo}
+                    linhaInicial={preferida?.line_value ?? null}
+                  />
+                  </div>
+                  <div className="min-w-0 flex flex-col gap-5">
+                    {statsCard}
+                    {h2hCard}
+                  </div>
                 </div>
               )}
             </div>

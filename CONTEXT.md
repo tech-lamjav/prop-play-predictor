@@ -56,9 +56,21 @@ _Avoid_: Evidência (é o insumo já na tela), estatística, dado
 O limiar contra o qual o **insumo** é comparado. Pode ser um número fixo, ou derivado da linha com uma margem — e nesse caso o corte **não** é a linha.
 _Avoid_: Linha, limite, threshold
 
+**Linha de referência**:
+O limiar que a aba de Estatísticas desenha sobre o jogo a jogo, e que quem olha arrasta. Serve para uma coisa só: repintar as barras. Não é **corte**, que é do modelo e decide se uma premissa acende; não é **linha cotada**, porque não vem de preço e nenhuma casa precisa oferecê-la; e não é **odd de referência**. Nada é liquidado contra ela, e mexer nela não muda valor nenhum — só a cor.
+_Avoid_: Corte, linha, linha da aposta, odd de referência
+
 **Janela da premissa**:
 O conjunto de partidas sobre o qual o **insumo** é medido: os últimos jogos do time em qualquer competição, contados antes do apito da partida analisada. Não é a temporada e não é uma competição só. O tamanho é da premissa — dez na maioria, cinco nas de contagem —, e algumas recortam por mando porque o mando é parte do **critério** delas. Recorte de mando embaixo de um critério que não olha mando é o gráfico desmentindo o número que ele deveria explicar.
 _Avoid_: Temporada, forma recente, últimos jogos no campeonato
+
+**Confronto direto**:
+Os jogos anteriores entre os dois times desta partida. Não é **janela da premissa** e não é **insumo** de premissa nenhuma: a janela são os últimos jogos de um time contra quem apareceu pela frente, e o confronto direto é uma série curta, espalhada por anos, às vezes com elenco e treinador trocados. Aparece na tela como contexto, sempre com o número de encontros à vista, e nunca como **evidência**.
+_Avoid_: Histórico, retrospecto, forma recente, evidência
+
+**Estatística da partida**:
+O que aconteceu em campo num jogo encerrado: finalizações, escanteios, posse, cartões, gols esperados. É **fato público de futebol**, e por isso pode ser mostrada a quem não assina. Não é **insumo**: só é insumo a estatística que algum **critério** compara contra um **corte**. Desenhá-la embaixo de uma premissa, como se explicasse o número dela, é fingir auditoria — foi exatamente por isso que a consulta do histórico por jogo deixou finalização, escanteio e posse de fora, de propósito (migration 095).
+_Avoid_: Insumo, evidência, dado do modelo, estatística do modelo
 
 **Premissa acesa**:
 Uma premissa cujo **insumo** cruzou o **corte**. É o que a tela conta em "3 premissas a favor".

@@ -85,10 +85,27 @@ const JANELA_DE_CONTAGEM = 5;
  * que o modelo compara — `clean_sheet_total / played_total` e
  * `failed_to_score_total / played_total` (#355).
  */
-export type Metrica = 'ga' | 'gf' | 'xg' | 'total' | 'resultado' | 'sem_sofrer' | 'sem_marcar';
+export type Metrica =
+  | 'ga'
+  | 'gf'
+  | 'xg'
+  | 'total'
+  | 'saldo'
+  | 'ambos'
+  | 'resultado'
+  | 'sem_sofrer'
+  | 'sem_marcar';
+
+/**
+ * ⚠️ `saldo` e `ambos` entraram pela aba de Estatísticas, onde o MERCADO manda
+ * na métrica: handicap mede saldo de gols, ambos marcam é binário. Nenhuma
+ * premissa usa as duas — elas aparecem nos mapas abaixo porque o tipo é
+ * exaustivo, e é essa exaustividade que impede alguém de acrescentar métrica e
+ * esquecer o texto dela.
+ */
 
 /** Métrica binária: a média dela é uma fração de jogos, não uma média de gols. */
-export const EH_BINARIA = (m: Metrica) => m === 'sem_sofrer' || m === 'sem_marcar';
+export const EH_BINARIA = (m: Metrica) => m === 'sem_sofrer' || m === 'sem_marcar' || m === 'ambos';
 
 /** `proprio` = o mando que o time tem NESTE jogo (mandante em casa, visitante fora). */
 export type FiltroMando = 'proprio' | 'todos';
@@ -102,7 +119,7 @@ export type Quem = 'time' | 'adversario' | 'ambos';
  */
 export type Direcao = 'maior' | 'menor';
 
-interface SerieSpec {
+export interface SerieSpec {
   quem: Quem;
   metrica: Metrica;
   mando: FiltroMando;
@@ -406,6 +423,9 @@ function valorDe(r: FutebolFixtureHistorico, m: Metrica): number | null {
   if (m === 'xg') return r.xg;
   if (m === 'sem_sofrer') return r.sem_sofrer ? 1 : 0;
   if (m === 'sem_marcar') return r.sem_marcar ? 1 : 0;
+  if (m === 'ambos') return r.ambos_marcaram ? 1 : 0;
+  // `saldo` é a diferença na ótica do time, e é NEGATIVA na derrota — quem
+  // desenhar isso precisa de linha de base no zero, não de barra que só cresce.
   return r.gols_pro - r.gols_contra;
 }
 
@@ -424,25 +444,37 @@ const COMO_LER: Record<Metrica, string> = {
   gf: 'Cada barra é um jogo: quanto mais alta, mais gols o time marcou. A linha é a média, que é o número que a premissa usa.',
   xg: 'Cada barra é o gol esperado do time no jogo, ou seja, o tanto de chance que ele criou. A linha é a média.',
   total: 'Cada barra é o total de gols do jogo, somando os dois times. A linha tracejada é a linha que você escolheu.',
+  saldo: 'Cada barra é o saldo de gols do time naquele jogo: positivo na vitória, negativo na derrota.',
+  ambos: 'Cada barra é um jogo: cheia quando os dois times marcaram, vazia quando algum passou em branco.',
   resultado: 'Cada quadrado é um jogo, com o placar e o adversário. Verde é vitória, cinza empate, vermelho derrota.',
   sem_sofrer: 'Cada barra é um jogo: cheia quando o time não sofreu gol, vazia quando sofreu. O que a premissa usa é o percentual de jogos cheios.',
   sem_marcar: 'Cada barra é um jogo: cheia quando o time não marcou, vazia quando marcou. O que a premissa usa é o percentual de jogos cheios.',
 };
 
 /**
- * O gráfico que prova (ou derruba) a premissa, com o mesmo recorte da média.
- * Devolve null quando não existe jogo suficiente ou quando a premissa não tem como
- * ser auditada com o que o mart entrega.
+ * As séries de barras de uma especificação EXPLÍCITA.
+ *
+ * O recorte mora aqui e em lugar nenhum mais. Quem monta barra a partir das
+ * linhas do jogo a jogo chama esta função, e a especificação diz o que medir:
+ * a premissa traz a dela do mapa `SPECS`, a aba de Estatísticas monta a sua a
+ * partir do que a pessoa escolheu.
+ *
+ * ⚠️ Existe como função à parte por um motivo com histórico neste arquivo: duas
+ * funções que calculam a mesma coisa por caminhos diferentes acabam divergindo,
+ * e ninguém vê por leitura de código. Foi assim na #350 (o gráfico e o número
+ * do xG em janelas diferentes) e de novo na `evidenciaDoHistorico`, que varria o
+ * histórico inteiro enquanto o gráfico logo abaixo recortava — a tela dizia 1,2
+ * e desenhava 1,3. Um segundo montador de série para a aba nova recriaria a
+ * mesma armadilha, agora entre duas abas que ninguém compara lado a lado.
  */
-export function storyDaPremissa(
-  mercado: string,
-  slug: string,
+export function seriesDaEspecificacao(
+  specs: SerieSpec[],
   hist: FutebolFixtureHistorico[] | undefined,
   lado: 'home' | 'away' | null,
   linha: number | null,
-): Story | null {
-  const specs = SPECS[`${mercado}:${slug}`];
-  if (!specs?.length || !hist?.length) return null;
+  chavePrefixo: string,
+): SerieHistorico[] {
+  if (!specs?.length || !hist?.length) return [];
   const p = papeis(lado);
 
   // Duas premissas comparam métricas diferentes, e só nelas o título precisa
@@ -499,7 +531,7 @@ export function storyDaPremissa(
         resultado: j.resultado as 'V' | 'E' | 'D',
       }));
       series.push({
-        chave: `${slug}-${side}-${spec.metrica}-${spec.mando}`,
+        chave: `${chavePrefixo}-${side}-${spec.metrica}-${spec.mando}`,
         teamId: filtrados[0].team_id,
         teamName: filtrados[0].team_name,
         // O título nomeia o RECORTE, e o sub declara a BASE. Juntos eles dizem o
@@ -537,6 +569,33 @@ export function storyDaPremissa(
       });
     }
   }
+  return series;
+}
+
+/**
+ * O gráfico que prova (ou derruba) a premissa, com o mesmo recorte da média.
+ * Devolve null quando não existe jogo suficiente ou quando a premissa não tem como
+ * ser auditada com o que o mart entrega.
+ *
+ * A montagem das barras é a de `seriesDaEspecificacao`; o que esta função
+ * acrescenta é o que só a PREMISSA tem: qual especificação vale (o mapa
+ * `SPECS`), a linha tracejada de referência e o consolidado contra a linha.
+ */
+export function storyDaPremissa(
+  mercado: string,
+  slug: string,
+  hist: FutebolFixtureHistorico[] | undefined,
+  lado: 'home' | 'away' | null,
+  linha: number | null,
+): Story | null {
+  // ⚠️ Chave COMPOSTA, `mercado:slug`. O catálogo deixou de ser indexado só pelo
+  // slug porque a mesma premissa tem critério diferente em mercados diferentes —
+  // `defesas_vazaveis` é média contra a linha em Gols e percentual de clean
+  // sheet em Ambos marcam. Com a chave antiga isto devolvia `undefined` para
+  // TODA premissa, e sem quebrar nada: a tela só ficaria sem gráfico nenhum.
+  const specs = SPECS[`${mercado}:${slug}`];
+  if (!specs?.length) return null;
+  const series = seriesDaEspecificacao(specs, hist, lado, linha, slug);
   if (!series.length) return null;
 
   const metrica = series[0].metrica;
@@ -555,6 +614,8 @@ const NOME_DA_METRICA: Record<Metrica, string> = {
   gf: 'gols marcados',
   xg: 'gols esperados',
   total: 'gols no jogo',
+  saldo: 'saldo de gols',
+  ambos: 'jogos com os dois marcando',
   resultado: 'resultado',
   sem_sofrer: 'jogos sem sofrer',
   sem_marcar: 'jogos sem marcar',
@@ -791,6 +852,8 @@ const FRASE_DA_METRICA: Record<Metrica, (time: string, valor: string) => string>
   ga: (t, v) => `${t} sofre ${v}`,
   xg: (t, v) => `${t} cria ${v}`,
   total: (t, v) => `${t}: ${v} gols`,
+  saldo: (t, v) => `${t}: saldo de ${v}`,
+  ambos: (t, v) => `${t}: os dois marcaram em ${v} dos jogos`,
   resultado: (t, v) => `${t}: ${v}`,
   sem_sofrer: (t, v) => `${t} não sofreu gol em ${v} dos jogos`,
   sem_marcar: (t, v) => `${t} não marcou em ${v} dos jogos`,
