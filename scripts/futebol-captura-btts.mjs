@@ -6,6 +6,11 @@
 //   node scripts/futebol-captura-btts.mjs --casos=30
 //   node scripts/futebol-captura-btts.mjs --fixture=1492140 --fixture=1492211
 //   node scripts/futebol-captura-btts.mjs --so-diagnostico
+//   node scripts/futebol-captura-btts.mjs --buscar=France
+//
+// `--buscar` acha o `fixture_id` pelo nome do time e não captura nada; é o
+// primeiro passo para reproduzir um caso que chegou como print de tela.
+// `--fixture` entra ALÉM do sorteio, quantas vezes for preciso.
 //
 // Credencial: `SUPABASE_ACCESS_TOKEN` do ambiente, ou de `.env.local`. Só faz
 // SELECT, com `read_only` no endpoint. Nunca imprime segredo.
@@ -21,12 +26,18 @@
 // O mercado de Gols resolveu isso com 22 casos capturados de produção: cada um
 // traz o jogo a jogo E o veredito que o mart publicou, e o teste exige que a
 // nossa conta reproduza o booleano dele. Se divergir, a derivação está errada.
-// Este script produz o mesmo arquivo para o Ambos marcam.
+// Este script produz o arquivo equivalente para o Ambos marcam.
+//
+// Equivalente, e não idêntico: a forma tem três diferenças, todas porque o
+// mercado é outro. O veredito vem aninhado POR SAÍDA, já que aqui os dois lados
+// acendem premissas diferentes; não há `linha`, porque nenhum dos sete critérios
+// usa uma; e cada caso carrega `competicao`, `data` e `encerrado`, que é o que
+// deixa ler o arquivo sem ter a produção aberta ao lado.
 //
 // ── Três decisões de desenho ────────────────────────────────────────────────
 //
 // 1. O JOGO A JOGO SAI DA PRÓPRIA RPC, e não de um SELECT reescrito aqui.
-//    `select * from public.get_futebol_fixture_historico(id, 40)`. Reescrever a
+//    `select * from public.get_futebol_fixture_historico(id, N)`. Reescrever a
 //    consulta criaria uma terceira cópia do recorte para divergir sozinha, e o
 //    arquivo capturado tem de ser byte a byte o que a tela recebe — senão o
 //    teste prova a derivação contra um dado que a tela nunca vê.
@@ -39,7 +50,10 @@
 //    apareceu num Turquia × França em que a França tinha 8 jogos e a tela
 //    mostrava 2. Jogo de seleção, jogo de time recém-promovido e jogo de começo
 //    de temporada são exatamente onde o recorte errado aparece, então o sorteio
-//    reserva vagas para janela curta em vez de cair sempre no caso confortável.
+//    reserva vagas para AMOSTRA curta em vez de cair sempre no caso
+//    confortável. (Amostra, e não "janela": pelo glossário, a janela é da
+//    premissa e o tamanho é dela — 10, ou 5 nas de contagem. O que varia de
+//    jogo para jogo é quantos jogos anteriores o time tem para preenchê-la.)
 //
 // ── O diagnóstico que vem junto ─────────────────────────────────────────────
 //
@@ -58,7 +72,14 @@ const RAIZ = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const PROJETO_PRD = 'lavclmlvvfzkblrstojd';
 const DESTINO = resolve(RAIZ, 'src/utils/__fixtures__/futebol-criterios-btts.json');
 
-/** As sete do Ambos marcam, na ordem do catálogo. */
+/**
+ * As sete do Ambos marcam, na ordem das COLUNAS da tabela do mart.
+ *
+ * E não na do catálogo da tela, que põe `historico_btts` em sexto em vez de
+ * quarto. A ordem daqui é a de `int_futebol_premissas_btts` porque é de lá que
+ * os vereditos saem, e ler o resumo do script lado a lado com a tabela é o que
+ * se faz quando um caso não bate.
+ */
 const PREMISSAS = [
   'ambos_marcam',
   'ataque_dos_dois',
@@ -133,11 +154,18 @@ async function consultar(sql) {
   }
   const corpo = await r.text();
   if (!r.ok) throw new Error(`consulta recusada (HTTP ${r.status}): ${corpo.slice(0, 400)}`);
+  let dados;
   try {
-    return JSON.parse(corpo);
+    dados = JSON.parse(corpo);
   } catch {
     throw new Error(`resposta não era JSON: ${corpo.slice(0, 400)}`);
   }
+  // A API devolve ora o array de linhas, ora um envelope com `result`
+  // dentro. Normalizar AQUI, e não em cada chamada: a forma ternária
+  // repetida em todo sítio é uma decisão de protocolo copiada cinco vezes,
+  // e basta uma cópia esquecida para um `undefined` virar "nenhum jogo no
+  // mart" — falha silenciosa com cara de resultado.
+  return Array.isArray(dados) ? dados : (dados.result ?? []);
 }
 
 // ── 1. diagnóstico: o mart publica insumo de btts? ──────────────────────────
@@ -157,8 +185,7 @@ const DIAGNOSTICO = `
 `;
 
 async function diagnosticar() {
-  const r = await consultar(DIAGNOSTICO);
-  const linhas = Array.isArray(r) ? r : (r.result ?? []);
+  const linhas = await consultar(DIAGNOSTICO);
 
   console.log('\n── a tabela de insumos medidos, no Ambos marcam ──\n');
   if (!linhas.length) {
@@ -187,12 +214,13 @@ async function diagnosticar() {
 // justamente o caso em que o recorte errado NÃO aparece. As vagas de janela
 // curta existem para o arquivo conter o caso do Turquia × França.
 
-function consultaDeEscolha({ quantos, janelaCurta }) {
+function consultaDeEscolha({ quantos, amostraCurta }) {
   return `
   with base as (
     select distinct
            b.fixture_id,
            f.competition,
+           f.status_short,
            f.kickoff_utc,
            f.home_team_id,
            f.away_team_id,
@@ -208,10 +236,10 @@ function consultaDeEscolha({ quantos, janelaCurta }) {
   -- O sorteio vem ANTES da conta de janela: ela é duas varreduras por jogo, e
   -- rodá-la no mart inteiro custa caro para depois jogar quase tudo fora.
   candidatos as (select * from base order by random() limit 400),
-  com_janela as (
+  com_disponiveis as (
     select c.*,
-           -- Quantos jogos anteriores cada lado tem. É o eixo da estratificação:
-           -- abaixo de 10 o recorte de mando é o que mais corta.
+           -- Quantos jogos anteriores tem o lado com MENOS deles. É o eixo da
+           -- estratificação: abaixo de 10 o recorte de mando é o que mais corta.
            least(
              (select count(*) from futebol.fact_fixtures h
                where h.status_short in ('FT','AET','PEN')
@@ -221,12 +249,12 @@ function consultaDeEscolha({ quantos, janelaCurta }) {
                where a.status_short in ('FT','AET','PEN')
                  and a.kickoff_utc < c.kickoff_utc
                  and (a.home_team_id = c.away_team_id or a.away_team_id = c.away_team_id))
-           ) as menor_janela
+           ) as jogos_anteriores
     from candidatos c
   )
-  select fixture_id, competition, confronto, kickoff_utc, menor_janela
-  from com_janela
-  where menor_janela ${janelaCurta ? 'between 1 and 9' : '>= 10'}
+  select fixture_id, competition, status_short, confronto, kickoff_utc, jogos_anteriores
+  from com_disponiveis
+  where jogos_anteriores ${amostraCurta ? 'between 1 and 9' : '>= 10'}
   -- Uma competição não domina a amostra: numera dentro de cada uma e pega as
   -- primeiras de cada, alternando. Sem isto o Brasileirão levaria quase tudo.
   order by (row_number() over (partition by competition order by kickoff_utc desc)), random()
@@ -239,29 +267,37 @@ async function escolherJogos({ casos, forcados }) {
   // é a razão de a captura existir, mas capturar só ele daria um arquivo que
   // prova a derivação no exemplo em que ela já se sabe errada e em nenhum
   // outro. E o sorteio sozinho pode não pegá-lo nunca.
+  //
+  // ⚠️ E ELES NÃO PASSAM PELA GUARDA DE JOGO ENCERRADO. Não passam de
+  // propósito: o caso relatado costuma ser o de amanhã, e foi assim no Turquia
+  // × França. Mas isso vaza a garantia que o sorteio tem — o `status_short` vem
+  // junto e cada caso carrega `encerrado`, para o teste poder separar o que é
+  // estável do que ainda pode mudar, e para o resumo avisar na hora.
   const fixos = forcados.length
     ? await consultar(`
-        select f.fixture_id, f.competition,
+        select f.fixture_id, f.competition, f.status_short,
                f.home_team_name || ' x ' || f.away_team_name as confronto,
                f.kickoff_utc
         from futebol.fact_fixtures f
         where f.fixture_id in (${forcados.join(',')})
         order by f.kickoff_utc;
-      `).then((r) => (Array.isArray(r) ? r : (r.result ?? [])))
+      `)
     : [];
 
-  // Um terço das vagas para janela curta. É pouco no campeonato e é tudo em
+  // Um terço das vagas para amostra curta. É pouco no campeonato e é tudo em
   // seleção — e é lá que o defeito mora.
+  //
+  // O piso de 2 só vale quando há vaga para ele: com `--casos=1` a conta antiga
+  // devolvia 2, porque reservava o piso antes de olhar quanto sobrava. Pedir um
+  // caso e receber dois é o tipo de coisa que só aparece quando alguém está
+  // depurando um jogo específico e já está com pouca paciência.
   const restantes = Math.max(0, casos - fixos.length);
-  const curtos = restantes ? Math.max(2, Math.round(restantes / 3)) : 0;
+  const curtos = restantes >= 3 ? Math.min(restantes, Math.max(2, Math.round(restantes / 3))) : 0;
   const cheios = restantes - curtos;
 
-  const a = cheios > 0 ? await consultar(consultaDeEscolha({ quantos: cheios, janelaCurta: false })) : [];
-  const b = curtos > 0 ? await consultar(consultaDeEscolha({ quantos: curtos, janelaCurta: true })) : [];
-  const sorteados = [
-    ...(Array.isArray(a) ? a : (a.result ?? [])),
-    ...(Array.isArray(b) ? b : (b.result ?? [])),
-  ];
+  const a = cheios > 0 ? await consultar(consultaDeEscolha({ quantos: cheios, amostraCurta: false })) : [];
+  const b = curtos > 0 ? await consultar(consultaDeEscolha({ quantos: curtos, amostraCurta: true })) : [];
+  const sorteados = [...a, ...b];
 
   const vistos = new Set(fixos.map((j) => j.fixture_id));
   const linhas = [...fixos, ...sorteados.filter((j) => !vistos.has(j.fixture_id))];
@@ -298,7 +334,7 @@ function consultaDoCaso(fixtureId) {
 
 async function capturar(jogo) {
   const r = await consultar(consultaDoCaso(jogo.fixture_id));
-  const linha = (Array.isArray(r) ? r : (r.result ?? []))[0];
+  const linha = r[0];
   if (!linha) return null;
 
   const mart = linha.mart ?? [];
@@ -328,6 +364,17 @@ async function capturar(jogo) {
     confronto: jogo.confronto,
     competicao: jogo.competition,
     data: String(jogo.kickoff_utc).slice(0, 10),
+    /**
+     * O jogo já aconteceu?
+     *
+     * O sorteio só traz encerrados, mas `--fixture` fura essa guarda de
+     * propósito — o caso relatado costuma ser o de amanhã. Num jogo que ainda
+     * não rolou, tanto o jogo a jogo quanto o veredito do mart ainda podem
+     * mudar até o apito, então o caso é bom para reproduzir uma investigação e
+     * ruim como âncora permanente. Quem escrever o teste decide o que fazer com
+     * isso; o que não pode é a diferença ficar invisível no arquivo.
+     */
+    encerrado: ['FT', 'AET', 'PEN'].includes(jogo.status_short),
     // O Ambos marcam não tem linha. Fica explícito para quem escrever o teste
     // não procurar um corte que depende dela — nenhum dos sete critérios usa.
     linha: null,
@@ -356,7 +403,7 @@ function argumento(nome, padrao) {
  */
 async function buscar(termo) {
   const alvo = termo.replace(/'/g, "''");
-  const r = await consultar(`
+  const linhas = await consultar(`
     select f.fixture_id, f.competition, f.kickoff_utc,
            f.home_team_name || ' x ' || f.away_team_name as confronto,
            exists (select 1 from futebol.int_futebol_premissas_btts b
@@ -366,7 +413,6 @@ async function buscar(termo) {
     order by f.kickoff_utc desc
     limit 20;
   `);
-  const linhas = Array.isArray(r) ? r : (r.result ?? []);
   console.log(`\n── jogos com "${termo}" ──\n`);
   for (const l of linhas) {
     console.log(
@@ -403,13 +449,17 @@ async function principal() {
     capturados.push(caso);
     console.log(
       `  ok      ${String(jogo.fixture_id).padEnd(9)} ${String(jogo.confronto).padEnd(38)} ` +
-        `${String(caso.jogos.length).padStart(3)} jogos  lados ${Object.keys(caso.veredito).join('/')}`,
+        `${String(caso.jogos.length).padStart(3)} jogos  lados ${Object.keys(caso.veredito).join('/')}` +
+        `${caso.encerrado ? '' : '   ⚠️ ainda não aconteceu'}`,
     );
   }
 
   if (!capturados.length) throw new Error('nada capturado — não vou escrever arquivo vazio');
 
-  writeFileSync(DESTINO, `${JSON.stringify(capturados, null, 1)}\n`);
+  // Sem indentação, como o arquivo irmão do mercado de Gols. É dado gerado, que
+  // ninguém lê no editor nem revisa linha a linha — indentar custou 17 mil
+  // linhas de diff na primeira captura, e nenhuma delas diz nada a um humano.
+  writeFileSync(DESTINO, `${JSON.stringify(capturados)}\n`);
 
   // O resumo existe para quem for escrever o teste saber o que a amostra cobre.
   // Premissa com zero aceso e zero apagado não prova nada, e é melhor descobrir
@@ -428,6 +478,13 @@ async function principal() {
     );
   }
   console.log('\n  ⚠️ = a amostra não tem os dois vereditos: o teste passaria sem provar nada.');
+  const abertos = capturados.filter((c) => !c.encerrado);
+  if (abertos.length) {
+    console.log(
+      `  ${abertos.length} caso(s) de jogo que ainda não aconteceu — ` +
+        `${abertos.map((c) => c.fixture_id).join(', ')}. Eles ainda podem mudar até o apito.`,
+    );
+  }
   console.log(`  Insumo medido no mart: ${diag.publica ? 'PUBLICA' : 'não publica'}.`);
 }
 
