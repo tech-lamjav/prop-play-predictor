@@ -6,6 +6,7 @@
 //   node scripts/futebol-captura-btts.mjs --casos=30
 //   node scripts/futebol-captura-btts.mjs --fixture=1492140 --fixture=1492211
 //   node scripts/futebol-captura-btts.mjs --so-diagnostico
+//   node scripts/futebol-captura-btts.mjs --so-diagnostico --mercado=asian_handicap
 //   node scripts/futebol-captura-btts.mjs --buscar=France
 //
 // `--buscar` acha o `fixture_id` pelo nome do time e não captura nada; é o
@@ -170,7 +171,15 @@ async function consultar(sql) {
 
 // ── 1. diagnóstico: o mart publica insumo de btts? ──────────────────────────
 
-const DIAGNOSTICO = `
+/**
+ * O que o mart publica de insumo medido, por mercado.
+ *
+ * Sem `--mercado` a pergunta é sobre o Ambos marcam, que é o assunto deste
+ * script. Com ele, a mesma pergunta serve para qualquer mercado — e serve
+ * mesmo: quando o Handicap passou a publicar (AE#202), a primeira coisa a
+ * saber era se o dado tinha chegado, antes de abrir tela nenhuma.
+ */
+const diagnostico = (mercado) => `
   select i.market,
          i.premissa,
          i.insumo,
@@ -179,17 +188,17 @@ const DIAGNOSTICO = `
          min(i.valor)                  as menor,
          max(i.valor)                  as maior
   from futebol.fact_insumos_medidos i
-  where i.market = 'btts'
+  where i.market = '${mercado.replace(/'/g, "''")}'
   group by 1, 2, 3
   order by 2, 3;
 `;
 
-async function diagnosticar() {
-  const linhas = await consultar(DIAGNOSTICO);
+async function diagnosticar(mercado) {
+  const linhas = await consultar(diagnostico(mercado));
 
-  console.log('\n── a tabela de insumos medidos, no Ambos marcam ──\n');
+  console.log(`\n── a tabela de insumos medidos, em ${mercado} ──\n`);
   if (!linhas.length) {
-    console.log('  NENHUMA linha de btts.');
+    console.log(`  NENHUMA linha de ${mercado}.`);
     console.log('  Consequência: a rota do valor medido não tem o que dizer neste');
     console.log('  mercado, e quem fala é a nossa conta sobre o jogo a jogo. É ela');
     console.log('  que os casos capturados aqui precisam provar.');
@@ -430,7 +439,9 @@ async function principal() {
   const termo = argumento('buscar', null);
   if (termo) return buscar(termo);
 
-  const diag = await diagnosticar();
+  // O mercado do diagnóstico é livre; a CAPTURA continua sendo do Ambos
+  // marcam, que é o assunto deste script.
+  const diag = await diagnosticar(argumento('mercado', 'btts'));
   if (process.argv.includes('--so-diagnostico')) return;
 
   const casos = Number(argumento('casos', '24'));
