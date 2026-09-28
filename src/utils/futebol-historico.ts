@@ -107,6 +107,25 @@ export type Metrica =
 /** Métrica binária: a média dela é uma fração de jogos, não uma média de gols. */
 export const EH_BINARIA = (m: Metrica) => m === 'sem_sofrer' || m === 'sem_marcar' || m === 'ambos';
 
+/**
+ * Métrica que se desenha como QUADRO por jogo, e não como barra.
+ *
+ * Barra afirma quantidade: mais alta é mais. Em `resultado` não há quantidade —
+ * vitória não é "mais alto" que empate — e em `ambos` o jogo só aconteceu ou
+ * não. Desenhar as duas como barra é a tela afirmando uma grandeza que o dado
+ * não tem.
+ *
+ * O quadro traz junto o que a barra não tem: o PLACAR de cada jogo. Num "faltou
+ * gol de um dos lados em 3 dos últimos 5", o placar é a evidência — "1 a 0" diz
+ * sozinho que só um marcou.
+ *
+ * ⚠️ Mora aqui, e não nos componentes, porque são DOIS que decidem: a aba de
+ * Estatísticas e o painel da premissa. A regra estava escrita nos dois, e os
+ * dois divergiram na primeira métrica nova — o painel ficou desenhando barra
+ * binária no `ambos` enquanto a aba já desenhava quadro.
+ */
+export const EH_QUADRO = (m: Metrica) => m === 'resultado' || m === 'ambos';
+
 /** `proprio` = o mando que o time tem NESTE jogo (mandante em casa, visitante fora). */
 export type FiltroMando = 'proprio' | 'todos';
 
@@ -455,7 +474,7 @@ const COMO_LER: Record<Metrica, string> = {
   xg: 'Cada barra é o gol esperado do time no jogo, ou seja, o tanto de chance que ele criou. A linha é a média.',
   total: 'Cada barra é o total de gols do jogo, somando os dois times. A linha tracejada é a linha que você escolheu.',
   saldo: 'Cada barra é o saldo de gols do time naquele jogo: positivo na vitória, negativo na derrota.',
-  ambos: 'Cada barra é um jogo: cheia quando os dois times marcaram, vazia quando algum passou em branco.',
+  ambos: 'Cada quadro é um jogo, com o placar e o adversário. Verde quando os dois marcaram, vermelho quando algum passou em branco.',
   resultado: 'Cada quadrado é um jogo, com o placar e o adversário. Verde é vitória, cinza empate, vermelho derrota.',
   sem_sofrer: 'Cada barra é um jogo: cheia quando o time não sofreu gol, vazia quando sofreu. O que a premissa usa é o percentual de jogos cheios.',
   sem_marcar: 'Cada barra é um jogo: cheia quando o time não marcou, vazia quando marcou. O que a premissa usa é o percentual de jogos cheios.',

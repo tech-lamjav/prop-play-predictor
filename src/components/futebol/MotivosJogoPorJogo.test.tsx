@@ -268,3 +268,84 @@ describe('rolagem ao abrir a premissa', () => {
     expect(alinharAbaixoDoCabecalho).not.toHaveBeenCalled();
   });
 });
+
+describe('o histórico de Ambos marcam mostra o placar de cada jogo', () => {
+  // ==========================================================================
+  // "Faltou gol de um dos lados em 3 dos últimos 5" não diz QUAIS jogos, e é o
+  // placar que responde: "1 a 0" mostra sozinho que só um time marcou.
+  //
+  // A regra que decide barra ou quadro é `EH_QUADRO`, e ela vale para duas
+  // métricas: `resultado` e `ambos`. Nenhuma das duas tem quantidade — vitória
+  // não é "mais alta" que empate, e o jogo só teve os dois marcando ou não —,
+  // então desenhá-las como barra é a tela afirmando uma grandeza que o dado não
+  // tem.
+  //
+  // ⚠️ A regra estava escrita DUAS vezes, uma na aba de Estatísticas e outra
+  // aqui, e as duas divergiram na primeira métrica nova: a aba já desenhava
+  // quadro no `ambos` e este painel ainda desenhava barra binária.
+  // ==========================================================================
+  const doAmbos = (over: Partial<FutebolFixtureHistorico> = {}): FutebolFixtureHistorico => ({
+    side: 'home',
+    team_id: 1,
+    team_name: 'Casa',
+    past_fixture_id: 1,
+    data: '2026-08-01',
+    ordem: 1,
+    mesma_competicao: true,
+    em_casa: true,
+    adversario: 'Adversário',
+    adversario_id: 9,
+    gols_pro: 1,
+    gols_contra: 1,
+    total_gols: 2,
+    ambos_marcaram: true,
+    sem_sofrer: false,
+    sem_marcar: false,
+    xg: 1,
+    xg_contra: 1,
+    resultado: 'E',
+    ...over,
+  });
+
+  // Dois jogos por lado: um com os dois marcando (2 a 1) e um sem (3 a 0).
+  const cincoJogos: FutebolFixtureHistorico[] = [
+    doAmbos({ side: 'home', ordem: 1, past_fixture_id: 1, gols_pro: 2, gols_contra: 1, ambos_marcaram: true }),
+    doAmbos({ side: 'home', ordem: 2, past_fixture_id: 2, gols_pro: 3, gols_contra: 0, ambos_marcaram: false }),
+    doAmbos({ side: 'away', team_id: 2, team_name: 'Fora', em_casa: false, ordem: 1, past_fixture_id: 3, gols_pro: 1, gols_contra: 1, ambos_marcaram: true }),
+    doAmbos({ side: 'away', team_id: 2, team_name: 'Fora', em_casa: false, ordem: 2, past_fixture_id: 4, gols_pro: 0, gols_contra: 2, ambos_marcaram: false }),
+  ];
+
+  // Com UMA premissa a lista já abre o painel sozinha, sem clique.
+  const abrir = (slug: string) => {
+    render(
+      <MotivosJogoPorJogo
+        mercado="btts"
+        premissas={premissas('btts', [slug])}
+        modo="favor"
+        extras={[]}
+        historico={cincoJogos}
+        numeros={[]}
+        lado={null}
+        linha={null}
+        saidaLabel="Ambos marcam: Não"
+      />,
+    );
+  };
+
+  it('o placar de cada jogo aparece quando a premissa abre', () => {
+    abrir('historico_seco');
+    // Os quatro placares, e não uma barra cheia ou vazia sem número nenhum.
+    expect(screen.getByText('2 a 1')).toBeInTheDocument();
+    expect(screen.getByText('3 a 0')).toBeInTheDocument();
+    expect(screen.getByText('1 a 1')).toBeInTheDocument();
+    expect(screen.getByText('0 a 2')).toBeInTheDocument();
+  });
+
+  it('e a legenda fala de quadro e dos dois marcarem, não de barra', () => {
+    // A legenda vinha do mapa por métrica e dizia "Cada barra é um jogo". Com o
+    // desenho trocado, ela passou a descrever outro gráfico que o da tela.
+    abrir('historico_btts');
+    expect(screen.getByText(/Cada quadro é um jogo/)).toBeInTheDocument();
+    expect(screen.queryByText(/Cada barra é um jogo: cheia quando os dois/)).not.toBeInTheDocument();
+  });
+});

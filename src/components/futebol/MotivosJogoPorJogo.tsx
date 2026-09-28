@@ -4,7 +4,7 @@ import type { FutebolFixtureHistorico, FutebolFixtureNumeros } from '@/services/
 import { pesoPalavra, pesoForte, rotuloPremissa, type Premissa } from '@/utils/futebol-premissas';
 import { evidenciaDe, type Evidencia } from '@/utils/futebol-evidencias';
 import { alinharAbaixoDoCabecalho } from '@/utils/rolagem';
-import { evidenciaDoHistorico, storyDaPremissa, type SerieHistorico, type Story } from '@/utils/futebol-historico';
+import { EH_QUADRO, evidenciaDoHistorico, storyDaPremissa, type SerieHistorico, type Story } from '@/utils/futebol-historico';
 import {
   corteEmPalavras,
   exato,
@@ -404,7 +404,7 @@ function PainelPremissa({
   saidaLabel: string;
   modo: 'favor' | 'contra';
 }) {
-  const soMiudas = story.series.every((s) => s.metrica !== 'resultado' && s.jogos.length <= 2);
+  const soMiudas = story.series.every((s) => !EH_QUADRO(s.metrica) && s.jogos.length <= 2);
   return (
     <div className="px-4 pb-4 pt-3.5" style={{ borderTop: '1px solid #f1e9d6' }}>
       {/* A prestação tem precedência: onde o critério foi transcrito, o número que
@@ -422,7 +422,7 @@ function PainelPremissa({
         )
       )}
 
-      {story.series[0].metrica === 'resultado' ? (
+      {EH_QUADRO(story.series[0].metrica) ? (
         <div className="flex flex-col gap-4">
           {story.series.map((s) => (
             <div key={s.chave}>
@@ -431,7 +431,11 @@ function PainelPremissa({
                 <span className="text-[12px] font-semibold text-ink">{s.titulo}</span>
                 <span className="text-[10.5px] ml-auto" style={{ color: '#8d8672' }}>{s.sub}</span>
               </div>
-              <SerieResultados s={s} />
+              {/* Em `ambos` a cor não é vitória nem derrota: é o fato ter
+                  acontecido ou não. Pintar de verde uma vitória em que só um
+                  time marcou seria a cor respondendo outra pergunta que a da
+                  premissa. */}
+              <SerieResultados s={s} corPor={s.metrica === 'ambos' ? 'valor' : 'resultado'} />
             </div>
           ))}
         </div>

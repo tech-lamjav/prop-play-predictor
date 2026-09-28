@@ -12,6 +12,7 @@ import {
   type MercadoDoGrafico,
 } from '@/utils/futebol-estatisticas-da-partida';
 import { cabeRotulo, pisoDaEscala, tetoDaEscala } from '@/utils/futebol-grafico-de-barras';
+import { EH_QUADRO } from '@/utils/futebol-historico';
 import { exato } from '@/utils/futebol-criterio';
 import { Chip } from './Chip';
 import { ITEM_SELETOR, SeletorDeMenu } from './SeletorDeMenu';
@@ -78,7 +79,7 @@ export function EstatisticasDoJogo({
   const piso = pisoDaEscala(series, referencia ?? undefined);
   const comRotulo = cabeRotulo(series);
   /** Mercado binário não tem grandeza: vira quadro de jogo, não barra. */
-  const ehQuadro = doMercado.metrica === 'resultado' || doMercado.metrica === 'ambos';
+  const ehQuadro = EH_QUADRO(doMercado.metrica);
 
   const nomeDoLado = (lado: 'home' | 'away') => historico?.find((r) => r.side === lado)?.team_name ?? null;
 
