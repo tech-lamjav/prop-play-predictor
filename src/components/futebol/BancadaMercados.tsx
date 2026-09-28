@@ -522,6 +522,7 @@ export function BancadaMercados({
       numeros,
       historico,
       insumos,
+      saida: principal?.outcome,
       lado: ladoPrincipal,
       linha,
       acesa,
@@ -1438,6 +1439,7 @@ export function BancadaMercados({
             historico={historico}
             numeros={numeros}
             insumos={insumos}
+            saida={principal?.outcome}
             lado={ladoPrincipal}
             linha={linha}
             saidaLabel={pickAtual}
@@ -1452,6 +1454,7 @@ export function BancadaMercados({
             historico={historico}
             numeros={numeros}
             insumos={insumos}
+            saida={principal?.outcome}
             lado={ladoPrincipal}
             linha={linha}
             saidaLabel={pickAtual}

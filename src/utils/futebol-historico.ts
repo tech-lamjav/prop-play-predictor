@@ -159,18 +159,6 @@ export interface SerieSpec {
 }
 
 /**
- * O gráfico de "defesas frágeis" do mercado de GOLS.
- *
- * Mora numa constante porque duas chaves apontam para ele, e uma das duas está
- * errada e é reconhecidamente errada — ver a nota em `btts:defesas_vazaveis`.
- * Apontar as duas para o mesmo objeto deixa a duplicação visível; copiá-lo
- * deixaria duas cópias que divergem sozinhas no dia em que alguém mexer numa.
- */
-const GRAFICO_DEFESAS_VAZAVEIS_DE_GOLS: SerieSpec[] = [
-  { quem: 'ambos', metrica: 'ga', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' },
-];
-
-/**
  * Que gráfico prova cada premissa. Par fora do mapa não ganha gráfico: melhor a aba
  * dizer que não tem como conferir do que desenhar um número que não é o da premissa.
  *
@@ -212,7 +200,11 @@ export const SPECS: Record<string, SerieSpec[]> = {
   // todas. A frase envelheceu ali e ficou vinte dias dizendo o contrário do
   // código logo abaixo dela. O que continua de pé da #361 é a MÉTRICA e o
   // recorte de mando — e essa parte está anotada em cada entrada errada.
-  'goals_over_under:defesas_vazaveis': GRAFICO_DEFESAS_VAZAVEIS_DE_GOLS,
+  // Morava numa constante compartilhada com `btts:defesas_vazaveis`, que apontava
+  // para cá por engano — mesmo slug, mercados diferentes. A constante existia só
+  // para deixar aquele engano visível; com ele consertado, ela seria um apelido
+  // de um uso só.
+  'goals_over_under:defesas_vazaveis': [{ quem: 'ambos', metrica: 'ga', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
   'goals_over_under:defesas_firmes': [{ quem: 'ambos', metrica: 'ga', mando: 'proprio', direcao: 'menor', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
   'goals_over_under:ataque_combinado': [{ quem: 'ambos', metrica: 'gf', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
   // A família de PERCENTUAL (#355). O critério destas três não é média de gol
@@ -288,29 +280,47 @@ export const SPECS: Record<string, SerieSpec[]> = {
 
   // ── Ambos marcam ──
   //
-  // ⚠️ TRÊS DAS QUATRO ESTÃO ERRADAS, e ficam assim neste commit de propósito: ele
-  // rechaveia o mapa e não muda pixel nenhum na tela. O conserto é a transcrição
-  // dos critérios, que vem depois e apaga estas entradas. Os critérios abaixo
-  // foram lidos do dbt e estão na #361.
+  // AS SETE, e as sete FIÉIS. Estavam quatro aqui, três delas com a grandeza
+  // errada, sob a nota "ficam assim de propósito, o conserto vem depois". Este é
+  // o depois: os critérios foram lidos do `int_futebol_premissas_btts` e as
+  // entradas passaram a desenhá-los.
   //
-  // `ambos_marcam`   compara `home_fts_pct < 30 AND away_fts_pct < 30` — o
-  //                  percentual de jogos PASSANDO EM BRANCO de cada time.
-  //                  O gráfico aqui desenha média de gols marcados.
-  // `defesa_forte`   compara `home_cs_pct >= 45 OR away_cs_pct >= 45` — o
-  //                  percentual de jogos SEM SOFRER GOL, e basta um dos dois.
-  //                  O gráfico aqui desenha média de gols sofridos, e ainda
-  //                  recorta por mando, que este critério não tem. Foi o que
-  //                  deixou França com dois jogos de oito na tela de 25/09.
-  // `defesas_vazaveis` compara `home_cs_pct < 35 AND away_cs_pct < 35`, e
-  //                  recebe o gráfico do mercado de GOLS por causa do slug
-  //                  repetido — a colisão que este commit torna endereçável.
+  // ⚠️ O conserto não precisou de métrica nova. `sem_sofrer`, `sem_marcar` e
+  // `ambos` já existiam, vindas do mercado de Gols; o que havia era este mapa
+  // apontando para as erradas. Foi por isso que a França apareceu com dois jogos
+  // de oito na tela de 25/09: a `defesa_forte` desenhava gols sofridos
+  // RECORTADOS POR MANDO, e o critério dela é percentual de jogos sem sofrer,
+  // sobre TODOS os jogos da janela.
   //
-  // `ataque_dos_dois` é a única fiel: `home_gf >= 1.2 AND away_gf >= 1.2`,
-  // média de gols marcados de cada time NO MANDO DELE, últimos 10.
-  'btts:ambos_marcam': [{ quem: 'ambos', metrica: 'gf', mando: 'todos', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
+  // ⚠️ `mando: 'todos'` em seis das sete. No dbt os percentuais saem de
+  // `clean_sheet_total / played_total` e as contagens saem do `last5` — nenhum
+  // dos dois recorta por mando. A única que recorta é a `ataque_dos_dois`, que
+  // lê `goals_for_avg_home` do mandante e `goals_for_avg_away` do visitante, e
+  // ela já estava certa.
+  //
+  // ⚠️ A janela é 10 porque o default de produção do `team_form_pit` é
+  // `ultimos_10` + `todas` desde a AE#91 — e não a temporada, que é o que a
+  // descrição do modelo ainda narra como se fosse o padrão. As duas de histórico
+  // são 5, que é o tamanho do `last5` delas.
+  //
+  // Os cortes, do dbt, para quem for conferir a direção de cada uma:
+  //   ambos_marcam      home_fts_pct < 30 AND away_fts_pct < 30
+  //   ataque_trava      home_fts_pct >= 35 OR  away_fts_pct >= 35
+  //   defesas_vazaveis  home_cs_pct  < 35 AND away_cs_pct  < 35
+  //   defesa_forte      home_cs_pct  >= 45 OR  away_cs_pct  >= 45
+  //   ataque_dos_dois   home_gf >= 1.2 AND away_gf >= 1.2
+  //   historico_btts    home_btts_cnt    >= 3 AND away_btts_cnt    >= 3
+  //   historico_seco    home_no_btts_cnt >= 3 OR  away_no_btts_cnt >= 3
+  'btts:ambos_marcam': [{ quem: 'ambos', metrica: 'sem_marcar', mando: 'todos', direcao: 'menor', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
+  'btts:ataque_trava': [{ quem: 'ambos', metrica: 'sem_marcar', mando: 'todos', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
+  'btts:defesas_vazaveis': [{ quem: 'ambos', metrica: 'sem_sofrer', mando: 'todos', direcao: 'menor', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
+  'btts:defesa_forte': [{ quem: 'ambos', metrica: 'sem_sofrer', mando: 'todos', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
   'btts:ataque_dos_dois': [{ quem: 'ambos', metrica: 'gf', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
-  'btts:defesa_forte': [{ quem: 'ambos', metrica: 'ga', mando: 'proprio', direcao: 'menor', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
-  'btts:defesas_vazaveis': GRAFICO_DEFESAS_VAZAVEIS_DE_GOLS,
+  // `mostraMedia: false` nas duas de contagem, como nas `historico_over`/`under`
+  // de Gols: o insumo é QUANTOS dos cinco, não a média deles, e a média pode
+  // estar de um lado do corte enquanto a contagem diz o contrário.
+  'btts:historico_btts': [{ quem: 'ambos', metrica: 'ambos', mando: 'todos', direcao: 'maior', ultimos: JANELA_DE_CONTAGEM, competicoes: 'qualquer', mostraMedia: false }],
+  'btts:historico_seco': [{ quem: 'ambos', metrica: 'ambos', mando: 'todos', direcao: 'menor', ultimos: JANELA_DE_CONTAGEM, competicoes: 'qualquer', mostraMedia: false }],
 
   // ── Dupla chance ──
   //

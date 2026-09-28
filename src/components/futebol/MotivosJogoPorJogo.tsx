@@ -617,6 +617,7 @@ export function MotivosJogoPorJogo({
   historico,
   numeros,
   insumos,
+  saida,
   lado,
   linha,
   saidaLabel,
@@ -636,6 +637,14 @@ export function MotivosJogoPorJogo({
   numeros: FutebolFixtureNumeros[] | undefined;
   /** O valor medido pelo mart (#464). Ausência é normal, não erro. */
   insumos?: InsumoMedido[] | undefined;
+  /**
+   * A saída do mart (`Home`, `1X`, `Yes`…), que acha a linha do valor medido.
+   *
+   * ⚠️ NÃO é o `saidaLabel` abaixo. Aquele é o texto da tela ("Ambos marcam:
+   * Sim") e este é a chave do mart: derivar um do outro amarraria a busca no
+   * banco à copy, e trocar uma palavra da tela zeraria a evidência em silêncio.
+   */
+  saida?: string | null;
   lado: 'home' | 'away' | null;
   linha: number | null;
   /** A saída analisada, para o fechamento dizer a favor de quê. */
@@ -671,11 +680,11 @@ export function MotivosJogoPorJogo({
           // A frase e o card saem da MESMA prestação. Enquanto a frase lia o
           // histórico jogo a jogo e o card lia o perfil de temporada, a tela
           // mostrava 2,3 e 2,4 para a mesma afirmação, um embaixo do outro.
-          ev: evidenciaDaPremissa({ mercado, slug: p.slug, numeros, historico, insumos, lado, linha, acesa }),
+          ev: evidenciaDaPremissa({ mercado, slug: p.slug, numeros, historico, insumos, saida, lado, linha, acesa }),
           story: storyDaPremissa(mercado, p.slug, historico, lado, linha),
         };
       }),
-    [mercado, premissas, numeros, historico, insumos, lado, linha, acesa],
+    [mercado, premissas, numeros, historico, insumos, saida, lado, linha, acesa],
   );
 
   const total = itens.length + (extras?.length ?? 0);

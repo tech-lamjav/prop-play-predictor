@@ -203,6 +203,10 @@ describe('toda premissa declara a janela do modelo', () => {
     // Saem do `n_wins_last5` do modelo, que é de cinco por construção.
     'match_winner:forma': 5,
     'double_chance:invicto_recente': 5,
+    // Leem o `last5` próprio do modelo de Ambos marcam — um array de cinco
+    // booleanos por time, montado no SQL e não derivado da janela de dez.
+    'btts:historico_btts': 5,
+    'btts:historico_seco': 5,
   };
 
   for (const [par, series] of Object.entries(SPECS)) {
@@ -274,11 +278,17 @@ describe('a frase nunca sai de um recorte diferente do gráfico', () => {
   // fixo no gabarito —, então `defesas_vazaveis` respondia "tem critério" pelo
   // critério de GOLS mesmo quando a premissa em questão era a do Ambos marcam,
   // que não tem nenhum. Com o par, ela aparece onde sempre esteve.
+  //
+  // Passou de catorze para dezoito: as três que faltavam do Ambos marcam
+  // ganharam gráfico, e o mercado inteiro passou a ter um. Nenhuma delas tem
+  // critério transcrito ainda, então as três entram aqui — o que muda é que
+  // agora elas caem numa frase do gráfico em vez de não terem gráfico nenhum.
   const COM_GRAFICO_E_SEM_CRITERIO = [
     'asian_handicap:adversario_fragil_fora', 'asian_handicap:defesa_fora_solida',
     'asian_handicap:mando_forte', 'asian_handicap:raramente_perde_por_2',
     'asian_handicap:tende_golear', 'btts:ambos_marcam', 'btts:ataque_dos_dois',
-    'btts:defesa_forte', 'btts:defesas_vazaveis', 'double_chance:adversario_limitado',
+    'btts:ataque_trava', 'btts:defesa_forte', 'btts:defesas_vazaveis',
+    'btts:historico_btts', 'btts:historico_seco', 'double_chance:adversario_limitado',
     'double_chance:invicto_recente', 'match_winner:forca_mismatch', 'match_winner:forma',
     'match_winner:mando', 'match_winner:superioridade_xg',
   ];
