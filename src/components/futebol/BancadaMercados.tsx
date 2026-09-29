@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
-import { fmtOdd, fmtExato, fmtDecimal, fmtLinhaDeAposta } from '@/utils/formato';
+import { fmtOdd, fmtExato, fmtDecimal, fmtLinhaAnalisada } from '@/utils/formato';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RegistrarApostaCTA } from '@/components/futebol/RegistrarAposta';
 import {
@@ -77,7 +77,7 @@ const TIPO_LINHA = new Set(['goals_over_under', 'asian_handicap']);
 
 /** Linha em pt-BR. Sinal só no handicap: "+2,5 gols" não existe. */
 function fmtLinha(v: number, comSinal: boolean): string {
-  return `${comSinal && v > 0 ? '+' : ''}${fmtLinhaDeAposta(v)}`;
+  return `${comSinal && v > 0 ? '+' : ''}${fmtLinhaAnalisada(v)}`;
 }
 
 /** Reavalia a tela no apito, mesmo se a fonte ainda não atualizou o status. */

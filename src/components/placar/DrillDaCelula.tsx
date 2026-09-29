@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { fmtOdd, fmtDecimal, fmtExato, fmtLinhaDeAposta } from '@/utils/formato';
+import { fmtOdd, fmtDecimal, fmtExato, fmtLinhaAnalisada } from '@/utils/formato';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { resultBadge } from '@/utils/futebol-settlement';
@@ -17,7 +17,7 @@ import { brtDayOf } from '@/utils/futebol-datas';
 
 /** A saída, do jeito que o produto a escreve: mercado, lado e linha. */
 function saida(market: string, outcome: string, line: number | null): string {
-  const linha = line == null ? '' : ` ${line > 0 ? '+' : ''}${fmtLinhaDeAposta(line)}`;
+  const linha = line == null ? '' : ` ${line > 0 ? '+' : ''}${fmtLinhaAnalisada(line)}`;
   return `${rotuloDoMercado(market)} · ${outcome}${linha}`;
 }
 

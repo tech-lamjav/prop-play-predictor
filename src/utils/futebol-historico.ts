@@ -1,5 +1,5 @@
 import type { FutebolFixtureHistorico } from '@/services/futebol-data.service';
-import { fmtLinhaDeAposta } from '@/utils/formato';
+import { fmtLinhaAnalisada } from '@/utils/formato';
 import type { Evidencia } from '@/utils/futebol-evidencias';
 import { n1 } from '@/utils/futebol-evidencias';
 
@@ -604,7 +604,7 @@ export function storyDaPremissa(
   return {
     series,
     comoLer: series.every((x) => x.metrica === metrica) ? COMO_LER[metrica] : '',
-    referencia: metrica === 'total' && linha != null ? { valor: linha, label: `linha ${fmtLinhaDeAposta(linha)}` } : undefined,
+    referencia: metrica === 'total' && linha != null ? { valor: linha, label: `linha ${fmtLinhaAnalisada(linha)}` } : undefined,
     consolidado: consolidadoDe(series, spec0, linha),
   };
 }
@@ -754,7 +754,7 @@ export function evidenciaDoHistorico(
     const alvo = slug === 'historico_over' ? acima : todos.length - acima;
     const comp = slug === 'historico_over' ? 'passaram de' : 'ficaram abaixo de';
     return {
-      texto: `${alvo} dos ${todos.length} jogos dos dois times ${comp} ${fmtLinhaDeAposta(linha)} gols`,
+      texto: `${alvo} dos ${todos.length} jogos dos dois times ${comp} ${fmtLinhaAnalisada(linha)} gols`,
     };
   }
 

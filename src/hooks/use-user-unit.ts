@@ -210,7 +210,10 @@ export function useUserUnit() {
   };
 
   /**
-   * Format currency (helper function)
+   * Fica como repasse de uma linha, e não some, porque é API PÚBLICA do hook:
+   * seis telas consomem `formatCurrency` daqui. Trocá-las por `fmtDinheiro`
+   * direto é limpeza de outro dia; o que importava era acabar com a quinta
+   * cópia da regra de moeda, e essa acabou.
    */
   const formatCurrency = (value: number): string => fmtDinheiro(value);
 

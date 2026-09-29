@@ -1,4 +1,4 @@
-import { fmtDecimal } from '@/utils/formato';
+import { fmtDecimal, fmtPct } from '@/utils/formato';
 
 // ============================================================================
 // placar-formato.ts — como cada número do placar aparece na tela
@@ -16,7 +16,7 @@ import { fmtDecimal } from '@/utils/formato';
  * 0% afirmaria que a metodologia errou tudo.
  */
 export const taxaPct = (taxa: number | null, casas = 1) =>
-  taxa == null ? '—' : `${fmtDecimal(taxa * 100, casas)}%`;
+  fmtPct(taxa, casas);
 
 /**
  * O ROI em porcentagem, sempre com sinal.
@@ -25,7 +25,7 @@ export const taxaPct = (taxa: number | null, casas = 1) =>
  * números é negativa, "+2,1%" tem de saltar aos olhos.
  */
 export const roiPct = (roi: number) =>
-  `${roi > 0 ? '+' : roi < 0 ? '−' : ''}${fmtDecimal(Math.abs(roi) * 100, 1)}%`;
+  `${roi > 0 ? '+' : roi < 0 ? '−' : ''}${fmtPct(Math.abs(roi), 1)}`;
 
 /** O erro-padrão, em pontos percentuais, sem sinal. */
 export const epPct = (ep: number) => `${fmtDecimal(ep * 100, 1)}`;

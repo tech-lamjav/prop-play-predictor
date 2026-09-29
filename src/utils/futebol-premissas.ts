@@ -1,5 +1,5 @@
 import type { FutebolFixturePremissas } from '@/services/futebol-data.service';
-import { fmtLinhaDeAposta } from '@/utils/formato';
+import { fmtLinhaAnalisada } from '@/utils/formato';
 import { linhaDaSaida, mesmaLinha, type Saida } from '@/utils/futebol-saida';
 
 // Catálogo das premissas do Score: rótulo, peso e agrupamento.
@@ -365,7 +365,7 @@ export function mercadoDe(slug: string): MercadoInfo | null {
 
 /** Número da linha em pt-BR: 1,5 e não 1.5. */
 function fmtLinha(line: number): string {
-  return fmtLinhaDeAposta(line);
+  return fmtLinhaAnalisada(line);
 }
 
 /** Rótulo da saída da aposta, na linguagem do apostador. */

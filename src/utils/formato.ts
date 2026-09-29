@@ -4,9 +4,10 @@
 // Existe porque a formatação estava escrita à mão e espalhada, e já se
 // contradizia em português, antes de qualquer espanhol: a odd era desenhada
 // por `toFixed(2)` em 43 lugares, 41 com ponto e 2 com vírgula, e o dinheiro
-// tinha CINCO definições independentes, uma delas engolindo o "R$".
+// tinha definições independentes espalhadas — três delas com o "R$" digitado
+// no JSX ao lado do número, que é o que não vira "S/" nem "$" num segundo país.
 //
-// REGRA: não existe uma régua, existem três, e elas discordam de propósito.
+// REGRA: não existe uma régua, existem QUATRO, e elas discordam de propósito.
 //
 //   1. A ODD SEGUE O SETOR. Ponto, sempre, em qualquer país. Casa de aposta
 //      escreve "cuota de 2.10" e "10.000 CLP" na MESMA página para o mesmo
@@ -15,15 +16,18 @@
 //   2. O DINHEIRO SEGUE O PAÍS. Peru e México com ponto, Argentina e Chile com
 //      vírgula, e o peso chileno sem centavos.
 //   3. PORCENTAGEM E DECIMAL SEGUEM O PAÍS.
+//   4. A LINHA ANALISADA ainda não tem régua decidida. Hoje segue o país,
+//      como já seguia. Ver `fmtLinhaAnalisada`.
 //
 // ⚠️ NUNCA escreva `toFixed(...).replace('.', ',')` de novo, nem construa um
 // `Intl.NumberFormat` dentro de função chamada em laço. O motivo do cache está
 // documentado em `futebol-datas.ts`: construir um formatador custa 66 vezes
 // mais que reusá-lo, e isso já travou a home por 1,4 segundo num sábado cheio.
 //
-// A LINHA (o 2,5 de "Mais de 2,5 gols") NÃO está aqui de propósito — se ela
-// segue o setor como a odd, ou o país como o resto, é decisão em aberto no mapa
-// da expansão. Continua saindo por `futebol-score.ts` até alguém decidir.
+// ⚠️ O vocabulário é o do CONTEXT.md, e ali "linha da aposta" é termo PROIBIDO
+// (verbete "Linha de referência"). Os termos sancionados são linha analisada,
+// cotada, de referência e bloqueada. O 2,5 de "Mais de 2,5 gols" é a linha
+// ANALISADA — o modelo calcula premissas para ela tendo ou não cotação.
 // ============================================================================
 
 /** O que muda no dia em que o produto falar espanhol. Uma linha, e não 46. */
@@ -58,13 +62,27 @@ export function fmtOdd(odd: number | null | undefined): string {
   return odd.toFixed(2);
 }
 
-/** Dinheiro com o símbolo da moeda, na formatação do país. */
+/**
+ * Dinheiro com o símbolo da moeda, na formatação do país.
+ *
+ * `casas` existe por dois motivos reais, e não por generalidade: eixo de
+ * gráfico pede valor sem centavo, e o peso chileno NÃO TEM centavo. Deixar em
+ * branco usa o que a moeda manda, que é o certo na esmagadora maioria.
+ */
 export function fmtDinheiro(
   valor: number | null | undefined,
-  { locale = LOCALE_PADRAO, moeda = MOEDA_PADRAO }: { locale?: string; moeda?: string } = {},
+  {
+    locale = LOCALE_PADRAO,
+    moeda = MOEDA_PADRAO,
+    casas,
+  }: { locale?: string; moeda?: string; casas?: number } = {},
 ): string {
   if (vazio(valor)) return TRACO;
-  return formatador(locale, { style: 'currency', currency: moeda }).format(valor);
+  return formatador(locale, {
+    style: 'currency',
+    currency: moeda,
+    ...(casas == null ? {} : { minimumFractionDigits: casas, maximumFractionDigits: casas }),
+  }).format(valor);
 }
 
 /** Uma taxa de 0 a 1 em porcentagem, na formatação do país. */
@@ -119,6 +137,24 @@ export function fmtExato(valor: number | null | undefined, locale = LOCALE_PADRA
   return formatador(locale, { maximumFractionDigits: 20, useGrouping: false }).format(valor);
 }
 
+/**
+ * Um número qualquer, COM agrupamento de milhar: 1.234,5.
+ *
+ * É a régua para quantidade grande — quilômetro rodado, contagem num gráfico —
+ * onde o milhar sem ponto vira parede de dígito. As outras desligam o
+ * agrupamento para igualar o `toFixed` que substituíram; esta não substitui
+ * nada, ela troca o `toLocaleString('pt-BR')` solto, que já agrupava.
+ */
+export function fmtNumero(
+  valor: number | null | undefined,
+  { casas, locale = LOCALE_PADRAO }: { casas?: number; locale?: string } = {},
+): string {
+  if (vazio(valor)) return TRACO;
+  return formatador(locale, {
+    ...(casas == null ? {} : { minimumFractionDigits: casas, maximumFractionDigits: casas }),
+  }).format(valor);
+}
+
 /** Até N casas, sem completar com zero: 0,05 fica 0,05 e 0,50 fica 0,5. */
 export function fmtDecimalAte(
   valor: number | null | undefined,
@@ -134,7 +170,7 @@ export function fmtDecimalAte(
 }
 
 /**
- * A LINHA da aposta: o 2,5 de "Mais de 2,5 gols", o +1,5 do handicap.
+ * A linha analisada: o 2,5 de "Mais de 2,5 gols", o +1,5 do handicap.
  *
  * ⚠️ DECISÃO EM ABERTO, e é por isso que ela tem função própria em vez de
  * chamar `fmtExato` direto.
@@ -145,11 +181,11 @@ export function fmtDecimalAte(
  * mercado internacional escreve "Over 2.5", com ponto.
  *
  * Hoje ela segue o PAÍS, que é o que o produto já fazia em português. Se a
- * decisão for que ela segue o setor, muda aqui, uma vez, e os sete lugares que
- * desenham linha acompanham. Era exatamente essa caçada que o #529 existe para
+ * decisão for que ela segue o setor, muda aqui, uma vez, e os seis lugares que
+ * a desenham acompanham. Era exatamente essa caçada que o #529 existe para
  * evitar.
  */
-export function fmtLinhaDeAposta(
+export function fmtLinhaAnalisada(
   linha: number | null | undefined,
   locale = LOCALE_PADRAO,
 ): string {

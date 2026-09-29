@@ -1,26 +1,27 @@
 import { describe, expect, it } from 'vitest';
-import { fmtOdd, fmtDinheiro, fmtPct, fmtDecimal, fmtExato, fmtDecimalAte, fmtLinhaDeAposta, LOCALE_PADRAO, MOEDA_PADRAO } from './formato';
+import { fmtOdd, fmtDinheiro, fmtPct, fmtDecimal, fmtExato, fmtDecimalAte, fmtNumero, fmtLinhaAnalisada, LOCALE_PADRAO, MOEDA_PADRAO } from './formato';
 
 // ============================================================================
-// Três réguas, e elas NÃO são a mesma (#529)
+// Réguas diferentes, e é de propósito (#529)
 // ============================================================================
-// O produto misturava três coisas num `toFixed` escrito à mão:
+// O produto misturava réguas incompatíveis num `toFixed` escrito à mão:
 //
-//   1. A odd, que segue a convenção do setor e é SEMPRE ponto
-//   2. O dinheiro, que segue o país
-//   3. Porcentagem e decimal, que seguem o país
+//   1. A ODD segue a convenção do setor e é SEMPRE ponto
+//   2. O DINHEIRO segue o país
+//   3. PORCENTAGEM, DECIMAL e NÚMERO seguem o país
+//   4. A LINHA ANALISADA ainda não tem régua decidida
 //
 // A prova da primeira está em página de operador: a Betsson escreve "cuota de
 // 2.10" e "10.000 CLP" na MESMA página, para o mesmo chileno. A casa não aplica
 // o separador do país à cotação.
 //
 // Hoje o produto já se contradizia: 41 lugares desenhavam a odd com ponto e 2
-// com vírgula, e o dinheiro tinha cinco definições independentes — com o "R$"
+// com vírgula, e o dinheiro tinha oito definições independentes — com o "R$"
 // escrito à mão no JSX em três delas, que é o que não sobrevive a um segundo
 // país.
 //
-// A LINHA da aposta é a quarta régua, e é a única ainda indecisa: ver
-// `fmtLinhaDeAposta`.
+// O termo da quarta é o do CONTEXT.md: "linha da aposta" é PROIBIDO lá, no
+// verbete "Linha de referência". Ver `fmtLinhaAnalisada`.
 // ============================================================================
 
 describe('fmtOdd · a odd não tem pátria', () => {
@@ -119,21 +120,45 @@ describe('fmtExato · o número como ele é', () => {
   });
 });
 
-describe('fmtLinhaDeAposta · a régua que ainda não foi decidida', () => {
+describe('fmtNumero · a única que agrupa milhar', () => {
+  it('agrupa, ao contrário das outras', () => {
+    // A diferença com `fmtExato` é deliberada e vale um teste: as réguas que
+    // substituíram `toFixed` não agrupam para não mudar tela nenhuma; esta
+    // substituiu `toLocaleString` solto, que já agrupava.
+    expect(fmtNumero(1234.5)).toBe('1.234,5');
+    expect(fmtExato(1234.5)).toBe('1234,5');
+  });
+
+  it('com casas fixas, continua agrupando', () => {
+    expect(fmtNumero(1234.56, { casas: 1 })).toBe('1.234,6');
+  });
+
+  it('vazio vira travessão', () => {
+    expect(fmtNumero(null)).toBe('—');
+  });
+});
+
+describe('fmtDinheiro sem centavo', () => {
+  it('serve ao eixo de gráfico e ao peso chileno, que não tem centavo', () => {
+    expect(fmtDinheiro(1234.5, { casas: 0 })).toBe('R$ 1.235');
+  });
+});
+
+describe('fmtLinhaAnalisada · a régua que ainda não foi decidida', () => {
   it('hoje segue o país, que é o que o produto já fazia', () => {
-    expect(fmtLinhaDeAposta(2.5)).toBe('2,5');
-    expect(fmtLinhaDeAposta(1.75)).toBe('1,75');
+    expect(fmtLinhaAnalisada(2.5)).toBe('2,5');
+    expect(fmtLinhaAnalisada(1.75)).toBe('1,75');
   });
 
   it('existe separada da odd, e é isso que a mantém trocável', () => {
     // Se as duas chamassem a mesma função, decidir que a linha segue o setor
     // (como a odd) ou o país seria impossível sem caçar os sete lugares de
     // novo. Este teste falha no dia em que alguém as fundir — de propósito.
-    expect(fmtLinhaDeAposta(2.5)).not.toBe(fmtOdd(2.5));
+    expect(fmtLinhaAnalisada(2.5)).not.toBe(fmtOdd(2.5));
   });
 
   it('vazio vira travessão', () => {
-    expect(fmtLinhaDeAposta(null)).toBe('—');
+    expect(fmtLinhaAnalisada(null)).toBe('—');
   });
 });
 

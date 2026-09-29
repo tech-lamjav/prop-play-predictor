@@ -2,7 +2,7 @@
 // futebol-score.ts — apresentação do Score (motor é backend)
 // ============================================================
 import { linhaDaSaida, type Saida } from '@/utils/futebol-saida';
-import { fmtLinhaDeAposta } from '@/utils/formato';
+import { fmtLinhaAnalisada } from '@/utils/formato';
 // O estado do jogo se decide com o RELÓGIO e o status juntos — as três funções
 // vêm do mesmo lugar que as telas usam, para não nascer uma segunda definição
 // de 'acabou' aqui dentro.
@@ -85,7 +85,7 @@ export function marketShort(market: string): string {
 /** Linha do handicap com sinal e vírgula decimal (ex.: -1,5 / +1,5). */
 function fmtHandicapLine(line: number): string {
   const sign = line > 0 ? '+' : line < 0 ? '−' : '';
-  return `${sign}${fmtLinhaDeAposta(Math.abs(line))}`;
+  return `${sign}${fmtLinhaAnalisada(Math.abs(line))}`;
 }
 
 /** Outcome do 1X2 em PT. */
@@ -102,7 +102,7 @@ export function outcomePt(outcome: string, homeName: string, awayName: string): 
 export function pickLabel(s: Saida, homeName: string, awayName: string): string {
   const { market, outcome, line_value: line } = s;
   if (market === 'goals_over_under') {
-    const n = line != null ? fmtLinhaDeAposta(line) : '';
+    const n = line != null ? fmtLinhaAnalisada(line) : '';
     return outcome === 'Over' ? `Mais de ${n} gols` : `Menos de ${n} gols`;
   }
   if (market === 'asian_handicap') {

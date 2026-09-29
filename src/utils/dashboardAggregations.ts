@@ -1,5 +1,5 @@
 import type { Bet } from '@/hooks/use-bets';
-import { fmtOdd, fmtDecimal } from '@/utils/formato';
+import { fmtDinheiro, fmtOdd, fmtDecimal } from '@/utils/formato';
 
 export type BetWithTags = Bet & { tags?: { id: string; name: string; color?: string }[] };
 
@@ -536,12 +536,7 @@ interface StatsSummary {
 const MIN_SLICE_N = 3;
 
 /** Formatter padrão pra moeda — strip ",00" final quando inteiro. */
-const defaultMoneyFmt = (v: number): string =>
-  new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-    maximumFractionDigits: 0,
-  }).format(v);
+const defaultMoneyFmt = (v: number): string => fmtDinheiro(v, { casas: 0 });
 
 /** Strip trailing ",00" se aparecer (útil quando o formatter da página adiciona centavos). */
 const cleanCents = (s: string): string => s.replace(/[,.]00\b/, '');

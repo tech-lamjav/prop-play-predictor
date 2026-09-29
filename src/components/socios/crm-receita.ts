@@ -1,4 +1,4 @@
-import { fmtExato } from '@/utils/formato';
+import { fmtDinheiro, fmtExato } from '@/utils/formato';
 // ============================================================================
 // A receita de uma pessoa, e o que ela deve
 // ============================================================================
@@ -392,9 +392,5 @@ export function formatarMes(mes: string): string {
 
 /** `39.9` → `R$ 39,90`. */
 export function emReais(valor: number): string {
-  return valor.toLocaleString('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-    minimumFractionDigits: 2,
-  });
+  return fmtDinheiro(valor);
 }

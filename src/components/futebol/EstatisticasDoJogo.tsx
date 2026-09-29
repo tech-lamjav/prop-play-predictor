@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { fmtExato, fmtLinhaAnalisada } from '@/utils/formato';
 import type { FutebolFixtureHistorico } from '@/services/futebol-data.service';
 import { DropdownMenuCheckboxItem } from '@/components/ui/dropdown-menu';
 import {
@@ -12,7 +13,6 @@ import {
   type MercadoDoGrafico,
 } from '@/utils/futebol-estatisticas-da-partida';
 import { cabeRotulo, pisoDaEscala, tetoDaEscala } from '@/utils/futebol-grafico-de-barras';
-import { exato } from '@/utils/futebol-criterio';
 import { Chip } from './Chip';
 import { ITEM_SELETOR, SeletorDeMenu } from './SeletorDeMenu';
 import { ReguaDeLinhas } from './ReguaDeLinhas';
@@ -49,8 +49,6 @@ const MANDOS: { valor: MandoDaEstatistica; rotulo: string }[] = [
   // fora, que são mandos opostos.
   { valor: 'proprio', rotulo: 'Mando deste jogo' },
 ];
-
-const fmtLinha = exato;
 
 export function EstatisticasDoJogo({
   historico,
@@ -177,10 +175,10 @@ export function EstatisticasDoJogo({
               paradas={doMercado.paradas}
               valor={escolha.linha}
               onEscolher={(v) => muda({ linha: v })}
-              rotulo={fmtLinha}
+              rotulo={fmtLinhaAnalisada}
             />
             <span className="tabular-nums text-[13px] font-bold text-ink shrink-0">
-              {escolha.linha == null ? '—' : fmtLinha(escolha.linha)}
+              {escolha.linha == null ? '—' : fmtLinhaAnalisada(escolha.linha)}
             </span>
           </div>
         )}
@@ -245,7 +243,7 @@ export function EstatisticasDoJogo({
               <div className="text-[12px] text-ink-2 mt-3">
                 <strong className="font-bold text-ink">{contagem.acima}</strong> dos {contagem.de} jogos{' '}
                 {series.length > 1 ? 'dos dois times' : `do ${series[0].teamName}`} passaram de{' '}
-                {fmtLinha(referencia as number)}.
+                {fmtExato(referencia as number)}.
                 <span className="block text-[10.5px] text-ink-3 mt-0.5">
                   Janela: últimos {escolha.janela} de cada time
                   {escolha.mando === 'proprio' ? ', só com o mando deste confronto' : ''}.

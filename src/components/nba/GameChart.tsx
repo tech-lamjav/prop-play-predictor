@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
+import { fmtNumero } from '@/utils/formato';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, ReferenceLine, Label, Tooltip, LabelList } from 'recharts';
 import { GamePlayerStats, TeamPlayer } from '@/services/nba-data.service';
 import { RotateCcw, Info, Globe, Home, Plane, X, ChevronDown, ChevronLeft, ChevronRight, Star, SlidersHorizontal } from 'lucide-react';
@@ -831,7 +832,7 @@ export const GameChart: React.FC<GameChartProps> = ({
                   fontSize={11}
                   fontWeight={700}
                   offset={6}
-                  formatter={(v: any) => (typeof v === 'number' ? v.toLocaleString('pt-BR') : v)}
+                  formatter={(v: any) => (typeof v === 'number' ? fmtNumero(v) : v)}
                 />
               </Bar>
               {adjustedLine !== null && (

@@ -446,18 +446,6 @@ export function numeroDaPrestacao(p: Prestacao, valor: number): string {
 }
 
 /**
- * O decimal como ele é, em pt-BR: 2,95 é 2,95 e 0,05 é 0,05.
- *
- * Existe uma vez porque `fmtExato(v)` estava copiado em três
- * lugares, e a diferença entre ele e o `toFixed(1)` de `numeroDaPrestacao` é o
- * que decide se a tela mostra "faltou 0,05" ou "faltou 0,1" — o dobro. Duas
- * regras de arredondamento no mesmo módulo pedem um nome cada uma.
- */
-export function exato(v: number): string {
-  return fmtExato(v);
-}
-
-/**
  * "no máximo 2,95", "pelo menos 40%", "menos de 35%": o corte em palavras, do lado
  * que a premissa quer e com a exigência que ela tem.
  *
@@ -506,7 +494,7 @@ export function faltouParaOCorte(p: Prestacao): number | null {
 export function corteDaPrestacao(p: Prestacao): string {
   if (p.escala === 'percentual') return `${p.corte}%`;
   if (p.escala === 'contagem') return `${p.corte} jogos`;
-  return exato(p.corte);
+  return fmtExato(p.corte);
 }
 
 /**
