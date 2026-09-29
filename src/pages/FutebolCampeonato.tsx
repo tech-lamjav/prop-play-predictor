@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { fmtDecimal } from '@/utils/formato';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { CalendarDays, ChevronDown } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
@@ -72,7 +73,7 @@ function useDuasColunas(): boolean {
   return tem;
 }
 
-const d1 = (n: number) => n.toFixed(1).replace('.', ',');
+const d1 = (n: number) => fmtDecimal(n, 1);
 const pct = (n: number) => `${Math.round(n * 100)}%`;
 
 function Estatistica({ rotulo, valor, unidade }: { rotulo: string; valor: string; unidade: string }) {

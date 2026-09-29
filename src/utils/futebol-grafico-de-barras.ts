@@ -1,4 +1,5 @@
 import { EH_BINARIA, type SerieHistorico } from '@/utils/futebol-historico';
+import { fmtDecimal } from '@/utils/formato';
 
 /**
  * Os números e as contas do gráfico de barras, sem nada de React.
@@ -10,7 +11,7 @@ import { EH_BINARIA, type SerieHistorico } from '@/utils/futebol-historico';
  * cobra isso descreve exatamente esta separação.
  */
 
-export const d1 = (v: number) => v.toFixed(1).replace('.', ',');
+export const d1 = (v: number) => fmtDecimal(v, 1);
 
 export const dia = (iso: string) => {
   const [, m, d] = iso.split('-');

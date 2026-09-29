@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { fmtOdd } from '@/utils/formato';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import {
   Table,
@@ -125,7 +126,7 @@ export const ShareBetsTable: React.FC<ShareBetsTableProps> = ({ bets }) => {
                   <TableCell className="text-xs">
                     {[bet.sport, bet.league].filter(Boolean).join(' / ') || '-'}
                   </TableCell>
-                  <TableCell className="text-xs text-right">{bet.odds.toFixed(2)}</TableCell>
+                  <TableCell className="text-xs text-right">{fmtOdd(bet.odds)}</TableCell>
                   <TableCell className="text-xs text-right">
                     R$ {bet.stake_amount.toFixed(2)}
                   </TableCell>
@@ -164,7 +165,7 @@ export const ShareBetsTable: React.FC<ShareBetsTableProps> = ({ bets }) => {
                                     {leg.leg_number}.
                                   </span>
                                   <span className="flex-1 truncate">{leg.bet_description}</span>
-                                  <span className="opacity-70">{leg.odds.toFixed(2)}</span>
+                                  <span className="opacity-70">{fmtOdd(leg.odds)}</span>
                                   <Badge
                                     variant="secondary"
                                     className={STATUS_STYLES[leg.status] || 'bg-terminal-gray/50'}

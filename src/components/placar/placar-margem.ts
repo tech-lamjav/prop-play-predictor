@@ -1,4 +1,5 @@
 import { margemDaSaida } from '@/utils/futebol-settlement';
+import { fmtDecimalAte } from '@/utils/formato';
 import type { LinhaPublicada } from './placar-agregacao';
 
 // ============================================================================
@@ -18,11 +19,7 @@ export function placarFinal(linha: LinhaPublicada): string | null {
   return `${linha.goals_home}–${linha.goals_away}`;
 }
 
-const comVirgula = (n: number) => {
-  const abs = Math.abs(n);
-  const texto = Number.isInteger(abs) ? String(abs) : abs.toFixed(2).replace(/0$/, '');
-  return texto.replace('.', ',');
-};
+const comVirgula = (n: number) => fmtDecimalAte(Math.abs(n), 2);
 
 /**
  * A distância até a linha, em palavras.

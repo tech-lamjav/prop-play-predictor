@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { fmtDinheiro } from '@/utils/formato';
 import { createClient } from '../integrations/supabase/client';
 import { useAuth } from './use-auth';
 
@@ -211,12 +212,7 @@ export function useUserUnit() {
   /**
    * Format currency (helper function)
    */
-  const formatCurrency = (value: number): string => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(value);
-  };
+  const formatCurrency = (value: number): string => fmtDinheiro(value);
 
   /**
    * Check if unit system is configured

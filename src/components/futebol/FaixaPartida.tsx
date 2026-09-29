@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { fmtOdd } from '@/utils/formato';
 import { MapPin, Lock } from 'lucide-react';
 import { Crest } from '@/components/futebol/Crest';
 import { useVitrine } from '@/hooks/use-futebol-data';
@@ -399,7 +400,7 @@ export function FaixaPartida({
                 <div>
                   <div className="text-[9px] uppercase tracking-[0.14em] text-white/45">Odd</div>
                   <div className="tabular-nums text-[16px] font-semibold text-white mt-0.5">
-                    {v.best_odd.toFixed(2)}
+                    {fmtOdd(v.best_odd)}
                   </div>
                 </div>
               </div>

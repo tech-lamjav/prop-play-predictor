@@ -1,4 +1,5 @@
 import type { FutebolFixtureNumeros } from '@/services/futebol-data.service';
+import { fmtDecimal } from '@/utils/formato';
 
 // O número que embasa cada premissa.
 //
@@ -43,10 +44,10 @@ export interface Evidencia {
 }
 
 const n1 = (v: number | null | undefined): string =>
-  v == null ? '—' : v.toFixed(1).replace('.', ',');
+  v == null ? '—' : fmtDecimal(v, 1);
 
 const n2 = (v: number | null | undefined): string =>
-  v == null ? '—' : v.toFixed(2).replace('.', ',');
+  v == null ? '—' : fmtDecimal(v, 2);
 
 /**
  * `form` da API usa D para Draw (empate) e L para Loss. Traduzir direto quebraria,

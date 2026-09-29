@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
+import { fmtOdd, fmtExato, fmtDecimal, fmtLinhaDeAposta } from '@/utils/formato';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RegistrarApostaCTA } from '@/components/futebol/RegistrarAposta';
 import {
@@ -76,7 +77,7 @@ const TIPO_LINHA = new Set(['goals_over_under', 'asian_handicap']);
 
 /** Linha em pt-BR. Sinal só no handicap: "+2,5 gols" não existe. */
 function fmtLinha(v: number, comSinal: boolean): string {
-  return `${comSinal && v > 0 ? '+' : ''}${String(v).replace('.', ',')}`;
+  return `${comSinal && v > 0 ? '+' : ''}${fmtLinhaDeAposta(v)}`;
 }
 
 /** Reavalia a tela no apito, mesmo se a fonte ainda não atualizou o status. */
@@ -682,7 +683,7 @@ export function BancadaMercados({
     return {
       bars: bars.map((b) => ({ ...b, h: `${(b.p / max) * 100}%`, pct: `${Math.round(b.p * 100)}%`, menos: b.kn < linha })),
       divisor: `${((Math.floor(linha) + 1) / bars.length) * 100}%`,
-      lambda: lambda.toFixed(1).replace('.', ','),
+      lambda: fmtDecimal(lambda, 1),
     };
   }, [mercado.slug, tendencies, linha]);
 
@@ -944,11 +945,11 @@ export function BancadaMercados({
                       {' · '}
                       {`${Math.round(r.value!.prob_justa_fechamento * 100)}%`}
                       {' · '}
-                      {r.value!.best_odd.toFixed(2)}
+                      {fmtOdd(r.value!.best_odd)}
                     </>
                   ) : (
                     leituraCotacao.estado === 'cotada'
-                      ? ` · cotada @ ${leituraCotacao.odd.toFixed(2)}`
+                      ? ` · cotada @ ${fmtOdd(leituraCotacao.odd)}`
                       // A cortada sem odd na régua NÃO diz "sem cotação": preço
                       // houve, e foi ele que decidiu. A folha ganhou frase
                       // própria por esse mesmo motivo, e o card dizia o
@@ -1177,7 +1178,7 @@ export function BancadaMercados({
                     },
                     {
                       rotulo: 'Odd',
-                      valor: cotacaoPrincipal.odd != null ? cotacaoPrincipal.odd.toFixed(2) : '—',
+                      valor: fmtOdd(cotacaoPrincipal.odd),
                       cor: '#fff',
                     },
                   ].map(({ rotulo, valor, cor }) => (
@@ -1202,7 +1203,7 @@ export function BancadaMercados({
                 <div className="text-[9px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>Odd</div>
                 <div className="tabular-nums text-[22px] font-semibold leading-none mt-1 text-white">
                   {cotacaoPrincipal.odd != null
-                    ? cotacaoPrincipal.odd.toFixed(2)
+                    ? fmtOdd(cotacaoPrincipal.odd)
                     : '—'}
                 </div>
               </div>

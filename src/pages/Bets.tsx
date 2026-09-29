@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { fmtOdd } from '@/utils/formato';
 import { useAuth } from '../hooks/use-auth';
 import { createClient } from '../integrations/supabase/client';
 import AnalyticsNav from '@/components/AnalyticsNav';
@@ -337,7 +338,7 @@ const BetRow = React.memo(function BetRow({
       </td>
       <td className="py-2 px-1.5 text-[11px] text-ink-2 uppercase tracking-[0.06em] font-semibold">{bet.betting_market || '-'}</td>
       <td className="text-right py-2 px-1.5 tabular text-ink">{formatValue(bet.stake_amount)}</td>
-      <td className="text-right py-2 px-1.5 text-forest font-semibold tabular">{bet.odds.toFixed(2)}</td>
+      <td className="text-right py-2 px-1.5 text-forest font-semibold tabular">{fmtOdd(bet.odds)}</td>
       <td className="text-right py-2 px-1.5 min-w-[5.5rem] overflow-hidden text-ellipsis whitespace-nowrap text-ink-2 tabular">
         {bet.is_cashout && bet.cashout_amount
           ? formatValue(bet.cashout_amount)
@@ -539,7 +540,7 @@ const BetCard = React.memo(function BetCard({
         </div>
         <div className="text-center">
           <div className="text-[9px] text-ink-2 uppercase tracking-[0.1em] font-semibold mb-0.5">Odds</div>
-          <div className="text-sm tabular text-forest font-semibold">{bet.odds.toFixed(2)}</div>
+          <div className="text-sm tabular text-forest font-semibold">{fmtOdd(bet.odds)}</div>
         </div>
         {bet.status === 'pending' ? (
           <div className="text-right">
@@ -3380,7 +3381,7 @@ export default function Bets() {
                 <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">Odd média</div>
                 <div className="text-[10px] text-ink-2 mt-1 truncate tabular">chance {secondaryStats.avgOdds > 0 ? (100 / secondaryStats.avgOdds).toFixed(0) : '0'}%</div>
               </div>
-              <div className="text-[15px] tabular font-semibold text-forest shrink-0 ml-2">{secondaryStats.avgOdds.toFixed(2)}</div>
+              <div className="text-[15px] tabular font-semibold text-forest shrink-0 ml-2">{fmtOdd(secondaryStats.avgOdds)}</div>
             </div>
             <div className="bg-white border border-line rounded-lg px-4 py-3 flex items-center justify-between">
               <div className="min-w-0">

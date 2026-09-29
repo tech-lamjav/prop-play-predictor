@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { fmtOdd } from '@/utils/formato';
 import { Seo } from "@/components/Seo";
 import { faqPageSchema, type FaqItem } from "@/lib/structured-data";
 import {
@@ -712,7 +713,7 @@ const Betinho = () => {
                           {formatMoney(bet.stake_amount)}
                         </td>
                         <td className="py-2 pr-3 text-right text-ink-2 tabular-nums hidden sm:table-cell">
-                          {bet.odds.toFixed(2)}
+                          {fmtOdd(bet.odds)}
                         </td>
                         <td
                           className={`py-2 pr-3 text-right font-bold tabular-nums whitespace-nowrap ${

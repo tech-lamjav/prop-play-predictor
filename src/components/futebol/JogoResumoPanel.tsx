@@ -1,4 +1,5 @@
 import { Skeleton } from '@/components/ui/skeleton';
+import { fmtOdd, fmtDecimal } from '@/utils/formato';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, X, Minus } from 'lucide-react';
@@ -273,7 +274,7 @@ export function JogoResumoPanel({
 
   const casa = numeros?.find((n) => n.side === 'home');
   const fora = numeros?.find((n) => n.side === 'away');
-  const d1 = (v: number | null | undefined) => (v == null ? '—' : v.toFixed(1).replace('.', ','));
+  const d1 = (v: number | null | undefined) => (v == null ? '—' : fmtDecimal(v, 1));
   // "Como chegam" sai da JANELA DA PREMISSA, não do perfil de temporada: ver
   // `perfilDaJanela`. Enquanto vinha do perfil, este bloco desmentia a premissa
   // logo acima dele em aritmética simples.
@@ -396,7 +397,7 @@ export function JogoResumoPanel({
                   <div>
                     <div className="text-[8.5px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>Odd</div>
                     <div className="tabular-nums text-[15px] font-semibold text-white mt-0.5">
-                      {best.best_odd.toFixed(2)}
+                      {fmtOdd(best.best_odd)}
                     </div>
                   </div>
                 </div>

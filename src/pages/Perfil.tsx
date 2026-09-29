@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { fmtDecimal } from '@/utils/formato';
 import { Settings, LogOut, ChevronRight, Zap } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { useAuth } from '@/hooks/use-auth';
@@ -65,7 +66,7 @@ export default function Perfil() {
   // não sei".
   // Uma casa decimal, igual à tela de Apostas. Arredondar pra inteiro faria
   // -0,6% virar -1% aqui e -0,6% lá — dois números pra mesma métrica.
-  const pct = (n: number) => `${n.toFixed(1).replace('.', ',')}%`;
+  const pct = (n: number) => `${fmtDecimal(n, 1)}%`;
   const kpis = stats
     ? [
         { label: 'Apostas', value: String(stats.totalBets) },

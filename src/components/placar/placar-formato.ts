@@ -1,3 +1,5 @@
+import { fmtDecimal } from '@/utils/formato';
+
 // ============================================================================
 // placar-formato.ts — como cada número do placar aparece na tela
 // ============================================================================
@@ -6,8 +8,6 @@
 // quanto o valor — "12,5%" e "−12,5%" são decisões opostas.
 // ============================================================================
 
-/** Vírgula decimal, como todo número do produto. */
-const virgula = (n: number, casas: number) => n.toFixed(casas).replace('.', ',');
 
 /**
  * Uma taxa, de 0 a 1, em porcentagem. `null` vira travessão.
@@ -16,7 +16,7 @@ const virgula = (n: number, casas: number) => n.toFixed(casas).replace('.', ',')
  * 0% afirmaria que a metodologia errou tudo.
  */
 export const taxaPct = (taxa: number | null, casas = 1) =>
-  taxa == null ? '—' : `${virgula(taxa * 100, casas)}%`;
+  taxa == null ? '—' : `${fmtDecimal(taxa * 100, casas)}%`;
 
 /**
  * O ROI em porcentagem, sempre com sinal.
@@ -25,10 +25,10 @@ export const taxaPct = (taxa: number | null, casas = 1) =>
  * números é negativa, "+2,1%" tem de saltar aos olhos.
  */
 export const roiPct = (roi: number) =>
-  `${roi > 0 ? '+' : roi < 0 ? '−' : ''}${virgula(Math.abs(roi) * 100, 1)}%`;
+  `${roi > 0 ? '+' : roi < 0 ? '−' : ''}${fmtDecimal(Math.abs(roi) * 100, 1)}%`;
 
 /** O erro-padrão, em pontos percentuais, sem sinal. */
-export const epPct = (ep: number) => `${virgula(ep * 100, 1)}`;
+export const epPct = (ep: number) => `${fmtDecimal(ep * 100, 1)}`;
 
 /**
  * A cor do ROI: verde ganha, vermelho perde, tinta normal no zero.

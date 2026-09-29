@@ -1,3 +1,4 @@
+import { fmtExato } from '@/utils/formato';
 // ============================================================================
 // A receita de uma pessoa, e o que ela deve
 // ============================================================================
@@ -380,7 +381,7 @@ export function lerValorDigitado(texto: string): number | null | 'invalido' {
  * sua cópia.
  */
 export function valorComoTexto(valor: number | null): string {
-  return valor === null ? '' : String(valor).replace('.', ',');
+  return valor === null ? '' : fmtExato(valor);
 }
 
 /** `2026-09` → `09/2026`. O mês como quem lê escreve. */

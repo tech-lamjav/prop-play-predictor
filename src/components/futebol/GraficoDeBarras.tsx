@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { fmtExato } from '@/utils/formato';
 import { type SerieHistorico, type Story } from '@/utils/futebol-historico';
 import { dia, rotuloMedia, rotuloValor } from '@/utils/futebol-grafico-de-barras';
 import { Crest } from './Crest';
@@ -287,7 +288,7 @@ export function BarrasEmSequencia({
               className="absolute -translate-y-1/2 tabular-nums text-[10px] font-bold px-1.5 py-0.5 rounded text-canvas whitespace-nowrap"
               style={{ background: 'var(--amber-2)', right: -CALHA_DO_SELO }}
             >
-              {String(referencia).replace('.', ',')}
+              {fmtExato(referencia)}
             </span>
           </div>
         )}

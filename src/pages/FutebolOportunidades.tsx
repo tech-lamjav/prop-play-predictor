@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
+import { fmtOdd } from '@/utils/formato';
 import { usePostHog } from '@posthog/react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ChevronRight, AlertTriangle } from 'lucide-react';
@@ -118,8 +119,12 @@ function OppRow({ o, to, muted, locked, result, homeGoals, awayGoals, aoClicar, 
   const refDeImpressao = useImpressaoDeOportunidade({ chave: idDaOportunidade(o), aoAparecer });
   const showLock = !!locked && !result; // histórico (com resultado) é sempre visível
   // `showLock` é o que a TELA sabe; `linhaBloqueada` é o que o BANCO já fez.
-  // Desde a guarda de acesso a linha do board chega com as colunas nulas, e sem
-  // este teste `o.best_odd.toFixed(2)` estoura antes de qualquer condição rodar.
+  // Desde a guarda de acesso a linha do board chega com as colunas nulas.
+  //
+  // ⚠️ O motivo ANTIGO deste teste era que `o.best_odd.toFixed(2)` estourava na
+  // coluna nula. Não estoura mais: desde o #529 quem desenha odd é `fmtOdd`, e
+  // ele devolve travessão. O teste fica porque linha nula pede o CADEADO, e não
+  // um travessão solto onde deveria haver aposta.
   const bloqueada = showLock || linhaBloqueada(o);
   const hasScore = homeGoals != null && awayGoals != null;
   // Sem os números do instante em que era oportunidade, mostra "—" em vez de
@@ -169,7 +174,7 @@ function OppRow({ o, to, muted, locked, result, homeGoals, awayGoals, aoClicar, 
       ) : (
         <>
           <div className="text-right tabular-nums text-[13px] font-semibold text-ink">{chance != null ? `${chance}%` : '—'}</div>
-          <div className="text-right tabular-nums text-[13px] font-semibold text-ink">{o.best_odd.toFixed(2)}</div>
+          <div className="text-right tabular-nums text-[13px] font-semibold text-ink">{fmtOdd(o.best_odd)}</div>
         </>
       )}
       <ChevronRight className="w-4 h-4 text-ink-3 justify-self-end" />
@@ -249,7 +254,7 @@ function OppMobileCard({ o, to, locked, result, homeGoals, awayGoals, canRegiste
             <div className="mt-2 grid gap-1">
               {[
                 { label: 'Chance', valor: bloqueada ? null : chance != null ? `${chance}%` : '—' },
-                { label: 'Odd', valor: bloqueada ? null : o.best_odd.toFixed(2) },
+                { label: 'Odd', valor: bloqueada ? null : fmtOdd(o.best_odd) },
               ].map(({ label, valor }) => (
                 <div key={label} className="flex items-baseline justify-end gap-2">
                   <span className="text-[8px] uppercase tracking-[0.14em] font-semibold text-ink-3">{label}</span>

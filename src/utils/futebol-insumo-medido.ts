@@ -19,6 +19,7 @@
  */
 
 import { plural, type Evidencia } from '@/utils/futebol-evidencias';
+import { fmtDecimal } from '@/utils/formato';
 
 /** Uma linha de `futebol.fact_insumos_medidos`, só com o que esta escolha usa. */
 export interface InsumoMedido {
@@ -31,7 +32,7 @@ export interface InsumoMedido {
 
 /** `1.485` vira `1,49`; inteiro fica inteiro. */
 function numero(v: number): string {
-  return Number.isInteger(v) ? String(v) : v.toFixed(2).replace('.', ',');
+  return Number.isInteger(v) ? String(v) : fmtDecimal(v, 2);
 }
 
 /**
