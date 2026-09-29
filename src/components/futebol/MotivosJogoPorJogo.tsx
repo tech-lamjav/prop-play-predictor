@@ -4,7 +4,7 @@ import type { FutebolFixtureHistorico, FutebolFixtureNumeros } from '@/services/
 import { pesoPalavra, pesoForte, rotuloPremissa, type Premissa } from '@/utils/futebol-premissas';
 import { evidenciaDe, type Evidencia } from '@/utils/futebol-evidencias';
 import { alinharAbaixoDoCabecalho } from '@/utils/rolagem';
-import { evidenciaDoHistorico, storyDaPremissa, type SerieHistorico, type Story } from '@/utils/futebol-historico';
+import { EH_QUADRO, evidenciaDoHistorico, storyDaPremissa, type SerieHistorico, type Story } from '@/utils/futebol-historico';
 import {
   corteEmPalavras,
   exato,
@@ -404,7 +404,7 @@ function PainelPremissa({
   saidaLabel: string;
   modo: 'favor' | 'contra';
 }) {
-  const soMiudas = story.series.every((s) => s.metrica !== 'resultado' && s.jogos.length <= 2);
+  const soMiudas = story.series.every((s) => !EH_QUADRO(s.metrica) && s.jogos.length <= 2);
   return (
     <div className="px-4 pb-4 pt-3.5" style={{ borderTop: '1px solid #f1e9d6' }}>
       {/* A prestação tem precedência: onde o critério foi transcrito, o número que
@@ -422,7 +422,7 @@ function PainelPremissa({
         )
       )}
 
-      {story.series[0].metrica === 'resultado' ? (
+      {EH_QUADRO(story.series[0].metrica) ? (
         <div className="flex flex-col gap-4">
           {story.series.map((s) => (
             <div key={s.chave}>
@@ -431,7 +431,12 @@ function PainelPremissa({
                 <span className="text-[12px] font-semibold text-ink">{s.titulo}</span>
                 <span className="text-[10.5px] ml-auto" style={{ color: '#8d8672' }}>{s.sub}</span>
               </div>
-              <SerieResultados s={s} />
+              {/* Nas binárias a cor segue o que a PREMISSA quer, e não o
+                  resultado nem o fato cru: a mesma métrica atende premissas de
+                  direções opostas, e o fato cru pintaria de verde, na
+                  `ambos_marcam`, justamente o jogo em que o time passou em
+                  branco. */}
+              <SerieResultados s={s} corPor={s.metrica === 'resultado' ? 'resultado' : 'favorece'} />
             </div>
           ))}
         </div>
@@ -617,6 +622,7 @@ export function MotivosJogoPorJogo({
   historico,
   numeros,
   insumos,
+  saida,
   lado,
   linha,
   saidaLabel,
@@ -636,6 +642,14 @@ export function MotivosJogoPorJogo({
   numeros: FutebolFixtureNumeros[] | undefined;
   /** O valor medido pelo mart (#464). Ausência é normal, não erro. */
   insumos?: InsumoMedido[] | undefined;
+  /**
+   * A saída do mart (`Home`, `1X`, `Yes`…), que acha a linha do valor medido.
+   *
+   * ⚠️ NÃO é o `saidaLabel` abaixo. Aquele é o texto da tela ("Ambos marcam:
+   * Sim") e este é a chave do mart: derivar um do outro amarraria a busca no
+   * banco à copy, e trocar uma palavra da tela zeraria a evidência em silêncio.
+   */
+  saida: string | null;
   lado: 'home' | 'away' | null;
   linha: number | null;
   /** A saída analisada, para o fechamento dizer a favor de quê. */
@@ -671,11 +685,11 @@ export function MotivosJogoPorJogo({
           // A frase e o card saem da MESMA prestação. Enquanto a frase lia o
           // histórico jogo a jogo e o card lia o perfil de temporada, a tela
           // mostrava 2,3 e 2,4 para a mesma afirmação, um embaixo do outro.
-          ev: evidenciaDaPremissa({ mercado, slug: p.slug, numeros, historico, insumos, lado, linha, acesa }),
+          ev: evidenciaDaPremissa({ mercado, slug: p.slug, numeros, historico, insumos, saida, lado, linha, acesa }),
           story: storyDaPremissa(mercado, p.slug, historico, lado, linha),
         };
       }),
-    [mercado, premissas, numeros, historico, insumos, lado, linha, acesa],
+    [mercado, premissas, numeros, historico, insumos, saida, lado, linha, acesa],
   );
 
   const total = itens.length + (extras?.length ?? 0);

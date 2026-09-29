@@ -107,6 +107,34 @@ export type Metrica =
 /** Métrica binária: a média dela é uma fração de jogos, não uma média de gols. */
 export const EH_BINARIA = (m: Metrica) => m === 'sem_sofrer' || m === 'sem_marcar' || m === 'ambos';
 
+/**
+ * Métrica que se desenha como QUADRO por jogo, e não como barra.
+ *
+ * Barra afirma quantidade: mais alta é mais. Em `resultado` não há quantidade —
+ * vitória não é "mais alto" que empate — e em `ambos` o jogo só aconteceu ou
+ * não. Desenhar as duas como barra é a tela afirmando uma grandeza que o dado
+ * não tem.
+ *
+ * O quadro traz junto o que a barra não tem: o PLACAR de cada jogo. Num "faltou
+ * gol de um dos lados em 3 dos últimos 5", o placar é a evidência — "1 a 0" diz
+ * sozinho que só um marcou.
+ *
+ * ⚠️ AS BINÁRIAS TODAS, e não só `ambos`. Elas desenhavam barra, e a barra
+ * binária falhava de três jeitos ao mesmo tempo, visto na tela do Czechia ×
+ * England em "Os dois costumam marcar":
+ *
+ *   · o rótulo respondia a pergunta INVERTIDA. `sem_marcar` mede passar em
+ *     branco, então o jogo bom recebia "não" — e o card exibia "não, não, não"
+ *     embaixo de um título que diz que os dois marcam.
+ *   · o jogo bom virava barra de altura ZERO, invisível. Três dos quatro jogos
+ *     do Czechia não desenhavam nada, e o único visível era o ruim.
+ *   · a barra alta era a ruim. Altura lê como "mais", e ali mais era pior.
+ *
+ * O quadro não tem nenhum dos três: cada jogo ocupa o mesmo espaço, traz o
+ * placar em vez de um sim/não, e quem diz se foi bom é a COR.
+ */
+export const EH_QUADRO = (m: Metrica) => m === 'resultado' || EH_BINARIA(m);
+
 /** `proprio` = o mando que o time tem NESTE jogo (mandante em casa, visitante fora). */
 export type FiltroMando = 'proprio' | 'todos';
 
@@ -159,18 +187,6 @@ export interface SerieSpec {
 }
 
 /**
- * O gráfico de "defesas frágeis" do mercado de GOLS.
- *
- * Mora numa constante porque duas chaves apontam para ele, e uma das duas está
- * errada e é reconhecidamente errada — ver a nota em `btts:defesas_vazaveis`.
- * Apontar as duas para o mesmo objeto deixa a duplicação visível; copiá-lo
- * deixaria duas cópias que divergem sozinhas no dia em que alguém mexer numa.
- */
-const GRAFICO_DEFESAS_VAZAVEIS_DE_GOLS: SerieSpec[] = [
-  { quem: 'ambos', metrica: 'ga', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' },
-];
-
-/**
  * Que gráfico prova cada premissa. Par fora do mapa não ganha gráfico: melhor a aba
  * dizer que não tem como conferir do que desenhar um número que não é o da premissa.
  *
@@ -212,7 +228,11 @@ export const SPECS: Record<string, SerieSpec[]> = {
   // todas. A frase envelheceu ali e ficou vinte dias dizendo o contrário do
   // código logo abaixo dela. O que continua de pé da #361 é a MÉTRICA e o
   // recorte de mando — e essa parte está anotada em cada entrada errada.
-  'goals_over_under:defesas_vazaveis': GRAFICO_DEFESAS_VAZAVEIS_DE_GOLS,
+  // Morava numa constante compartilhada com `btts:defesas_vazaveis`, que apontava
+  // para cá por engano — mesmo slug, mercados diferentes. A constante existia só
+  // para deixar aquele engano visível; com ele consertado, ela seria um apelido
+  // de um uso só.
+  'goals_over_under:defesas_vazaveis': [{ quem: 'ambos', metrica: 'ga', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
   'goals_over_under:defesas_firmes': [{ quem: 'ambos', metrica: 'ga', mando: 'proprio', direcao: 'menor', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
   'goals_over_under:ataque_combinado': [{ quem: 'ambos', metrica: 'gf', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
   // A família de PERCENTUAL (#355). O critério destas três não é média de gol
@@ -288,29 +308,47 @@ export const SPECS: Record<string, SerieSpec[]> = {
 
   // ── Ambos marcam ──
   //
-  // ⚠️ TRÊS DAS QUATRO ESTÃO ERRADAS, e ficam assim neste commit de propósito: ele
-  // rechaveia o mapa e não muda pixel nenhum na tela. O conserto é a transcrição
-  // dos critérios, que vem depois e apaga estas entradas. Os critérios abaixo
-  // foram lidos do dbt e estão na #361.
+  // AS SETE, e as sete FIÉIS. Estavam quatro aqui, três delas com a grandeza
+  // errada, sob a nota "ficam assim de propósito, o conserto vem depois". Este é
+  // o depois: os critérios foram lidos do `int_futebol_premissas_btts` e as
+  // entradas passaram a desenhá-los.
   //
-  // `ambos_marcam`   compara `home_fts_pct < 30 AND away_fts_pct < 30` — o
-  //                  percentual de jogos PASSANDO EM BRANCO de cada time.
-  //                  O gráfico aqui desenha média de gols marcados.
-  // `defesa_forte`   compara `home_cs_pct >= 45 OR away_cs_pct >= 45` — o
-  //                  percentual de jogos SEM SOFRER GOL, e basta um dos dois.
-  //                  O gráfico aqui desenha média de gols sofridos, e ainda
-  //                  recorta por mando, que este critério não tem. Foi o que
-  //                  deixou França com dois jogos de oito na tela de 25/09.
-  // `defesas_vazaveis` compara `home_cs_pct < 35 AND away_cs_pct < 35`, e
-  //                  recebe o gráfico do mercado de GOLS por causa do slug
-  //                  repetido — a colisão que este commit torna endereçável.
+  // ⚠️ O conserto não precisou de métrica nova. `sem_sofrer`, `sem_marcar` e
+  // `ambos` já existiam, vindas do mercado de Gols; o que havia era este mapa
+  // apontando para as erradas. Foi por isso que a França apareceu com dois jogos
+  // de oito na tela de 25/09: a `defesa_forte` desenhava gols sofridos
+  // RECORTADOS POR MANDO, e o critério dela é percentual de jogos sem sofrer,
+  // sobre TODOS os jogos da janela.
   //
-  // `ataque_dos_dois` é a única fiel: `home_gf >= 1.2 AND away_gf >= 1.2`,
-  // média de gols marcados de cada time NO MANDO DELE, últimos 10.
-  'btts:ambos_marcam': [{ quem: 'ambos', metrica: 'gf', mando: 'todos', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
+  // ⚠️ `mando: 'todos'` em seis das sete. No dbt os percentuais saem de
+  // `clean_sheet_total / played_total` e as contagens saem do `last5` — nenhum
+  // dos dois recorta por mando. A única que recorta é a `ataque_dos_dois`, que
+  // lê `goals_for_avg_home` do mandante e `goals_for_avg_away` do visitante, e
+  // ela já estava certa.
+  //
+  // ⚠️ A janela é 10 porque o default de produção do `team_form_pit` é
+  // `ultimos_10` + `todas` desde a AE#91 — e não a temporada, que é o que a
+  // descrição do modelo ainda narra como se fosse o padrão. As duas de histórico
+  // são 5, que é o tamanho do `last5` delas.
+  //
+  // Os cortes, do dbt, para quem for conferir a direção de cada uma:
+  //   ambos_marcam      home_fts_pct < 30 AND away_fts_pct < 30
+  //   ataque_trava      home_fts_pct >= 35 OR  away_fts_pct >= 35
+  //   defesas_vazaveis  home_cs_pct  < 35 AND away_cs_pct  < 35
+  //   defesa_forte      home_cs_pct  >= 45 OR  away_cs_pct  >= 45
+  //   ataque_dos_dois   home_gf >= 1.2 AND away_gf >= 1.2
+  //   historico_btts    home_btts_cnt    >= 3 AND away_btts_cnt    >= 3
+  //   historico_seco    home_no_btts_cnt >= 3 OR  away_no_btts_cnt >= 3
+  'btts:ambos_marcam': [{ quem: 'ambos', metrica: 'sem_marcar', mando: 'todos', direcao: 'menor', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
+  'btts:ataque_trava': [{ quem: 'ambos', metrica: 'sem_marcar', mando: 'todos', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
+  'btts:defesas_vazaveis': [{ quem: 'ambos', metrica: 'sem_sofrer', mando: 'todos', direcao: 'menor', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
+  'btts:defesa_forte': [{ quem: 'ambos', metrica: 'sem_sofrer', mando: 'todos', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
   'btts:ataque_dos_dois': [{ quem: 'ambos', metrica: 'gf', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
-  'btts:defesa_forte': [{ quem: 'ambos', metrica: 'ga', mando: 'proprio', direcao: 'menor', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
-  'btts:defesas_vazaveis': GRAFICO_DEFESAS_VAZAVEIS_DE_GOLS,
+  // `mostraMedia: false` nas duas de contagem, como nas `historico_over`/`under`
+  // de Gols: o insumo é QUANTOS dos cinco, não a média deles, e a média pode
+  // estar de um lado do corte enquanto a contagem diz o contrário.
+  'btts:historico_btts': [{ quem: 'ambos', metrica: 'ambos', mando: 'todos', direcao: 'maior', ultimos: JANELA_DE_CONTAGEM, competicoes: 'qualquer', mostraMedia: false }],
+  'btts:historico_seco': [{ quem: 'ambos', metrica: 'ambos', mando: 'todos', direcao: 'menor', ultimos: JANELA_DE_CONTAGEM, competicoes: 'qualquer', mostraMedia: false }],
 
   // ── Dupla chance ──
   //
@@ -445,10 +483,15 @@ const COMO_LER: Record<Metrica, string> = {
   xg: 'Cada barra é o gol esperado do time no jogo, ou seja, o tanto de chance que ele criou. A linha é a média.',
   total: 'Cada barra é o total de gols do jogo, somando os dois times. A linha tracejada é a linha que você escolheu.',
   saldo: 'Cada barra é o saldo de gols do time naquele jogo: positivo na vitória, negativo na derrota.',
-  ambos: 'Cada barra é um jogo: cheia quando os dois times marcaram, vazia quando algum passou em branco.',
+  // ⚠️ As três binárias NÃO dizem o que é verde, e é de propósito: a mesma
+  // métrica serve premissas de direções OPOSTAS. `sem_marcar` é lida pela
+  // `ambos_marcam`, que quer poucos jogos em branco, e pela `ataque_trava`,
+  // que quer muitos. "Verde quando marcou" acertaria uma e mentiria na outra.
+  // Quem sabe qual é o lado bom é a premissa, e é ela que a cor segue.
+  ambos: 'Cada quadrado é um jogo, com o placar e o adversário. Verde é jogo do lado que a premissa quer, vermelho é o contrário. O que ela usa é em quantos dos jogos os dois marcaram.',
   resultado: 'Cada quadrado é um jogo, com o placar e o adversário. Verde é vitória, cinza empate, vermelho derrota.',
-  sem_sofrer: 'Cada barra é um jogo: cheia quando o time não sofreu gol, vazia quando sofreu. O que a premissa usa é o percentual de jogos cheios.',
-  sem_marcar: 'Cada barra é um jogo: cheia quando o time não marcou, vazia quando marcou. O que a premissa usa é o percentual de jogos cheios.',
+  sem_sofrer: 'Cada quadrado é um jogo, com o placar e o adversário. Verde é jogo do lado que a premissa quer, vermelho é o contrário. O que ela usa é o percentual de jogos sem sofrer gol.',
+  sem_marcar: 'Cada quadrado é um jogo, com o placar e o adversário. Verde é jogo do lado que a premissa quer, vermelho é o contrário. O que ela usa é o percentual de jogos sem marcar.',
 };
 
 /**
@@ -522,12 +565,27 @@ export function seriesDaEspecificacao(
       const regua = spec.metrica === 'total' && linha != null ? linha : media;
       const jogos: JogoBarra[] = brutos.map((j) => ({
         ...j,
+        // ⚠️ Numa métrica BINÁRIA o jogo favorece pelo FATO, e não por estar de
+        // um lado da média. O fato é o próprio valor: 1 aconteceu, 0 não.
+        //
+        // Comparar com a média quebra quando o time inteiro está do mesmo lado:
+        // nove jogos sem passar em branco dão média zero, a comparação fica zero
+        // contra zero e sai falsa em todos — nenhum jogo a favor de uma premissa
+        // que eles sustentam por unanimidade. Fora desse caso as duas contas
+        // dão o mesmo, porque numa binária 1 está sempre acima da média e 0
+        // sempre abaixo.
         favorece:
-          j.valor == null || regua == null
+          j.valor == null
             ? false
-            : spec.direcao === 'maior'
-              ? j.valor > regua
-              : j.valor < regua,
+            : EH_BINARIA(spec.metrica)
+              ? spec.direcao === 'maior'
+                ? j.valor === 1
+                : j.valor === 0
+              : regua == null
+                ? false
+                : spec.direcao === 'maior'
+                  ? j.valor > regua
+                  : j.valor < regua,
         resultado: j.resultado as 'V' | 'E' | 'D',
       }));
       series.push({

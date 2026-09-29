@@ -18,7 +18,7 @@
  * sozinha, sem ninguém precisar apagar nada.
  */
 
-import { plural, type Evidencia } from '@/utils/futebol-evidencias';
+import { ladoDaSaida, plural, type Evidencia } from '@/utils/futebol-evidencias';
 
 /** Uma linha de `futebol.fact_insumos_medidos`, só com o que esta escolha usa. */
 export interface InsumoMedido {
@@ -35,24 +35,50 @@ function numero(v: number): string {
 }
 
 /**
- * Os insumos que uma premissa comparou, na saída daquele lado.
+ * Percentual de jogos: `33.333` vira `33%`.
  *
- * O casamento de lado é por `lower(outcome)`: o mercado de Resultado grava a
- * saída capitalizada, e comparar com a caixa errada devolve vazio sem erro —
- * foi assim que a primeira medição desta issue saiu zerada.
+ * Inteiro de propósito. O insumo é `clean_sheet_total / played_total` sobre uma
+ * janela de no máximo dez jogos, então o número real anda de dez em dez — e as
+ * casas decimais só aparecem quando o time tem MENOS de dez jogos, que é
+ * justamente quando a amostra é curta demais para prometer duas casas.
+ *
+ * É também o que o próprio dbt escreve nos bullets dele (`%.0f%%`), então a
+ * mesma medição não sai com dois arredondamentos diferentes conforme a tela.
+ */
+function percentual(v: number): string {
+  return `${Math.round(v)}%`;
+}
+
+/**
+ * Os insumos que uma premissa comparou, na saída escolhida.
+ *
+ * ⚠️ O casamento é com a SAÍDA do mart, e não com o lado do confronto. Ele era
+ * `outcome.toLowerCase() === lado` e funcionava por coincidência: no Resultado e
+ * no Handicap a saída se chama `Home`/`Away`, que em minúscula É o lado. Nos
+ * outros dois mercados ela não se chama assim, e a busca saía vazia sem erro:
+ *
+ *   Dupla chance   `1X`/`X2` nunca é igual a `home`/`away`.
+ *   Ambos marcam   `Yes`/`No` não tem lado de confronto nenhum — ali `lado`
+ *                  chega nulo, e a busca parava na primeira linha, antes mesmo
+ *                  de olhar o dado.
+ *
+ * `lower` continua porque a caixa varia entre mercados, e comparar com a caixa
+ * errada devolve vazio sem erro — foi assim que a primeira medição da #464 saiu
+ * zerada.
  */
 export function insumosDaPremissa(
   mercado: string,
   slug: string,
-  lado: 'home' | 'away' | null,
+  saida: string | null,
   insumos: InsumoMedido[] | undefined,
 ): InsumoMedido[] {
-  if (!insumos?.length || !lado) return [];
+  if (!insumos?.length || !saida) return [];
+  const alvo = saida.toLowerCase();
   return insumos.filter(
     (i) =>
       i.market === mercado &&
       i.premissa === slug &&
-      i.outcome?.toLowerCase() === lado &&
+      i.outcome?.toLowerCase() === alvo &&
       i.valor != null,
   );
 }
@@ -72,10 +98,26 @@ export function insumosDaPremissa(
  * Premissa sem forma aqui também cai no par cru — é o que mantém a rota
  * agnóstica para as outras seis do 1X2 e para as que o mart publicar depois.
  */
-/** Os nomes dos dois times, para a barra. Nome não é medição: não muda com a janela. */
+/**
+ * Os nomes dos dois times, para a barra. Nome não é medição: não muda com a janela.
+ *
+ * São DOIS pares do mesmo confronto, e não um par com apelidos:
+ *
+ *   `time`/`adversario`       o lado APOSTADO e quem está contra. Existe só
+ *                            onde a aposta tem lado — Resultado, Handicap,
+ *                            Dupla chance.
+ *   `mandante`/`visitante`    quem joga em casa e quem joga fora. É o par do
+ *                            Ambos marcam, onde nenhum dos dois é o lado
+ *                            apostado e o mart mede os dois por isso
+ *                            (`home_*`/`away_*`, e não `s_`/`o_`).
+ *
+ * Traduzir um par no outro aqui seria inventar um lado que a aposta não tem.
+ */
 export interface NomesDoConfronto {
   time?: string | null;
   adversario?: string | null;
+  mandante?: string | null;
+  visitante?: string | null;
 }
 
 /**
@@ -138,6 +180,73 @@ function formaDaTabela(v: Record<string, number>, n: NomesDoConfronto): Evidenci
       dirValor: v.o_ppg,
       destaque: v.s_ppg > v.o_ppg ? 'esq' : 'nenhum',
     },
+  };
+}
+
+/**
+ * As duas leituras do Ambos marcam, e por que elas são DUAS funções e não sete.
+ *
+ * O mercado tem sete premissas, e elas se repetem aos pares: o lado "Sim" e o
+ * lado "Não" leem O MESMO insumo com o corte invertido. `ambos_marcam` acende
+ * com os dois passando em branco POUCO e `ataque_trava` com um deles passando
+ * MUITO — o número é `fts_pct` nos dois. Idem `defesas_vazaveis` e
+ * `defesa_forte`, que leem `cs_pct`.
+ *
+ * A frase não diz o corte (ela é apresentação, não critério), então o par
+ * inteiro cabe numa função só. Escrever quatro seria manter quatro cópias da
+ * mesma frase para divergirem uma de cada vez.
+ *
+ * ⚠️ `destaque: 'nenhum'` nas duas, e aqui o motivo é mais forte que nos outros
+ * mercados: no Ambos marcam NENHUM dos dois times é o lado apostado. A aposta é
+ * no jogo. Pintar de verde a barra maior diria que um dos times é o lado bom, e
+ * não existe lado bom para apontar.
+ */
+function formaDoPercentualDosDois(
+  casa: number | undefined,
+  fora: number | undefined,
+  n: NomesDoConfronto,
+  oQueAconteceu: string,
+): Evidencia | null {
+  if (casa == null || fora == null) return null;
+  const mandante = n.mandante ?? 'O mandante';
+  const visitante = n.visitante ?? 'o visitante';
+  return {
+    texto: `${mandante} ${oQueAconteceu} em ${percentual(casa)} dos jogos e ${visitante} em ${percentual(fora)}`,
+    comparacao: {
+      esqLabel: n.mandante ?? 'Mandante',
+      esqValor: casa,
+      dirLabel: n.visitante ?? 'Visitante',
+      dirValor: fora,
+      destaque: 'nenhum',
+    },
+  };
+}
+
+/**
+ * O histórico de cinco jogos do Ambos marcam, nos dois sentidos.
+ *
+ * `historico_btts` conta em quantos dos últimos cinco os dois marcaram e
+ * `historico_seco` conta o complemento — mesma janela, mesma contagem, leitura
+ * espelhada. Os dois cortes são "pelo menos 3", e a frase não os cita.
+ *
+ * Sem barra: o gráfico destas duas desenha os cinco jogos um a um, e a barra
+ * comparativa repetiria a contagem que já está lá, com menos informação.
+ *
+ * A frase carrega o "de cada um" porque são DUAS janelas de cinco, uma por
+ * time, e não cinco jogos compartilhados. "3 e 4 dos últimos 5" sem isso soaria
+ * como sete jogos de um conjunto de cinco.
+ */
+function formaDaContagemDeCinco(
+  casa: number | undefined,
+  fora: number | undefined,
+  n: NomesDoConfronto,
+  oQueAconteceu: string,
+): Evidencia | null {
+  if (casa == null || fora == null) return null;
+  return {
+    texto:
+      `Nos últimos 5 de cada um, ${oQueAconteceu} em ${numero(casa)} do ` +
+      `${n.mandante ?? 'mandante'} e ${numero(fora)} do ${n.visitante ?? 'visitante'}`,
   };
 }
 
@@ -282,6 +391,72 @@ const FORMAS: Record<
       texto: `${n.time ?? 'O time'} sofre ${numero(v.s_ga_venue)} ${ondeCadaUmJoga(lado).doTime}`,
     };
   },
+
+  // ── Ambos marcam (AE#208) ───────────────────────────────────────────────────
+  // AS SETE, e não um subconjunto como nos dois mercados anteriores. Lá a regra
+  // da #361 — premissa só lê o valor medido se o gráfico souber desenhar a
+  // grandeza do critério — deixou quatro de fora em cada. Aqui ela não excluiu
+  // nenhuma, porque o gráfico foi CONSERTADO no mesmo commit: as métricas que
+  // faltavam já existiam (`sem_sofrer`, `sem_marcar` e `ambos`, do mercado de
+  // Gols), e o que havia era o mapa `SPECS` apontando para as erradas.
+  //
+  // Foi o que pôs a França com dois jogos de oito na tela de 25/09: a
+  // `defesa_forte` desenhava média de gols sofridos RECORTADA POR MANDO, e o
+  // critério dela é percentual de jogos sem sofrer, sem recorte de mando nenhum.
+  //
+  // ⚠️ Nenhuma destas sete recebe `lado`. No Ambos marcam a aposta não tem lado
+  // de confronto: ela é no jogo, e o mart mede os dois times por isso
+  // (`home_*`/`away_*`). Usar `n.time`/`n.adversario` aqui chamaria de "o time"
+  // um dos dois escolhido por acaso.
+
+  // `home_fts_pct < 30 AND away_fts_pct < 30` — os dois passam em branco pouco.
+  'btts:ambos_marcam': (v, n) =>
+    formaDoPercentualDosDois(v.home_fts_pct, v.away_fts_pct, n, 'passa em branco'),
+
+  // `home_fts_pct >= 35 OR away_fts_pct >= 35` — basta UM travar. O espelho da
+  // de cima, e é por isso que as duas dizem a mesma frase: o número é o mesmo, e
+  // quem separa as duas é o corte, que a frase não afirma.
+  'btts:ataque_trava': (v, n) =>
+    formaDoPercentualDosDois(v.home_fts_pct, v.away_fts_pct, n, 'passa em branco'),
+
+  // `home_cs_pct < 35 AND away_cs_pct < 35` — os dois seguram o zero pouco.
+  'btts:defesas_vazaveis': (v, n) =>
+    formaDoPercentualDosDois(v.home_cs_pct, v.away_cs_pct, n, 'não sofre gol'),
+
+  // `home_cs_pct >= 45 OR away_cs_pct >= 45` — basta UMA defesa segurar.
+  'btts:defesa_forte': (v, n) =>
+    formaDoPercentualDosDois(v.home_cs_pct, v.away_cs_pct, n, 'não sofre gol'),
+
+  // `home_btts_cnt >= 3 AND away_btts_cnt >= 3`, sobre os últimos 5 de cada.
+  'btts:historico_btts': (v, n) =>
+    formaDaContagemDeCinco(v.home_btts_cnt, v.away_btts_cnt, n, 'os dois marcaram'),
+
+  // `home_no_btts_cnt >= 3 OR away_no_btts_cnt >= 3`, o complemento da de cima.
+  'btts:historico_seco': (v, n) =>
+    formaDaContagemDeCinco(v.home_no_btts_cnt, v.away_no_btts_cnt, n, 'faltou gol de um dos lados'),
+
+  // `home_gf >= 1.2 AND away_gf >= 1.2`, e é a ÚNICA das sete recortada por
+  // mando — `goals_for_avg_home` do mandante e `goals_for_avg_away` do
+  // visitante. O recorte é fixo (cada um no mando que tem NESTE jogo), então ele
+  // não vem do `lado`: vem de qual das duas colunas o mart publicou.
+  //
+  // Sem `ondeCadaUmJoga`, que traduz o lado APOSTADO — aqui não há lado apostado,
+  // e o mandante joga em casa por definição.
+  'btts:ataque_dos_dois': (v, n) => {
+    if (v.home_gf == null || v.away_gf == null) return null;
+    const mandante = n.mandante ?? 'O mandante';
+    const visitante = n.visitante ?? 'o visitante';
+    return {
+      texto: `${mandante} marca ${numero(v.home_gf)} em casa e ${visitante} ${numero(v.away_gf)} fora`,
+      comparacao: {
+        esqLabel: `${n.mandante ?? 'Mandante'} em casa`,
+        esqValor: v.home_gf,
+        dirLabel: `${n.visitante ?? 'Visitante'} fora`,
+        dirValor: v.away_gf,
+        destaque: 'nenhum',
+      },
+    };
+  },
 };
 
 /**
@@ -300,15 +475,27 @@ const FORMAS: Record<
 export function evidenciaDoInsumoMedido(
   mercado: string,
   slug: string,
-  lado: 'home' | 'away' | null,
+  /**
+   * A saída do mart, como ele a grava: `Home`, `Away`, `1X`, `X2`, `Yes`, `No`.
+   *
+   * ⚠️ Era o `lado` do confronto, e as duas coisas só coincidiam por acidente —
+   * nos dois mercados que já liam o mart a saída se chama pelo lado. O lado
+   * continua existindo, mas agora é DERIVADO daqui, pela mesma `ladoDaSaida` que
+   * o resto da tela usa: recebendo os dois, um chamador poderia passar um par
+   * que não combina, e a frase falaria de um time enquanto o número é do outro.
+   */
+  saida: string | null,
   insumos: InsumoMedido[] | undefined,
   nomes: NomesDoConfronto = {},
 ): Evidencia | null {
-  const achados = insumosDaPremissa(mercado, slug, lado, insumos);
+  const achados = insumosDaPremissa(mercado, slug, saida, insumos);
   if (!achados.length) return null;
 
   const porNome: Record<string, number> = {};
   for (const i of achados) porNome[i.insumo] = i.valor as number;
 
+  // Nulo em Ambos marcam, e é o certo: lá a aposta é no jogo, e nenhum dos dois
+  // times é o lado apostado. As formas de lá não recebem lado nenhum.
+  const lado = saida ? ladoDaSaida(mercado, saida) : null;
   return FORMAS[`${mercado}:${slug}`]?.(porNome, nomes, lado) ?? null;
 }
