@@ -6,6 +6,7 @@ import {
   type LinhaPublicada,
   type PesoPorFaixa,
 } from './placar-agregacao';
+import { fmtExato } from '@/utils/formato';
 import { emN, epPct, roiPct, taxaPct, tomDoRoi } from './placar-formato';
 import { EvolucaoDoRoi } from './EvolucaoDoRoi';
 import { MatrizDoPlacar } from './MatrizDoPlacar';
@@ -57,7 +58,7 @@ function NumerosNoCelular({
       </p>
       <p className="mt-1.5 text-[12px] text-ink-dim">
         ± {epPct(total.ep)}{' '}
-        {simulando ? `em ${String(total.unidades).replace('.', ',')}u` : emN(total.n)}
+        {simulando ? `em ${fmtExato(total.unidades)}u` : emN(total.n)}
       </p>
       <p className="mt-3 flex flex-wrap items-baseline gap-x-2 border-t border-line-2 pt-3">
         <span className="font-display text-[22px] font-black leading-none text-ink">
@@ -247,7 +248,7 @@ export function Placar({
         <p className="mb-4 max-w-3xl rounded-rebrand-md border border-forest bg-forest/[0.06] px-4 py-3 text-[13px] text-ink">
           <strong>Simulação ligada.</strong> As unidades por faixa não são as medidas:{' '}
           {Object.entries(pesos)
-            .map(([faixa, peso]) => `${faixa} ${String(peso).replace('.', ',')}u`)
+            .map(([faixa, peso]) => `${faixa} ${fmtExato(peso)}u`)
             .join(' · ')}
           . O ROI abaixo é o que teria acontecido com esses tamanhos, sobre as mesmas apostas — e o
           erro-padrão passa a ser aproximado, porque ele é calculado por unidade e não ponderado.
@@ -279,7 +280,7 @@ export function Placar({
           />
           <Numero
             valor={roiPct(total.roi)}
-            rotulo={`ROI ± ${epPct(total.ep)} ${simulando ? `em ${String(total.unidades).replace('.', ',')}u` : emN(total.n)}`}
+            rotulo={`ROI ± ${epPct(total.ep)} ${simulando ? `em ${fmtExato(total.unidades)}u` : emN(total.n)}`}
             tom={tomDoRoi(total.roi)}
           />
         </div>

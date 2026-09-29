@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { fmtOdd, fmtDinheiro } from '@/utils/formato';
 import { Seo } from "@/components/Seo";
 import { faqPageSchema, type FaqItem } from "@/lib/structured-data";
 import {
@@ -142,8 +143,7 @@ const PERIOD_BASE = {
   greens: 15,
 };
 
-const formatMoney = (value: number) =>
-  value.toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2 });
+const formatMoney = (value: number) => fmtDinheiro(value);
 
 const STATUS_CHIP: Record<MockBetStatus, { label: string; cls: string }> = {
   won: { label: "GANHOU", cls: "text-status-success bg-status-success/10" },
@@ -712,7 +712,7 @@ const Betinho = () => {
                           {formatMoney(bet.stake_amount)}
                         </td>
                         <td className="py-2 pr-3 text-right text-ink-2 tabular-nums hidden sm:table-cell">
-                          {bet.odds.toFixed(2)}
+                          {fmtOdd(bet.odds)}
                         </td>
                         <td
                           className={`py-2 pr-3 text-right font-bold tabular-nums whitespace-nowrap ${

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { fmtOdd, fmtDecimal, fmtExato, fmtLinhaAnalisada } from '@/utils/formato';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { resultBadge } from '@/utils/futebol-settlement';
@@ -16,7 +17,7 @@ import { brtDayOf } from '@/utils/futebol-datas';
 
 /** A saída, do jeito que o produto a escreve: mercado, lado e linha. */
 function saida(market: string, outcome: string, line: number | null): string {
-  const linha = line == null ? '' : ` ${line > 0 ? '+' : ''}${String(line).replace('.', ',')}`;
+  const linha = line == null ? '' : ` ${line > 0 ? '+' : ''}${fmtLinhaAnalisada(line)}`;
   return `${rotuloDoMercado(market)} · ${outcome}${linha}`;
 }
 
@@ -26,7 +27,7 @@ function diaCurto(kickoff: string): string {
   return dia ? `${dia.slice(8, 10)}/${dia.slice(5, 7)}` : '—';
 }
 
-const emUnidades = (n: number) => `${n > 0 ? '+' : ''}${n.toFixed(2).replace('.', ',')}u`;
+const emUnidades = (n: number) => `${n > 0 ? '+' : ''}${fmtDecimal(n, 2)}u`;
 
 /** As colunas pelas quais a lista se deixa ordenar, na ordem em que se pergunta. */
 const ORDENACOES: { coluna: ColunaDoDrill; rotulo: string }[] = [
@@ -190,7 +191,7 @@ export function DrillDaCelula({
 
                       <p className="mt-0.5 text-[11px] text-ink-dim">
                         {diaCurto(l.linha.kickoff_utc)} · {l.linha.competition ?? 'sem campeonato'}
-                        {l.unidades !== 1 && ` · ${String(l.unidades).replace('.', ',')}u apostada`}
+                        {l.unidades !== 1 && ` · ${fmtExato(l.unidades)}u apostada`}
                       </p>
 
                       <p className="mt-1.5 text-[13px] text-ink-2">
@@ -198,7 +199,7 @@ export function DrillDaCelula({
                         <span className="text-ink-dim"> · </span>
                         odd{' '}
                         <span className="tabular-nums text-ink">
-                          {l.linha.best_odd?.toFixed(2).replace('.', ',')}
+                          {fmtOdd(l.linha.best_odd)}
                         </span>
                         <span className="text-ink-dim"> · </span>
                         Score <span className="tabular-nums text-ink">{l.linha.score}</span>
@@ -265,7 +266,7 @@ export function DrillDaCelula({
                             {saida(l.linha.market, l.linha.outcome, l.linha.line_value)}
                           </td>
                           <td className="px-3 py-2.5 text-right text-[13px] tabular-nums text-ink">
-                            {l.linha.best_odd?.toFixed(2).replace('.', ',')}
+                            {fmtOdd(l.linha.best_odd)}
                           </td>
                           <td className="px-3 py-2.5 text-right text-[13px] tabular-nums text-ink-2">
                             {l.linha.score}
@@ -298,7 +299,7 @@ export function DrillDaCelula({
                             {emUnidades(lucroEfetivo(l))}
                             {l.unidades !== 1 && (
                               <span className="ml-1 text-[10px] font-normal text-ink-dim">
-                                de {String(l.unidades).replace('.', ',')}u
+                                de {fmtExato(l.unidades)}u
                               </span>
                             )}
                           </td>

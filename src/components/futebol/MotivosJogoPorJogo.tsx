@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { fmtExato, fmtLinhaAnalisada } from '@/utils/formato';
 import { ChevronRight } from 'lucide-react';
 import type { FutebolFixtureHistorico, FutebolFixtureNumeros } from '@/services/futebol-data.service';
 import { pesoPalavra, pesoForte, rotuloPremissa, type Premissa } from '@/utils/futebol-premissas';
@@ -7,7 +8,6 @@ import { alinharAbaixoDoCabecalho } from '@/utils/rolagem';
 import { EH_QUADRO, evidenciaDoHistorico, storyDaPremissa, type SerieHistorico, type Story } from '@/utils/futebol-historico';
 import {
   corteEmPalavras,
-  exato,
   faltouParaOCorte,
   fraseDaPrestacao,
   numeroDaPrestacao,
@@ -33,15 +33,6 @@ import { cabeRotulo, d1, dia, tetoDaEscala } from '@/utils/futebol-grafico-de-ba
  *   linha tracejada âmbar  → a média, que é o número que a premissa usa
  *   rótulo na ponta da linha → qual é essa média, sem precisar medir no olho
  */
-
-/**
- * A linha sai como está cotada: 1,75 é 1,75, não 1,8. Arredondar para uma casa
- * dizia "linha 1,8" numa aposta que é de 1,75.
- *
- * É o `exato` do módulo do critério, com o nome que esta tela usa: eram a mesma
- * função escrita duas vezes.
- */
-const fmtLinhaExata = exato;
 
 /**
  * O sentido em palavra. Os valores do enum são as próprias palavras hoje, e o
@@ -156,7 +147,7 @@ function Consolidado({ c, saidaLabel, modo }: { c: NonNullable<Story['consolidad
         </div>
         <div className="text-right">
           <div className="text-[10px] uppercase tracking-[0.14em] font-semibold text-ink-3">Linha escolhida</div>
-          <div className="tabular-nums text-[20px] font-semibold leading-none mt-1.5 text-ink">{fmtLinhaExata(c.linha)}</div>
+          <div className="tabular-nums text-[20px] font-semibold leading-none mt-1.5 text-ink">{fmtLinhaAnalisada(c.linha)}</div>
         </div>
       </div>
       {/* A marca da linha fica POR CIMA do preenchimento, com contorno branco: dentro
@@ -166,7 +157,7 @@ function Consolidado({ c, saidaLabel, modo }: { c: NonNullable<Story['consolidad
           className="absolute top-0 -translate-x-1/2 text-[9.5px] font-bold tabular-nums whitespace-nowrap"
           style={{ left: pct(c.linha), color: '#b8870f' }}
         >
-          linha {fmtLinhaExata(c.linha)}
+          linha {fmtLinhaAnalisada(c.linha)}
         </span>
         <div className="relative h-3.5 rounded-full bg-white">
           <div className="absolute left-0 top-0 bottom-0 rounded-full" style={{ width: pct(c.valor), background: cor }} />
@@ -182,11 +173,11 @@ function Consolidado({ c, saidaLabel, modo }: { c: NonNullable<Story['consolidad
       <div className="text-[11.5px] leading-relaxed text-ink-2 mt-2.5">
         {modo === 'favor'
           ? c.favorece
-            ? `Fica ${c.direcao === 'maior' ? 'acima' : 'abaixo'} da linha de ${fmtLinhaExata(c.linha)}, e é por isso que esta premissa joga a favor de ${saidaLabel}.`
-            : `Fica ${c.direcao === 'maior' ? 'abaixo' : 'acima'} da linha de ${fmtLinhaExata(c.linha)}: por este número, a premissa não sustenta ${saidaLabel}.`
+            ? `Fica ${c.direcao === 'maior' ? 'acima' : 'abaixo'} da linha de ${fmtLinhaAnalisada(c.linha)}, e é por isso que esta premissa joga a favor de ${saidaLabel}.`
+            : `Fica ${c.direcao === 'maior' ? 'abaixo' : 'acima'} da linha de ${fmtLinhaAnalisada(c.linha)}: por este número, a premissa não sustenta ${saidaLabel}.`
           : c.favorece
-            ? `Fica ${c.direcao === 'maior' ? 'acima' : 'abaixo'} da linha de ${fmtLinhaExata(c.linha)}, mas a premissa não acendeu: o critério do modelo é mais exigente do que a linha.`
-            : `Fica ${c.direcao === 'maior' ? 'abaixo' : 'acima'} da linha de ${fmtLinhaExata(c.linha)}, e é por isso que esta premissa não atingiu o corte.`}
+            ? `Fica ${c.direcao === 'maior' ? 'acima' : 'abaixo'} da linha de ${fmtLinhaAnalisada(c.linha)}, mas a premissa não acendeu: o critério do modelo é mais exigente do que a linha.`
+            : `Fica ${c.direcao === 'maior' ? 'abaixo' : 'acima'} da linha de ${fmtLinhaAnalisada(c.linha)}, e é por isso que esta premissa não atingiu o corte.`}
       </div>
     </div>
   );
@@ -231,7 +222,7 @@ function PrestacaoPorTime({ p, saidaLabel }: { p: Prestacao; saidaLabel: string 
   // arrasta a régua. Sem dizer isso, ver o número mudar parece defeito.
   const contraALinha =
     p.escala === 'contagem' && p.linha != null
-      ? ` A conta é contra a linha de ${fmtLinhaExata(p.linha)}, e muda com ela.`
+      ? ` A conta é contra a linha de ${fmtLinhaAnalisada(p.linha)}, e muda com ela.`
       : '';
   return (
     <div className="rounded-xl bg-canvas-2 p-4">
@@ -308,7 +299,7 @@ function PrestacaoDeContas({ p, saidaLabel }: { p: Prestacao; saidaLabel: string
   // A frase da distância mora na tela, e o número vem do critério: uma função que
   // devolvesse ", por 0,05" só serviria colada nesta frase.
   const falta = faltouParaOCorte(p);
-  const porQuanto = falta == null ? '' : `, por ${exato(falta)}`;
+  const porQuanto = falta == null ? '' : `, por ${fmtExato(falta)}`;
   return (
     <div className="rounded-xl bg-canvas-2 p-4">
       <div className="flex items-end justify-between gap-4 flex-wrap">
@@ -360,14 +351,14 @@ function PrestacaoDeContas({ p, saidaLabel }: { p: Prestacao; saidaLabel: string
           <span className="inline-flex items-center gap-1.5">
             <span className="w-[3px] h-3 rounded-full" style={{ background: '#b8870f' }} />
             <span className="tabular-nums" style={{ color: '#8d8672' }}>
-              corte {fmtLinhaExata(p.corte)}
+              corte {fmtExato(p.corte)}
             </span>
           </span>
           {!semMargem && (
             <span className="inline-flex items-center gap-1.5">
               <span className="w-[2px] h-3 rounded-full" style={{ background: '#c0b79f' }} />
               <span className="tabular-nums" style={{ color: '#8d8672' }}>
-                linha {fmtLinhaExata(linha ?? 0)}
+                linha {fmtLinhaAnalisada(linha ?? 0)}
               </span>
             </span>
           )}
@@ -376,13 +367,13 @@ function PrestacaoDeContas({ p, saidaLabel }: { p: Prestacao; saidaLabel: string
 
       <div className="text-[11.5px] leading-relaxed text-ink-2 mt-2.5">
         {p.cruzou
-          ? `${d1(insumo)} fica ${LADO_DO_CORTE[p.sentido]} do corte de ${fmtLinhaExata(p.corte)}, e é por isso que esta premissa sustenta ${saidaLabel}.`
-          : `${d1(insumo)} não atingiu o corte de ${fmtLinhaExata(p.corte)}${porQuanto}.`}
+          ? `${d1(insumo)} fica ${LADO_DO_CORTE[p.sentido]} do corte de ${fmtExato(p.corte)}, e é por isso que esta premissa sustenta ${saidaLabel}.`
+          : `${d1(insumo)} não atingiu o corte de ${fmtExato(p.corte)}${porQuanto}.`}
         {!semMargem && (
           <>
             {' '}
-            O corte é a linha de {fmtLinhaExata(linha ?? 0)} com uma margem de{' '}
-            {fmtLinhaExata(Math.abs(p.margem ?? 0))}: o modelo é mais exigente do que a linha.
+            O corte é a linha de {fmtLinhaAnalisada(linha ?? 0)} com uma margem de{' '}
+            {fmtExato(Math.abs(p.margem ?? 0))}: o modelo é mais exigente do que a linha.
           </>
         )}
       </div>

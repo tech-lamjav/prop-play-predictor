@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { fmtExato } from '@/utils/formato';
 import {
   divergenciaDaPrestacao,
   faltouParaOCorte,
   divergenciasDaSaida,
-  exato,
   fraseDaPrestacao,
   prestacaoDaPremissa,
   temCriterio,
@@ -721,7 +721,7 @@ describe('quanto faltou para o corte', () => {
     expect(faltouParaOCorte(p)).toBe(0.05);
     // O formatador exato é quem preserva os 0,05: `toFixed(1)` daria "0,1", o
     // dobro, e justamente no número que existe para mostrar que faltou pouco.
-    expect(exato(faltouParaOCorte(p)!)).toBe('0,05');
+    expect(fmtExato(faltouParaOCorte(p)!)).toBe('0,05');
   });
 
   it('a mesma média acende cinco centésimos adiante', () => {

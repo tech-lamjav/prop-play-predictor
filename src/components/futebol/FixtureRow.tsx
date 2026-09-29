@@ -1,4 +1,5 @@
 import { Crest } from './Crest';
+import { fmtOdd } from '@/utils/formato';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Link } from 'react-router-dom';
 import { fmtTime, isFinished, isLive } from '@/utils/futebol-datas';
@@ -126,8 +127,13 @@ export function FixtureRow({
   // Duas portas para o mesmo cadeado, e as duas precisam existir. `borra` é o
   // que a TELA sabe (o acesso chegou pelo hook). `linhaBloqueada` é o que o
   // BANCO já decidiu: desde a guarda de acesso, a linha do board chega com as
-  // colunas nulas, e sem este teste `best.best_odd.toFixed(2)` estoura antes de
-  // qualquer condição da tela rodar.
+  // colunas nulas.
+  //
+  // ⚠️ O motivo ANTIGO deste teste era que `best.best_odd.toFixed(2)` estourava
+  // na coluna nula. Não estoura mais: desde o #529 quem desenha odd é `fmtOdd`,
+  // e ele devolve travessão. O teste fica porque linha nula pede o CADEADO, e
+  // não um travessão solto onde deveria haver aposta. Não tire por achar que
+  // virou seguro — virou, e continua errado sem ele.
   const bloqueado = borra || linhaBloqueada(best);
 
   // Jogo encerrado não precisa mais do Score, que é uma previsão: o que importa
@@ -275,7 +281,7 @@ export function FixtureRow({
                 aposta e ganhava, sobrando reticências no lugar do que importa.
                 Ela continua a um toque de distância, na tela do jogo. */}
             <span className="hidden sm:block mt-px text-[11px] tabular-nums truncate" style={{ color: '#8d8672' }}>
-              odd {best.best_odd.toFixed(2)}
+              odd {fmtOdd(best.best_odd)}
               {chance != null ? ` · ${chance}% chance` : null}
             </span>
           </>

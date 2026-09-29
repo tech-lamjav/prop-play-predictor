@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { fmtOdd } from '@/utils/formato';
 import { Link } from 'react-router-dom';
 import { Zap, ArrowRight, Check, AlertTriangle, Lock } from 'lucide-react';
 import { rotuloEmTitulo } from '@/utils/futebol-estado-da-premissa';
@@ -125,8 +126,8 @@ function TopValueHero({ o, to, favor, contra, textoScore, carregandoMotivos = fa
   // vantagem que a tela não mostra mais, e o leitor não teria como conferir.
   const forte = d ? 'text-white' : 'text-ink';
   const porque = chance != null
-    ? <>O mercado dá <b className={forte}>~{chance}% de chance</b>, e a odd é <b className={forte}>{o.best_odd.toFixed(2)}</b>. O que sustenta esta leitura é o cenário, não o preço.</>
-    : <>Na odd <b className={forte}>{o.best_odd.toFixed(2)}</b>, a aposta se paga a partir de <b className={forte}>{Math.round(100 / o.best_odd)}%</b> de acerto — e a leitura do jogo aponta nessa direção.</>;
+    ? <>O mercado dá <b className={forte}>~{chance}% de chance</b>, e a odd é <b className={forte}>{fmtOdd(o.best_odd)}</b>. O que sustenta esta leitura é o cenário, não o preço.</>
+    : <>Na odd <b className={forte}>{fmtOdd(o.best_odd)}</b>, a aposta se paga a partir de <b className={forte}>{Math.round(100 / o.best_odd)}%</b> de acerto — e a leitura do jogo aponta nessa direção.</>;
 
   return (
     <div className={`rounded-2xl overflow-hidden relative ${d ? 'text-white' : 'bg-white border border-line border-l-4 border-l-amber'}`}
@@ -265,7 +266,7 @@ function TopValueHero({ o, to, favor, contra, textoScore, carregandoMotivos = fa
                 empilhados. Eram três, e a diferença entre os dois saiu (#519). */}
             <div className="grid grid-cols-2 gap-x-3 gap-y-3 mt-5">
               {chance != null && <HeroStat label="Chance" value={`${chance}%`} dark={d} ajuda={TEXTO_CHANCE} />}
-              <HeroStat label="Odd" value={o.best_odd.toFixed(2)} dark={d} ajuda={TEXTO_ODD} />
+              <HeroStat label="Odd" value={fmtOdd(o.best_odd)} dark={d} ajuda={TEXTO_ODD} />
             </div>
           </div>
         </div>
@@ -341,7 +342,7 @@ function OppCard({ o, to, aoClicar, aoAparecer }: { o: FutebolValueBoardRow; to:
             </div>
             <div className="flex items-baseline justify-end gap-2">
               <span className="text-[9px] uppercase tracking-[0.14em] font-semibold text-ink-3">Odd</span>
-              <span className="text-[13px] font-bold tabular-nums text-ink">{o.best_odd.toFixed(2)}</span>
+              <span className="text-[13px] font-bold tabular-nums text-ink">{fmtOdd(o.best_odd)}</span>
             </div>
           </div>
         </div>
