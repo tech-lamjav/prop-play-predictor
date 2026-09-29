@@ -9,6 +9,12 @@ import '@fontsource-variable/inter'
 import posthog from 'posthog-js'
 import { PostHogProvider } from '@posthog/react'
 import { config } from './config/environment'
+// A inicialização do idioma é GLOBAL e acontece UMA vez, aqui. Antes do #534
+// três telas importavam o i18next cada uma por conta própria, e nenhuma delas
+// usava. Ver src/i18n/init.ts.
+import { iniciarIdioma } from './i18n/init'
+
+iniciarIdioma()
 
 // Initialize PostHog
 if (config.posthog.key) {

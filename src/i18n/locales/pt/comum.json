@@ -1,0 +1,10 @@
+{
+  "acoes": {
+    "assinar": "Assinar",
+    "entrar": "Entrar"
+  },
+  "idioma": {
+    "rotulo": "Idioma",
+    "escolher": "Escolher idioma"
+  }
+}

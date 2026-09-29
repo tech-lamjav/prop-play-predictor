@@ -1,0 +1,20 @@
+{
+  "menu": {
+    "rotulo": "Perfil",
+    "aria": "Menu da conta",
+    "semNome": "Usuário",
+    "renovaEm": "renova {{data}}",
+    "usoInterno": "Uso interno",
+    "sair": "Sair da conta",
+    "idioma": "Idioma"
+  },
+  "itens": {
+    "configuracoes": "Configurações",
+    "planos": "Planos e preços",
+    "indicar": "Indique um amigo",
+    "comoUsar": "Como usar",
+    "falarComOTime": "Falar com o time",
+    "crm": "CRM",
+    "metodologia": "Metodologia"
+  }
+}

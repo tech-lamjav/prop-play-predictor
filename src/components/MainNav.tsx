@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../hooks/use-auth';
 import UserNav from './UserNav';
+import { useTranslation } from 'react-i18next';
+import { SeletorDeIdiomaCompacto } from './SeletorDeIdioma';
 import { SHOW_BOLAO_ENTRY_POINTS } from '@/config/bolao';
 import { useState } from 'react';
 import {
@@ -30,6 +32,7 @@ interface MainNavProps {
 
 export default function MainNav({ className }: MainNavProps) {
   const location = useLocation();
+  const { t: tComum } = useTranslation('comum');
   const navigate = useNavigate();
   const { user } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -154,18 +157,21 @@ export default function MainNav({ className }: MainNavProps) {
               <UserNav />
             ) : (
               <>
+                {/* Sem usuário não há menu da conta, e é lá que o idioma mora.
+                    Este é o outro lugar dele. Ver SeletorDeIdioma. */}
+                <SeletorDeIdiomaCompacto className="text-muted-foreground hover:bg-accent" />
                 <Button
                   variant="ghost"
                   onClick={() => navigate('/auth')}
                   className="text-muted-foreground hover:text-foreground"
                 >
-                  Entrar
+                  {tComum('acoes.entrar')}
                 </Button>
                 <Button
                   onClick={() => navigate('/planos')}
                   className="bg-primary text-primary-foreground hover:opacity-90"
                 >
-                  Assinar
+                  {tComum('acoes.assinar')}
                 </Button>
               </>
             )}

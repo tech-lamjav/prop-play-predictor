@@ -22,6 +22,8 @@ import { IconSoccer, IconBasketball } from './icons/sports';
 import { useAuth } from '../hooks/use-auth';
 import { useSubscription } from '@/hooks/use-subscription';
 import UserNav from './UserNav';
+import { useTranslation } from 'react-i18next';
+import { SeletorDeIdiomaCompacto } from './SeletorDeIdioma';
 import { FutebolTrialChip } from './futebol/FutebolGate';
 import { SHOW_BOLAO_ENTRY_POINTS } from '@/config/bolao';
 import { ROTA_DO_CRM, ROTA_DOS_SOCIOS } from '@/components/socios/crm-vocabulario';
@@ -122,6 +124,7 @@ export default function AnalyticsNav({
   semSecoes,
 }: AnalyticsNavProps) {
   const location = useLocation();
+  const { t: tComum } = useTranslation('comum');
   const navigate = useNavigate();
   const { user } = useAuth();
   const { isPremium } = useSubscription();
@@ -285,16 +288,24 @@ export default function AnalyticsNav({
               </>
             ) : (
               // Ordem espelha o estado logado — comercial no meio, conta na
-              // ponta: [PREMIUM][Perfil] logado, [Assinar][Entrar] deslogado.
+              // ponta: [PREMIUM][Assinar][Entrar] deslogado.
               // Assim o botão âmbar não muda de posição quando o usuário loga.
+              //
+              // O SELETOR DE IDIOMA abre a fila, e é o único elemento deste
+              // cabeçalho que não existe do lado logado — lá ele mora dentro do
+              // menu da conta. Aqui ele precisa de lugar próprio porque aquele
+              // menu não renderiza sem usuário, e quem mais precisa do espanhol
+              // chega assim. Primeiro na ordem e discreto no peso: encontrável
+              // sem disputar com as duas ações que o negócio quer em destaque.
               <div className="flex items-center gap-2">
+                <SeletorDeIdiomaCompacto />
                 <Button
                   size="sm"
                   onClick={() => navigate('/planos')}
                   className="h-9 px-3 rounded-[10px] bg-amber-400 hover:bg-amber-300 text-ink text-xs font-bold"
                 >
                   <Zap className="w-3 h-3 mr-1 fill-current" strokeWidth={0} />
-                  Assinar
+                  {tComum('acoes.assinar')}
                 </Button>
                 <Button
                   variant="ghost"
@@ -303,7 +314,7 @@ export default function AnalyticsNav({
                   className="h-9 text-xs text-white/80 hover:text-white hover:bg-white/10"
                 >
                   <LogIn className="w-3 h-3 mr-1" />
-                  Entrar
+                  {tComum('acoes.entrar')}
                 </Button>
               </div>
             )}

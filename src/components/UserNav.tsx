@@ -1,4 +1,6 @@
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../hooks/use-auth';
+import { SeletorDeIdioma } from './SeletorDeIdioma';
 import { Button } from './ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Avatar, AvatarFallback } from './ui/avatar';
@@ -27,6 +29,7 @@ interface UserNavProps {
 
 /** Itens do menu, na ordem do desenho. `Configurações` é sempre o primeiro. */
 export default function UserNav({ className }: UserNavProps) {
+  const { t } = useTranslation('conta');
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -81,7 +84,7 @@ export default function UserNav({ className }: UserNavProps) {
         <button
           type="button"
           onClick={() => navigate('/perfil')}
-          aria-label="Perfil"
+          aria-label={t('menu.rotulo')}
           className="md:hidden w-[30px] h-[30px] rounded-full bg-sand text-forest text-[11px] font-bold grid place-items-center shrink-0"
         >
           {initials}
@@ -96,9 +99,9 @@ export default function UserNav({ className }: UserNavProps) {
             <Button
               variant="ghost"
               className="h-9 pl-2.5 pr-1.5 gap-[7px] rounded-full border border-white/15 bg-transparent hover:bg-white/10 data-[state=open]:bg-white/10 data-[state=open]:border-white/45 transition-colors"
-              aria-label="Menu da conta"
+              aria-label={t('menu.aria')}
             >
-              <span className="text-[12px] font-medium text-white/85">Perfil</span>
+              <span className="text-[12px] font-medium text-white/85">{t('menu.rotulo')}</span>
               <Avatar className="h-[26px] w-[26px]">
                 <AvatarFallback className="bg-sand text-forest text-[11px] font-bold">
                   {initials}
@@ -119,7 +122,7 @@ export default function UserNav({ className }: UserNavProps) {
               </span>
               <div className="min-w-0 flex-1">
                 <div className="text-[13.5px] font-semibold tracking-[-0.01em] text-ink truncate">
-                  {name || 'Usuário'}
+                  {name || t('menu.semNome')}
                 </div>
                 <div className="text-[11.5px] text-sand-ink-2 truncate">{user?.email}</div>
               </div>
@@ -131,7 +134,7 @@ export default function UserNav({ className }: UserNavProps) {
                   <Zap className="w-[11px] h-[11px] fill-amber-400" strokeWidth={0} />
                   PREMIUM
                 </span>
-                {renovaEm && <span className="text-[11px] text-sand-ink-2">renova {renovaEm}</span>}
+                {renovaEm && <span className="text-[11px] text-sand-ink-2">{t('menu.renovaEm', { data: renovaEm })}</span>}
               </div>
             )}
 
@@ -140,13 +143,13 @@ export default function UserNav({ className }: UserNavProps) {
                 const Icon = item.icon;
                 return (
                   <button
-                    key={item.label}
+                    key={item.chave}
                     type="button"
                     onClick={() => go(item)}
                     className="h-[38px] px-2.5 rounded-[9px] flex items-center gap-2.5 text-[13px] font-medium text-sand-ink-strong hover:bg-sand-100 hover:text-forest transition-colors"
                   >
                     <Icon className="w-4 h-4 text-forest shrink-0" />
-                    <span className="flex-1 text-left">{item.label}</span>
+                    <span className="flex-1 text-left">{t(item.chave)}</span>
                     <ChevronRight className="w-3.5 h-3.5 text-sand-chevron shrink-0" />
                   </button>
                 );
@@ -159,19 +162,19 @@ export default function UserNav({ className }: UserNavProps) {
             {internos.length > 0 && (
               <div className="p-1.5 flex flex-col border-t border-sand-divider">
                 <span className="px-2.5 pt-1 pb-1.5 font-mono text-[9.5px] font-bold uppercase tracking-[0.14em] text-sand-ink-2">
-                  Uso interno
+                  {t('menu.usoInterno')}
                 </span>
                 {internos.map((item) => {
                   const Icon = item.icon;
                   return (
                     <button
-                      key={item.label}
+                      key={item.chave}
                       type="button"
                       onClick={() => go(item)}
                       className="h-[38px] px-2.5 rounded-[9px] flex items-center gap-2.5 text-[13px] font-medium text-sand-ink-strong hover:bg-sand-100 hover:text-forest transition-colors"
                     >
                       <Icon className="w-4 h-4 text-forest shrink-0" />
-                      <span className="flex-1 text-left">{item.label}</span>
+                      <span className="flex-1 text-left">{t(item.chave)}</span>
                       <ChevronRight className="w-3.5 h-3.5 text-sand-chevron shrink-0" />
                     </button>
                   );
@@ -179,6 +182,16 @@ export default function UserNav({ className }: UserNavProps) {
               </div>
             )}
 
+            {/* Idioma — grupo próprio, acima do Sair.
+                Trocar o idioma não é ação sobre a conta, é preferência de
+                como a tela fala; e o Sair continua sendo a última coisa do
+                menu, que é onde a pessoa procura por ele. */}
+            <div className="p-1.5 flex flex-col border-t border-sand-divider">
+              <span className="px-2.5 pt-1 pb-1.5 font-mono text-[9.5px] font-bold uppercase tracking-[0.14em] text-sand-ink-2">
+                {t('menu.idioma')}
+              </span>
+              <SeletorDeIdioma />
+            </div>
             <div className="p-1.5 border-t border-sand-divider">
               <button
                 type="button"
@@ -186,7 +199,7 @@ export default function UserNav({ className }: UserNavProps) {
                 className="w-full h-[38px] px-2.5 rounded-[9px] flex items-center gap-2.5 text-[13px] font-medium text-sand-danger hover:bg-sand-danger-bg transition-colors"
               >
                 <LogOut className="w-4 h-4 shrink-0" />
-                Sair da conta
+                {t('menu.sair')}
               </button>
             </div>
           </DropdownMenuContent>

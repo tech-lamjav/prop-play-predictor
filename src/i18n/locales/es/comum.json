@@ -1,0 +1,10 @@
+{
+  "acoes": {
+    "assinar": "Suscribirse",
+    "entrar": "Iniciar sesión"
+  },
+  "idioma": {
+    "rotulo": "Idioma",
+    "escolher": "Elegir idioma"
+  }
+}

@@ -9,15 +9,17 @@
 //
 // REGRA: não existe uma régua, existem QUATRO, e elas discordam de propósito.
 //
-//   1. A ODD SEGUE O SETOR. Ponto, sempre, em qualquer país. Casa de aposta
-//      escreve "cuota de 2.10" e "10.000 CLP" na MESMA página para o mesmo
-//      chileno — a cotação não recebe o separador do país. Por isso `fmtOdd`
-//      não aceita idioma: a regra é a AUSÊNCIA da escolha.
-//   2. O DINHEIRO SEGUE O PAÍS. Peru e México com ponto, Argentina e Chile com
-//      vírgula, e o peso chileno sem centavos.
-//   3. PORCENTAGEM E DECIMAL SEGUEM O PAÍS.
-//   4. A LINHA ANALISADA ainda não tem régua decidida. Hoje segue o país,
-//      como já seguia. Ver `fmtLinhaAnalisada`.
+//   1. A ODD SEGUE O SETOR. Ponto, sempre, em qualquer país. Confirmado em
+//      fonte de operador: a central de ajuda da Betano ARGENTINA publica
+//      "Más 2.5 goles" com ponto, num país que escreve dinheiro com vírgula.
+//      Por isso `fmtOdd` não aceita idioma: a regra é a AUSÊNCIA da escolha.
+//   2. O DINHEIRO SEGUE A MOEDA, e não o idioma da tela. O preço é cobrado em
+//      real; trocar o separador porque a tela está em espanhol daria
+//      "R$ 1,234.50", que não existe em lugar nenhum. Ver `fmtDinheiro`.
+//   3. PORCENTAGEM, DECIMAL e NÚMERO SEGUEM O IDIOMA ATIVO, que a camada de
+//      tradução empurra para cá. Ver `definirLocaleAtivo`.
+//   4. A LINHA ANALISADA ainda não tem régua decidida. Hoje segue o idioma,
+//      como já seguia o país. Ver `fmtLinhaAnalisada`.
 //
 // ⚠️ NUNCA escreva `toFixed(...).replace('.', ',')` de novo, nem construa um
 // `Intl.NumberFormat` dentro de função chamada em laço. O motivo do cache está
@@ -30,9 +32,30 @@
 // ANALISADA — o modelo calcula premissas para ela tendo ou não cotação.
 // ============================================================================
 
-/** O que muda no dia em que o produto falar espanhol. Uma linha, e não 46. */
+/** O padrão da casa, e o ponto de partida de tudo aqui. */
 export const LOCALE_PADRAO = 'pt-BR';
 export const MOEDA_PADRAO = 'BRL';
+
+/**
+ * O idioma ativo, que a camada de tradução empurra para cá quando a pessoa
+ * troca (`src/i18n/init.ts`).
+ *
+ * Fica como estado de módulo, e não como parâmetro em 46 chamadas, porque a
+ * régua é do PRODUTO e não de cada tela. E a seta aponta para cá: é o i18n que
+ * conhece a formatação, não o contrário — assim este arquivo continua puro,
+ * testável sem navegador e sem biblioteca de tradução carregada.
+ */
+let localeAtivoAgora: string = LOCALE_PADRAO;
+
+/** Chamada pela camada de tradução. Ninguém mais precisa chamar. */
+export function definirLocaleAtivo(locale: string): void {
+  localeAtivoAgora = locale;
+}
+
+/** O idioma que as réguas de número seguem agora. */
+export function localeAtivo(): string {
+  return localeAtivoAgora;
+}
 
 /** Ausência. Nunca "0", que afirmaria um valor, nem "NaN", que vaza defeito. */
 const TRACO = '—';
@@ -63,7 +86,14 @@ export function fmtOdd(odd: number | null | undefined): string {
 }
 
 /**
- * Dinheiro com o símbolo da moeda, na formatação do país.
+ * Dinheiro com o símbolo da moeda, na formatação da MOEDA.
+ *
+ * ⚠️ O dinheiro é a única régua que NÃO segue o idioma ativo, e isso é
+ * decisão, não esquecimento. O preço do produto é cobrado em real. Trocar só o
+ * separador porque a tela está em espanhol produziria "R$ 1,234.50" — símbolo
+ * brasileiro com separador estrangeiro, coisa que não existe em lugar nenhum.
+ * Dinheiro segue o país da MOEDA, e a moeda só muda quando houver decisão de
+ * preço por país, que está fora do escopo do #532.
  *
  * `casas` existe por dois motivos reais, e não por generalidade: eixo de
  * gráfico pede valor sem centavo, e o peso chileno NÃO TEM centavo. Deixar em
@@ -89,7 +119,7 @@ export function fmtDinheiro(
 export function fmtPct(
   taxa: number | null | undefined,
   casas = 0,
-  locale = LOCALE_PADRAO,
+  locale = localeAtivo(),
 ): string {
   if (vazio(taxa)) return TRACO;
   const n = formatador(locale, {
@@ -110,7 +140,7 @@ export function fmtPct(
 export function fmtDecimal(
   valor: number | null | undefined,
   casas = 1,
-  locale = LOCALE_PADRAO,
+  locale = localeAtivo(),
 ): string {
   if (vazio(valor)) return TRACO;
   return formatador(locale, {
@@ -132,7 +162,7 @@ export function fmtDecimal(
  * `Intl` padrão corta em 3 casas e agrupa milhar, e as duas coisas mudariam a
  * saída de hoje.
  */
-export function fmtExato(valor: number | null | undefined, locale = LOCALE_PADRAO): string {
+export function fmtExato(valor: number | null | undefined, locale = localeAtivo()): string {
   if (vazio(valor)) return TRACO;
   return formatador(locale, { maximumFractionDigits: 20, useGrouping: false }).format(valor);
 }
@@ -147,7 +177,7 @@ export function fmtExato(valor: number | null | undefined, locale = LOCALE_PADRA
  */
 export function fmtNumero(
   valor: number | null | undefined,
-  { casas, locale = LOCALE_PADRAO }: { casas?: number; locale?: string } = {},
+  { casas, locale = localeAtivo() }: { casas?: number; locale?: string } = {},
 ): string {
   if (vazio(valor)) return TRACO;
   return formatador(locale, {
@@ -159,7 +189,7 @@ export function fmtNumero(
 export function fmtDecimalAte(
   valor: number | null | undefined,
   maxCasas = 2,
-  locale = LOCALE_PADRAO,
+  locale = localeAtivo(),
 ): string {
   if (vazio(valor)) return TRACO;
   return formatador(locale, {
@@ -187,7 +217,7 @@ export function fmtDecimalAte(
  */
 export function fmtLinhaAnalisada(
   linha: number | null | undefined,
-  locale = LOCALE_PADRAO,
+  locale = localeAtivo(),
 ): string {
   if (vazio(linha)) return TRACO;
   return fmtExato(linha, locale);
