@@ -46,8 +46,10 @@ describe('o mapa de gráficos', () => {
     expect(Object.keys(SPECS).filter((par) => !doCatalogo.has(par))).toEqual([]);
   });
 
-  // 25 pares. O 25º é `btts:defesas_vazaveis`, que antes era servida pela chave
-  // de Gols por acidente de nome e agora está escrita.
+  // 28 pares. Os três últimos são `btts:ataque_trava`, `btts:historico_btts` e
+  // `btts:historico_seco`: o mercado de Ambos marcam passou a ter gráfico nas
+  // SETE, e não em quatro. As três que faltavam não precisaram de métrica nova
+  // — `sem_marcar` e `ambos` já existiam no mercado de Gols.
   const COM_GRAFICO = [
     'asian_handicap:adversario_fragil_fora',
     'asian_handicap:defesa_fora_solida',
@@ -56,8 +58,11 @@ describe('o mapa de gráficos', () => {
     'asian_handicap:tende_golear',
     'btts:ambos_marcam',
     'btts:ataque_dos_dois',
+    'btts:ataque_trava',
     'btts:defesa_forte',
     'btts:defesas_vazaveis',
+    'btts:historico_btts',
+    'btts:historico_seco',
     'double_chance:adversario_limitado',
     'double_chance:invicto_recente',
     'goals_over_under:ambos_vazam',

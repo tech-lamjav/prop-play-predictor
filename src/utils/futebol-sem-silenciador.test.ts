@@ -109,6 +109,7 @@ describe('a evidência tem uma fonte só', () => {
       slug: 'defesas_firmes',
       numeros: numeros({ ga_casa: 2, ga_fora: 2 }),
       historico: hist,
+      saida: null,
       lado: 'home',
       linha: 3.25,
     });
@@ -126,6 +127,7 @@ describe('a evidência tem uma fonte só', () => {
       slug: 'forca_mismatch',
       numeros: numeros(),
       historico: [],
+      saida: null,
       lado: 'home',
       linha: null,
     });

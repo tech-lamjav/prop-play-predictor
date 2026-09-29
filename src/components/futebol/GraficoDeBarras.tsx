@@ -63,7 +63,7 @@ export function SerieResultados({
   larguraFixa = false,
 }: {
   s: SerieHistorico;
-  corPor?: 'resultado' | 'valor';
+  corPor?: 'resultado' | 'valor' | 'favorece';
   /**
    * ⚠️ Desligados por padrão, como `comPlacar` e `rotuloDentro`.
    *
@@ -84,10 +84,28 @@ export function SerieResultados({
   return (
     <div className={cn('flex flex-wrap', larguraFixa ? 'gap-1' : 'gap-1.5')}>
       {s.jogos.map((j) => {
-        // Em "ambos marcam" a cor não é vitória nem derrota: é o fato ter
-        // acontecido ou não. Pintar de verde uma vitória em que só um time
-        // marcou seria a cor respondendo outra pergunta que a do seletor.
-        const c = corPor === 'valor' ? (j.valor ? COR_RES.V : COR_RES.D) : COR_RES[j.resultado];
+        // Três perguntas diferentes, e cada tela faz a sua:
+        //
+        //   'resultado'  venceu, empatou ou perdeu.
+        //   'valor'      o fato aconteceu? É o do seletor de Estatísticas, onde
+        //                não há premissa e "os dois marcaram" é a pergunta
+        //                inteira. Pintar de verde uma vitória em que só um time
+        //                marcou seria a cor respondendo outra pergunta.
+        //   'favorece'   o jogo puxa para o lado que a PREMISSA quer? É o do
+        //                painel da premissa, e é o único que serve lá: a mesma
+        //                métrica atende premissas de direções opostas, então o
+        //                fato cru pintaria de verde, na `ambos_marcam`, o jogo
+        //                em que o time passou em branco.
+        const c =
+          corPor === 'favorece'
+            ? j.favorece
+              ? COR_RES.V
+              : COR_RES.D
+            : corPor === 'valor'
+              ? j.valor
+                ? COR_RES.V
+                : COR_RES.D
+              : COR_RES[j.resultado];
         return (
           <div
             key={`${j.ordem}-${j.data}`}

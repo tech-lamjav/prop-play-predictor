@@ -145,15 +145,21 @@ export const ESCOLHA_PADRAO: EscolhaDaEstatistica = {
 const COMO_LER: Record<Metrica, string> = {
   total: 'Cada barra é o total de gols daquele jogo, somando os dois times. A linha é uma referência: mexer nela repinta as barras.',
   saldo: 'Cada barra é o saldo do time naquele jogo, positivo na vitória e negativo na derrota. A linha é uma referência: mexer nela repinta as barras.',
-  // ⚠️ Fala de QUADRO, não de barra: este mercado é binário e desenha quadro.
-  // Dizer "barra" aqui seria a legenda desmentindo o desenho logo acima dela.
+  // ⚠️ Fala de QUADRADO, não de barra: estas são as métricas que `EH_QUADRO`
+  // manda desenhar como quadrado, e dizer "barra" aqui seria a legenda
+  // desmentindo o desenho logo acima dela.
+  //
+  // São QUATRO e não duas: as binárias entraram no `EH_QUADRO` junto com o
+  // `ambos`. Nenhum mercado desta aba usa `sem_sofrer`/`sem_marcar` hoje — elas
+  // existem aqui porque o tipo é exaustivo —, mas deixá-las falando de barra
+  // guardaria a legenda errada esperando o primeiro mercado que as use.
   ambos: 'Cada quadrado é um jogo, com o placar e o adversário. Verde quando os dois marcaram, vermelho quando algum passou em branco.',
   resultado: 'Cada quadrado é um jogo, com o placar e o adversário. Verde é vitória, cinza empate, vermelho derrota.',
   gf: 'Cada barra é um jogo: quanto mais alta, mais gols o time marcou. A linha é uma referência.',
   ga: 'Cada barra é um jogo: quanto mais alta, mais gols o time sofreu. A linha é uma referência.',
   xg: 'Cada barra é o gol esperado do time no jogo, ou seja, quanta chance ele criou. A linha é uma referência.',
-  sem_sofrer: 'Cada barra é um jogo: cheia quando o time não sofreu gol, vazia quando sofreu.',
-  sem_marcar: 'Cada barra é um jogo: cheia quando o time não marcou, vazia quando marcou.',
+  sem_sofrer: 'Cada quadrado é um jogo, com o placar e o adversário. Verde quando o time não sofreu gol, vermelho quando sofreu.',
+  sem_marcar: 'Cada quadrado é um jogo, com o placar e o adversário. Verde quando o time marcou, vermelho quando passou em branco.',
 };
 
 export interface GraficoDaEstatistica {
