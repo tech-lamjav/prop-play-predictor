@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
-import { useTranslation } from "react-i18next";
 import { usePostHog } from "@posthog/react";
 import { createClient } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -10,13 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Trophy, Users, Sparkles, Check, BarChart3, Send, ShieldCheck } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { LanguageToggle } from "@/components/LanguageToggle";
 import { OAUTH_REDIRECT_KEY, OAUTH_REFERRAL_KEY } from "@/lib/oauth-state";
 import { getRedirectTarget, resolveHomePath } from "@/lib/post-login";
-// ⚠️ Toda tela que traduz precisa desta linha: o i18next deixou de ser
-// iniciado no main.tsx para sair do pacote de entrada. O porquê está em
-// src/lib/i18n.ts.
-import '@/lib/i18n';
 
 // lucide não tem ícones de marca; SVG oficial multicolor do Google inline.
 const GoogleIcon = () => (
@@ -32,7 +26,6 @@ const Auth = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const { t } = useTranslation();
   const posthog = usePostHog();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
@@ -266,7 +259,6 @@ const Auth = () => {
           <a href="/" aria-label="Smartbetting — home" className="flex items-center hover:opacity-80 transition-opacity">
             <img src="/logo.png" alt="Smartbetting" className="h-5 md:h-[26px] w-auto" />
           </a>
-          <LanguageToggle />
         </div>
       </header>
 

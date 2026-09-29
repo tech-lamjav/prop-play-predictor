@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useTranslation } from "react-i18next";
 import AuthenticatedLayout from "../components/AuthenticatedLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,13 +18,8 @@ import {
   Shield,
   Zap
 } from "lucide-react";
-import { LanguageToggle } from "@/components/LanguageToggle";
 import { InjuryInsightsDashboard } from "@/components/injury-insights/InjuryInsightsDashboard";
 import type { InjuryInsight } from "@/types/sports";
-// ⚠️ Toda tela que traduz precisa desta linha: o i18next deixou de ser
-// iniciado no main.tsx para sair do pacote de entrada. O porquê está em
-// src/lib/i18n.ts.
-import '@/lib/i18n';
 
 // Mock data for the analysis page (keeping existing mock data for now)
 const mockMetrics = {
@@ -95,7 +89,6 @@ const mockInjuries = [
 
 const Analysis = () => {
   const navigate = useNavigate();
-  const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("insights");
 
@@ -153,7 +146,6 @@ const Analysis = () => {
                     className="pl-10 bg-slate-800 border-slate-700 text-white placeholder:text-slate-400 w-64"
                   />
                 </div>
-                <LanguageToggle />
                 <Button className="bg-green-600 hover:bg-green-700">
                   Sign in
                 </Button>

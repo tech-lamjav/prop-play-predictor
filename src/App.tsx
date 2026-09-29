@@ -43,7 +43,7 @@ import { lazyWithRetry } from "./lib/lazy-with-retry";
 //
 // A landing do ecossistema ("/") continua ansiosa de propósito: é a porta de
 // entrada mais comum e mais fria, a única onde uma ida extra ao servidor
-// apareceria. A Auth ainda leva o i18next junto, que serve três telas ao todo.
+// apareceria.
 const Landing = lazyWithRetry(() => import("./pages/Landing"));
 const Auth = lazyWithRetry(() => import("./pages/Auth"));
 const Picks = lazyWithRetry(() => import("./pages/Picks"));
