@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Player } from '@/services/nba-data.service';
 import { Star } from 'lucide-react';
 import { getTeamLogoUrl, getPlayerPhotoUrl, tryNextPlayerPhotoUrl } from '@/utils/team-logos';
@@ -26,18 +27,22 @@ function StarRow({ n }: { n: number }) {
   );
 }
 
-function statusLabel(status: string | undefined): { label: string; cls: string } {
+/** Devolve o IDENTIFICADOR do estado (e a cor), nunca o texto: quem traduz é
+ *  a tela, pelo catálogo `estado.longo.<id>`. */
+function statusLabel(status: string | undefined): { id: string | null; cls: string } {
   const s = (status ?? '').toLowerCase();
-  if (s === 'active' || s === '') return { label: 'Ativo', cls: 'text-forest' };
-  if (s.includes('out for season')) return { label: 'Fora da temporada', cls: 'text-rose-700' };
-  if (s === 'out' || s.includes('out')) return { label: 'Fora', cls: 'text-rose-700' };
-  if (s.includes('doubtful')) return { label: 'Duvidoso', cls: 'text-orange-700' };
-  if (s.includes('probable')) return { label: 'Provável', cls: 'text-emerald-700' };
-  if (s.includes('questionable')) return { label: 'Questionável', cls: 'text-amber-700' };
-  return { label: status ?? 'Ativo', cls: 'text-ink-2' };
+  if (s === 'active' || s === '') return { id: 'active', cls: 'text-forest' };
+  if (s.includes('out for season')) return { id: 'out_for_season', cls: 'text-rose-700' };
+  if (s === 'out' || s.includes('out')) return { id: 'out', cls: 'text-rose-700' };
+  if (s.includes('doubtful')) return { id: 'doubtful', cls: 'text-orange-700' };
+  if (s.includes('probable')) return { id: 'probable', cls: 'text-emerald-700' };
+  if (s.includes('questionable')) return { id: 'questionable', cls: 'text-amber-700' };
+  return { id: null, cls: 'text-ink-2' };
 }
 
 export const PlayerHeader: React.FC<PlayerHeaderProps> = ({ player, seasonAverages, isLoading }) => {
+  const { t } = useTranslation('nba');
+
   if (isLoading) {
     return (
       <div className="rounded-xl bg-white border border-line p-5">
@@ -113,7 +118,9 @@ export const PlayerHeader: React.FC<PlayerHeaderProps> = ({ player, seasonAverag
                 <span className="text-ink-dim">·</span>
                 <span>{player.position}</span>
                 <span className="text-ink-dim">·</span>
-                <span className={`font-semibold ${status.cls}`}>{status.label}</span>
+                <span className={`font-semibold ${status.cls}`}>
+                  {status.id ? t(`estado.longo.${status.id}`) : (player.current_status ?? t('estado.longo.active'))}
+                </span>
               </div>
             </div>
 
@@ -128,19 +135,19 @@ export const PlayerHeader: React.FC<PlayerHeaderProps> = ({ player, seasonAverag
           {seasonAverages && (
             <div className="grid grid-cols-3 gap-3 mt-4">
               <div>
-                <div className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2/70">Pontos</div>
+                <div className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2/70">{t('estatisticas.nome.player_points')}</div>
                 <div className="text-[22px] font-semibold tabular tracking-tight leading-tight mt-0.5 text-ink">
                   {seasonAverages.points.toFixed(1)}
                 </div>
               </div>
               <div>
-                <div className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2/70">Assistências</div>
+                <div className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2/70">{t('estatisticas.nome.player_assists')}</div>
                 <div className="text-[22px] font-semibold tabular tracking-tight leading-tight mt-0.5 text-ink">
                   {seasonAverages.assists.toFixed(1)}
                 </div>
               </div>
               <div>
-                <div className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2/70">Rebotes</div>
+                <div className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2/70">{t('estatisticas.nome.player_rebounds')}</div>
                 <div className="text-[22px] font-semibold tabular tracking-tight leading-tight mt-0.5 text-ink">
                   {seasonAverages.rebounds.toFixed(1)}
                 </div>
@@ -149,7 +156,7 @@ export const PlayerHeader: React.FC<PlayerHeaderProps> = ({ player, seasonAverag
           )}
 
           <div className="text-[11px] mt-3 text-ink-2/70 flex items-center gap-2 flex-wrap">
-            <span>Idade {player.age}</span>
+            <span>{t('jogador.perfilIdade', { n: player.age })}</span>
             {player.last_game_text && (
               <>
                 <span className="text-ink-dim">·</span>

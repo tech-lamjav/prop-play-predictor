@@ -38,7 +38,7 @@ const STATUS_LABELS: Record<string, string> = {
   half_lost: '1/2 Red',
   pending: 'Pendente',
   cashout: 'Cashout',
-  void: 'Void',
+  void: 'Anulada',
 };
 
 function getResult(bet: ShareResolveBet): number | null {
@@ -92,8 +92,8 @@ export const ShareBetsTable: React.FC<ShareBetsTableProps> = ({ bets }) => {
               <TableHead className="text-terminal-text/80 text-xs">Data</TableHead>
               <TableHead className="text-terminal-text/80 text-xs">Descrição</TableHead>
               <TableHead className="text-terminal-text/80 text-xs">Esporte / Liga</TableHead>
-              <TableHead className="text-terminal-text/80 text-xs text-right">Odds</TableHead>
-              <TableHead className="text-terminal-text/80 text-xs text-right">Stake</TableHead>
+              <TableHead className="text-terminal-text/80 text-xs text-right">Odd</TableHead>
+              <TableHead className="text-terminal-text/80 text-xs text-right">Valor apostado</TableHead>
               <TableHead className="text-terminal-text/80 text-xs text-right">Resultado</TableHead>
               <TableHead className="text-terminal-text/80 text-xs text-center">Status</TableHead>
             </TableRow>
@@ -153,7 +153,7 @@ export const ShareBetsTable: React.FC<ShareBetsTableProps> = ({ bets }) => {
                         <CollapsibleContent>
                           <div className="bg-terminal-black/50 px-4 py-2 pl-12">
                             <div className="text-xs font-medium text-terminal-text/80 mb-2">
-                              Legs da aposta
+                              Seleções da aposta
                             </div>
                             <div className="space-y-1.5">
                               {bet.bet_legs!.map((leg, i) => (

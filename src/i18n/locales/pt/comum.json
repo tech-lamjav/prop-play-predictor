@@ -1,7 +1,8 @@
 {
   "acoes": {
     "assinar": "Assinar",
-    "entrar": "Entrar"
+    "entrar": "Entrar",
+    "fechar": "Fechar"
   },
   "idioma": {
     "rotulo": "Idioma",

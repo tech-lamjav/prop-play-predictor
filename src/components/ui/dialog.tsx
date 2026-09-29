@@ -2,7 +2,25 @@ import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { X } from "lucide-react"
 
+import { useTranslation } from "react-i18next"
+
 import { cn } from "@/lib/utils"
+
+/**
+ * O nome acessível do botão de fechar, lido em voz alta por leitor de tela.
+ *
+ * ⚠️ Componente próprio, e não um hook dentro do conteúdo, porque aquele é uma
+ * seta de RETORNO IMPLÍCITO vinda do shadcn: converter o corpo dele só para
+ * poder chamar um hook seria mexer mais neste primitivo do que o necessário.
+ *
+ * ⚠️ Estava em inglês ("Close") num produto em português. Atualizar este
+ * primitivo a partir da origem tende a trazer o inglês de volta — se acontecer,
+ * é aqui que se conserta.
+ */
+function RotuloFechar() {
+  const { t } = useTranslation('comum');
+  return <span className="sr-only">{t('acoes.fechar')}</span>;
+}
 
 const Dialog = DialogPrimitive.Root
 
@@ -60,7 +78,7 @@ const DialogContent = React.forwardRef<
       {showCloseButton && (
         <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
           <X className="h-4 w-4" />
-          <span className="sr-only">Close</span>
+          <RotuloFechar />
         </DialogPrimitive.Close>
       )}
     </DialogPrimitive.Content>

@@ -1,13 +1,7 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Star } from 'lucide-react';
 import { getPlayerPhotoUrl, tryNextPlayerPhotoUrl } from '@/utils/team-logos';
-
-const STAT_LABELS_SHORT: Record<string, string> = {
-  player_points: 'Pontos', player_assists: 'Assistências', player_rebounds: 'Rebotes',
-  player_threes: '3 pontos', player_steals: 'Roubos', player_blocks: 'Bloqueios',
-  player_points_rebounds_assists: 'Pts+Reb+Ast', player_points_assists: 'Pts+Ast',
-  player_points_rebounds: 'Pts+Reb', player_rebounds_assists: 'Reb+Ast',
-};
 
 export interface HotOppData {
   playerName: string;
@@ -36,13 +30,13 @@ function lastName(full: string): string {
   return parts[parts.length - 1] ?? full;
 }
 
-/** Constrói chip de gatilho refletindo o status do jogador lesionado. */
-function buildTriggerChip(triggerName: string, status: string): string {
-  const last = lastName(triggerName);
+/** Devolve a CHAVE do chip de gatilho conforme o status do jogador lesionado.
+ *  O texto sai do catálogo — a decisão continua olhando o status da API. */
+function triggerChipKey(status: string): string {
   const s = status.toLowerCase();
-  if (s === 'out' || s.includes('out')) return `sem ${last}`;
-  if (s.includes('doubtful')) return `${last} duvidoso`;
-  return `${last} questionável`;
+  if (s === 'out' || s.includes('out')) return 'cartaoOportunidade.chipSem';
+  if (s.includes('doubtful')) return 'cartaoOportunidade.chipDuvidoso';
+  return 'cartaoOportunidade.chipQuestionavel';
 }
 
 function StarRow({ n }: { n: number }) {
@@ -60,12 +54,13 @@ function StarRow({ n }: { n: number }) {
 }
 
 function PlayerThumb({ name, teamAbbr }: { name: string; teamAbbr: string }) {
+  const { t } = useTranslation('nba');
   const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   return (
     <div className="w-10 h-10 rounded-md grid place-items-center text-[11px] font-bold text-white bg-forest overflow-hidden shrink-0">
       <img
         src={getPlayerPhotoUrl(name, teamAbbr)}
-        alt={`Foto de ${name}`}
+        alt={t('home.fotoDe', { nome: name })}
         className="w-full h-full object-cover object-top"
         loading="lazy"
         data-player-photo-index="0"
@@ -84,10 +79,11 @@ function PlayerThumb({ name, teamAbbr }: { name: string; teamAbbr: string }) {
 }
 
 export const NBAHotOppCard: React.FC<NBAHotOppCardProps> = ({ opp, onClick, href }) => {
-  const statShort = STAT_LABELS_SHORT[opp.statType] ?? opp.statType;
+  const { t } = useTranslation('nba');
+  const statShort = t(`estatisticas.compacto.${opp.statType}`, { defaultValue: opp.statType });
   const oppLabel = opp.opponentAbbr ? `${opp.isHome ? 'vs ' : '@'}${opp.opponentAbbr}` : null;
   const whenLabel = [oppLabel, opp.gameTime].filter(Boolean).join(' · ');
-  const filterChip = buildTriggerChip(opp.triggerName, opp.triggerStatus);
+  const filterChip = t(triggerChipKey(opp.triggerStatus), { gatilho: lastName(opp.triggerName) });
 
   const content = (
     <>
@@ -111,23 +107,23 @@ export const NBAHotOppCard: React.FC<NBAHotOppCardProps> = ({ opp, onClick, href
 
       <div className="grid grid-cols-4 mt-4 pt-3 gap-2 border-t border-line">
         <div>
-          <div className="text-[9px] uppercase tracking-[0.16em] font-semibold text-ink-2/70">Previsão</div>
+          <div className="text-[9px] uppercase tracking-[0.16em] font-semibold text-ink-2/70">{t('cartaoOportunidade.previsao')}</div>
           <div className="text-[18px] font-semibold tabular tracking-tight mt-0.5 text-ink">{opp.projection.toFixed(1)}</div>
         </div>
         <div>
-          <div className="text-[9px] uppercase tracking-[0.16em] font-semibold text-ink-2/70">Linha</div>
+          <div className="text-[9px] uppercase tracking-[0.16em] font-semibold text-ink-2/70">{t('cartaoOportunidade.linha')}</div>
           <div className="text-[18px] font-semibold tabular tracking-tight mt-0.5 text-ink">
             {opp.lineValue != null ? opp.lineValue.toFixed(1) : '—'}
           </div>
         </div>
         <div>
-          <div className="text-[9px] uppercase tracking-[0.16em] font-semibold text-ink-2/70">Vantagem</div>
+          <div className="text-[9px] uppercase tracking-[0.16em] font-semibold text-ink-2/70">{t('cartaoOportunidade.vantagem')}</div>
           <div className="text-[18px] font-semibold tabular tracking-tight mt-0.5 text-forest">
             {opp.edgePct != null ? `${opp.edgePct > 0 ? '+' : ''}${opp.edgePct.toFixed(0)}%` : '—'}
           </div>
         </div>
         <div className="text-right">
-          <div className="text-[9px] uppercase tracking-[0.16em] font-semibold text-ink-2/70">Score</div>
+          <div className="text-[9px] uppercase tracking-[0.16em] font-semibold text-ink-2/70">{t('cartaoOportunidade.score')}</div>
           <div className="text-[18px] font-semibold tabular tracking-tight mt-0.5 text-ink">{opp.score ?? '—'}</div>
         </div>
       </div>

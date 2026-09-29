@@ -1,4 +1,5 @@
 import React from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { Star } from 'lucide-react';
 import { PlayerShootingZones, TeamOppShootingZones } from '@/services/nba-data.service';
 
@@ -16,15 +17,15 @@ function matchupColor(rank: number | null | undefined): string {
   return '#be123c';
 }
 
-const ZONE_LABELS_LONG_PT = {
-  restricted_area:     'Sob o aro',
-  in_the_paint_non_ra: 'Garrafão',
-  mid_range:           'Meia distância',
-  corner_3:            '3pts do canto',
-  above_the_break_3:   '3pts frontal',
+const ZONE_LABEL_KEYS = {
+  restricted_area:     'zonas.longoRestricted',
+  in_the_paint_non_ra: 'zonas.longoGarrafao',
+  mid_range:           'zonas.longoMeia',
+  corner_3:            'zonas.longoCanto',
+  above_the_break_3:   'zonas.longoFrontal',
 } as const;
 
-type ZoneKey = keyof typeof ZONE_LABELS_LONG_PT;
+type ZoneKey = keyof typeof ZONE_LABEL_KEYS;
 
 function oppForZone(
   opp: TeamOppShootingZones | null | undefined,
@@ -47,19 +48,20 @@ export const MatchupZonesCard: React.FC<MatchupZonesCardProps> = ({
   opponentAbbreviation,
   playerName,
 }) => {
+  const { t } = useTranslation('nba');
   if (!data || !oppShootingZones || !opponentAbbreviation) return null;
 
   // Sobrenome do jogador pra usar nas linhas (ex: "Brunson acerta 41%")
   const playerLastName = playerName
     ? playerName.trim().split(/\s+/).pop() ?? playerName
-    : 'Você';
+    : t('zonas.voce');
 
   const rawZones: { label: string; key: ZoneKey; playerPct: number }[] = [
-    { label: ZONE_LABELS_LONG_PT.above_the_break_3,   key: 'above_the_break_3',   playerPct: data.above_the_break_3_fg_pct },
-    { label: ZONE_LABELS_LONG_PT.mid_range,           key: 'mid_range',           playerPct: data.mid_range_fg_pct },
-    { label: ZONE_LABELS_LONG_PT.corner_3,            key: 'corner_3',            playerPct: (data.left_corner_3_fg_pct + data.right_corner_3_fg_pct) / 2 },
-    { label: ZONE_LABELS_LONG_PT.in_the_paint_non_ra, key: 'in_the_paint_non_ra', playerPct: data.in_the_paint_non_ra_fg_pct },
-    { label: ZONE_LABELS_LONG_PT.restricted_area,     key: 'restricted_area',     playerPct: data.restricted_area_fg_pct },
+    { label: t(ZONE_LABEL_KEYS.above_the_break_3),   key: 'above_the_break_3',   playerPct: data.above_the_break_3_fg_pct },
+    { label: t(ZONE_LABEL_KEYS.mid_range),           key: 'mid_range',           playerPct: data.mid_range_fg_pct },
+    { label: t(ZONE_LABEL_KEYS.corner_3),            key: 'corner_3',            playerPct: (data.left_corner_3_fg_pct + data.right_corner_3_fg_pct) / 2 },
+    { label: t(ZONE_LABEL_KEYS.in_the_paint_non_ra), key: 'in_the_paint_non_ra', playerPct: data.in_the_paint_non_ra_fg_pct },
+    { label: t(ZONE_LABEL_KEYS.restricted_area),     key: 'restricted_area',     playerPct: data.restricted_area_fg_pct },
   ];
 
   type Zone = { label: string; key: ZoneKey; playerPct: number; oppPct: number; rank: number };
@@ -87,9 +89,9 @@ export const MatchupZonesCard: React.FC<MatchupZonesCardProps> = ({
       : { bg: 'linear-gradient(135deg, #ffe4e6 0%, #fecdd3 100%)', border: '#fb7185', accent: '#be123c' };
 
   const headlineAction =
-    best.rank >= 21 ? 'Atacar aqui' :
-    best.rank >= 11 ? 'Melhor zona disponível' :
-    'Defesa elite em todas zonas';
+    best.rank >= 21 ? t('zonas.acaoAtacar') :
+    best.rank >= 11 ? t('zonas.acaoMelhorZona') :
+    t('zonas.acaoDefesaElite');
 
   const renderRow = (z: Zone, isLast: boolean) => {
     const c = matchupColor(z.rank);
@@ -103,17 +105,17 @@ export const MatchupZonesCard: React.FC<MatchupZonesCardProps> = ({
             className="font-bold tabular shrink-0 w-12 text-[11px]"
             style={{ color: c }}
           >
-            #{z.rank}/30
+            {t('zonas.posicaoDe30', { posicao: z.rank })}
           </span>
           <span className="flex-1 min-w-0 text-ink">{z.label}</span>
           <span className="hidden md:inline-flex items-baseline gap-1 shrink-0 text-ink-dim">
-            {opponentAbbreviation} cede
+            {t('zonas.cede', { time: opponentAbbreviation })}
             <span className="font-semibold tabular text-[12px] tracking-tight ml-0.5" style={{ color: c }}>
               {Math.round(z.oppPct * 100)}%
             </span>
           </span>
           <span className="hidden md:inline-flex items-baseline gap-1 shrink-0 text-ink-dim w-36 justify-end">
-            {playerLastName} acerta
+            {t('zonas.acerta', { jogador: playerLastName })}
             <span className="font-semibold tabular text-[12px] text-ink tracking-tight ml-0.5">
               {Math.round(z.playerPct * 100)}%
             </span>
@@ -122,13 +124,13 @@ export const MatchupZonesCard: React.FC<MatchupZonesCardProps> = ({
         {/* Mobile: percentuais em linha separada abaixo do label */}
         <div className="flex md:hidden items-baseline justify-between gap-3 mt-1 pl-[3.75rem]">
           <span className="inline-flex items-baseline gap-1 text-ink-dim">
-            {opponentAbbreviation} cede
+            {t('zonas.cede', { time: opponentAbbreviation })}
             <span className="font-semibold tabular text-[12px] tracking-tight ml-0.5" style={{ color: c }}>
               {Math.round(z.oppPct * 100)}%
             </span>
           </span>
           <span className="inline-flex items-baseline gap-1 text-ink-dim">
-            {playerLastName} acerta
+            {t('zonas.acerta', { jogador: playerLastName })}
             <span className="font-semibold tabular text-[12px] text-ink tracking-tight ml-0.5">
               {Math.round(z.playerPct * 100)}%
             </span>
@@ -163,7 +165,7 @@ export const MatchupZonesCard: React.FC<MatchupZonesCardProps> = ({
     <div className="rounded-lg bg-white border border-line overflow-hidden">
       <div className="px-4 py-3 border-b border-line">
         <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2">
-          Confronto vs {opponentAbbreviation}
+          {t('zonas.confrontoTitulo', { time: opponentAbbreviation })}
         </span>
       </div>
       <div className="p-4">
@@ -181,22 +183,27 @@ export const MatchupZonesCard: React.FC<MatchupZonesCardProps> = ({
             {best.label}
           </div>
           <div className="text-[11px] text-ink-2 leading-relaxed">
-            {opponentAbbreviation} cede{' '}
-            <span className="font-semibold" style={{ color: headlineStyle.accent }}>
-              {Math.round(best.oppPct * 100)}%
-            </span>
-            {' '}nessa zona — defesa{' '}
-            <span className="font-semibold text-ink">#{best.rank} de 30</span>.
-            {' '}Você acerta{' '}
-            <span className="font-semibold" style={{ color: headlineStyle.accent }}>
-              {Math.round(best.playerPct * 100)}%
-            </span> aí.
+            <Trans
+              t={t}
+              i18nKey="zonas.manchete"
+              values={{
+                time: opponentAbbreviation,
+                oppPct: Math.round(best.oppPct * 100),
+                posicao: best.rank,
+                playerPct: Math.round(best.playerPct * 100),
+              }}
+              components={[
+                <span className="font-semibold" style={{ color: headlineStyle.accent }} key="oppPct" />,
+                <span className="font-semibold text-ink" key="posicao" />,
+                <span className="font-semibold" style={{ color: headlineStyle.accent }} key="playerPct" />,
+              ]}
+            />
           </div>
         </div>
 
-        {renderGroup(favoraveis, '#0a3d2e', 'Atacar', `${opponentAbbreviation} é vulnerável (rank 21–30)`)}
-        {renderGroup(neutros,    '#c97a1a', 'Neutro', 'rank na média (11–20)')}
-        {renderGroup(fortes,     '#be123c', 'Evitar', `${opponentAbbreviation} é elite (rank 1–10)`)}
+        {renderGroup(favoraveis, '#0a3d2e', t('zonas.grupoAtacar'), t('zonas.grupoAtacarSub', { time: opponentAbbreviation }))}
+        {renderGroup(neutros,    '#c97a1a', t('zonas.grupoNeutro'), t('zonas.grupoNeutroSub'))}
+        {renderGroup(fortes,     '#be123c', t('zonas.grupoEvitar'), t('zonas.grupoEvitarSub', { time: opponentAbbreviation }))}
       </div>
 
       {/* Legend rodapé */}
@@ -206,7 +213,7 @@ export const MatchupZonesCard: React.FC<MatchupZonesCardProps> = ({
           { color: '#1f5640', label: '45–54%' },
           { color: '#c97a1a', label: '35–44%' },
           { color: '#be123c', label: '<35%' },
-          { color: '#9aa097', label: 'baixo vol.' },
+          { color: '#9aa097', label: t('zonas.baixoVolume') },
         ].map(({ color, label }) => (
           <div key={label} className="flex items-center gap-1.5">
             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />

@@ -14,6 +14,7 @@ export const ShareKpiCards: React.FC<ShareKpiCardsProps> = ({ bets }) => {
 
   const cards = [
     {
+      id: 'lucro',
       title: 'Lucro / Prejuízo',
       value: stats.profit,
       format: (v: number) => `R$ ${v >= 0 ? '' : '-'}${Math.abs(v).toFixed(2)}`,
@@ -21,6 +22,7 @@ export const ShareKpiCards: React.FC<ShareKpiCardsProps> = ({ bets }) => {
       positive: stats.profit >= 0,
     },
     {
+      id: 'roi',
       title: 'ROI',
       value: stats.roi,
       format: (v: number) => `${v.toFixed(1)}%`,
@@ -28,6 +30,7 @@ export const ShareKpiCards: React.FC<ShareKpiCardsProps> = ({ bets }) => {
       positive: stats.roi >= 0,
     },
     {
+      id: 'taxaAcerto',
       title: 'Taxa de Acerto',
       value: stats.winRate,
       format: (v: number) => `${v.toFixed(1)}%`,
@@ -35,6 +38,7 @@ export const ShareKpiCards: React.FC<ShareKpiCardsProps> = ({ bets }) => {
       positive: true,
     },
     {
+      id: 'total',
       title: 'Total de apostas',
       value: stats.totalBets,
       format: (v: number) => String(v),
@@ -49,7 +53,7 @@ export const ShareKpiCards: React.FC<ShareKpiCardsProps> = ({ bets }) => {
         const Icon = card.icon;
         return (
           <Card
-            key={card.title}
+            key={card.id}
             className="bg-terminal-dark-gray border-terminal-border"
           >
             <CardHeader className="flex flex-row items-center justify-between pb-1 pt-4 px-4">
@@ -61,7 +65,7 @@ export const ShareKpiCards: React.FC<ShareKpiCardsProps> = ({ bets }) => {
             <CardContent className="px-4 pb-4">
               <span
                 className={
-                  card.title === 'Lucro / Prejuízo'
+                  card.id === 'lucro'
                     ? card.positive
                       ? 'text-terminal-green text-lg font-semibold'
                       : 'text-terminal-red text-lg font-semibold'

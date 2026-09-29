@@ -1,4 +1,5 @@
 ﻿import { useState, useMemo } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/use-auth";
 import { Star, CheckCircle2, XCircle, PlayCircle, ArrowRight, Lightbulb, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -14,19 +15,20 @@ const getFreePlayerDashboardPath = () => {
 };
 
 // Espelha o StatTypeSelector rebrandado (PR #162): grupos BÁSICOS e COMBOS.
+// `stat` é o identificador da API, que endereça o rótulo no catálogo.
 const STAT_BASIC = [
-  { id: 'PTS', label: 'Pontos' },
-  { id: 'AST', label: 'Assistências' },
-  { id: 'REB', label: 'Rebotes' },
-  { id: '3PT', label: '3 Pontos' },
-  { id: 'STL', label: 'Roubos' },
-  { id: 'BLK', label: 'Bloqueios' },
-  { id: 'TO',  label: 'Turnovers' },
+  { id: 'PTS', stat: 'player_points' },
+  { id: 'AST', stat: 'player_assists' },
+  { id: 'REB', stat: 'player_rebounds' },
+  { id: '3PT', stat: 'player_threes' },
+  { id: 'STL', stat: 'player_steals' },
+  { id: 'BLK', stat: 'player_blocks' },
+  { id: 'TO',  stat: 'player_turnovers' },
 ];
 const STAT_COMBOS = [
-  { id: 'P+A', label: 'Pts + Ast' },
-  { id: 'P+R', label: 'Pts + Reb' },
-  { id: 'PRA', label: 'PRA' },
+  { id: 'P+A', stat: 'player_points_assists' },
+  { id: 'P+R', stat: 'player_points_rebounds' },
+  { id: 'PRA', stat: 'player_points_rebounds_assists' },
 ];
 
 type MockStatData = { values: number[]; line: number; seasonAvg: number };
@@ -93,6 +95,7 @@ function PlayerAvatar({ name, className, initialsClass }: { name: string; classN
 }
 
 const Landing = () => {
+  const { t } = useTranslation('nba');
   const navigate = useNavigate();
   const { user } = useAuth();
   const dashboardPath = getFreePlayerDashboardPath();
@@ -156,7 +159,7 @@ const Landing = () => {
   const hitRateGood = parseFloat(windowed.hitRate) >= 50;
   const linePct = (statData.line / windowed.maxVal) * 100;
 
-  const statPill = (s: { id: string; label: string }) => {
+  const statPill = (s: { id: string; stat: string }) => {
     const active = selectedStat === s.id;
     return (
       <button
@@ -168,32 +171,17 @@ const Landing = () => {
             : 'bg-white text-ink border-line hover:border-forest/30'
         }`}
       >
-        {s.label}
+        {t(`estatisticas.nome.${s.stat}`)}
       </button>
     );
   };
 
   const FAQ: FaqItem[] = [
-    {
-      q: 'Vocês dão dica de aposta?',
-      a: 'Quase. A gente mapeia e publica as principais oportunidades do dia com base no injury report — cada uma com o gatilho, o histórico e a linha do lado. O que a gente não faz é mandar "entrada garantida" sem o dado junto. Quem bate o martelo é sempre você.',
-    },
-    {
-      q: 'É grátis pra testar?',
-      a: `É, em dois níveis. Sem login: os dashboards do ${FREE_PLAYERS.join(' e do ')} ficam abertos. Com conta grátis: você vê as principais oportunidades de cada dia. O Premium libera a lista completa de oportunidades e o dashboard de todos os jogadores.`,
-    },
-    {
-      q: 'De onde vêm os dados?',
-      a: 'Estatísticas oficiais da NBA e a linha agregada das principais casas de aposta, atualizadas todos os dias de jogo.',
-    },
-    {
-      q: 'Preciso entender de estatística?',
-      a: 'Não. O dashboard mostra o que importa: quantas vezes o jogador passou da linha. Verde passou, vermelho não. Se quiser ir mais fundo, o dado completo tá lá.',
-    },
-    {
-      q: 'Qual a taxa de acerto de vocês?',
-      a: 'Não publicamos taxa de acerto — nem de marketing, nem nenhuma. O que você recebe é o dado por trás de cada insight antes de apostar: o gatilho, o histórico do jogador e a linha. Quem avalia se a janela vale é você, com o número na frente.',
-    },
+    { q: t('landing.faq.q1'), a: t('landing.faq.a1') },
+    { q: t('landing.faq.q2'), a: t('landing.faq.a2', { jogadores: FREE_PLAYERS.join(' e do ') }) },
+    { q: t('landing.faq.q3'), a: t('landing.faq.a3') },
+    { q: t('landing.faq.q4'), a: t('landing.faq.a4') },
+    { q: t('landing.faq.q5'), a: t('landing.faq.a5') },
   ];
 
   return (
@@ -212,14 +200,14 @@ const Landing = () => {
               onClick={() => navigate(user ? "/onboarding" : "/auth")}
               className="inline-flex items-center h-10 px-3 sm:px-4 rounded-rebrand-md border border-line-2 bg-white text-ink hover:border-forest/40 font-semibold text-sm transition-colors"
             >
-              {user ? "Acessar" : "Entrar"}
+              {user ? t('landing.nav.acessar') : t('landing.nav.entrar')}
             </button>
             <button
               type="button"
               onClick={() => navigate("/auth")}
               className="inline-flex items-center h-10 px-3 sm:px-4 rounded-rebrand-md bg-amber text-white hover:bg-amber-2 font-bold text-sm shadow-sm transition-colors whitespace-nowrap"
             >
-              Começar Grátis
+              {t('landing.nav.comecar')}
             </button>
           </div>
         </div>
@@ -231,17 +219,18 @@ const Landing = () => {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_85%_15%,rgba(212,160,23,0.16),transparent_50%)] pointer-events-none" />
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-14 sm:pt-20 pb-40 sm:pb-56">
           <p className="font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-amber mb-5">
-            NBA · Prop Bets
+            {t('landing.hero.etiqueta')}
           </p>
           <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-black leading-[1.05] mb-5 max-w-3xl">
-            A casa demora pra ajustar a linha.<br />
-            <span className="text-amber">Você chega antes.</span>
+            {t('landing.hero.titulo1')}<br />
+            <span className="text-amber">{t('landing.hero.titulo2')}</span>
           </h1>
           <p className="text-base sm:text-lg text-white/75 mb-8 max-w-xl leading-relaxed">
-            Titular desfalcou? Os números de quem fica em quadra sobem na hora —
-            a linha demora. Nossa metodologia varre o injury report e te mostra
-            onde essa janela abriu, com o dado na frente. Testa num caso real:{" "}
-            <span className="text-white font-semibold">clica no insight aí embaixo.</span>
+            <Trans
+              t={t}
+              i18nKey="landing.hero.texto"
+              components={[<span className="text-white font-semibold" key="cta" />]}
+            />
           </p>
           <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
             <button
@@ -250,19 +239,19 @@ const Landing = () => {
               className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-rebrand-md bg-amber text-white hover:bg-amber-2 font-bold text-[15px] shadow-md transition-colors"
             >
               <PlayCircle className="h-5 w-5 shrink-0" />
-              <span className="sm:hidden">Ver análise real grátis</span>
-              <span className="hidden sm:inline">Abrir a análise de {firstFreePlayerName}</span>
+              <span className="sm:hidden">{t('landing.hero.verMobile')}</span>
+              <span className="hidden sm:inline">{t('landing.hero.verDesktop', { jogador: firstFreePlayerName })}</span>
             </button>
             <button
               type="button"
               onClick={() => navigate("/auth")}
               className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-rebrand-md bg-white text-forest hover:bg-white/90 font-bold text-[15px] shadow-md transition-colors"
             >
-              Criar conta grátis
+              {t('landing.hero.criarConta')}
             </button>
           </div>
           <p className="text-[12px] text-white/55 mt-4">
-            Sem login e sem cartão pra testar · Sem promessas de ganho · A decisão é sempre sua
+            {t('landing.hero.rodape')}
           </p>
         </div>
       </section>
@@ -281,7 +270,7 @@ const Landing = () => {
               smartbetting.app/nba-dashboard/nikola-jokic
             </span>
             <span className="font-mono text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-amber bg-amber/15 border border-amber/40 rounded-full px-2 py-0.5 whitespace-nowrap">
-              dados de exemplo
+              {t('landing.demo.selo')}
             </span>
           </div>
 
@@ -305,26 +294,26 @@ const Landing = () => {
                         <span className="text-ink-3">·</span>
                         <span>C</span>
                         <span className="text-ink-3">·</span>
-                        <span className="text-forest font-semibold">Ativo</span>
+                        <span className="text-forest font-semibold">{t('estado.longo.active')}</span>
                       </div>
                     </div>
                   </div>
                   <div className="grid grid-cols-3 gap-3 mt-4">
                     <div>
-                      <div className="text-[9px] font-bold uppercase tracking-[0.06em] text-ink-3 mb-0.5">Pontos</div>
+                      <div className="text-[9px] font-bold uppercase tracking-[0.06em] text-ink-3 mb-0.5">{t('estatisticas.nome.player_points')}</div>
                       <div className="text-xl font-bold text-ink tabular-nums">27.5</div>
                     </div>
                     <div>
-                      <div className="text-[9px] font-bold uppercase tracking-[0.06em] text-ink-3 mb-0.5">Assistências</div>
+                      <div className="text-[9px] font-bold uppercase tracking-[0.06em] text-ink-3 mb-0.5">{t('estatisticas.nome.player_assists')}</div>
                       <div className="text-xl font-bold text-ink tabular-nums">10.6</div>
                     </div>
                     <div>
-                      <div className="text-[9px] font-bold uppercase tracking-[0.06em] text-ink-3 mb-0.5">Rebotes</div>
+                      <div className="text-[9px] font-bold uppercase tracking-[0.06em] text-ink-3 mb-0.5">{t('estatisticas.nome.player_rebounds')}</div>
                       <div className="text-xl font-bold text-ink tabular-nums">12.9</div>
                     </div>
                   </div>
                   <p className="text-[11px] text-ink-3 mt-3 pt-3 border-t border-line">
-                    Idade 31 · Último jogo: ontem
+                    {t('landing.demo.idade')}
                   </p>
                 </div>
 
@@ -332,15 +321,22 @@ const Landing = () => {
                 <div className="rounded-rebrand-lg bg-white border border-line p-4">
                   <div className="flex items-center gap-2 mb-1">
                     <Lightbulb className="w-3.5 h-3.5 text-amber-2 shrink-0" />
-                    <span className="text-[10px] font-bold text-amber-2 uppercase tracking-widest">Insight</span>
+                    <span className="text-[10px] font-bold text-amber-2 uppercase tracking-widest">{t('landing.demo.insightEtiqueta')}</span>
                     <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-status-danger/10 text-status-danger">
-                      OUT
+                      {t('estado.selo.out')}
                     </span>
                   </div>
                   <p className="text-xs text-ink/80 mb-3 leading-relaxed">
-                    Com <span className="font-bold text-status-danger">Murray</span> fora,
-                    os <span className="font-bold text-forest">pontos</span> de Jokic
-                    sobem <span className="font-bold text-forest">+{insightStats.pct}%</span>
+                    <Trans
+                      t={t}
+                      i18nKey="landing.demo.insightFrase"
+                      values={{ pct: insightStats.pct }}
+                      components={[
+                        <span className="font-bold text-status-danger" key="gatilho" />,
+                        <span className="font-bold text-forest" key="estatistica" />,
+                        <span className="font-bold text-forest" key="pct" />,
+                      ]}
+                    />
                   </p>
                   <button
                     type="button"
@@ -350,7 +346,7 @@ const Landing = () => {
                     }`}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-bold text-ink uppercase">Pontos</span>
+                      <span className="text-xs font-bold text-ink uppercase">{t('estatisticas.nome.player_points')}</span>
                       <div className="flex items-center gap-1.5">
                         <StarRow n={3} size="w-2.5 h-2.5" />
                         <ArrowRight className="w-3.5 h-3.5 text-amber-2" />
@@ -365,34 +361,34 @@ const Landing = () => {
                       </span>
                     </div>
                     <div className="text-[9px] text-ink-3 mt-1">
-                      média normal → sem Murray
+                      {t('landing.demo.mediaNormal')}
                     </div>
                   </button>
                   <p className="text-[9px] text-amber-2/70 mt-2 text-center">
-                    {triggerFilter ? 'Filtro aplicado no gráfico ao lado' : 'Clique para filtrar o gráfico'}
+                    {triggerFilter ? t('landing.demo.filtroAplicado') : t('landing.demo.cliqueFiltrar')}
                   </p>
                 </div>
 
                 <div className="rounded-rebrand-lg bg-white border border-line overflow-hidden">
                   <div className="px-4 pt-3.5 pb-2.5 border-b border-line">
-                    <p className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2">Companheiros</p>
+                    <p className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2">{t('landing.demo.companheiros')}</p>
                     <p className="text-[11px] text-ink-3 mt-0.5">Denver Nuggets</p>
                   </div>
-                  {TEAMMATES.map((t) => (
-                    <div key={t.name} className="flex items-center gap-3 px-4 py-2.5 border-b border-line last:border-b-0">
-                      <PlayerAvatar name={t.name} className="w-8 h-8 rounded-full" initialsClass="text-[10px]" />
+                  {TEAMMATES.map((companheiro) => (
+                    <div key={companheiro.name} className="flex items-center gap-3 px-4 py-2.5 border-b border-line last:border-b-0">
+                      <PlayerAvatar name={companheiro.name} className="w-8 h-8 rounded-full" initialsClass="text-[10px]" />
                       <div className="flex-1 min-w-0">
-                        <p className="text-[13px] font-semibold text-ink leading-tight truncate">{t.name}</p>
+                        <p className="text-[13px] font-semibold text-ink leading-tight truncate">{companheiro.name}</p>
                         <p className="text-[11px] text-ink-3 flex items-center gap-1.5">
-                          {t.pos}
-                          {t.out && (
+                          {companheiro.pos}
+                          {companheiro.out && (
                             <span className="text-[9px] font-bold uppercase text-status-danger bg-status-danger/10 border border-status-danger/30 rounded px-1">
-                              Out
+                              {t('estado.longo.out')}
                             </span>
                           )}
                         </p>
                       </div>
-                      <StarRow n={t.stars} size="w-2.5 h-2.5" />
+                      <StarRow n={companheiro.stars} size="w-2.5 h-2.5" />
                     </div>
                   ))}
                 </div>
@@ -403,11 +399,11 @@ const Landing = () => {
                 {/* Stat selector — BÁSICOS / COMBOS com pills */}
                 <div className="rounded-rebrand-lg bg-white border border-line px-4 py-3">
                   <div className="flex items-center gap-3 overflow-x-auto [scrollbar-width:none]">
-                    <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-3 shrink-0">Básicos</span>
+                    <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-3 shrink-0">{t('landing.demo.basicos')}</span>
                     <div className="flex gap-1.5">
                       {STAT_BASIC.map(statPill)}
                     </div>
-                    <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-3 shrink-0 pl-2 border-l border-line">Combos</span>
+                    <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-3 shrink-0 pl-2 border-l border-line">{t('landing.demo.combos')}</span>
                     <div className="flex gap-1.5">
                       {STAT_COMBOS.map(statPill)}
                     </div>
@@ -418,29 +414,29 @@ const Landing = () => {
                 <div id="lp-grafico-desempenho" className="rounded-rebrand-lg bg-white border border-line overflow-hidden">
                   <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 px-4 pt-3.5 pb-3 border-b border-line">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2">Gráfico de desempenho</span>
-                      <span className="text-[10px] tabular-nums text-ink-3">· últimos {windowed.total}</span>
+                      <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2">{t('landing.demo.graficoTitulo')}</span>
+                      <span className="text-[10px] tabular-nums text-ink-3">{t('landing.demo.ultimos', { n: windowed.total })}</span>
                       {triggerFilter && (
                         <button
                           type="button"
                           onClick={() => setTriggerFilter(false)}
                           className="inline-flex items-center gap-1.5 h-6 px-2 rounded-rebrand-sm bg-forest text-white text-[10px] font-semibold hover:bg-forest-2 transition-colors"
                         >
-                          Sem Murray em quadra
+                          {t('landing.demo.semMurray')}
                           <X className="w-3 h-3 opacity-80" />
                         </button>
                       )}
                     </div>
                     <div className="flex items-center gap-4 text-[12px]">
                       <span className="text-ink-2">
-                        Taxa de acerto{' '}
+                        {t('landing.demo.taxaAcerto')}{' '}
                         <span className={`font-semibold tabular-nums ${hitRateGood ? 'text-forest' : 'text-status-danger'}`}>
                           {windowed.hitRate}%
                         </span>{' '}
                         <span className="text-ink-3 tabular-nums">({windowed.over}/{windowed.total})</span>
                       </span>
                       <span className="text-ink-2">
-                        Linha <span className="font-semibold text-ink tabular-nums">{statData.line}</span>
+                        {t('landing.demo.linha')} <span className="font-semibold text-ink tabular-nums">{statData.line}</span>
                       </span>
                     </div>
                   </div>
@@ -456,7 +452,7 @@ const Landing = () => {
                             : 'bg-white text-ink border-line hover:border-forest/30'
                         }`}
                       >
-                        Últ. {w}
+                        {t('landing.demo.ultN', { n: w })}
                       </button>
                     ))}
                   </div>
@@ -518,20 +514,20 @@ const Landing = () => {
 
                   <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-3 border-t border-line text-[11px] text-ink-2">
                     <div className="flex items-center gap-4">
-                      <span className="font-semibold text-ink-3">Últ. {windowed.total}</span>
+                      <span className="font-semibold text-ink-3">{t('landing.demo.ultN', { n: windowed.total })}</span>
                       <span className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-forest" /> Over
+                        <span className="w-2 h-2 rounded-full bg-forest" /> {t('landing.demo.acima')}
                       </span>
                       <span className="flex items-center gap-1.5">
-                        <span className="w-2 h-2 rounded-full bg-status-danger" /> Under
+                        <span className="w-2 h-2 rounded-full bg-status-danger" /> {t('landing.demo.abaixo')}
                       </span>
                       <span className="flex items-center gap-1.5">
-                        <span className="w-3 h-px bg-ink" /> Linha
+                        <span className="w-3 h-px bg-ink" /> {t('landing.demo.linha')}
                       </span>
                     </div>
                     <div className="flex items-center gap-3 tabular-nums">
-                      <span>Média <span className="font-semibold text-ink">{windowed.avg}</span></span>
-                      <span>Média da Temporada <span className="font-semibold text-ink">{statData.seasonAvg}</span></span>
+                      <span>{t('landing.demo.media')} <span className="font-semibold text-ink">{windowed.avg}</span></span>
+                      <span>{t('landing.demo.mediaTemporada')} <span className="font-semibold text-ink">{statData.seasonAvg}</span></span>
                     </div>
                   </div>
                 </div>
@@ -539,19 +535,19 @@ const Landing = () => {
                 {/* Jogos Recentes */}
                 <div className="rounded-rebrand-lg bg-white border border-line p-4">
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2">Jogos recentes</span>
+                    <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2">{t('landing.demo.jogosRecentes')}</span>
                     <span className="text-[10px] text-ink-3">Nikola Jokic</span>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs">
                       <thead>
                         <tr className="text-left">
-                          <th className="pb-2 pr-3 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3 font-medium">Data</th>
-                          <th className="pb-2 pr-3 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3 font-medium">Adv.</th>
-                          <th className="pb-2 pr-3 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3 font-medium hidden sm:table-cell">Local</th>
-                          <th className="pb-2 pr-3 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3 font-medium text-right">Valor</th>
-                          <th className="pb-2 pr-3 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3 font-medium text-right">Linha</th>
-                          <th className="pb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3 font-medium text-right">Resultado</th>
+                          <th className="pb-2 pr-3 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3 font-medium">{t('tabelaRecentes.data')}</th>
+                          <th className="pb-2 pr-3 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3 font-medium">{t('tabelaRecentes.adversario')}</th>
+                          <th className="pb-2 pr-3 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3 font-medium hidden sm:table-cell">{t('tabelaRecentes.local')}</th>
+                          <th className="pb-2 pr-3 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3 font-medium text-right">{t('tabelaRecentes.valor')}</th>
+                          <th className="pb-2 pr-3 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3 font-medium text-right">{t('tabelaRecentes.linha')}</th>
+                          <th className="pb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3 font-medium text-right">{t('tabelaRecentes.resultado')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -559,7 +555,7 @@ const Landing = () => {
                           <tr key={i} className="border-t border-line">
                             <td className="py-1.5 pr-3 text-ink-2 tabular-nums">{g.date}</td>
                             <td className="py-1.5 pr-3 font-semibold text-ink">{i % 2 === 0 ? '@' : ''}{g.opp}</td>
-                            <td className="py-1.5 pr-3 text-ink-3 hidden sm:table-cell">{i % 2 === 0 ? 'Fora' : 'Casa'}</td>
+                            <td className="py-1.5 pr-3 text-ink-3 hidden sm:table-cell">{i % 2 === 0 ? t('tabelaRecentes.fora') : t('tabelaRecentes.casa')}</td>
                             <td className="py-1.5 pr-3 text-right font-bold text-ink tabular-nums">{g.value.toFixed(1)}</td>
                             <td className="py-1.5 pr-3 text-right text-ink-2 tabular-nums">{statData.line}</td>
                             <td className={`py-1.5 text-right font-bold tabular-nums ${g.value > statData.line ? 'text-forest' : 'text-status-danger'}`}>
@@ -584,10 +580,10 @@ const Landing = () => {
             className="inline-flex items-center gap-2 h-12 px-8 rounded-rebrand-md bg-amber text-white hover:bg-amber-2 font-bold text-[15px] shadow-md transition-colors"
           >
             <PlayCircle className="h-5 w-5" />
-            Abrir o dashboard de verdade
+            {t('landing.demo.abrirDashboard')}
           </button>
           <p className="text-sm text-ink-3 mt-3">
-            Sem login — dados ao vivo do {firstFreePlayerName}
+            {t('landing.demo.semLogin', { jogador: firstFreePlayerName })}
           </p>
         </div>
       </section>
@@ -595,13 +591,13 @@ const Landing = () => {
       {/* Faixa de fatos */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 mt-14 sm:mt-20">
         <div className="border-y border-line py-4 flex flex-col sm:flex-row sm:flex-wrap items-center justify-center gap-y-2 sm:gap-x-8 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-2">
-          <span>12 mercados de props</span>
+          <span>{t('landing.fatos.mercados')}</span>
           <span className="hidden sm:inline text-amber-2">·</span>
-          <span>Últimos 5, 10 ou 15 jogos</span>
+          <span>{t('landing.fatos.janelas')}</span>
           <span className="hidden sm:inline text-amber-2">·</span>
-          <span>Injury report diário</span>
+          <span>{t('landing.fatos.relatorio')}</span>
           <span className="hidden sm:inline text-amber-2">·</span>
-          <span>Linha agregada das casas</span>
+          <span>{t('landing.fatos.linha')}</span>
         </div>
       </section>
 
@@ -610,39 +606,22 @@ const Landing = () => {
         <div className="grid md:grid-cols-[minmax(220px,300px)_1fr] gap-10 md:gap-16">
           <div className="md:sticky md:top-24 self-start">
             <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-forest mb-2">
-              O que tem dentro
+              {t('landing.dentro.etiqueta')}
             </p>
             <h2 className="font-display text-3xl sm:text-4xl font-black text-ink leading-tight mb-4">
-              Tudo que você abriria em dez abas, numa só
+              {t('landing.dentro.titulo')}
             </h2>
             <p className="text-[14px] text-ink-2 leading-relaxed">
-              Quem analisa prop bets na mão sabe o ritual: site de stats, site de odds,
-              twitter de lesão, planilha. A plataforma junta as quatro pontas.
+              {t('landing.dentro.texto')}
             </p>
           </div>
 
           <div>
             {[
-              {
-                num: '01',
-                title: 'Oportunidades por desfalque',
-                text: 'Saiu o injury report, a gente cruza quem tá fora com o histórico de quem fica em quadra. Onde a linha não acompanhou o desfalque, tem janela — ela chega pra você como o insight do exemplo lá em cima.',
-              },
-              {
-                num: '02',
-                title: 'Dashboard por jogador',
-                text: '12 mercados de props — pontos, assistências, rebotes e combos — contra a linha, nos últimos 5, 10 ou 15 jogos, casa e fora.',
-              },
-              {
-                num: '03',
-                title: 'Injury report',
-                text: 'Quem tá fora, quem é dúvida e o que isso muda na linha de quem fica. Antes de você apostar, não depois.',
-              },
-              {
-                num: '04',
-                title: 'Análise 360°',
-                text: 'Escolhe o jogador e recebe a leitura completa do confronto numa tela só — desempenho, contexto e companheiros.',
-              },
+              { num: '01', title: t('landing.dentro.item1Titulo'), text: t('landing.dentro.item1Texto') },
+              { num: '02', title: t('landing.dentro.item2Titulo'), text: t('landing.dentro.item2Texto') },
+              { num: '03', title: t('landing.dentro.item3Titulo'), text: t('landing.dentro.item3Texto') },
+              { num: '04', title: t('landing.dentro.item4Titulo'), text: t('landing.dentro.item4Texto') },
             ].map((f) => (
               <div key={f.num} className="grid grid-cols-[56px_1fr] sm:grid-cols-[88px_1fr] gap-4 sm:gap-8 py-7 border-t border-line last:border-b">
                 <span className="font-mono text-3xl sm:text-5xl font-black text-amber leading-none tabular-nums">{f.num}</span>
@@ -661,22 +640,22 @@ const Landing = () => {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(212,160,23,0.10),transparent_50%)] pointer-events-none" />
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-14 sm:py-20">
           <p className="font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-amber mb-3">
-            Transparência
+            {t('landing.combinado.etiqueta')}
           </p>
           <h2 className="font-display text-3xl sm:text-4xl font-black leading-tight mb-10 sm:mb-12 max-w-2xl">
-            O combinado que a gente assina
+            {t('landing.combinado.titulo')}
           </h2>
 
           <div className="grid md:grid-cols-2 gap-x-16 gap-y-10">
             <div>
               <h3 className="text-[12px] font-bold uppercase tracking-[0.14em] text-white/60 pb-3 border-b border-white/15">
-                O que você nunca vai ver aqui
+                {t('landing.combinado.nunca')}
               </h3>
               {[
-                'Promessa de ganho garantido',
-                'Palpite às cegas, sem o dado junto',
-                'Taxa de acerto de marketing',
-                'Depoimento inventado',
+                t('landing.combinado.nunca1'),
+                t('landing.combinado.nunca2'),
+                t('landing.combinado.nunca3'),
+                t('landing.combinado.nunca4'),
               ].map((item) => (
                 <div key={item} className="flex items-center gap-3 py-3.5 border-b border-white/10 text-[14px] text-white/85">
                   <XCircle className="w-4 h-4 text-white/40 shrink-0" />
@@ -686,13 +665,13 @@ const Landing = () => {
             </div>
             <div>
               <h3 className="text-[12px] font-bold uppercase tracking-[0.14em] text-amber pb-3 border-b border-white/15">
-                O que você sempre vai ter
+                {t('landing.combinado.sempre')}
               </h3>
               {[
-                'O dado e a linha, lado a lado',
-                'O porquê de cada insight — gatilho, números e contexto',
-                'Linha agregada das principais casas',
-                'A decisão sempre na sua mão',
+                t('landing.combinado.sempre1'),
+                t('landing.combinado.sempre2'),
+                t('landing.combinado.sempre3'),
+                t('landing.combinado.sempre4'),
               ].map((item) => (
                 <div key={item} className="flex items-center gap-3 py-3.5 border-b border-white/10 text-[14px] text-white">
                   <CheckCircle2 className="w-4 h-4 text-amber shrink-0" />
@@ -703,7 +682,7 @@ const Landing = () => {
           </div>
 
           <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-white/40 mt-10">
-            — Smart Betting · combinado válido desde o primeiro dia
+            {t('landing.combinado.assinatura')}
           </p>
         </div>
       </section>
@@ -712,9 +691,9 @@ const Landing = () => {
       <section className="max-w-3xl mx-auto px-4 sm:px-6 py-14 sm:py-16">
         <div className="text-center mb-8">
           <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-forest mb-2">
-            Perguntas frequentes
+            {t('landing.faq.etiqueta')}
           </p>
-          <h2 className="font-display text-2xl sm:text-3xl font-black text-ink">Bora tirar dúvida</h2>
+          <h2 className="font-display text-2xl sm:text-3xl font-black text-ink">{t('landing.faq.titulo')}</h2>
         </div>
         <div className="space-y-3">
           {FAQ.map((item) => (
@@ -737,11 +716,10 @@ const Landing = () => {
         <div className="border-t border-line py-14 sm:py-20 grid md:grid-cols-[1fr_auto] gap-8 md:gap-12 items-center">
           <div>
             <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-black text-ink leading-tight mb-3">
-              Tira a prova agora.
+              {t('landing.final.titulo')}
             </h2>
             <p className="text-[15px] text-ink-2 leading-relaxed max-w-lg">
-              O dashboard do {firstFreePlayerName} tá aberto, sem login.
-              Se gostar do que ver, a conta grátis leva um minuto.
+              {t('landing.final.texto', { jogador: firstFreePlayerName })}
             </p>
           </div>
           <div className="flex flex-col sm:flex-row md:flex-col gap-3 md:min-w-[240px]">
@@ -751,14 +729,14 @@ const Landing = () => {
               className="inline-flex items-center justify-center gap-2 h-12 px-8 rounded-rebrand-md bg-amber text-white hover:bg-amber-2 font-bold text-[15px] shadow-md transition-colors"
             >
               <PlayCircle className="h-5 w-5" />
-              Ver a análise real
+              {t('landing.final.verAnalise')}
             </button>
             <button
               type="button"
               onClick={() => navigate("/auth")}
               className="inline-flex items-center justify-center gap-2 h-12 px-8 rounded-rebrand-md border border-line-2 bg-white text-ink hover:border-forest/40 font-bold text-[15px] transition-colors"
             >
-              Criar conta grátis
+              {t('landing.hero.criarConta')}
             </button>
           </div>
         </div>

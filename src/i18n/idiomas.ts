@@ -52,7 +52,7 @@ export const NOME_DO_IDIOMA: Record<Idioma, string> = {
  * acrescenta os catálogos dela — declarar área vazia por antecipação faria a
  * guarda reprovar e não provaria nada.
  */
-export const AREAS = ['comum', 'conta', 'futebol', 'bolao', 'planos'] as const;
+export const AREAS = ['comum', 'conta', 'futebol', 'bolao', 'planos', 'nba'] as const;
 export type Area = (typeof AREAS)[number];
 
 /**

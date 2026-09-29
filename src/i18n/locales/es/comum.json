@@ -1,7 +1,8 @@
 {
   "acoes": {
     "assinar": "Suscribirse",
-    "entrar": "Iniciar sesión"
+    "entrar": "Iniciar sesión",
+    "fechar": "Cerrar"
   },
   "idioma": {
     "rotulo": "Idioma",

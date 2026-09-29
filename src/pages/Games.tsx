@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -24,13 +25,6 @@ import { getPlayerPhotoUrl, getTeamLogoUrl, teamAbbrToName, tryNextPlayerPhotoUr
 
 const ITEMS_PER_PAGE = 12;
 const SAO_PAULO_TIMEZONE = 'America/Sao_Paulo';
-
-const STAT_LABEL_PT: Record<string, string> = {
-  player_points: 'Pontos',
-  player_assists: 'Assistências',
-  player_rebounds: 'Rebotes',
-  player_points_rebounds_assists: 'PRA',
-};
 
 // Cache compartilhado entre Games e GameDetail
 export const gamesCache = new Map<string, Game[]>();
@@ -87,21 +81,24 @@ function formatShortDateBR(iso: string): string {
 
 const isGameFinished = (g: Game) => g.winner_team_id !== null;
 
-function timeUntil(gameDateTime: string): string {
+type Contagem = { chave: string; valores: Record<string, number> } | null;
+
+function timeUntil(gameDateTime: string): Contagem {
   const now = Date.now();
   const target = new Date(gameDateTime).getTime();
   const diffMs = target - now;
-  if (diffMs <= 0) return '';
+  if (diffMs <= 0) return null;
   const hours = Math.floor(diffMs / (60 * 60 * 1000));
   const minutes = Math.floor((diffMs % (60 * 60 * 1000)) / (60 * 1000));
-  if (hours >= 24) return `EM ${Math.floor(hours / 24)}D`;
-  if (hours > 0) return `EM ${hours}H ${minutes}MIN`;
-  return `EM ${minutes}MIN`;
+  if (hours >= 24) return { chave: 'jogos.contagemDias', valores: { n: Math.floor(hours / 24) } };
+  if (hours > 0) return { chave: 'jogos.contagemHoras', valores: { h: hours, m: minutes } };
+  return { chave: 'jogos.contagemMinutos', valores: { m: minutes } };
 }
 
 // ─── LastResults V/D ─────────────────────────────────────────────────────
 
 function LastResults({ results }: { results: string | null }) {
+  const { t } = useTranslation('nba');
   if (!results) return null;
   const last3 = results.replace(/\s/g, '').slice(0, 3).split('').reverse();
   return (
@@ -112,7 +109,7 @@ function LastResults({ results }: { results: string | null }) {
         return (
           <span
             key={i}
-            title={isWin ? 'Vitória' : 'Derrota'}
+            title={isWin ? t('jogos.vitoria') : t('jogos.derrota')}
             className={`w-4 h-4 flex items-center justify-center text-[9px] font-bold rounded ${opacity} ${
               isWin
                 ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
@@ -130,6 +127,7 @@ function LastResults({ results }: { results: string | null }) {
 // ─── Game Card (light) ───────────────────────────────────────────────────
 
 function GameCard({ game, onClick }: { game: Game; onClick: () => void }) {
+  const { t } = useTranslation('nba');
   const finished = isGameFinished(game);
   const homeWon = finished && game.winner_team_id === game.home_team_id;
   const visitorWon = finished && game.winner_team_id === game.visitor_team_id;
@@ -145,7 +143,7 @@ function GameCard({ game, onClick }: { game: Game; onClick: () => void }) {
         timeZone: SAO_PAULO_TIMEZONE, hour: '2-digit', minute: '2-digit',
       })
     : null;
-  const countdown = !finished && game.game_datetime_brasilia ? timeUntil(game.game_datetime_brasilia) : '';
+  const countdown = !finished && game.game_datetime_brasilia ? timeUntil(game.game_datetime_brasilia) : null;
 
   return (
     <button
@@ -156,15 +154,15 @@ function GameCard({ game, onClick }: { game: Game; onClick: () => void }) {
       {/* Top strip — date + status badge */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-line bg-canvas-2/50">
         <span className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">
-          {shortDate}{finished ? ' · Fim' : ''}
+          {finished ? t('jogos.cardDataFim', { data: shortDate }) : shortDate}
         </span>
         {finished && winnerAbbr ? (
           <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-forest text-white uppercase tracking-wide">
-            {winnerAbbr} venceu
+            {t('jogos.cardVenceu', { time: winnerAbbr })}
           </span>
         ) : countdown ? (
           <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-700 uppercase tracking-wide">
-            {countdown}
+            {t(countdown.chave, countdown.valores)}
           </span>
         ) : (
           <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-canvas-2 text-ink-2 uppercase tracking-wide">
@@ -221,7 +219,7 @@ function GameCard({ game, onClick }: { game: Game; onClick: () => void }) {
               </div>
             ) : (
               <div className="text-[14px] font-semibold text-ink tabular-nums">
-                {time ?? 'vs'}
+                {time ?? t('jogos.vs')}
               </div>
             )}
           </div>
@@ -265,6 +263,7 @@ function GameCard({ game, onClick }: { game: Game; onClick: () => void }) {
 // ─── Opportunity of the day (sidebar) ────────────────────────────────────
 
 function OpportunityOfDayCard() {
+  const { t } = useTranslation('nba');
   const navigate = useNavigate();
   const { data } = useAnalise360Data();
   const opps = data?.opportunities ?? [];
@@ -286,7 +285,7 @@ function OpportunityOfDayCard() {
   return (
     <div className="bg-white border border-line rounded-xl p-4">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">Oportunidade do dia</span>
+        <span className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">{t('jogos.oportunidadeEtiqueta')}</span>
         <span className="text-[10px] text-ink-2">1/1</span>
       </div>
 
@@ -315,7 +314,7 @@ function OpportunityOfDayCard() {
             <span className="text-[14px] font-semibold text-ink truncate">{top.backup_player_name}</span>
             {top.score != null && (
               <div className="text-right shrink-0">
-                <span className="text-[9px] uppercase tracking-wider text-ink-2 font-semibold block leading-none">Score</span>
+                <span className="text-[9px] uppercase tracking-wider text-ink-2 font-semibold block leading-none">{t('jogos.oportunidadeScore')}</span>
                 <span className="text-[18px] font-semibold text-ink tabular-nums leading-none">{top.score}</span>
               </div>
             )}
@@ -328,22 +327,36 @@ function OpportunityOfDayCard() {
 
       <div className="flex items-center gap-1.5 mb-3 flex-wrap">
         <span className="px-2 h-5 inline-flex items-center rounded text-[10px] font-semibold bg-canvas-2 text-ink">
-          {STAT_LABEL_PT[top.stat_type] ?? top.stat_type}
+          {t(`estatisticas.nome.${top.stat_type}`, { defaultValue: top.stat_type })}
         </span>
         <span className="px-2 h-5 inline-flex items-center rounded text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-          Sem {triggerLast}
+          {t('jogos.oportunidadeSem', { gatilho: triggerLast })}
         </span>
       </div>
 
       <div className="text-[12px] text-ink-2 space-y-1 mb-3">
         <div className="flex items-center justify-between">
-          <span>Com {triggerLast}: {top.avg_com.toFixed(1)} · Sem: <span className="text-ink font-semibold">{top.avg_sem.toFixed(1)}</span></span>
+          <span>
+            <Trans
+              t={t}
+              i18nKey="jogos.oportunidadeComparacao"
+              values={{ gatilho: triggerLast, com: top.avg_com.toFixed(1), sem: top.avg_sem.toFixed(1) }}
+              components={[<span className="text-ink font-semibold" key="sem" />]}
+            />
+          </span>
           <span className={`font-semibold tabular-nums ${isPos ? 'text-forest' : 'text-status-danger'}`}>
             ({isPos ? '+' : ''}{top.gap_pct.toFixed(1)}%)
           </span>
         </div>
         {top.line_value != null && (
-          <div>Linha: <span className="text-ink font-semibold tabular-nums">{top.line_value.toFixed(1)}</span></div>
+          <div>
+            <Trans
+              t={t}
+              i18nKey="jogos.oportunidadeLinha"
+              values={{ valor: top.line_value.toFixed(1) }}
+              components={[<span className="text-ink font-semibold tabular-nums" key="valor" />]}
+            />
+          </div>
         )}
       </div>
 
@@ -352,7 +365,7 @@ function OpportunityOfDayCard() {
         onClick={() => navigate(`/analise-360/${top.trigger_player_id}`)}
         className="w-full inline-flex items-center justify-center gap-1 px-3 py-2 rounded-md bg-forest text-white text-[12px] font-semibold hover:bg-forest-soft transition-colors"
       >
-        Ver análise completa
+        {t('jogos.oportunidadeVerAnalise')}
         <ArrowRight className="w-3.5 h-3.5" />
       </button>
     </div>
@@ -411,6 +424,7 @@ function Pagination({ current, total, onPage }: { current: number; total: number
 // ─── Main Page ───────────────────────────────────────────────────────────
 
 export default function Games() {
+  const { t } = useTranslation('nba');
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const today = getSaoPauloTodayISO();
@@ -445,7 +459,7 @@ export default function Games() {
       setCurrentPage(1);
     } catch (e) {
       console.error(e);
-      setError('Não foi possível carregar os jogos.');
+      setError(t('jogos.erroCarregar'));
     } finally {
       setIsLoading(false);
     }
@@ -483,7 +497,7 @@ export default function Games() {
       } catch (err) {
         if (!cancelled) {
           console.error(err);
-          setError('Não foi possível carregar os jogos.');
+          setError(t('jogos.erroCarregar'));
         }
       } finally {
         if (!cancelled) setIsLoading(false);
@@ -526,7 +540,7 @@ export default function Games() {
         onClick={() => navigateDate(-1)}
         disabled={isLoading}
         className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-canvas-2 disabled:opacity-40 transition-colors"
-        aria-label="Dia anterior"
+        aria-label={t('jogos.diaAnterior')}
       >
         <ChevronLeft className="w-4 h-4 text-ink-2" />
       </button>
@@ -569,7 +583,7 @@ export default function Games() {
         onClick={() => navigateDate(1)}
         disabled={isLoading}
         className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-canvas-2 disabled:opacity-40 transition-colors"
-        aria-label="Próximo dia"
+        aria-label={t('jogos.proximoDia')}
       >
         <ChevronRight className="w-4 h-4 text-ink-2" />
       </button>
@@ -582,15 +596,15 @@ export default function Games() {
   const subtitle = sortedGames.length === 0
     ? ''
     : finishedCount === sortedGames.length
-    ? `${sortedGames.length} ${sortedGames.length === 1 ? 'partida concluída' : 'partidas · concluídas'}`
+    ? t('jogos.subtituloConcluidas', { count: sortedGames.length })
     : isToday
-    ? `${sortedGames.length} ${sortedGames.length === 1 ? 'partida · hoje' : 'partidas · hoje'}`
-    : `${sortedGames.length} ${sortedGames.length === 1 ? 'partida' : 'partidas'}`;
+    ? t('jogos.subtituloHoje', { count: sortedGames.length })
+    : t('jogos.subtituloPadrao', { count: sortedGames.length });
 
   return (
     <>
       <Helmet>
-        <title>Jogos NBA — Smart Betting</title>
+        <title>{t('jogos.seoTitulo')}</title>
       </Helmet>
 
       <div className="theme-bolao min-h-screen bg-canvas text-ink">
@@ -602,7 +616,14 @@ export default function Games() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-5 md:py-6">
             <div className="min-w-0">
               <h1 className="text-[22px] md:text-[28px] font-semibold tracking-tight text-ink leading-none flex items-center gap-2 flex-wrap">
-                <span>Jogos NBA <span className="text-ink-2 font-normal">· {headerDate.weekday}, {headerDate.dayMonth}</span></span>{isDemo && <DemoBadge />}
+                <span>
+                  <Trans
+                    t={t}
+                    i18nKey="jogos.tituloComData"
+                    values={{ semana: headerDate.weekday, diaMes: headerDate.dayMonth }}
+                    components={[<span className="text-ink-2 font-normal" key="data" />]}
+                  />
+                </span>{isDemo && <DemoBadge />}
               </h1>
               {subtitle && (
                 <p className="text-[13px] text-ink-2 mt-1.5">{subtitle}</p>
@@ -645,8 +666,8 @@ export default function Games() {
               </div>
             ) : sortedGames.length === 0 ? (
               <div className="bg-white border border-line rounded-xl p-10 text-center">
-                <p className="text-sm text-ink-2 mb-1">Nenhum jogo encontrado para esta data.</p>
-                <p className="text-xs text-ink-2/70">Use as setas para navegar entre os dias.</p>
+                <p className="text-sm text-ink-2 mb-1">{t('jogos.vazioTitulo')}</p>
+                <p className="text-xs text-ink-2/70">{t('jogos.vazioDica')}</p>
               </div>
             ) : (
               <>
@@ -682,8 +703,8 @@ export default function Games() {
                 <div className="flex items-start gap-2.5">
                   <AlertCircle className="w-4 h-4 text-amber-700 mt-0.5 shrink-0" />
                   <div>
-                    <div className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold mb-0.5">Lesões</div>
-                    <div className="text-[13px] font-semibold text-ink leading-tight">Lesões dos jogos de hoje</div>
+                    <div className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold mb-0.5">{t('jogos.lesoesEtiqueta')}</div>
+                    <div className="text-[13px] font-semibold text-ink leading-tight">{t('jogos.lesoesTitulo')}</div>
                   </div>
                 </div>
                 <ArrowRight className="w-4 h-4 text-ink-2 group-hover:text-amber-700 transition-colors" />
@@ -700,8 +721,8 @@ export default function Games() {
                 <div className="flex items-start gap-2.5">
                   <FileText className="w-4 h-4 text-forest mt-0.5 shrink-0" />
                   <div>
-                    <div className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold mb-0.5">Relatório do dia</div>
-                    <div className="text-[13px] font-semibold text-ink leading-tight">Veja as melhores props</div>
+                    <div className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold mb-0.5">{t('jogos.relatorioEtiqueta')}</div>
+                    <div className="text-[13px] font-semibold text-ink leading-tight">{t('jogos.relatorioTitulo')}</div>
                   </div>
                 </div>
                 <ArrowRight className="w-4 h-4 text-ink-2 group-hover:text-forest transition-colors" />
