@@ -1,9 +1,11 @@
+import { useTranslation } from 'react-i18next';
 import { faixaBadgeCls, type Faixa, type OpcaoDeFaixa } from '@/utils/futebol-score';
 
-const descricaoPorFaixa: Record<Faixa, string> = {
-  alta: 'cenário bem sustentado pelas premissas',
-  media: 'cenário parcialmente sustentado pelas premissas',
-  baixa: 'poucas premissas sustentam a linha',
+/** A chave do catálogo que descreve cada faixa. O texto mora no catálogo. */
+const chaveDaDescricao: Record<Faixa, string> = {
+  alta: 'faixas.descricao.alta',
+  media: 'faixas.descricao.media',
+  baixa: 'faixas.descricao.baixa',
 };
 
 /**
@@ -13,6 +15,7 @@ const descricaoPorFaixa: Record<Faixa, string> = {
  * palavras vale nos dois casos, então a legenda continua legível sem o número.
  */
 export function FaixasLegenda({ opcoes }: { opcoes: readonly OpcaoDeFaixa[] }) {
+  const { t } = useTranslation('futebol');
   return (
     <ul className="mt-2 space-y-2 text-[12px] text-ink-2">
       {opcoes.map(({ tone, rotulo, selo }) => (
@@ -22,7 +25,7 @@ export function FaixasLegenda({ opcoes }: { opcoes: readonly OpcaoDeFaixa[] }) {
               {selo}
             </span>
           )}
-          <span>{rotulo}, {descricaoPorFaixa[tone]}</span>
+          <span>{t('faixas.item', { rotulo, descricao: t(chaveDaDescricao[tone]) })}</span>
         </li>
       ))}
     </ul>

@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Crest } from '@/components/futebol/Crest';
 import { getFutebolPlayerPhotoUrl, crestInitials } from '@/utils/futebol-logos';
@@ -76,6 +77,7 @@ export function CampoEscalacao({
     away?: EscalacaoDeReferencia | null;
   };
 }) {
+  const { t } = useTranslation('futebol');
   const noCelular = useIsMobile();
   const orientacao: OrientacaoDoCampo = noCelular ? 'em-pe' : 'deitado';
 
@@ -137,7 +139,7 @@ export function CampoEscalacao({
                 // adversário e a data, o assinante não tem como julgar se aquele
                 // time ainda diz alguma coisa sobre hoje.
                 <div className="text-[10.5px] text-ink-3 truncate">
-                  Última escalação{formacao ? ` · ${formacao}` : ''} · {ref.adversario}
+                  {t('escalacao.ultimaEscalacao')}{formacao ? ` · ${formacao}` : ''} · {ref.adversario}
                   {ref.dia ? ` · ${ref.dia}` : ''}
                 </div>
               ) : (
@@ -257,25 +259,25 @@ export function CampoEscalacao({
       >
         {lados.some((l) => l.ref) && (
           <p className="text-[11px] text-ink-3 -mb-2">
-            Time, formação, técnico e banco são do último jogo. Os desfalques são deste.
+            {t('escalacao.avisoReferencia')}
           </p>
         )}
 
         <div className="grid grid-cols-2 gap-x-4 gap-y-5">
         {lados.map(({ lado, tecnico }) => (
-          <Bloco key={`tec-${lado}`} titulo="Técnico">
+          <Bloco key={`tec-${lado}`} titulo={t('escalacao.tecnico')}>
             {tecnico ? (
               <div className="text-[12.5px] font-semibold text-ink truncate">{tecnico}</div>
             ) : (
-              <Vazio>Não informado</Vazio>
+              <Vazio>{t('escalacao.naoInformado')}</Vazio>
             )}
           </Bloco>
         ))}
 
         {lados.map(({ lado, reservas }) => (
-          <Bloco key={`banco-${lado}`} titulo={`Banco · ${reservas.length}`}>
+          <Bloco key={`banco-${lado}`} titulo={t('escalacao.banco', { count: reservas.length })}>
             {reservas.length === 0 ? (
-              <Vazio>Sem reservas listados</Vazio>
+              <Vazio>{t('escalacao.semReservas')}</Vazio>
             ) : (
               <div className="flex flex-col gap-1">
                 {reservas.map((p, i) => (
@@ -293,9 +295,9 @@ export function CampoEscalacao({
         ))}
 
         {lados.map(({ lado, desfalques }) => (
-          <Bloco key={`desf-${lado}`} titulo="Desfalques">
+          <Bloco key={`desf-${lado}`} titulo={t('escalacao.desfalques')}>
             {desfalques.length === 0 ? (
-              <Vazio>Sem desfalques</Vazio>
+              <Vazio>{t('escalacao.semDesfalques')}</Vazio>
             ) : (
               desfalques.map((d, i) => {
                 const duvida = estaEmDuvida(d.injury_type);
@@ -311,7 +313,7 @@ export function CampoEscalacao({
                       className="px-1.5 h-4 inline-flex items-center rounded text-[9px] font-bold ml-auto shrink-0"
                       style={duvida ? { background: '#fef7df', color: '#9a6c00' } : { background: '#fde2e7', color: '#9a1f2e' }}
                     >
-                      {duvida ? 'Dúvida' : 'Fora'}
+                      {duvida ? t('escalacao.duvida') : t('escalacao.fora')}
                     </span>
                   </div>
                 );

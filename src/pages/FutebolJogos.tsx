@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowRight, ArrowUpRight, CalendarOff, ChevronDown } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
@@ -84,6 +85,7 @@ function monthRange(dayKey: string): { from: string; to: string } {
 }
 
 export default function FutebolJogos() {
+  const { t } = useTranslation('futebol');
   const hasPanel = useHasPanel();
   const [params, setParams] = useSearchParams();
 
@@ -281,14 +283,18 @@ export default function FutebolJogos() {
           da página; o conteúdo abaixo é que fica branco. */}
       <div style={{ background: 'var(--canvas-2)', borderBottom: '1px solid #ded2b6' }}>
         <div className="max-w-[1240px] w-full mx-auto px-4 md:px-6 py-2.5 flex items-center gap-x-3 gap-y-2 flex-wrap">
-          <h1 className="font-display text-[17px] font-bold tracking-tight text-ink">Jogos</h1>
+          <h1 className="font-display text-[17px] font-bold tracking-tight text-ink">{t('jogos.titulo')}</h1>
           {isDemo && <DemoBadge />}
           <span className="text-[12.5px]" style={{ color: '#6b6350' }}>
             {isLoading
-              ? 'carregando…'
+              ? t('jogos.carregando')
               : total === 0
-                ? 'nenhum jogo neste dia'
-                : `${total} ${total === 1 ? 'jogo' : 'jogos'} · ${grupos.length} ${grupos.length === 1 ? 'campeonato' : 'campeonatos'}${sufixoDeLeitura(leituraCarregando, comLeitura)}`}
+                ? t('jogos.semJogos')
+                : t('jogos.resumo', {
+                    jogos: t('contagem.jogos', { count: total }),
+                    campeonatos: t('contagem.campeonatos', { count: grupos.length }),
+                    leitura: sufixoDeLeitura(leituraCarregando, comLeitura),
+                  })}
           </span>
           <div className="ml-auto min-w-0" data-tour="fut-jogos-datas">
             <AgendaDateStrip selectedDay={dia} onSelectDay={selectDay} jogosPorDia={jogosPorDia} />
@@ -307,7 +313,7 @@ export default function FutebolJogos() {
 
         {isError ? (
           <div className="bg-white border border-line rounded-rebrand-md p-6 text-center text-sm text-status-danger">
-            Erro ao carregar os jogos.
+            {t('jogos.erro')}
           </div>
         ) : (
           // 50/50 da Direção B: a lista não precisa de mais da metade (times
@@ -323,13 +329,13 @@ export default function FutebolJogos() {
               ) : total === 0 ? (
                 <div className="bg-white rounded-[20px] p-12 text-center" style={{ border: '1px solid #ded2b6' }}>
                   <CalendarOff className="w-6 h-6 mx-auto" style={{ color: '#c4bda8' }} />
-                  <p className="text-[13.5px] mt-2.5" style={{ color: '#6b6350' }}>Nenhum jogo em {fmtDayHeader(dia)}.</p>
+                  <p className="text-[13.5px] mt-2.5" style={{ color: '#6b6350' }}>{t('jogos.diaVazio', { dia: fmtDayHeader(dia) })}</p>
                   {proximoComJogo && (
                     <button
                       onClick={() => selectDay(proximoComJogo)}
                       className="mt-3 h-9 px-4 rounded-rebrand-sm text-xs font-semibold bg-forest text-canvas hover:bg-forest-2 transition inline-flex items-center gap-1.5"
                     >
-                      Ir para {fmtDayHeader(proximoComJogo)}
+                      {t('jogos.irPara', { dia: fmtDayHeader(proximoComJogo) })}
                       <ArrowRight className="w-3 h-3" />
                     </button>
                   )}
@@ -368,18 +374,20 @@ export default function FutebolJogos() {
                           </button>
                           <Link
                             to={`/futebol/campeonato/${comp}`}
-                            aria-label={`Abrir ${competitionLabel(comp)}`}
+                            aria-label={t('jogos.abrirCampeonato', { campeonato: competitionLabel(comp) })}
                             className="shrink-0 w-5 h-5 grid place-items-center rounded hover:text-forest transition"
                             style={{ color: '#8d8672' }}
                           >
                             <ArrowUpRight className="w-3.5 h-3.5" />
                           </Link>
                           <span className="ml-auto text-[10.5px] shrink-0 tabular-nums" style={{ color: '#8d8672' }}>
-                            {jogos.length} {jogos.length === 1 ? 'jogo' : 'jogos'}
-                            {sufixoDeLeitura(
-                              leituraCarregando,
-                              jogos.filter((j) => bestByFixture.has(j.fixture_id)).length,
-                            )}
+                            {t('jogos.grupoResumo', {
+                              jogos: t('contagem.jogos', { count: jogos.length }),
+                              leitura: sufixoDeLeitura(
+                                leituraCarregando,
+                                jogos.filter((j) => bestByFixture.has(j.fixture_id)).length,
+                              ),
+                            })}
                           </span>
                         </div>
                         {!recolhido &&
@@ -434,10 +442,10 @@ export default function FutebolJogos() {
                 ) : (
                   <div className="bg-white rounded-[20px] p-10 text-center" style={{ border: '1px solid #ded2b6' }}>
                     <div className="text-[10px] uppercase tracking-[0.16em] font-bold" style={{ color: '#8d8672' }}>
-                      Resumo do jogo
+                      {t('jogos.painel.titulo')}
                     </div>
                     <p className="text-[13px] mt-2 leading-relaxed" style={{ color: '#6b6350' }}>
-                      Clique num jogo da lista para ver por que aquela é a leitura, sem sair da agenda.
+                      {t('jogos.painel.vazio')}
                     </p>
                   </div>
                 )}

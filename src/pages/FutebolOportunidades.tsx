@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { fmtOdd } from '@/utils/formato';
 import { usePostHog } from '@posthog/react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -93,14 +94,24 @@ const LABEL = 'text-[10px] uppercase tracking-[0.14em] font-bold text-ink-3';
  * E dizer QUAIS: "um dos filtros" obriga a abrir os quatro para descobrir onde
  * foi. Com Faixa e Estado vazios ao mesmo tempo, os dois são nomeados.
  */
-function textoDoFiltroQueEsvaziou(escondidas: number, vazios: readonly string[]): string {
+function textoDoFiltroQueEsvaziou(
+  escondidas: number,
+  vazios: readonly string[],
+  t: (chave: string, valores?: Record<string, unknown>) => string,
+): string {
   if (vazios.length > 0) {
-    const nomes = vazios.length === 1 ? vazios[0] : `${vazios.slice(0, -1).join(', ')} e ${vazios[vazios.length - 1]}`;
-    const verbo = vazios.length === 1 ? 'está' : 'estão';
-    return `O filtro de ${nomes} ${verbo} sem nenhuma opção marcada. Marque ao menos uma para ver a lista.`;
+    // O plural manda no VERBO da frase inteira ("está"/"estão"), e é por isso
+    // que a contagem desce como `count` em vez de a frase ser emendada aqui.
+    const nomes =
+      vazios.length === 1
+        ? vazios[0]
+        : t('oportunidades.nomesLista', {
+            inicio: vazios.slice(0, -1).join(', '),
+            fim: vazios[vazios.length - 1],
+          });
+    return t('oportunidades.filtroVazio', { count: vazios.length, nomes });
   }
-  const quantas = `Este dia tem ${escondidas} ${escondidas === 1 ? 'oportunidade' : 'oportunidades'}`;
-  return `${quantas} em outro filtro. Troque o filtro para ver.`;
+  return t('oportunidades.escondidas', { count: escondidas });
 }
 
 const GRID = 'grid grid-cols-[56px_64px_1fr_140px_64px_80px_28px] gap-3 items-center';
@@ -113,6 +124,7 @@ function OppRow({ o, to, muted, locked, result, homeGoals, awayGoals, aoClicar, 
   /** O que fazer quando o cartão de fato aparecer. Ver `useImpressaoDeOportunidade`. */
   aoAparecer?: () => void;
 }) {
+  const { t } = useTranslation('futebol');
   const pick = pickLabel(o, o.home_team_name, o.away_team_name);
   const chance = chancePct(o.prob_justa_fechamento);
   // Dentro do componente, e não no pai: hook não roda dentro de `.map`.
@@ -149,7 +161,7 @@ function OppRow({ o, to, muted, locked, result, homeGoals, awayGoals, aoClicar, 
         <div className="min-w-0">
           <div className="flex items-center gap-1.5 min-w-0">
             <span className={`text-[13px] font-semibold tracking-tight truncate ${bloqueada ? 'text-ink-3' : 'text-ink'}`}>
-              {bloqueada ? 'Aposta de assinante' : pick}
+              {bloqueada ? t('oportunidades.linha.apostaDeAssinante') : pick}
             </span>
             {result && <ResultBadge r={result} />}
           </div>
@@ -189,6 +201,7 @@ function OppMobileCard({ o, to, locked, result, homeGoals, awayGoals, canRegiste
   aoClicar?: () => void;
   aoAparecer?: () => void;
 }) {
+  const { t } = useTranslation('futebol');
   const pick = pickLabel(o, o.home_team_name, o.away_team_name);
   const chance = chancePct(o.prob_justa_fechamento);
   const refDeImpressao = useImpressaoDeOportunidade({ chave: idDaOportunidade(o), aoAparecer });
@@ -230,7 +243,7 @@ function OppMobileCard({ o, to, locked, result, homeGoals, awayGoals, canRegiste
               {result && <ResultBadge r={result} />}
             </div>
             <div className={`text-[15px] font-semibold tracking-tight mt-1.5 ${bloqueada ? 'text-ink-3' : 'text-ink'}`}>
-              {bloqueada ? 'Aposta de assinante' : pick}
+              {bloqueada ? t('oportunidades.linha.apostaDeAssinante') : pick}
             </div>
             {/* Times numa linha, horário na seguinte — o mesmo arranjo do cartão
                 da home. Juntos, num confronto de nomes longos, o `truncate`
@@ -247,14 +260,14 @@ function OppMobileCard({ o, to, locked, result, homeGoals, awayGoals, canRegiste
               embaixo; com a saída do valor sobraram dois, e duas colunas onde
               cabiam três abriam um vão no meio do cartão. */}
           <div className="text-right shrink-0">
-            <div className="text-[8px] uppercase tracking-[0.14em] font-semibold text-ink-3">Score</div>
+            <div className="text-[8px] uppercase tracking-[0.14em] font-semibold text-ink-3">{t('numeros.score')}</div>
             <div className={`text-[22px] font-bold tabular-nums tracking-tight leading-none ${bloqueada ? 'text-ink-3' : 'text-forest'}`}>
               {bloqueada ? <ValorBloqueado /> : o.score ?? '—'}
             </div>
             <div className="mt-2 grid gap-1">
               {[
-                { label: 'Chance', valor: bloqueada ? null : chance != null ? `${chance}%` : '—' },
-                { label: 'Odd', valor: bloqueada ? null : fmtOdd(o.best_odd) },
+                { label: t('numeros.chance'), valor: bloqueada ? null : chance != null ? `${chance}%` : '—' },
+                { label: t('numeros.odd'), valor: bloqueada ? null : fmtOdd(o.best_odd) },
               ].map(({ label, valor }) => (
                 <div key={label} className="flex items-baseline justify-end gap-2">
                   <span className="text-[8px] uppercase tracking-[0.14em] font-semibold text-ink-3">{label}</span>
@@ -309,6 +322,7 @@ function ResultBadge({ r }: { r: BetResult }) {
 }
 
 export default function FutebolOportunidades() {
+  const { t } = useTranslation('futebol');
   const navigate = useNavigate();
   const posthog = usePostHog();
   const { data: rows, isLoading: lBoard } = useFutebolValueBoard();
@@ -718,9 +732,9 @@ export default function FutebolOportunidades() {
   // clique engolido. Competição é a exceção de sempre — lá `null` é "todas", e
   // só a lista vazia de verdade significa nenhuma.
   const filtrosVazios = [
-    faixasSelecionadas.length === 0 ? 'faixa' : null,
-    estadosSelecionados.length === 0 ? 'estado' : null,
-    competicoesSelecionadas?.length === 0 ? 'competição' : null,
+    faixasSelecionadas.length === 0 ? t('oportunidades.filtros.faixa') : null,
+    estadosSelecionados.length === 0 ? t('oportunidades.filtros.estado') : null,
+    competicoesSelecionadas?.length === 0 ? t('oportunidades.filtros.competicao') : null,
   ].filter((nome): nome is string => nome != null);
   const distribuicao = isDemo ? demoBoard : dayRows;
   const nAlta = distribuicao.filter((o) => faixaTone(o.faixa ?? '') === 'alta' && o.faixa != null).length;
@@ -833,7 +847,7 @@ export default function FutebolOportunidades() {
       <div className="bg-white border-b border-line">
         <div className="max-w-[1480px] w-full mx-auto px-4 md:px-6 py-5 md:py-6 flex flex-col items-stretch gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="w-full min-w-0 sm:w-auto">
-            <div className={`${LABEL} flex items-center gap-2`}>{isPastDay ? 'Histórico' : 'Oportunidades'}{isDemo && <DemoBadge />}</div>
+            <div className={`${LABEL} flex items-center gap-2`}>{isPastDay ? t('oportunidades.sobretituloHistorico') : t('oportunidades.sobretitulo')}{isDemo && <DemoBadge />}</div>
             {/* Entra também quando NADA liquidou mas houve pendência: senão o
                 dia em que todas ficam sem fixture não mostra nada, que é o pior
                 caso do defeito e não o caso benigno. */}
@@ -841,11 +855,17 @@ export default function FutebolOportunidades() {
               <>
                 {resumo.settled > 0 ? (
                   <>
-                    <h1 className="font-display text-2xl md:text-[28px] font-extrabold tracking-tight text-ink mt-1">{resumo.hit} de {resumo.settled} deram green</h1>
-                    <p className="text-[13px] mt-1 text-ink-2">Resultado das oportunidades publicadas neste dia{resumo.push > 0 ? ` · ${resumo.push} anulada${resumo.push === 1 ? '' : 's'}` : ''}</p>
+                    <h1 className="font-display text-2xl md:text-[28px] font-extrabold tracking-tight text-ink mt-1">
+                      {t('oportunidades.resumo.green', { acertos: resumo.hit, liquidadas: resumo.settled })}
+                    </h1>
+                    <p className="text-[13px] mt-1 text-ink-2">
+                      {resumo.push > 0
+                        ? t('oportunidades.resumo.descricaoComAnuladas', { count: resumo.push })
+                        : t('oportunidades.resumo.descricao')}
+                    </p>
                   </>
                 ) : (
-                  <h1 className="font-display text-2xl md:text-[28px] font-extrabold tracking-tight text-ink mt-1">Nenhuma oportunidade deste dia liquidou</h1>
+                  <h1 className="font-display text-2xl md:text-[28px] font-extrabold tracking-tight text-ink mt-1">{t('oportunidades.resumo.nenhumaLiquidou')}</h1>
                 )}
                 {/* A pendência aparece em vez de encolher o denominador. Dizer
                     "2 de 3" num dia de seis não é arredondamento: é a tela
@@ -854,10 +874,16 @@ export default function FutebolOportunidades() {
                     deixava o jogo adiado invisível, com o mesmo efeito. */}
                 {resumo.pendentes > 0 ? (
                   <p className="text-[12px] mt-1 text-amber-2">
-                    {resumo.pendentes} de {resumo.total} sem resultado
                     {resumo.semFixture > 0
-                      ? ` · ${resumo.semFixture} sem jogo no calendário`
-                      : ' · jogo adiado ou ainda sem placar'}
+                      ? t('oportunidades.resumo.pendentesSemFixture', {
+                          count: resumo.semFixture,
+                          pendentes: resumo.pendentes,
+                          total: resumo.total,
+                        })
+                      : t('oportunidades.resumo.pendentesAdiado', {
+                          pendentes: resumo.pendentes,
+                          total: resumo.total,
+                        })}
                   </p>
                 ) : null}
               </>
@@ -879,10 +905,11 @@ export default function FutebolOportunidades() {
                     fala de cenário sustentado, que é outra afirmação e não
                     depende de preço nenhum. */}
                 <h1 className="font-display text-2xl md:text-[28px] font-extrabold tracking-tight text-ink mt-1">
-                  {listaDoDia.length} {listaDoDia.length === 1 ? 'oportunidade' : 'oportunidades'}
-                  {faixasSelecionadas.length === 1 && faixasSelecionadas[0] === 'baixa' ? ' em faixa baixa' : ''}
+                  {faixasSelecionadas.length === 1 && faixasSelecionadas[0] === 'baixa'
+                    ? t('oportunidades.tituloFaixaBaixa', { count: listaDoDia.length })
+                    : t('oportunidades.titulo', { count: listaDoDia.length })}
                 </h1>
-                <p className="text-[13px] mt-1 text-ink-2">{isPastDay ? 'Resultado das oportunidades publicadas neste dia' : 'Análises pré-jogo com Score, o que sustenta cada leitura e a odd de mercado ao lado.'}</p>
+                <p className="text-[13px] mt-1 text-ink-2">{isPastDay ? t('oportunidades.resumo.descricao') : t('oportunidades.subtitulo')}</p>
               </>
             )}
           </div>
@@ -895,9 +922,9 @@ export default function FutebolOportunidades() {
               )}
               {!isLoading && distribuicao.length > 0 && (
                 <div className="hidden sm:flex items-end gap-2">
-                  <FaixaKpi n={nAlta} label="Alta" tone="alta" />
-                  <FaixaKpi n={nMedia} label="Média" tone="media" />
-                  <FaixaKpi n={nBaixa} label="Baixa" tone="baixa" />
+                  <FaixaKpi n={nAlta} label={t('faixa.alta')} tone="alta" />
+                  <FaixaKpi n={nMedia} label={t('faixa.media')} tone="media" />
+                  <FaixaKpi n={nBaixa} label={t('faixa.baixa')} tone="baixa" />
                 </div>
               )}
             </div>
@@ -943,17 +970,17 @@ export default function FutebolOportunidades() {
                 foi o filtro. Culpar o dado nesse caso manda a pessoa embora de
                 uma tela que só precisava de um clique em Todas. */}
             <p className="text-sm text-ink-2">
-              {filtrosVazios.length > 0 || escondidasPeloFiltro > 0 ? 'Nenhuma oportunidade nesse filtro.'
-                : isPastDay ? 'Nenhuma oportunidade publicada nesse dia.'
-                : isFutureDay ? 'Ainda sem oportunidades para este dia.'
-                : 'Nenhum jogo com odds nesse filtro.'}
+              {filtrosVazios.length > 0 || escondidasPeloFiltro > 0 ? t('oportunidades.vazio.filtro')
+                : isPastDay ? t('oportunidades.vazio.passado')
+                : isFutureDay ? t('oportunidades.vazio.futuro')
+                : t('oportunidades.vazio.hoje')}
             </p>
             <p className="text-xs text-ink-3 mt-1">
               {filtrosVazios.length > 0 || escondidasPeloFiltro > 0
-                ? textoDoFiltroQueEsvaziou(escondidasPeloFiltro, filtrosVazios)
-                : isPastDay ? 'Só listamos aqui o que foi publicado no dia.'
-                : isFutureDay ? 'As odds costumam ser coletadas a partir de ~24h antes do jogo — as oportunidades aparecem aqui quando chegarem.'
-                : 'As oportunidades aparecem quando há odds coletadas antes do jogo.'}
+                ? textoDoFiltroQueEsvaziou(escondidasPeloFiltro, filtrosVazios, t)
+                : isPastDay ? t('oportunidades.vazio.passadoSub')
+                : isFutureDay ? t('oportunidades.vazio.futuroSub')
+                : t('oportunidades.vazio.hojeSub')}
             </p>
           </div>
         ) : (
@@ -961,8 +988,8 @@ export default function FutebolOportunidades() {
             {/* Tabela (desktop) */}
             <div className="hidden md:block rounded-rebrand-md overflow-hidden bg-white border border-line">
               <div className={`${GRID} px-5 py-2.5 text-[10px] uppercase tracking-[0.14em] font-semibold text-ink-3 bg-canvas-2`}>
-                <div>Score ↓</div><div>Faixa</div><div>Aposta</div><div>Mercado</div>
-                <div className="text-right">Chance</div><div className="text-right">Odd</div><div />
+                <div>{t('oportunidades.tabela.score')}</div><div>{t('oportunidades.tabela.faixa')}</div><div>{t('oportunidades.tabela.aposta')}</div><div>{t('oportunidades.tabela.mercado')}</div>
+                <div className="text-right">{t('oportunidades.tabela.chance')}</div><div className="text-right">{t('oportunidades.tabela.odd')}</div><div />
               </div>
               {listaDoDia.map((o, i) => {
                 const res = resultOf(o);
@@ -1048,28 +1075,32 @@ export default function FutebolOportunidades() {
         <div className="rounded-rebrand-md px-5 py-4 flex items-start gap-3" style={{ background: '#fef7df', border: '1px solid #fde68a' }}>
           <span className="mt-0.5 shrink-0" style={{ color: '#9a6c00' }}><AlertTriangle className="w-4 h-4" /></span>
           <div className="text-[12px] leading-relaxed" style={{ color: '#5a3c00' }}>
-            <span className="font-semibold">Não é recomendação.</span> Publicamos a leitura do cenário, e ela não é promessa de que o preço está bom: a decisão de apostar, e por quanto, é sua.
+            <span className="font-semibold">{t('aviso.naoERecomendacao')}</span> {t('oportunidades.aviso')}
           </div>
         </div>
 
         {/* Como ler o Score + Faixas */}
         <div data-tour="fut-opp-metodologia" className="grid md:grid-cols-2 gap-4 mt-2">
           <div className="rounded-rebrand-md bg-white border border-line p-4">
-            <div className={LABEL}>Como ler o Score</div>
+            <div className={LABEL}>{t('oportunidades.comoLer.titulo')}</div>
             <p className="text-[12px] text-ink-2 mt-2 leading-relaxed">
-              O <b className="text-ink">Score (0–100)</b> resume <b className="text-ink">quanto do cenário desta linha foi confirmado pelas premissas do modelo</b>. Ele não é chance de acerto e não inclui odd ou preço. Os argumentos a favor e contra mostram o que sustenta a leitura; chance estimada e odd aparecem ao lado, cada uma com uma função diferente.
+              <Trans
+                t={t}
+                i18nKey="oportunidades.comoLer.texto"
+                components={[<b className="text-ink" key="score" />, <b className="text-ink" key="resumo" />]}
+              />
             </p>
           </div>
           <div className="rounded-rebrand-md bg-white border border-line p-4">
-            <div className={LABEL}>Faixas</div>
+            <div className={LABEL}>{t('oportunidades.faixas.titulo')}</div>
             <FaixasLegenda opcoes={opcoesDeFaixa(versaoDaJanela(dayRows))} />
             <p className="text-[10px] text-ink-3 mt-3 leading-snug">
-              As faixas organizam a leitura do cenário; não representam chance de acerto.
+              {t('oportunidades.faixas.nota')}
             </p>
             {/* Único lugar da tela que declara a natureza da cotação e o que
                 está coberto. Sem isso a pessoa supõe que a odd é ao vivo. */}
             <p className="text-[10px] text-ink-3 mt-2 leading-snug">
-              Odds pré-jogo (não ao vivo). Mercados: Resultado (1X2), Gols (Over/Under), Handicap asiático, Ambos marcam e Dupla chance; outros entram conforme liberados.
+              {t('oportunidades.faixas.cobertura')}
             </p>
           </div>
         </div>

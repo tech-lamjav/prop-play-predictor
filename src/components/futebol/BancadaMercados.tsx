@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { fmtOdd, fmtExato, fmtDecimal, fmtLinhaAnalisada } from '@/utils/formato';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RegistrarApostaCTA } from '@/components/futebol/RegistrarAposta';
@@ -75,7 +76,10 @@ import type { JogoInfo } from './jogo-info';
 
 const TIPO_LINHA = new Set(['goals_over_under', 'asian_handicap']);
 
-/** Linha em pt-BR. Sinal só no handicap: "+2,5 gols" não existe. */
+/**
+ * A linha na régua do idioma ativo (`fmtLinhaAnalisada`), com sinal só no
+ * handicap — "+2,5 gols" não existe.
+ */
 function fmtLinha(v: number, comSinal: boolean): string {
   return `${comSinal && v > 0 ? '+' : ''}${fmtLinhaAnalisada(v)}`;
 }
@@ -124,6 +128,7 @@ function ReguaLinhas({
    */
   forca: Map<number, number>;
 }) {
+  const { t } = useTranslation('futebol');
   const trilha = useRef<HTMLDivElement | null>(null);
   // A medida da trilha é tirada UMA vez, no pointerdown, e vale o arrasto inteiro.
   // Medindo a cada movimento, qualquer mudança de largura no meio do caminho
@@ -149,7 +154,7 @@ function ReguaLinhas({
         ref={trilha}
         role="slider"
         tabIndex={0}
-        aria-label="Linha"
+        aria-label={t('bancada.linha')}
         aria-valuemin={paradas[0]}
         aria-valuemax={paradas[paradas.length - 1]}
         aria-valuenow={valor ?? undefined}
@@ -193,7 +198,7 @@ function ReguaLinhas({
             <span
               key={p}
               className="absolute rounded-full pointer-events-none"
-              title={`${rotulo(p)} · ${n} ${n === 1 ? 'premissa' : 'premissas'} a favor`}
+              title={t('bancada.paradaTitulo', { count: n, linha: rotulo(p) })}
               style={{
                 left,
                 top: 16 - (tam - 3) / 2,
@@ -270,6 +275,7 @@ export function BancadaMercados({
   /** A saída que o usuário clicou em Oportunidades, quando ele veio de lá. */
   preferida?: SaidaPreferida | null;
 }) {
+  const { t } = useTranslation('futebol');
   const { data: rows, isLoading } = useFutebolFixturePremissas(jogo.fixtureId);
   const { data: numeros } = useFutebolFixtureNumeros(jogo.fixtureId);
   const { data: historico } = useFutebolFixtureHistorico(jogo.fixtureId);
@@ -613,15 +619,16 @@ export function BancadaMercados({
       if (p.slug === 'desfalque_proprio' || p.slug === 'desfalque_adversario') {
         const lista = nomes(p.slug === 'desfalque_proprio' ? idDoLado : idDoAdv);
         sub = lista
-          ? `Fora: ${lista}.`
+          ? t('bancada.fora', { lista })
           // Não existe "escalação provável": a fonte não publica previsão de
           // escalação em momento nenhum. O que sai perto do jogo é a escalação
           // CONFIRMADA. Ver futebol-escalacao.ts.
-          : 'A lista de desfalques deste jogo ainda não saiu: ela entra junto com a escalação confirmada, perto do jogo.';
+          : t('bancada.semDesfalques');
       }
-      out.push({ t: `Penalidade: ${p.label.toLowerCase()}`, sub });
+      out.push({ t: t('bancada.penalidade', { nome: p.label.toLowerCase() }), sub });
     });
     return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requerContratoMotivos, valPrincipal, penAtivas, injuries, ladoPrincipal, jogo.homeId, jogo.awayId]);
   const motivosContra = contratoMotivos
     ? motivosDoContrato(contratoMotivos.contra, false)
@@ -638,7 +645,9 @@ export function BancadaMercados({
     const lbl = labelDe(principal);
     if (fim) {
       const r = placar && principal ? settleFutebol(principal, placar.home, placar.away) : null;
-      return r ? `O mapa apontava ${lbl}: ${resultBadge(r).label.toLowerCase()}.` : `Jogo encerrado.`;
+      return r
+        ? t('bancada.veredito.encerrado', { pick: lbl, resultado: resultBadge(r).label.toLowerCase() })
+        : t('bancada.veredito.jogoEncerrado');
     }
     if (valPrincipal) {
       // Sem nenhum motivo listado, o veredito não afirma cenário. Prometer "o
@@ -649,13 +658,13 @@ export function BancadaMercados({
       // ticket próprio (#361): só o mercado de Gols tem os critérios das
       // premissas transcritos no front. Resultado, Ambos marcam, Dupla chance e
       // Handicap podem publicar sem nada para mostrar em A favor.
-      if (semMotivosAFavor) return `${lbl} está publicada, mas o cenário do jogo não foi detalhado aqui.`;
-      if (ehFaixaAlta(valPrincipal.faixa)) return `O cenário do jogo está bem a favor de ${lbl}.`;
-      if (ehDestaque(valPrincipal.faixa)) return `${lbl} tem parte do cenário a favor: leitura parcial.`;
-      return `Pouco do cenário sustenta ${lbl}: entra como consulta, não como aposta.`;
+      if (semMotivosAFavor) return t('bancada.veredito.semDetalhe', { pick: lbl });
+      if (ehFaixaAlta(valPrincipal.faixa)) return t('bancada.veredito.alta', { pick: lbl });
+      if (ehDestaque(valPrincipal.faixa)) return t('bancada.veredito.media', { pick: lbl });
+      return t('bancada.veredito.baixa', { pick: lbl });
     }
     if (cotacaoPrincipal.estado === 'cotada') {
-      return `${lbl} tem cotação, mas ficou fora dos filtros de oportunidade.`;
+      return t('bancada.veredito.cotada', { pick: lbl });
     }
     // A cortada vem ANTES da porta de premissas, e é o que a impede de cair na
     // frase "falta o preço" (#432): preço houve, e foi ele que decidiu.
@@ -664,11 +673,11 @@ export function BancadaMercados({
     // odd nenhuma na régua, e aí aquela afirmaria uma cotação que a tela não
     // mostra em lugar nenhum.
     if (cortadaPrincipal) {
-      return `${lbl} não entra como oportunidade neste jogo.`;
+      return t('bancada.veredito.cortada', { pick: lbl });
     }
     const n = principal ? contaQueValem(principal) : 0;
-    if (n >= PORTA_PREMISSAS) return `O jogo aponta para ${lbl}, mas falta o preço: as odds entram perto do jogo.`;
-    return `O jogo não sustenta esta saída.`;
+    if (n >= PORTA_PREMISSAS) return t('bancada.veredito.semPreco', { pick: lbl });
+    return t('bancada.veredito.naoSustenta');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [principal, valPrincipal, cortadaPrincipal, cotacaoPrincipal.estado, fim, mercado.slug, placar, semMotivosAFavor]);
 
@@ -778,7 +787,7 @@ export function BancadaMercados({
         // O mesmo nome do botão do cabeçalho e do da mensagem no Telegram.
         // "Adicionar à gestão" e "Registrar aposta" abriam o mesmo modal e
         // gravavam a mesma coisa, a quinze centímetros um do outro.
-        rotulo="Registrar aposta"
+        rotulo={t('registrar.botao')}
       />
     ) : null;
 
@@ -837,11 +846,9 @@ export function BancadaMercados({
         style={{ border: '1px solid #ded2b6' }}
         data-tour="fut-jogo-mapa"
       >
-        <p className="text-[15px] font-semibold text-ink">A leitura deste jogo é de assinante</p>
+        <p className="text-[15px] font-semibold text-ink">{t('bancada.bloqueado.titulo')}</p>
         <p className="text-[13px] text-ink-2 mt-1.5 max-w-[48ch] mx-auto leading-relaxed">
-          Os cinco mercados, a aposta, a odd, a chance, o Score e as premissas que
-          sustentam a leitura ficam disponíveis com a assinatura. A escalação e as estatísticas
-          do jogo continuam abertas nas abas ao lado.
+          {t('bancada.bloqueado.texto')}
         </p>
       </div>
     );
@@ -866,17 +873,20 @@ export function BancadaMercados({
             {/* Conta o que a VITRINE mostra, não o catálogo: com um mercado
                 escondido (#324) o rótulo fixo "Os 5 mercados" mentiria em cima
                 de uma lista de quatro. */}
-            {resumos.length === 1 ? 'O mercado' : `Os ${resumos.length} mercados`}
+            {t('bancada.mercados.titulo', { count: resumos.length })}
           </div>
           <div className="mt-1 text-[11.5px] leading-relaxed" style={{ color: '#6b6350' }}>
             {/* A frase conta só os mercados COTADOS. `passa` também é verdadeiro
                 para mercado sem odds, pela porta de premissas, e contar os dois
                 juntos afirmaria uma faixa para quem não tem faixa nenhuma. */}
             {resumos.some((r) => r.value)
-              ? `${resumos.filter((r) => r.value && r.passa).length} de ${resumos.filter((r) => r.value).length} mercados cotados em faixa Alta ou Média. A barra é o Score; o tracinho marca onde começa a faixa Alta.`
+              ? t('bancada.mercados.descFaixas', {
+                  comFaixa: resumos.filter((r) => r.value && r.passa).length,
+                  cotados: resumos.filter((r) => r.value).length,
+                })
               : mercadosCotados > 0
-                ? `${mercadosCotados} de ${resumos.length} mercados têm cotação. Os demais continuam analisados pelas premissas.`
-              : `Sem preço ainda: a barra conta as premissas e o tracinho é a porta de ${PORTA_PREMISSAS}.`}
+                ? t('bancada.mercados.descCotados', { cotados: mercadosCotados, total: resumos.length })
+                : t('bancada.mercados.descSemPreco', { porta: PORTA_PREMISSAS })}
           </div>
         </div>
 
@@ -939,30 +949,29 @@ export function BancadaMercados({
                     </span>
                   )}
                 </div>
+                {/* A LINHA INTEIRA sai de uma chave só. Antes eram o nome da
+                    aposta e um sufixo emendados no JSX; com a tradução, emendar
+                    pedaço traduzido é o que faz a frase sair torta em outro
+                    idioma, onde a ordem das palavras não é a mesma.
+                    A cortada sem odd na régua NÃO diz "sem cotação": preço
+                    houve, e foi ele que decidiu. E não volta a dizer "fora dos
+                    filtros", que é o vocabulário que o selo removido levou
+                    embora — "filtros" é a nossa máquina. */}
                 <div className="mt-1 text-[11.5px] truncate" style={{ color: on ? 'rgba(255,255,255,.6)' : '#8d8672' }}>
-                  {locked ? 'de assinante' : pick}
-                  {temScore ? (
-                    <>
-                      {' · '}
-                      {`${Math.round(r.value!.prob_justa_fechamento * 100)}%`}
-                      {' · '}
-                      {fmtOdd(r.value!.best_odd)}
-                    </>
-                  ) : (
-                    leituraCotacao.estado === 'cotada'
-                      ? ` · cotada @ ${fmtOdd(leituraCotacao.odd)}`
-                      // A cortada sem odd na régua NÃO diz "sem cotação": preço
-                      // houve, e foi ele que decidiu. A folha ganhou frase
-                      // própria por esse mesmo motivo, e o card dizia o
-                      // contrário dela na mesma tela.
-                      //
-                      // E não volta a dizer "fora dos filtros", que é o
-                      // vocabulário que o selo removido levou embora: "filtros"
-                      // é a nossa máquina. É a frase da folha, encurtada.
+                  {temScore
+                    ? t('bancada.card.comScore', {
+                        pick: locked ? t('gate.deAssinante') : pick,
+                        chance: Math.round(r.value!.prob_justa_fechamento * 100),
+                        odd: fmtOdd(r.value!.best_odd),
+                      })
+                    : leituraCotacao.estado === 'cotada'
+                      ? t('bancada.card.cotada', {
+                          pick: locked ? t('gate.deAssinante') : pick,
+                          odd: fmtOdd(leituraCotacao.odd),
+                        })
                       : r.cortada
-                        ? ' · não é oportunidade'
-                        : ' · sem cotação'
-                  )}
+                        ? t('bancada.card.naoOportunidade', { pick: locked ? t('gate.deAssinante') : pick })
+                        : t('bancada.card.semCotacao', { pick: locked ? t('gate.deAssinante') : pick })}
                 </div>
                 {!semLeituraNoCard && (
                   <div
@@ -1032,7 +1041,7 @@ export function BancadaMercados({
                 <div className={`min-w-0 ${noCelular ? 'flex-1' : ''}`}>
                   <div className="h-6 flex items-center">
                     <span className="text-[10px] uppercase tracking-[0.16em] truncate" style={{ color: 'rgba(255,255,255,.45)' }}>
-                      {noCelular ? 'Mercado aberto' : `Mercado aberto · ${mercado.label}`}
+                      {noCelular ? t('bancada.mercadoAberto') : t('bancada.mercadoAbertoCom', { mercado: mercado.label })}
                     </span>
                   </div>
                   {noCelular && (
@@ -1057,7 +1066,7 @@ export function BancadaMercados({
                       className="inline-flex shrink-0 items-center min-h-5 px-2.5 py-1 rounded-full whitespace-nowrap text-[9px] font-bold uppercase leading-none tracking-[0.08em]"
                       style={{ background: '#fbbf24', color: '#1a1d1a' }}
                     >
-                      Oportunidade
+                      {t('bancada.selo.oportunidade')}
                     </span>
                   )}
                   {cotacaoPrincipal.estado === 'sem_cotacao' && (
@@ -1065,7 +1074,7 @@ export function BancadaMercados({
                       className="inline-flex shrink-0 items-center min-h-5 px-2.5 py-1 rounded-full whitespace-nowrap text-[9px] font-bold uppercase leading-none tracking-[0.08em]"
                       style={{ background: '#ede4ce', color: '#6b6350' }}
                     >
-                      Sem cotação
+                      {t('bancada.selo.semCotacao')}
                     </span>
                   )}
                   {resPrincipal && <SeloRes r={resPrincipal} />}
@@ -1156,7 +1165,7 @@ export function BancadaMercados({
                     "Premissas", ou o número entre uma e três casas. */}
                 <div className="shrink-0 text-left min-w-[84px]">
                   <div className="text-[9px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>
-                    {leituraPrincipal === 'premissas' ? 'Premissas' : 'Score'}
+                    {leituraPrincipal === 'premissas' ? t('premissas.rotulo') : t('numeros.score')}
                   </div>
                   <div className="tabular-nums text-[44px] font-bold leading-none tracking-[-0.04em] mt-1" style={{ color: '#fbbf24' }}>
                     {numeroPrincipal}
@@ -1164,8 +1173,8 @@ export function BancadaMercados({
                   <div className="mt-1.5 text-[9.5px] uppercase tracking-[0.12em] h-3 leading-[12px]" style={{ color: 'rgba(255,255,255,.5)' }}>
                     {valPrincipal
                       ? rotuloDaFaixa(valPrincipal.faixa)
-                      : leituraPrincipal === 'premissas' ? 'a favor'
-                      : locked ? 'de assinante' : 'sem leitura'}
+                      : leituraPrincipal === 'premissas' ? t('premissas.aFavorCurto')
+                      : locked ? t('gate.deAssinante') : t('leitura.semLeitura')}
                   </div>
                 </div>
                 {/* Rótulo à esquerda, número à direita: as linhas viram uma
@@ -1173,12 +1182,12 @@ export function BancadaMercados({
                 <div className="flex-1 min-w-0 grid gap-1.5 pl-4 border-l" style={{ borderColor: 'rgba(255,255,255,.15)' }}>
                   {[
                     {
-                      rotulo: 'Chance',
+                      rotulo: t('numeros.chance'),
                       valor: valPrincipal ? `${Math.round(valPrincipal.prob_justa_fechamento * 100)}%` : '—',
                       cor: '#fff',
                     },
                     {
-                      rotulo: 'Odd',
+                      rotulo: t('numeros.odd'),
                       valor: fmtOdd(cotacaoPrincipal.odd),
                       cor: '#fff',
                     },
@@ -1195,13 +1204,13 @@ export function BancadaMercados({
             ) : (
             <div className="flex items-end gap-6 flex-wrap">
               <div className="min-w-[58px]">
-                <div className="text-[9px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>Chance</div>
+                <div className="text-[9px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>{t('numeros.chance')}</div>
                 <div className="tabular-nums text-[22px] font-semibold leading-none mt-1 text-white">
                   {valPrincipal ? `${Math.round(valPrincipal.prob_justa_fechamento * 100)}%` : '—'}
                 </div>
               </div>
               <div className="min-w-[52px]">
-                <div className="text-[9px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>Odd</div>
+                <div className="text-[9px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>{t('numeros.odd')}</div>
                 <div className="tabular-nums text-[22px] font-semibold leading-none mt-1 text-white">
                   {cotacaoPrincipal.odd != null
                     ? fmtOdd(cotacaoPrincipal.odd)
@@ -1215,8 +1224,8 @@ export function BancadaMercados({
                 </div>
                 <div className="mt-1.5 text-[9.5px] uppercase tracking-[0.12em]" style={{ color: 'rgba(255,255,255,.5)' }}>
                   {valPrincipal
-                    ? `Score · ${rotuloDaFaixa(valPrincipal.faixa)}`
-                    : leituraPrincipal === 'premissas' ? 'premissas a favor' : 'sem leitura'}
+                    ? t('numeros.scoreFaixa', { faixa: rotuloDaFaixa(valPrincipal.faixa) })
+                    : leituraPrincipal === 'premissas' ? t('premissas.aFavorRotulo') : t('leitura.semLeitura')}
                 </div>
               </div>
             </div>
@@ -1238,7 +1247,7 @@ export function BancadaMercados({
               }`}
               style={{ color: 'rgba(255,255,255,.45)' }}
             >
-              {ehLinha ? 'Linha' : 'Saída'}
+              {ehLinha ? t('bancada.rotulo.linha') : t('bancada.rotulo.saida')}
             </span>
 
             {/* O lado da linha é um toggle, não um link: na régua você escolhe QUAL
@@ -1261,8 +1270,8 @@ export function BancadaMercados({
                     >
                       {mercado.slug === 'goals_over_under'
                         ? l.outcome === 'Under'
-                          ? 'Menos'
-                          : 'Mais'
+                          ? t('bancada.menos')
+                          : t('bancada.mais')
                         : l.outcome === 'Home'
                           ? jogo.home
                           : jogo.away}
@@ -1367,7 +1376,7 @@ export function BancadaMercados({
             className="px-6 md:px-8 py-3 text-[12px] leading-relaxed"
             style={{ background: '#edf5ef', borderBottom: '1px solid #cfe4d5', color: '#0a3d2e' }}
           >
-            Confirme a cotação na sua casa antes de registrar.
+            {t('bancada.confirmeCotacao')}
           </div>
         )}
 
@@ -1387,7 +1396,7 @@ export function BancadaMercados({
         <div data-tour="fut-jogo-premissas" className="px-6 md:px-8 pt-4 flex items-center gap-2 flex-wrap" style={{ borderBottom: '1px solid #f1e9d6' }}>
           {(
             [
-              ['favor', 'A favor', contratoMotivosIndisponivel ? null : motivosFavor.premissas.length + motivosFavor.extras.length],
+              ['favor', t('motivos.aFavor'), contratoMotivosIndisponivel ? null : motivosFavor.premissas.length + motivosFavor.extras.length],
               ['contra', rotuloEmTitulo('nao_atingiu_o_corte'), contratoMotivosIndisponivel ? null : motivosContra.premissas.length + motivosContra.extras.length],
             ] as const
           ).map(([k, rot, n]) => {
@@ -1426,10 +1435,10 @@ export function BancadaMercados({
         {contratoMotivosIndisponivel ? (
           <div className="p-6 md:p-8 text-[13px]" style={{ color: '#8d8672' }}>
             {carregandoContratoMotivos
-              ? 'Carregando os motivos desta leitura.'
+              ? t('bancada.motivos.carregando')
               : falhaContratoMotivos
-                ? 'Os motivos desta leitura estão sendo atualizados. Tente novamente em instantes.'
-                : 'Os motivos desta leitura ainda não estão disponíveis.'}
+                ? t('bancada.motivos.erro')
+                : t('bancada.motivos.indisponivel')}
           </div>
         ) : abaMotivo === 'favor' ? (
           <MotivosJogoPorJogo
@@ -1477,7 +1486,7 @@ export function BancadaMercados({
           const avisosDeCotacao = (valPrincipal?.avisos ?? []).filter((t) => !jaEmContra.has(t));
           return avisosDeCotacao.length > 0 ? (
             <div className="px-6 md:px-8 py-3.5 text-[11.5px] leading-relaxed" style={{ borderTop: '1px solid #f1e9d6', background: '#fdfbf6', color: '#5a625a' }}>
-              <span className="font-semibold">Sobre a cotação: </span>
+              <span className="font-semibold">{t('bancada.sobreCotacao')}</span>
               {avisosDeCotacao.join(' · ')}
             </div>
           ) : null;
@@ -1494,7 +1503,7 @@ export function BancadaMercados({
             cotação mostraria "disponível desde" de algo que não está publicado. */}
         {valPrincipal && rotuloDisponivelDesde(disponivelDesdeDaSaida(disponibilidade, principal)) && (
           <div className="px-6 md:px-8 py-3.5 text-[11.5px] leading-relaxed" style={{ borderTop: '1px solid #f1e9d6', background: '#fdfbf6', color: '#5a625a' }}>
-            <span className="font-semibold">Disponível desde: </span>
+            <span className="font-semibold">{t('bancada.disponivelDesde')}</span>
             {rotuloDisponivelDesde(disponivelDesdeDaSaida(disponibilidade, principal))}
           </div>
         )}
@@ -1514,13 +1523,9 @@ export function BancadaMercados({
         })()}
 
         <div className="px-6 md:px-8 py-3.5 text-[11px] leading-relaxed" style={{ borderTop: '1px solid #f1e9d6', background: '#fdfbf6', color: '#8d8672' }}>
-          {ehLinha
-            ? 'Cada parada da régua tem o seu conjunto de premissas: trocar a linha muda o que precisa ser verdade.'
-            : 'Cada saída do mercado tem o seu conjunto de premissas.'}{' '}
-          {ate ? `Números da temporada até ${ate}.` : ''}
-          {semTabelaDaEpoca
-            ? ' Não há foto da classificação desta data, então a posição na tabela não é mostrada.'
-            : ''}
+          {ehLinha ? t('bancada.rodape.regua') : t('bancada.rodape.saidas')}{' '}
+          {ate ? t('bancada.rodape.numerosAte', { data: ate }) : ''}
+          {semTabelaDaEpoca ? t('bancada.rodape.semTabela') : ''}
         </div>
       </div>
 
@@ -1537,10 +1542,10 @@ export function BancadaMercados({
           {dist && (
             <div className="px-5 py-4" style={{ borderTop: '1px solid #f1e9d6' }}>
               <div className="text-[10px] uppercase tracking-[0.16em] font-bold" style={{ color: '#8d8672' }}>
-                Onde a linha corta
+                {t('bancada.dist.titulo')}
               </div>
               <p className="text-[11px] leading-relaxed mt-1 mb-3" style={{ color: '#6b6350' }}>
-                Quantos gols o modelo espera, e de que lado da linha cada cenário cai.
+                {t('bancada.dist.texto')}
               </p>
               <div className="relative pb-1">
                 <div className="flex items-end gap-1.5 h-[84px]">
@@ -1565,7 +1570,7 @@ export function BancadaMercados({
                 <div className="absolute -top-1 bottom-4 w-0 opacity-35" style={{ left: dist.divisor, borderLeft: '2px dashed #1a1d1a' }} />
               </div>
               <p className="text-[10.5px] leading-relaxed mt-2" style={{ color: '#8d8672' }}>
-                Média esperada de {dist.lambda} gols.
+                {t('bancada.dist.media', { gols: dist.lambda })}
               </p>
             </div>
           )}

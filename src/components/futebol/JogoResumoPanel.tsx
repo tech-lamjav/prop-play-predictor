@@ -1,4 +1,5 @@
 import { Skeleton } from '@/components/ui/skeleton';
+import { useTranslation } from 'react-i18next';
 import { fmtOdd, fmtDecimal } from '@/utils/formato';
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
@@ -103,6 +104,7 @@ export function JogoResumoPanel({
    */
   demo?: { premissas: FutebolFixturePremissas[]; numeros: FutebolFixtureNumeros[] };
 }) {
+  const { t } = useTranslation('futebol');
   const { data: premissasReais, isLoading: premissasCarregando } = useFutebolFixturePremissas(
     demo ? undefined : fixture.fixture_id,
   );
@@ -245,14 +247,16 @@ export function JogoResumoPanel({
 
   // Com preço são motivos, e motivo tem lado. Sem preço são premissas acesas, e
   // não há lado — o sufixo não pode prometer o que o rótulo acabou de tirar.
+  //
+  // ⚠️ A comparação é contra o texto CRU do `explicacaoDaLeitura`, que ainda não
+  // passou pelo catálogo (`futebol-motivos.ts` está fora do #537). É o que faz o
+  // rótulo aparecer em português numa tela em espanhol, e é por isso que ele não
+  // pode ser comparado contra `t('motivos.porque')`: no dia em que a util for
+  // traduzida, esta linha tem de virar um estado e não um texto.
   const sufixoDaExplicacao =
     explicacao.rotulo === 'Por quê'
-      ? explicacao.total === 1
-        ? 'premissa a favor'
-        : 'premissas a favor'
-      : explicacao.total === 1
-        ? 'premissa acesa'
-        : 'premissas acesas';
+      ? t('premissas.aFavor', { count: explicacao.total })
+      : t('premissas.acesa', { count: explicacao.total });
 
   // O que NÃO ATINGIU O CORTE, do contrato.
   //
@@ -267,9 +271,12 @@ export function JogoResumoPanel({
   // corte. Dizer "contra" afirmava oposição onde só há ausência, e essa é a
   // mesma frase que a folha de detalhe já corrigiu.
   const contra = explicacao.contra.length
-    ? `${explicacao.contra.length} não ${explicacao.contra.length === 1 ? 'atingiu' : 'atingiram'} o corte: ${explicacao.contra
-        .map(({ premissa }) => rotuloPremissa(premissa, lado, true).toLowerCase())
-        .join(' e ')}.`
+    ? t('painel.naoAtingiram', {
+        count: explicacao.contra.length,
+        lista: explicacao.contra
+          .map(({ premissa }) => rotuloPremissa(premissa, lado, true).toLowerCase())
+          .join(t('lista.juntorE')),
+      })
     : null;
 
   const casa = numeros?.find((n) => n.side === 'home');
@@ -282,9 +289,9 @@ export function JogoResumoPanel({
   const pct = (v: number | null) => (v == null ? null : Math.round(v * 100));
   const chegam = perfil
     ? [
-        { label: 'Gols marcados', a: perfil.gf.home, b: perfil.gf.away, maiorEhCasa: true },
-        { label: 'Gols sofridos', a: perfil.ga.home, b: perfil.ga.away, maiorEhCasa: false },
-        { label: 'Sem sofrer gol', a: pct(perfil.semSofrer.home), b: pct(perfil.semSofrer.away), maiorEhCasa: true, ehPercentual: true },
+        { label: t('comoChegam.golsMarcados'), a: perfil.gf.home, b: perfil.gf.away, maiorEhCasa: true },
+        { label: t('comoChegam.golsSofridos'), a: perfil.ga.home, b: perfil.ga.away, maiorEhCasa: false },
+        { label: t('comoChegam.semSofrerGol'), a: pct(perfil.semSofrer.home), b: pct(perfil.semSofrer.away), maiorEhCasa: true, ehPercentual: true },
       ].filter((x) => x.a != null && x.b != null)
     : [];
 
@@ -338,21 +345,29 @@ export function JogoResumoPanel({
             })
           }
           className="text-[13.5px] font-semibold tracking-tight text-ink truncate hover:underline py-1.5 -my-1.5"
-          title="Abrir a tela do jogo"
+          title={t('painel.abrirJogo')}
         >
           {fixture.home_team_name} × {fixture.away_team_name}
         </Link>
         <Crest name={fixture.away_team_name} id={fixture.away_team_id} size={20} />
         <span className="text-[11px] truncate" style={{ color: '#8d8672' }}>
           {fim || live
-            ? `${live ? 'ao vivo' : 'encerrado'} · ${fixture.goals_home ?? 0} × ${fixture.goals_away ?? 0}`
-            : `${dia.weekday} ${dia.day} ${fmtTime(fixture.kickoff_utc) ?? ''}`}
+            ? t('painel.placar', {
+                estado: live ? t('estado.aoVivoMinusculo') : t('estado.encerradoMinusculo'),
+                casa: fixture.goals_home ?? 0,
+                fora: fixture.goals_away ?? 0,
+              })
+            : t('painel.quando', {
+                diaSemana: dia.weekday,
+                dia: dia.day,
+                hora: fmtTime(fixture.kickoff_utc) ?? '',
+              })}
         </span>
         <button
           onClick={onClose}
           className="ml-auto w-6 h-6 shrink-0 grid place-items-center rounded-md transition hover:bg-white"
           style={{ color: '#8d8672' }}
-          aria-label="Fechar resumo"
+          aria-label={t('painel.fechar')}
         >
           <X className="w-4 h-4" />
         </button>
@@ -368,7 +383,7 @@ export function JogoResumoPanel({
             <div className="min-w-0">
               <div className="flex items-center gap-2 h-[17px]">
                 <span className="text-[9.5px] uppercase tracking-[0.16em]" style={{ color: 'rgba(255,255,255,.45)' }}>
-                  Melhor leitura · {marketShort(mercadoLeitura!)}
+                  {t('painel.melhorLeitura', { mercado: marketShort(mercadoLeitura!) })}
                 </span>
                 {desfecho && (
                   <span
@@ -379,23 +394,23 @@ export function JogoResumoPanel({
                         : { background: 'rgba(255,255,255,.12)', color: 'rgba(255,255,255,.7)' }
                     }
                   >
-                    {isHit(desfecho) ? 'bateu' : desfecho === 'push' ? 'anulada' : 'não bateu'}
+                    {isHit(desfecho) ? t('desfecho.bateu') : desfecho === 'push' ? t('desfecho.anulada') : t('desfecho.naoBateu')}
                   </span>
                 )}
               </div>
               <div className="mt-1.5 text-[22px] font-semibold leading-tight tracking-[-0.025em] text-white">
-                {valorFechado ? 'Leitura de assinante' : pick}
+                {valorFechado ? t('gate.leituraDeAssinante') : pick}
               </div>
               {best && !valorFechado ? (
                 <div className="flex gap-4 mt-2.5">
                   <div>
-                    <div className="text-[8.5px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>Chance</div>
+                    <div className="text-[8.5px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>{t('numeros.chance')}</div>
                     <div className="tabular-nums text-[15px] font-semibold text-white mt-0.5">
                       {chance}%
                     </div>
                   </div>
                   <div>
-                    <div className="text-[8.5px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>Odd</div>
+                    <div className="text-[8.5px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>{t('numeros.odd')}</div>
                     <div className="tabular-nums text-[15px] font-semibold text-white mt-0.5">
                       {fmtOdd(best.best_odd)}
                     </div>
@@ -403,11 +418,11 @@ export function JogoResumoPanel({
                 </div>
               ) : bloqueadoSemLeitura ? (
                 <div className="text-[12px] mt-2.5" style={{ color: 'rgba(255,255,255,.55)' }}>
-                  chance e odd são de assinante
+                  {t('painel.chanceOddAssinante')}
                 </div>
               ) : (
                 <div className="text-[12px] mt-2.5" style={{ color: 'rgba(255,255,255,.55)' }}>
-                  sem preço coletado ainda · as odds entram perto do jogo
+                  {t('painel.semPreco')}
                 </div>
               )}
             </div>
@@ -420,7 +435,11 @@ export function JogoResumoPanel({
                 {valorFechado ? '—' : best ? best.score : nValem}
               </div>
               <div className="mt-1 text-[9px] uppercase tracking-[0.12em]" style={{ color: 'rgba(255,255,255,.5)' }}>
-                {valorFechado ? 'de assinante' : best ? `Score · ${rotuloDaFaixa(best.faixa)}` : 'premissas a favor'}
+                {valorFechado
+                  ? t('gate.deAssinante')
+                  : best
+                    ? t('numeros.scoreFaixa', { faixa: rotuloDaFaixa(best.faixa) })
+                    : t('premissas.aFavorRotulo')}
               </div>
             </div>
           </div>
@@ -434,7 +453,11 @@ export function JogoResumoPanel({
               {/* O sufixo acompanha o rótulo. Dizer "a favor" sob "O que o jogo
                   mostra" seria a mesma promessa que o rótulo acabou de tirar:
                   sem preço não há aposta a favor de quê. */}
-              {explicacao.rotulo} · {explicacao.total} {sufixoDaExplicacao}
+              {t('painel.explicacaoCabecalho', {
+                rotulo: explicacao.rotulo,
+                total: explicacao.total,
+                sufixo: sufixoDaExplicacao,
+              })}
             </div>
             {/* Enquanto o contrato voa, esqueleto — e não a lista vazia, que
                 afirmaria "não há motivo" antes de saber. */}
@@ -451,7 +474,7 @@ export function JogoResumoPanel({
                     className="shrink-0 mt-0.5 h-[18px] px-1.5 rounded inline-flex items-center text-[9px] font-bold uppercase tracking-[0.08em]"
                     style={pesoForte(p) ? { background: '#dcefe2', color: '#0a3d2e' } : { background: '#eae2cf', color: '#8d8672' }}
                   >
-                    {pesoForte(p) ? 'Forte' : 'Médio'}
+                    {pesoForte(p) ? t('peso.forte') : t('peso.medio')}
                   </span>
                   <span className="flex-1 min-w-0 text-[12.5px] leading-relaxed" style={{ color: '#3f463d' }}>
                     <b className="font-semibold">{rotuloPremissa(p, lado)}.</b>
@@ -485,15 +508,14 @@ export function JogoResumoPanel({
           </div>
         ) : (
           <div className="px-4 py-3.5 rounded-[14px]" style={{ background: 'var(--canvas-2)', border: '1px solid #e5d9bd' }}>
-            <div className="text-[12.5px] font-semibold text-ink">Sem leitura para este jogo</div>
+            <div className="text-[12.5px] font-semibold text-ink">{t('painel.semLeituraTitulo')}</div>
             <p className="mt-1 text-[12.5px] leading-relaxed" style={{ color: '#6b6350' }}>
               {premissas?.length
-                ? 'Nenhuma premissa passou a porta de 2 em nenhum mercado.'
-                : 'As premissas deste jogo ainda não foram calculadas.'}
+                ? t('painel.semLeituraPorta')
+                : t('painel.semLeituraNaoCalculadas')}
             </p>
             <p className="mt-2 text-[11.5px] leading-relaxed" style={{ color: '#8d8672' }}>
-              Isso não é defeito: a maioria dos jogos legitimamente não tem oportunidade. O contexto abaixo continua
-              valendo.
+              {t('painel.semLeituraNota')}
             </p>
           </div>
         )}
@@ -502,7 +524,7 @@ export function JogoResumoPanel({
           <div className="mt-4 pt-3.5" style={{ borderTop: '1px solid #f1e9d6' }}>
             <div className="flex items-baseline justify-between">
               <span className="text-[10px] uppercase tracking-[0.16em] font-bold" style={{ color: '#8d8672' }}>
-                Como chegam
+                {t('comoChegam.titulo')}
               </span>
               <span className="text-[10.5px] truncate max-w-[60%]" style={{ color: '#8d8672' }}>
                 {fixture.home_team_name} · {fixture.away_team_name}
@@ -540,7 +562,7 @@ export function JogoResumoPanel({
             </div>
 
             <div className="mt-3 pt-3 flex items-center gap-2.5" style={{ borderTop: '1px solid #f1e9d6' }}>
-              <span className="text-[10.5px] font-medium shrink-0" style={{ color: '#8d8672' }}>Forma</span>
+              <span className="text-[10.5px] font-medium shrink-0" style={{ color: '#8d8672' }}>{t('painel.forma')}</span>
               <Forma forma={casa?.forma} />
               <span className="ml-auto">
                 <Forma forma={fora?.forma} />
@@ -548,7 +570,7 @@ export function JogoResumoPanel({
             </div>
 
             <div className="mt-3 pt-3 flex items-center gap-2.5" style={{ borderTop: '1px solid #f1e9d6' }}>
-              <span className="text-[10.5px] font-medium shrink-0" style={{ color: '#8d8672' }}>Desfalques</span>
+              <span className="text-[10.5px] font-medium shrink-0" style={{ color: '#8d8672' }}>{t('painel.desfalques')}</span>
               <span className="text-[12px] truncate" style={{ color: '#3f463d' }}>{desfalques(fixture.home_team_id)}</span>
               <span className="ml-auto text-[12px] truncate" style={{ color: '#3f463d' }}>{desfalques(fixture.away_team_id)}</span>
             </div>
@@ -567,7 +589,7 @@ export function JogoResumoPanel({
             }
             className="flex-1 h-10 rounded-[10px] bg-forest text-canvas text-[13px] font-semibold inline-flex items-center justify-center gap-1.5 hover:bg-forest-2 transition"
           >
-            {temLeitura ? 'Ver a análise dos 5 mercados' : 'Ver a análise completa'} <ArrowRight className="w-4 h-4" />
+            {temLeitura ? t('painel.verCincoMercados') : t('cta.verAnalise')} <ArrowRight className="w-4 h-4" />
           </Link>
           {best && !fim && (
             <RegistrarApostaCTA
@@ -584,7 +606,7 @@ export function JogoResumoPanel({
                 oddKind: 'melhor',
               }}
               variant="ambar"
-              rotulo="Registrar"
+              rotulo={t('registrar.curto')}
               origem="games_list"
             />
           )}

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { DayPicker } from 'react-day-picker';
 import { ptBR } from 'date-fns/locale';
 import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -11,8 +12,13 @@ import { brtToday } from '@/utils/futebol-datas';
  *
  * Era o `<input type="date">` nativo: vinha em inglês ("August 2026", "Mo Tu We"),
  * com o azul do sistema e os botões "Clear/Today" do Chrome, e mudava de cara a
- * cada navegador. Aqui ele usa a paleta do rebrand, fala português e, o que o
- * nativo nunca faria, **marca os dias que têm jogo** com o mesmo ponto da régua.
+ * cada navegador. Aqui ele usa a paleta do rebrand e, o que o nativo nunca
+ * faria, **marca os dias que têm jogo** com o mesmo ponto da régua.
+ *
+ * ⚠️ O TEXTO daqui segue o idioma ativo; os NOMES DE MÊS E DIA, não — eles vêm
+ * do `locale` do date-fns, fixo em `ptBR`. Data por idioma é o trabalho da #530,
+ * e ela tem armadilha própria; trocar o locale aqui por conta própria mexeria
+ * na régua de datas inteira sem passar por lá.
  *
  * A contagem do mês visível vem da mesma RPC da régua (get_futebol_fixture_days),
  * consultada só para o intervalo aberto na tela.
@@ -37,6 +43,7 @@ export function AgendaCalendario({
   selectedDay: string;
   onSelectDay: (day: string) => void;
 }) {
+  const { t } = useTranslation('futebol');
   const [aberto, setAberto] = useState(false);
   const [mes, setMes] = useState<Date>(() => paraData(selectedDay));
   const hoje = brtToday();
@@ -77,7 +84,7 @@ export function AgendaCalendario({
         <button
           className="h-7 w-7 shrink-0 grid place-items-center rounded-full transition hover:bg-canvas-2"
           style={{ color: aberto ? 'var(--forest)' : '#6b6350' }}
-          aria-label="Escolher data"
+          aria-label={t('agenda.escolherData')}
         >
           <CalendarDays className="w-3.5 h-3.5" />
         </button>
@@ -109,7 +116,11 @@ export function AgendaCalendario({
           }}
           // O `locale` cuida dos nomes de mês e dia; os rótulos das setas ficariam em
           // inglês para o leitor de tela sem isto.
-          labels={{ labelPrevious: () => 'Mês anterior', labelNext: () => 'Próximo mês' }}
+          //
+          // ⚠️ O `locale` do date-fns segue FIXO em português: data por idioma é o
+          // trabalho da #530, e ela tem armadilha própria (a chave de dia é de
+          // máquina). Aqui só o texto escrito por nós fala o idioma ativo.
+          labels={{ labelPrevious: () => t('agenda.mesAnterior'), labelNext: () => t('agenda.proximoMes') }}
           components={{
             IconLeft: () => <ChevronLeft className="w-4 h-4" />,
             IconRight: () => <ChevronRight className="w-4 h-4" />,
@@ -149,7 +160,7 @@ export function AgendaCalendario({
         >
           <span className="inline-flex items-center gap-1.5 text-[10.5px]" style={{ color: '#8d8672' }}>
             <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--forest)' }} />
-            dia com jogo
+            {t('agenda.diaComJogo')}
           </span>
           <button
             onClick={() => {
@@ -159,7 +170,7 @@ export function AgendaCalendario({
             }}
             className="text-[11.5px] font-semibold text-forest hover:underline underline-offset-2"
           >
-            Ir para hoje
+            {t('agenda.irParaHoje')}
           </button>
         </div>
       </PopoverContent>

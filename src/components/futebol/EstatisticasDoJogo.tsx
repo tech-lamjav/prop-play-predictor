@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { fmtExato, fmtLinhaAnalisada } from '@/utils/formato';
 import type { FutebolFixtureHistorico } from '@/services/futebol-data.service';
 import { DropdownMenuCheckboxItem } from '@/components/ui/dropdown-menu';
@@ -44,11 +45,12 @@ const LABEL = 'text-[10px] uppercase tracking-[0.14em] font-bold text-ink-3 shri
  */
 const ALTURA_DO_GRAFICO = 180;
 
-const MANDOS: { valor: MandoDaEstatistica; rotulo: string }[] = [
-  { valor: 'todos', rotulo: 'Todos os jogos' },
+/** Valor e CHAVE do catálogo: o texto de cada recorte mora no catálogo. */
+const MANDOS: { valor: MandoDaEstatistica; chave: string }[] = [
+  { valor: 'todos', chave: 'estatisticas.mando.todos' },
   // Nomeia a REGRA e não um lado: o recorte é o mandante em casa E o visitante
   // fora, que são mandos opostos.
-  { valor: 'proprio', rotulo: 'Mando deste jogo' },
+  { valor: 'proprio', chave: 'estatisticas.mando.proprio' },
 ];
 
 export function EstatisticasDoJogo({
@@ -64,6 +66,7 @@ export function EstatisticasDoJogo({
   /** A linha daquele mercado. Daqui em diante ela é livre: aqui é referência. */
   linhaInicial?: number | null;
 }) {
+  const { t } = useTranslation('futebol');
   const [escolha, setEscolha] = useState<EscolhaDaEstatistica>(() => {
     const mercado = ehMercadoDoGrafico(mercadoInicial) ? mercadoInicial : ESCOLHA_PADRAO.mercado;
     const { paradas, padrao } = MERCADOS_NO_GRAFICO[mercado];
@@ -99,7 +102,7 @@ export function EstatisticasDoJogo({
     });
   };
 
-  const mandoAtual = MANDOS.find((m) => m.valor === escolha.mando)!.rotulo;
+  const mandoAtual = t(MANDOS.find((m) => m.valor === escolha.mando)!.chave);
   const semSerie = (['home', 'away'] as const)
     .map((lado) => nomeDoLado(lado))
     .filter((nome): nome is string => !!nome)
@@ -108,9 +111,9 @@ export function EstatisticasDoJogo({
   return (
     <div className="rounded-rebrand-xl overflow-hidden bg-white border border-line">
       <div className="px-5 py-3 border-b border-line">
-        <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">Jogo a jogo</div>
+        <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">{t('estatisticas.titulo')}</div>
         <div className="text-[10px] text-ink-3 mt-0.5">
-          O desempenho recente dos dois times. Não é a leitura do modelo.
+          {t('estatisticas.subtitulo')}
         </div>
       </div>
 
@@ -130,7 +133,7 @@ export function EstatisticasDoJogo({
             para uma linha só. */}
         <div className="flex flex-col gap-2 mb-3 sm:flex-row sm:flex-wrap sm:items-center">
           <div className="flex items-center gap-2.5 min-w-0">
-            <span className={LABEL}>Mercado</span>
+            <span className={LABEL}>{t('estatisticas.mercado')}</span>
             {/* `-my-1 py-1` dá respiro vertical para o anel de foco do chip não
                 ser cortado pela caixa que rola. */}
             <div className="flex items-center gap-1.5 min-w-0 overflow-x-auto no-scrollbar -my-1 py-1">
@@ -143,18 +146,18 @@ export function EstatisticasDoJogo({
           </div>
 
           <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-2 sm:shrink-0">
-            <SeletorDeMenu rotulo="Janela" resumo={`Últimos ${escolha.janela}`} largura="sm:w-[168px]">
+            <SeletorDeMenu rotulo={t('estatisticas.janela')} resumo={t('estatisticas.ultimos', { janela: escolha.janela })} largura="sm:w-[168px]">
               {JANELAS_OFERECIDAS.map((j) => (
                 <DropdownMenuCheckboxItem key={j} checked={escolha.janela === j} onSelect={() => muda({ janela: j })} className={ITEM_SELETOR}>
-                  {`Últimos ${j}`}
+                  {t('estatisticas.ultimos', { janela: j })}
                 </DropdownMenuCheckboxItem>
               ))}
             </SeletorDeMenu>
 
-            <SeletorDeMenu rotulo="Mando" resumo={mandoAtual} largura="sm:w-[212px]">
+            <SeletorDeMenu rotulo={t('estatisticas.mandoRotulo')} resumo={mandoAtual} largura="sm:w-[212px]">
               {MANDOS.map((m) => (
                 <DropdownMenuCheckboxItem key={m.valor} checked={escolha.mando === m.valor} onSelect={() => muda({ mando: m.valor })} className={ITEM_SELETOR}>
-                  {m.rotulo}
+                  {t(m.chave)}
                 </DropdownMenuCheckboxItem>
               ))}
             </SeletorDeMenu>
@@ -171,7 +174,7 @@ export function EstatisticasDoJogo({
                 palavra solta para a linha da aposta, e nesta mesma página ela
                 já significa isso. O nome acessível do controle sempre disse o
                 certo; o texto visível é que estava fora. */}
-            <span className={LABEL}>Linha de referência</span>
+            <span className={LABEL}>{t('estatisticas.linhaReferencia')}</span>
             <ReguaDeLinhas
               paradas={doMercado.paradas}
               valor={escolha.linha}
@@ -185,12 +188,12 @@ export function EstatisticasDoJogo({
         )}
 
         {carregando ? (
-          <p className="text-[13px] py-6 text-center" style={{ color: '#8d8672' }}>Carregando os jogos anteriores.</p>
+          <p className="text-[13px] py-6 text-center" style={{ color: '#8d8672' }}>{t('estatisticas.carregando')}</p>
         ) : !series.length ? (
           <p className="text-[13px] py-6 text-center" style={{ color: '#8d8672' }}>
             {escolha.mando === 'proprio'
-              ? 'Nenhum dos jogos recentes bate com o mando deste confronto. Experimente todos os jogos.'
-              : 'Sem jogos anteriores para estes times.'}
+              ? t('estatisticas.vazioMando')
+              : t('estatisticas.vazio')}
           </p>
         ) : ehQuadro ? (
           <div className="flex flex-col gap-4">
@@ -221,13 +224,13 @@ export function EstatisticasDoJogo({
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-3">
               <span className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: COR_FAVOR }} />
-                <span className="text-[10.5px] text-ink-2">acima da linha</span>
+                <span className="text-[10.5px] text-ink-2">{t('estatisticas.acimaDaLinha')}</span>
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: COR_CONTRA }} />
-                <span className="text-[10.5px] text-ink-3">abaixo</span>
+                <span className="text-[10.5px] text-ink-3">{t('estatisticas.abaixo')}</span>
               </span>
-              <span className="text-[10.5px]" style={{ color: '#8d8672' }}>A cor compara, não diz se foi bom.</span>
+              <span className="text-[10.5px]" style={{ color: '#8d8672' }}>{t('estatisticas.corCompara')}</span>
             </div>
 
             <BarrasEmSequencia
@@ -251,20 +254,28 @@ export function EstatisticasDoJogo({
                 contradizendo. */}
             {contagem && contagem.de > 0 && (
               <div className="text-[12px] text-ink-2 mt-3">
-                <strong className="font-bold text-ink">{contagem.acima}</strong> dos {contagem.de} jogos{' '}
-                {series.length > 1 ? 'dos dois times' : `do ${series[0].teamName}`} passaram de{' '}
-                {fmtExato(referencia as number)}.
+                <Trans
+                  t={t}
+                  i18nKey={series.length > 1 ? 'estatisticas.contagemDois' : 'estatisticas.contagemUm'}
+                  values={{
+                    acima: contagem.acima,
+                    de: contagem.de,
+                    time: series[0].teamName,
+                    referencia: fmtExato(referencia as number),
+                  }}
+                  components={[<strong className="font-bold text-ink" key="acima" />]}
+                />
                 <span className="block text-[10.5px] text-ink-3 mt-0.5">
-                  Janela: últimos {escolha.janela} de cada time
-                  {escolha.mando === 'proprio' ? ', só com o mando deste confronto' : ''}.
+                  {escolha.mando === 'proprio'
+                    ? t('estatisticas.janelaNotaMando', { janela: escolha.janela })
+                    : t('estatisticas.janelaNota', { janela: escolha.janela })}
                 </span>
               </div>
             )}
 
             {semSerie.length > 0 && (
               <div className="text-[11px] leading-relaxed mt-3 text-ink-2">
-                {semSerie.join(' e ')} não tem jogo nesse recorte, então o gráfico mostra um time só — e a
-                escala é a dele, não a dos dois.
+                {t('estatisticas.semSerie', { times: semSerie.join(t('lista.juntorE')) })}
               </div>
             )}
 

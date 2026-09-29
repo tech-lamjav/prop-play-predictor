@@ -1,4 +1,5 @@
 import React from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Seo } from '@/components/Seo';
 import { Trophy, Plus, Users, Sparkles, ChevronRight, Check } from 'lucide-react';
@@ -19,6 +20,7 @@ import AnalyticsNav from '@/components/AnalyticsNav';
  * então o user que veio da LP cai direto no fluxo de criação após login.
  */
 const BolaoLP: React.FC = () => {
+  const { t } = useTranslation('bolao');
   const navigate = useNavigate();
   const { user, isLoading: authLoading } = useAuth();
 
@@ -61,14 +63,21 @@ const BolaoLP: React.FC = () => {
           <div className="max-w-screen-xl mx-auto px-4 sm:px-6 py-16 sm:py-24 lg:py-32 relative">
             <div className="max-w-[680px]">
               <div className="text-[12px] uppercase tracking-[0.18em] font-semibold opacity-70 mb-3">
-                Bolão · Copa do Mundo 2026
+                {t('lp.selo')}
               </div>
               <h1 className="font-display text-[44px] sm:text-[60px] lg:text-[68px] leading-[1.02] font-extrabold mb-5 tracking-tight">
-                Crie seu bolão em{' '}
-                <span className="text-amber">30 segundos</span>.
+                {/* `Trans`, e não duas chaves coladas: o destaque cai NO MEIO
+                    da frase, e cada idioma põe "30 segundos" onde a sintaxe
+                    dele mandar. Colar pedaço traduzido com pedaço traduzido
+                    amarraria a ordem do português em todas as línguas. */}
+                <Trans
+                  t={t}
+                  i18nKey="lp.titulo"
+                  components={{ destaque: <span className="text-amber" /> }}
+                />
               </h1>
               <p className="text-[16px] sm:text-[18px] opacity-85 leading-relaxed mb-8 max-w-[560px]">
-                Reúna a galera, palpite todos os 104 jogos, veja quem manja mais. Grátis pra até 20 amigos. Sem cartão, sem app pra instalar.
+                {t('lp.chamada')}
               </p>
 
               <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
@@ -80,26 +89,26 @@ const BolaoLP: React.FC = () => {
                   className="rounded-rebrand-md gap-2 h-12 text-[15px] shadow-lg shadow-amber/20"
                 >
                   <Plus className="w-4 h-4" />
-                  Criar meu bolão grátis
+                  {t('acoes.criarGratis')}
                 </Button>
                 <button
                   type="button"
                   onClick={() => navigate('/auth')}
                   className="text-white/70 hover:text-white text-[14px] underline-offset-4 hover:underline transition-colors text-left sm:text-center"
                 >
-                  Já tem código? Entrar aqui →
+                  {t('acoes.entrarComCodigo')}
                 </button>
               </div>
 
               <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mt-7 text-[12px] opacity-70">
                 <span className="inline-flex items-center gap-1.5">
-                  <Check className="w-3.5 h-3.5 text-amber" /> 100% gratuito
+                  <Check className="w-3.5 h-3.5 text-amber" /> {t('lp.selos.gratuito')}
                 </span>
                 <span className="inline-flex items-center gap-1.5">
-                  <Check className="w-3.5 h-3.5 text-amber" /> Sem cartão
+                  <Check className="w-3.5 h-3.5 text-amber" /> {t('lp.selos.semCartao')}
                 </span>
                 <span className="inline-flex items-center gap-1.5">
-                  <Check className="w-3.5 h-3.5 text-amber" /> Sem instalar nada
+                  <Check className="w-3.5 h-3.5 text-amber" /> {t('lp.selos.semInstalar')}
                 </span>
               </div>
             </div>
@@ -113,10 +122,10 @@ const BolaoLP: React.FC = () => {
           <div className="max-w-screen-xl mx-auto px-4 sm:px-6 py-16 sm:py-24">
             <div className="text-center mb-12 sm:mb-14">
               <div className="text-[12px] uppercase tracking-[0.18em] font-semibold text-ink-2 mb-2">
-                Como funciona
+                {t('comoFunciona.etiqueta')}
               </div>
               <h2 className="font-display text-[30px] sm:text-[40px] font-extrabold text-ink leading-tight">
-                3 passos. Sem complicação.
+                {t('comoFunciona.titulo')}
               </h2>
             </div>
 
@@ -130,10 +139,10 @@ const BolaoLP: React.FC = () => {
                   <Plus className="w-6 h-6" />
                 </div>
                 <h3 className="font-display text-[18px] font-bold text-ink mb-2">
-                  Cria em 1 minuto
+                  {t('lp.passos.criar.titulo')}
                 </h3>
                 <p className="text-[14px] text-ink-2 leading-relaxed">
-                  Escolhe um nome, define a pontuação se quiser, pronto. Você é dono do seu bolão.
+                  {t('lp.passos.criar.texto')}
                 </p>
               </div>
 
@@ -146,10 +155,10 @@ const BolaoLP: React.FC = () => {
                   <Users className="w-6 h-6" />
                 </div>
                 <h3 className="font-display text-[18px] font-bold text-ink mb-2">
-                  Chama no WhatsApp
+                  {t('lp.passos.convidar.titulo')}
                 </h3>
                 <p className="text-[14px] text-ink-2 leading-relaxed">
-                  Manda o link no grupo da família, da firma, dos amigos. Quem clicar entra com 1 toque.
+                  {t('lp.passos.convidar.texto')}
                 </p>
               </div>
 
@@ -162,10 +171,10 @@ const BolaoLP: React.FC = () => {
                   <Sparkles className="w-6 h-6" />
                 </div>
                 <h3 className="font-display text-[18px] font-bold text-ink mb-2">
-                  Palpita + disputa
+                  {t('lp.passos.palpitar.titulo')}
                 </h3>
                 <p className="text-[14px] text-ink-2 leading-relaxed">
-                  104 jogos pra palpitar (ou usa o Quick Pick e edita depois). Ranking ao vivo, conquistas, share nos Stories.
+                  {t('lp.passos.palpitar.texto')}
                 </p>
               </div>
             </div>
@@ -180,11 +189,11 @@ const BolaoLP: React.FC = () => {
                 className="rounded-rebrand-md gap-2 h-12 px-7 text-[15px]"
               >
                 <Trophy className="w-5 h-5" />
-                Criar meu bolão grátis
+                {t('acoes.criarGratis')}
                 <ChevronRight className="w-4 h-4" />
               </Button>
               <p className="text-[12px] text-ink-3 mt-3">
-                Não tá comprometido com nada. Apaga depois se quiser.
+                {t('lp.semCompromisso')}
               </p>
             </div>
           </div>

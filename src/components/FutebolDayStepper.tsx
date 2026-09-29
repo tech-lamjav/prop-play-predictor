@@ -1,5 +1,6 @@
 import { useRef, useLayoutEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { formatadorDeData } from '@/utils/futebol-datas';
 
 const TZ = 'America/Sao_Paulo';
@@ -18,13 +19,24 @@ function todayStr(): string {
   return formatadorDeData('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 }
 
-/** Rótulo amigável pra um dia (YYYY-MM-DD, BRT): Hoje / Amanhã / "Qui, 26/06". */
-function dayLabel(s: string): string {
-  const t = todayStr();
-  const base = new Date(`${t}T12:00:00Z`);
+/**
+ * Rótulo amigável pra um dia (YYYY-MM-DD, BRT): Hoje / Amanhã / "Qui, 26/06".
+ *
+ * O tradutor entra por PARÂMETRO porque isto é função de módulo e não
+ * componente — hook aqui não vale, e receber `t` mantém a função testável sem
+ * montar React.
+ *
+ * ⚠️ O dia da semana continua saindo em `pt-BR` fixo, e isso NÃO é esquecimento:
+ * data por idioma é a costura da #530, que tem armadilha própria (a chave de
+ * agrupamento por dia é de máquina, e trocá-la por idioma joga jogo noturno
+ * para o dia errado).
+ */
+function dayLabel(s: string, t: (chave: string) => string): string {
+  const hoje = todayStr();
+  const base = new Date(`${hoje}T12:00:00Z`);
   const tomorrow = formatadorDeData('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(base.getTime() + 864e5));
-  if (s === t) return 'Hoje';
-  if (s === tomorrow) return 'Amanhã';
+  if (s === hoje) return t('dias.hoje');
+  if (s === tomorrow) return t('dias.amanha');
   const d = new Date(`${s}T12:00:00Z`);
   const str = formatadorDeData('pt-BR', { timeZone: TZ, weekday: 'short', day: '2-digit', month: '2-digit' }).format(d).replace('.', '');
   return str.charAt(0).toUpperCase() + str.slice(1);
@@ -47,6 +59,7 @@ function dayParts(s: string): { wd: string; d: string; mon: string } {
 export default function FutebolDayStepper({
   days, value, onChange, counts, className = '',
 }: { days: string[]; value: string; onChange: (d: string) => void; counts?: Record<string, number>; className?: string }) {
+  const { t } = useTranslation('futebol');
   const activeRef = useRef<HTMLButtonElement>(null);
   const jaPosicionou = useRef(false);
   // Na primeira abertura a régua pode ter dezenas de dias e começar lá no
@@ -88,7 +101,7 @@ export default function FutebolDayStepper({
               ref={active ? activeRef : undefined}
               type="button"
               onClick={() => onChange(s)}
-              title={dayLabel(s)}
+              title={dayLabel(s, t)}
               className={`flex items-center gap-2 rounded-full px-3 ${ALTURA_DA_PILULA} shrink-0 border transition ${
                 active
                   ? 'bg-forest text-canvas border-forest'
@@ -100,7 +113,11 @@ export default function FutebolDayStepper({
               <span className="text-[10px] uppercase tracking-[0.16em] font-semibold opacity-70">{wd}</span>
               <span className="text-[14px] font-semibold tabular-nums tracking-tight">{d}</span>
               <span className="text-[10px] uppercase tracking-[0.12em] font-semibold opacity-70">{mon}</span>
-              {isToday && <span className="text-[9px] uppercase tracking-[0.16em] font-bold">Hoje</span>}
+              {isToday && (
+                <span className="text-[9px] uppercase tracking-[0.16em] font-bold">
+                  {t('dias.hoje')}
+                </span>
+              )}
               {counts && counts[s] != null && <span className="text-[10px] tabular-nums opacity-60">· {counts[s]}</span>}
             </button>
           );

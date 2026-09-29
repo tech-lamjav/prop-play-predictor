@@ -1,0 +1,643 @@
+{
+  "agenda": {
+    "diaAnterior": "Dia anterior",
+    "proximoDia": "Próximo dia",
+    "hoje": "Hoje",
+    "escolherData": "Escolher data",
+    "mesAnterior": "Mês anterior",
+    "proximoMes": "Próximo mês",
+    "diaComJogo": "dia com jogo",
+    "irParaHoje": "Ir para hoje"
+  },
+  "ajuda": {
+    "oQueE": "O que é {{titulo}}"
+  },
+  "alertas": {
+    "cartao": {
+      "aria": "Novidade: alertas de oportunidades no Telegram",
+      "titulo": "Agora avisamos no Telegram",
+      "texto": "Quando uma oportunidade nova for publicada aqui antes do jogo, o Betinho te manda no chat. Já está ligado — você pode pausar quando quiser.",
+      "salvando": "Salvando...",
+      "entendi": "Entendi",
+      "dispensar": "Dispensar explicação"
+    },
+    "status": {
+      "aria": "Status dos alertas no Telegram",
+      "semAcesso": "Alertas sem acesso",
+      "ativo": "Telegram ativo",
+      "pausado": "Telegram pausado",
+      "gerenciar": "Gerenciar",
+      "gerenciarAria": "Gerenciar alertas do Telegram",
+      "preferenciaSalva": "Sua preferência está salva e volta a valer quando o acesso retornar."
+    },
+    "atalho": {
+      "titulo": "Receba alertas de publicação no Telegram",
+      "texto": "Conecte sua conta para ser avisado quando uma oportunidade for publicada no painel, antes do jogo.",
+      "botao": "Conectar Telegram"
+    }
+  },
+  "aviso": {
+    "naoERecomendacao": "Não é recomendação."
+  },
+  "bancada": {
+    "linha": "Linha",
+    "paradaTitulo_zero": "{{linha}} · {{count}} premissas a favor",
+    "paradaTitulo_one": "{{linha}} · {{count}} premissa a favor",
+    "paradaTitulo_other": "{{linha}} · {{count}} premissas a favor",
+    "bloqueado": {
+      "titulo": "A leitura deste jogo é de assinante",
+      "texto": "Os cinco mercados, a aposta, a odd, a chance, o Score e as premissas que sustentam a leitura ficam disponíveis com a assinatura. A escalação e as estatísticas do jogo continuam abertas nas abas ao lado."
+    },
+    "mercados": {
+      "titulo_zero": "Os {{count}} mercados",
+      "titulo_one": "O mercado",
+      "titulo_other": "Os {{count}} mercados",
+      "descFaixas": "{{comFaixa}} de {{cotados}} mercados cotados em faixa Alta ou Média. A barra é o Score; o tracinho marca onde começa a faixa Alta.",
+      "descCotados": "{{cotados}} de {{total}} mercados têm cotação. Os demais continuam analisados pelas premissas.",
+      "descSemPreco": "Sem preço ainda: a barra conta as premissas e o tracinho é a porta de {{porta}}."
+    },
+    "card": {
+      "comScore": "{{pick}} · {{chance}}% · {{odd}}",
+      "cotada": "{{pick}} · cotada @ {{odd}}",
+      "naoOportunidade": "{{pick}} · não é oportunidade",
+      "semCotacao": "{{pick}} · sem cotação"
+    },
+    "mercadoAberto": "Mercado aberto",
+    "mercadoAbertoCom": "Mercado aberto · {{mercado}}",
+    "selo": {
+      "oportunidade": "Oportunidade",
+      "semCotacao": "Sem cotação"
+    },
+    "rotulo": {
+      "linha": "Linha",
+      "saida": "Saída"
+    },
+    "menos": "Menos",
+    "mais": "Mais",
+    "confirmeCotacao": "Confirme a cotação na sua casa antes de registrar.",
+    "motivos": {
+      "carregando": "Carregando os motivos desta leitura.",
+      "erro": "Os motivos desta leitura estão sendo atualizados. Tente novamente em instantes.",
+      "indisponivel": "Os motivos desta leitura ainda não estão disponíveis."
+    },
+    "sobreCotacao": "Sobre a cotação: ",
+    "disponivelDesde": "Disponível desde: ",
+    "rodape": {
+      "regua": "Cada parada da régua tem o seu conjunto de premissas: trocar a linha muda o que precisa ser verdade.",
+      "saidas": "Cada saída do mercado tem o seu conjunto de premissas.",
+      "numerosAte": "Números da temporada até {{data}}.",
+      "semTabela": " Não há foto da classificação desta data, então a posição na tabela não é mostrada."
+    },
+    "dist": {
+      "titulo": "Onde a linha corta",
+      "texto": "Quantos gols o modelo espera, e de que lado da linha cada cenário cai.",
+      "media": "Média esperada de {{gols}} gols."
+    },
+    "veredito": {
+      "encerrado": "O mapa apontava {{pick}}: {{resultado}}.",
+      "jogoEncerrado": "Jogo encerrado.",
+      "semDetalhe": "{{pick}} está publicada, mas o cenário do jogo não foi detalhado aqui.",
+      "alta": "O cenário do jogo está bem a favor de {{pick}}.",
+      "media": "{{pick}} tem parte do cenário a favor: leitura parcial.",
+      "baixa": "Pouco do cenário sustenta {{pick}}: entra como consulta, não como aposta.",
+      "cotada": "{{pick}} tem cotação, mas ficou fora dos filtros de oportunidade.",
+      "cortada": "{{pick}} não entra como oportunidade neste jogo.",
+      "semPreco": "O jogo aponta para {{pick}}, mas falta o preço: as odds entram perto do jogo.",
+      "naoSustenta": "O jogo não sustenta esta saída."
+    },
+    "penalidade": "Penalidade: {{nome}}",
+    "fora": "Fora: {{lista}}.",
+    "semDesfalques": "A lista de desfalques deste jogo ainda não saiu: ela entra junto com a escalação confirmada, perto do jogo."
+  },
+  "base": {
+    "jogos_zero": "{{time}}, {{count}} jogos",
+    "jogos_one": "{{time}}, {{count}} jogo",
+    "jogos_other": "{{time}}, {{count}} jogos",
+    "dosUltimos": "{{time}}, {{jogos}} dos últimos {{janela}}"
+  },
+  "comoChegam": {
+    "titulo": "Como chegam",
+    "legenda": "Últimos 10 jogos, a mesma janela das premissas. Nos gols, o mandante em casa e o visitante fora; em \"sem sofrer gol\", a janela inteira.",
+    "golsMarcados": "Gols marcados",
+    "golsSofridos": "Gols sofridos",
+    "semSofrerGol": "Sem sofrer gol"
+  },
+  "consolidado": {
+    "titulo": "Somando os dois times",
+    "linhaEscolhida": "Linha escolhida",
+    "marcaLinha": "linha {{linha}}",
+    "favorSim": "Fica {{lado}} da linha de {{linha}}, e é por isso que esta premissa joga a favor de {{saida}}.",
+    "favorNao": "Fica {{lado}} da linha de {{linha}}: por este número, a premissa não sustenta {{saida}}.",
+    "contraSim": "Fica {{lado}} da linha de {{linha}}, mas a premissa não acendeu: o critério do modelo é mais exigente do que a linha.",
+    "contraNao": "Fica {{lado}} da linha de {{linha}}, e é por isso que esta premissa não atingiu o corte."
+  },
+  "contagem": {
+    "jogos_zero": "{{count}} jogos",
+    "jogos_one": "{{count}} jogo",
+    "jogos_other": "{{count}} jogos",
+    "partidas_zero": "{{count}} partidas",
+    "partidas_one": "{{count}} partida",
+    "partidas_other": "{{count}} partidas",
+    "oportunidades_zero": "{{count}} oportunidades",
+    "oportunidades_one": "{{count}} oportunidade",
+    "oportunidades_other": "{{count}} oportunidades",
+    "campeonatos_zero": "{{count}} campeonatos",
+    "campeonatos_one": "{{count}} campeonato",
+    "campeonatos_other": "{{count}} campeonatos"
+  },
+  "corte": {
+    "acima": "acima",
+    "abaixo": "abaixo"
+  },
+  "cta": {
+    "verAnalise": "Ver análise completa"
+  },
+  "desfecho": {
+    "bateu": "bateu",
+    "anulada": "anulada",
+    "naoBateu": "não bateu"
+  },
+  "escalacao": {
+    "ultimaEscalacao": "Última escalação",
+    "avisoReferencia": "Time, formação, técnico e banco são do último jogo. Os desfalques são deste.",
+    "tecnico": "Técnico",
+    "naoInformado": "Não informado",
+    "banco": "Banco · {{count}}",
+    "semReservas": "Sem reservas listados",
+    "desfalques": "Desfalques",
+    "semDesfalques": "Sem desfalques",
+    "duvida": "Dúvida",
+    "fora": "Fora"
+  },
+  "estado": {
+    "aoVivo": "Ao vivo",
+    "aoVivoMinusculo": "ao vivo",
+    "fim": "Fim",
+    "fimMinusculo": "fim",
+    "encerrado": "Encerrado",
+    "encerradoMinusculo": "encerrado",
+    "emAndamento": "Em andamento",
+    "naoComecou": "Não começou"
+  },
+  "estatisticas": {
+    "titulo": "Jogo a jogo",
+    "subtitulo": "O desempenho recente dos dois times. Não é a leitura do modelo.",
+    "mercado": "Mercado",
+    "janela": "Janela",
+    "ultimos": "Últimos {{janela}}",
+    "mandoRotulo": "Mando",
+    "mando": {
+      "todos": "Todos os jogos",
+      "proprio": "Mando deste jogo"
+    },
+    "linhaReferencia": "Linha de referência",
+    "carregando": "Carregando os jogos anteriores.",
+    "vazioMando": "Nenhum dos jogos recentes bate com o mando deste confronto. Experimente todos os jogos.",
+    "vazio": "Sem jogos anteriores para estes times.",
+    "acimaDaLinha": "acima da linha",
+    "abaixo": "abaixo",
+    "corCompara": "A cor compara, não diz se foi bom.",
+    "contagemDois": "<0>{{acima}}</0> dos {{de}} jogos dos dois times passaram de {{referencia}}.",
+    "contagemUm": "<0>{{acima}}</0> dos {{de}} jogos do {{time}} passaram de {{referencia}}.",
+    "janelaNota": "Janela: últimos {{janela}} de cada time.",
+    "janelaNotaMando": "Janela: últimos {{janela}} de cada time, só com o mando deste confronto.",
+    "semSerie": "{{times}} não tem jogo nesse recorte, então o gráfico mostra um time só — e a escala é a dele, não a dos dois."
+  },
+  "faixa": {
+    "alta": "Alta",
+    "media": "Média",
+    "baixa": "Baixa",
+    "melhorLeitura": "Melhor leitura do jogo",
+    "tudoAssinante": "Chance, odd e Score são de assinante.",
+    "premissasComOdds": "{{aFavor}} de {{total}} premissas a favor · as odds entram perto do jogo",
+    "semPremissasComOdds": "Sem premissas suficientes · as odds entram perto do jogo",
+    "semPreco": "sem preço coletado"
+  },
+  "faixas": {
+    "item": "{{rotulo}}, {{descricao}}",
+    "descricao": {
+      "alta": "cenário bem sustentado pelas premissas",
+      "media": "cenário parcialmente sustentado pelas premissas",
+      "baixa": "poucas premissas sustentam a linha"
+    }
+  },
+  "filtros": {
+    "mercadoRotulo": "Mercado",
+    "verMais": "Ver mais mercados",
+    "mercado": {
+      "todos": "Todos",
+      "resultado": "Resultado",
+      "gols": "Gols",
+      "ambosMarcam": "Ambos marcam",
+      "handicap": "Handicap",
+      "duplaChance": "Dupla chance"
+    },
+    "estadoRotulo": "Estado",
+    "estado": {
+      "aberto": "Em aberto",
+      "aoVivo": "Ao vivo",
+      "encerrado": "Encerrado"
+    },
+    "faixaRotulo": "Faixa",
+    "competicaoRotulo": "Competição",
+    "todos": "Todos",
+    "todas": "Todas",
+    "nenhum": "Nenhum",
+    "nenhuma": "Nenhuma",
+    "plural": {
+      "estados": "estados",
+      "faixas": "faixas",
+      "campeonatos": "campeonatos"
+    },
+    "doisRotulos": "{{primeiro}} e {{segundo}}",
+    "varios": "{{quantidade}} {{plural}}"
+  },
+  "gate": {
+    "disponivelParaAssinantes": "Disponível para assinantes",
+    "assinantes": "assinantes",
+    "deAssinante": "de assinante",
+    "leituraDeAssinante": "Leitura de assinante",
+    "premium": "Premium",
+    "assinarFutebol": "Assinar Futebol",
+    "horasGratis": "48 horas grátis",
+    "cartao": {
+      "titulo": "Oportunidade bloqueada",
+      "descricao": "A aposta, a odd e o Score são de assinante."
+    },
+    "chip": {
+      "titulo": "Teste grátis · {{tempo}}",
+      "rotulo": "Teste · {{tempo}}"
+    },
+    "faixa": {
+      "expiradoTitulo": "Seu teste grátis acabou",
+      "expiradoTexto": "As oportunidades do dia estão bloqueadas. Assine o Futebol pra continuar vendo os picks.",
+      "anonTitulo": "Veja as oportunidades — 48 horas grátis",
+      "anonTexto": "Crie sua conta e libere os picks do dia por 48 horas, sem cartão.",
+      "criarConta": "Criar conta grátis"
+    }
+  },
+  "grafico": {
+    "emCasa": "em casa",
+    "fora": "fora",
+    "semDado": "sem dado",
+    "tituloQuadro": "{{dia}} · {{mando}} contra {{adversario}}",
+    "tituloBarra": "{{dia}} · {{mando}} contra {{adversario}} · {{placar}} · {{valor}}",
+    "legendaQuerMaior": "acima da média, o lado que a premissa quer",
+    "legendaQuerMenor": "abaixo da média, o lado que a premissa quer",
+    "acima": "acima",
+    "abaixo": "abaixo",
+    "linhaCinza": "Linha tracejada cinza: {{rotulo}}.",
+    "ladoQuer": "o lado que a premissa quer",
+    "ladoContrario": "o lado contrário"
+  },
+  "hoje": {
+    "sobretituloHoje": "Hoje no futebol",
+    "sobretituloDia": "No futebol",
+    "quando": {
+      "hoje": "hoje",
+      "nesseDia": "nesse dia"
+    },
+    "destaque": {
+      "selo": "Melhor oportunidade do dia",
+      "porqueComChance": "O mercado dá <0>~{{chance}}% de chance</0>, e a odd é <1>{{odd}}</1>. O que sustenta esta leitura é o cenário, não o preço.",
+      "porqueSemChance": "Na odd <0>{{odd}}</0>, a aposta se paga a partir de <1>{{limiar}}%</1> de acerto — e a leitura do jogo aponta nessa direção.",
+      "abrirAnalise": "Abrir análise do jogo",
+      "faixa": "Faixa {{faixa}}"
+    },
+    "resumo": {
+      "deFaixaAlta": "{{count}} de faixa Alta",
+      "semJogos": "Sem jogos nesse dia",
+      "oddsRevisadas": "Odds revisadas de hora em hora"
+    },
+    "kpi": {
+      "jogos": "Jogos hoje",
+      "jogosSubHoje": "na agenda",
+      "jogosSubDia": "no dia",
+      "oportunidades": "Oportunidades",
+      "oportunidadesSub": "publicadas",
+      "faixaAlta": "Faixa Alta",
+      "faixaAltaSub": "maior confiança",
+      "faixaMedia": "Faixa Média",
+      "faixaMediaSub": "sustentação parcial"
+    },
+    "bloqueio": {
+      "titulo_one": "{{count}} oportunidade {{quando}}, bloqueada",
+      "titulo_other": "{{count}} oportunidades {{quando}}, bloqueadas",
+      "descricao": "A aposta, a odd, a chance e o Score são de assinante. A agenda dos jogos continua aberta abaixo."
+    },
+    "semDestaque": {
+      "titulo": "Nenhuma leitura em destaque {{quando}}",
+      "descricao": "Nenhuma linha do dia passou a régua de confiabilidade. Os jogos do dia estão abaixo.",
+      "descricaoComSetas": "Nenhuma linha do dia passou a régua de confiabilidade. Os jogos do dia estão abaixo; use as setas pra ver outros dias."
+    },
+    "lista": {
+      "sobretitulo": "Por confiabilidade",
+      "tituloPadrao": "Mais oportunidades",
+      "verTodas": "Ver todas",
+      "vazio": "Sem outras oportunidades relevantes agora.",
+      "verTodasHoje": "Ver todas as oportunidades de hoje",
+      "verTodasDoDia": "Ver todas as oportunidades do dia"
+    },
+    "grade": {
+      "sobretituloHoje": "Jogos de hoje",
+      "sobretituloDia": "Jogos do dia",
+      "verTodos": "Ver todos",
+      "vazio": "Sem jogos na agenda.",
+      "tituloScore": "Score de Confiabilidade"
+    },
+    "aviso": "Score e faixa medem o quanto o cenário sustenta a linha, não garantia de acerto. A decisão de apostar, e por quanto, é sua."
+  },
+  "jogo": {
+    "erro": "Não foi possível carregar este jogo.",
+    "aviso": "Leitura de risco, não recomendação de aposta",
+    "abas": {
+      "mercados": "Leitura & mercados",
+      "estatisticas": "Estatísticas",
+      "escalacoes": "Escalações"
+    },
+    "fase": {
+      "rodada": "Rodada {{numero}}",
+      "dezesseisAvos": "16-avos de final",
+      "oitavas": "Oitavas de final",
+      "quartas": "Quartas de final",
+      "semifinal": "Semifinal",
+      "final": "Final",
+      "terceiroLugar": "Disputa de 3º lugar"
+    },
+    "forma": {
+      "vitoria": "V",
+      "empate": "E",
+      "derrota": "D",
+      "semHistorico": "Sem histórico",
+      "tituloCasa": "contra {{adversario}} · {{marcados}} a {{sofridos}}",
+      "tituloFora": "fora, contra {{adversario}} · {{marcados}} a {{sofridos}}"
+    },
+    "estatisticas": {
+      "posse": "Posse de bola",
+      "golsEsperados": "Gols esperados",
+      "finalizacoes": "Finalizações",
+      "noGol": "No gol",
+      "escanteios": "Escanteios",
+      "faltas": "Faltas",
+      "cartoesAmarelos": "Cartões amarelos",
+      "passesCertos": "Passes certos"
+    },
+    "caixa": {
+      "titulo": "Como foi esta partida",
+      "vazio": "A fonte não publicou estatística desta partida."
+    },
+    "temporada": {
+      "titulo": "Estatísticas · temporada",
+      "geral": "Geral",
+      "mando": "Mando deste jogo",
+      "base": "base",
+      "golsMarcadosPorJogo": "Gols marcados / jogo",
+      "golsSofridosPorJogo": "Gols sofridos / jogo",
+      "posse": "Posse de bola",
+      "finalizacoesPorJogo": "Finalizações / jogo",
+      "escanteiosPorJogo": "Escanteios / jogo",
+      "over25": "% jogos Over 2.5",
+      "vazioMando": "Sem médias para o mando deste confronto.",
+      "vazioGeral": "Médias da temporada indisponíveis."
+    },
+    "base": {
+      "comEstatistica": "{{count}} com estatística",
+      "jogosComEstatistica": "{{jogos}} · {{comBoletim}} com estatística"
+    },
+    "h2h": {
+      "titulo": "Confrontos diretos",
+      "descricao": "Contexto dos encontros anteriores. Não entra na leitura do modelo.",
+      "carregando": "Carregando…",
+      "resumo_one": "{{count}} confronto · {{vitoriasCasa}} {{casa}} · {{empates}} empate · {{vitoriasFora}} {{fora}}",
+      "resumo_other": "{{count}} confrontos · {{vitoriasCasa}} {{casa}} · {{empates}} empate · {{vitoriasFora}} {{fora}}",
+      "casa": "Casa",
+      "fora": "Fora",
+      "empate": "Empate",
+      "vazio": "Sem confrontos diretos no histórico."
+    }
+  },
+  "jogos": {
+    "titulo": "Jogos",
+    "carregando": "carregando…",
+    "semJogos": "nenhum jogo neste dia",
+    "resumo": "{{jogos}} · {{campeonatos}}{{leitura}}",
+    "grupoResumo": "{{jogos}}{{leitura}}",
+    "erro": "Erro ao carregar os jogos.",
+    "diaVazio": "Nenhum jogo em {{dia}}.",
+    "irPara": "Ir para {{dia}}",
+    "abrirCampeonato": "Abrir {{campeonato}}",
+    "painel": {
+      "titulo": "Resumo do jogo",
+      "vazio": "Clique num jogo da lista para ver por que aquela é a leitura, sem sair da agenda."
+    }
+  },
+  "leitura": {
+    "semLeitura": "sem leitura",
+    "semLeituraAinda": "sem leitura ainda",
+    "semLeituraAindaTitulo": "Sem leitura ainda",
+    "saiAntesDoApito": "a leitura sai antes do apito",
+    "oddsPertoDoJogo": "odds entram perto do jogo",
+    "bateu": "a leitura bateu",
+    "naoBateu": "a leitura não bateu"
+  },
+  "lista": {
+    "juntorE": " e "
+  },
+  "linha": {
+    "odd": "odd {{odd}}",
+    "oddComChance": "odd {{odd}} · {{chance}}% chance"
+  },
+  "motivos": {
+    "aFavor": "A favor",
+    "porque": "Por quê",
+    "sustentam_one": "{{count}} motivo sustenta {{saida}}. Clique numa premissa para ver os jogos que produziram o número.",
+    "sustentam_other": "{{count}} motivos sustentam {{saida}}. Clique numa premissa para ver os jogos que produziram o número.",
+    "nenhumFavor": "Nenhum motivo a favor desta saída.",
+    "contraTexto": "Premissas de {{saida}} que foram avaliadas e não atingiram o corte. Não são sinal para o outro lado: são a ausência deste.",
+    "todasAtingiram": "Todas as premissas que valem nesta saída atingiram o corte.",
+    "definicaoCorte": "O <0>corte</0> é o número que a premissa precisa bater para acender. Ele sai da linha em umas e é fixo em outras, e quase nunca é a própria linha.",
+    "semJogoAJogo": "Sem jogo a jogo: {{lista}}. Aqui o sinal não vem de gol marcado ou sofrido, vem da tabela, do histórico entre os dois ou da escalação."
+  },
+  "numeros": {
+    "chance": "Chance",
+    "odd": "Odd",
+    "score": "Score",
+    "scoreFaixa": "Score · {{faixa}}"
+  },
+  "oportunidades": {
+    "sobretitulo": "Oportunidades",
+    "sobretituloHistorico": "Histórico",
+    "titulo_zero": "{{count}} oportunidades",
+    "titulo_one": "{{count}} oportunidade",
+    "titulo_other": "{{count}} oportunidades",
+    "tituloFaixaBaixa_zero": "{{count}} oportunidades em faixa baixa",
+    "tituloFaixaBaixa_one": "{{count}} oportunidade em faixa baixa",
+    "tituloFaixaBaixa_other": "{{count}} oportunidades em faixa baixa",
+    "subtitulo": "Análises pré-jogo com Score, o que sustenta cada leitura e a odd de mercado ao lado.",
+    "nomesLista": "{{inicio}} e {{fim}}",
+    "filtroVazio_one": "O filtro de {{nomes}} está sem nenhuma opção marcada. Marque ao menos uma para ver a lista.",
+    "filtroVazio_other": "O filtro de {{nomes}} estão sem nenhuma opção marcada. Marque ao menos uma para ver a lista.",
+    "escondidas_one": "Este dia tem {{count}} oportunidade em outro filtro. Troque o filtro para ver.",
+    "escondidas_other": "Este dia tem {{count}} oportunidades em outro filtro. Troque o filtro para ver.",
+    "filtros": {
+      "faixa": "faixa",
+      "estado": "estado",
+      "competicao": "competição"
+    },
+    "linha": {
+      "apostaDeAssinante": "Aposta de assinante"
+    },
+    "resumo": {
+      "green": "{{acertos}} de {{liquidadas}} deram green",
+      "nenhumaLiquidou": "Nenhuma oportunidade deste dia liquidou",
+      "descricao": "Resultado das oportunidades publicadas neste dia",
+      "descricaoComAnuladas_one": "Resultado das oportunidades publicadas neste dia · {{count}} anulada",
+      "descricaoComAnuladas_other": "Resultado das oportunidades publicadas neste dia · {{count}} anuladas",
+      "pendentesSemFixture_one": "{{pendentes}} de {{total}} sem resultado · {{count}} sem jogo no calendário",
+      "pendentesSemFixture_other": "{{pendentes}} de {{total}} sem resultado · {{count}} sem jogo no calendário",
+      "pendentesAdiado": "{{pendentes}} de {{total}} sem resultado · jogo adiado ou ainda sem placar"
+    },
+    "tabela": {
+      "score": "Score ↓",
+      "faixa": "Faixa",
+      "aposta": "Aposta",
+      "mercado": "Mercado",
+      "chance": "Chance",
+      "odd": "Odd"
+    },
+    "vazio": {
+      "filtro": "Nenhuma oportunidade nesse filtro.",
+      "passado": "Nenhuma oportunidade publicada nesse dia.",
+      "passadoSub": "Só listamos aqui o que foi publicado no dia.",
+      "futuro": "Ainda sem oportunidades para este dia.",
+      "futuroSub": "As odds costumam ser coletadas a partir de ~24h antes do jogo — as oportunidades aparecem aqui quando chegarem.",
+      "hoje": "Nenhum jogo com odds nesse filtro.",
+      "hojeSub": "As oportunidades aparecem quando há odds coletadas antes do jogo."
+    },
+    "aviso": "Publicamos a leitura do cenário, e ela não é promessa de que o preço está bom: a decisão de apostar, e por quanto, é sua.",
+    "comoLer": {
+      "titulo": "Como ler o Score",
+      "texto": "O <0>Score (0–100)</0> resume <1>quanto do cenário desta linha foi confirmado pelas premissas do modelo</1>. Ele não é chance de acerto e não inclui odd ou preço. Os argumentos a favor e contra mostram o que sustenta a leitura; chance estimada e odd aparecem ao lado, cada uma com uma função diferente."
+    },
+    "faixas": {
+      "titulo": "Faixas",
+      "nota": "As faixas organizam a leitura do cenário; não representam chance de acerto.",
+      "cobertura": "Odds pré-jogo (não ao vivo). Mercados: Resultado (1X2), Gols (Over/Under), Handicap asiático, Ambos marcam e Dupla chance; outros entram conforme liberados."
+    }
+  },
+  "painel": {
+    "placar": "{{estado}} · {{casa}} × {{fora}}",
+    "quando": "{{diaSemana}} {{dia}} {{hora}}",
+    "fechar": "Fechar resumo",
+    "abrirJogo": "Abrir a tela do jogo",
+    "melhorLeitura": "Melhor leitura · {{mercado}}",
+    "chanceOddAssinante": "chance e odd são de assinante",
+    "semPreco": "sem preço coletado ainda · as odds entram perto do jogo",
+    "explicacaoCabecalho": "{{rotulo}} · {{total}} {{sufixo}}",
+    "naoAtingiram_one": "{{count}} não atingiu o corte: {{lista}}.",
+    "naoAtingiram_other": "{{count}} não atingiram o corte: {{lista}}.",
+    "semLeituraTitulo": "Sem leitura para este jogo",
+    "semLeituraPorta": "Nenhuma premissa passou a porta de 2 em nenhum mercado.",
+    "semLeituraNaoCalculadas": "As premissas deste jogo ainda não foram calculadas.",
+    "semLeituraNota": "Isso não é defeito: a maioria dos jogos legitimamente não tem oportunidade. O contexto abaixo continua valendo.",
+    "forma": "Forma",
+    "desfalques": "Desfalques",
+    "verCincoMercados": "Ver a análise dos 5 mercados"
+  },
+  "painelPremissa": {
+    "amostraCurta": "Amostra curta na competição: em vez de gráfico, o valor de cada jogo.",
+    "fechar": "fechar",
+    "verOsJogos": "ver os jogos",
+    "naoAjuda": "Não ajuda na previsão: {{motivo}}."
+  },
+  "peso": {
+    "forte": "Forte",
+    "medio": "Médio"
+  },
+  "premissas": {
+    "rotulo": "Premissas",
+    "aFavorRotulo": "premissas a favor",
+    "aFavorCurto": "a favor",
+    "aFavor_zero": "premissas a favor",
+    "aFavor_one": "premissa a favor",
+    "aFavor_other": "premissas a favor",
+    "acesa_zero": "premissas acesas",
+    "acesa_one": "premissa acesa",
+    "acesa_other": "premissas acesas"
+  },
+  "prestacao": {
+    "jogosUnidade": "Jogos {{unidade}}",
+    "unidadePorTime": "{{unidade}}, por time",
+    "exigenciaE": "Os DOIS times precisam de {{corte}}.",
+    "exigenciaOu": "Basta UM dos times ter {{corte}}.",
+    "contraALinha": " A conta é contra a linha de {{linha}}, e muda com ela.",
+    "umSozinho": "{{times}} passou do corte sozinho, e é por isso que esta premissa sustenta {{saida}}.",
+    "doisPassaram": "Os dois passaram do corte, e é por isso que esta premissa sustenta {{saida}}.",
+    "nenhum": "Nenhum dos dois atingiu o corte.",
+    "naoAtingiu": "{{times}} não atingiu o corte, e por isso a premissa não acendeu.",
+    "base": "Base: {{base}}",
+    "corteDaPremissa": "Corte da premissa",
+    "porQuanto": ", por {{falta}}",
+    "cruzou": "{{insumo}} fica {{lado}} do corte de {{corte}}, e é por isso que esta premissa sustenta {{saida}}.",
+    "naoCruzou": "{{insumo}} não atingiu o corte de {{corte}}{{porQuanto}}.",
+    "margem": "O corte é a linha de {{linha}} com uma margem de {{margem}}: o modelo é mais exigente do que a linha.",
+    "corte": "corte {{corte}}",
+    "linha": "linha {{linha}}"
+  },
+  "registrar": {
+    "dialogo": "Registrar aposta no Betinho",
+    "noBetinho": "Registrar no Betinho",
+    "subtitulo": "Salva no seu controle de apostas com os campos já preenchidos.",
+    "sucesso": "Aposta registrada",
+    "sucessoTexto": "<0>{{pick}}</0> · {{valor}} @ {{odd}} já está no seu Betinho como pendente.",
+    "fechar": "Fechar",
+    "verNoBetinho": "Ver no Betinho",
+    "valor": "Valor (R$)",
+    "unidade": "Unidade",
+    "unidadeUmaCurta": "1 un.",
+    "unidadeMeiaCurta": "½ un.",
+    "unidadeUma": "1 unidade",
+    "unidadeMeia": "½ unidade",
+    "atalho": "{{rotulo}} · {{valor}}",
+    "notaReferencia": "Confirme a cotação na sua casa antes de registrar. A referência coletada foi {{odd}}.",
+    "notaSemCotacao": "Informe a odd que você encontrou para registrar a aposta.",
+    "notaMelhor": "Pegou outra odd? Ajuste acima — preenchemos com a melhor que encontramos ({{odd}}).",
+    "retorno": "Retorno potencial",
+    "erro": "Não foi possível registrar a aposta. Tente de novo.",
+    "precisaLogin": "Entre na sua conta para registrar a aposta.",
+    "salvando": "Registrando…",
+    "botao": "Registrar aposta",
+    "rodape": "Controle pessoal de apostas. Não é recomendação nem garantia de retorno.",
+    "apostou": "Apostou nessa oportunidade?",
+    "registreNoBetinho": "Registre no Betinho",
+    "curto": "Registrar"
+  },
+  "regua": {
+    "linhaDeReferencia": "Linha de referência"
+  },
+  "seletor": {
+    "pronto": "Pronto",
+    "aria": "{{rotulo}} {{resumo}}"
+  },
+  "serie": {
+    "naoSofreuGol": "não sofreu gol",
+    "sofreuGol": "sofreu gol",
+    "naoMarcou": "não marcou",
+    "marcou": "marcou",
+    "golEsperado": "{{valor}} de gol esperado",
+    "golsSofridos_zero": "{{count}} gols sofridos",
+    "golsSofridos_one": "{{count}} gol sofrido",
+    "golsSofridos_other": "{{count}} gols sofridos",
+    "golsMarcados_zero": "{{count}} gols marcados",
+    "golsMarcados_one": "{{count}} gol marcado",
+    "golsMarcados_other": "{{count}} gols marcados",
+    "golsNoJogo_zero": "{{count}} gols no jogo",
+    "golsNoJogo_one": "{{count}} gol no jogo",
+    "golsNoJogo_other": "{{count}} gols no jogo",
+    "contexto": "{{placar}} contra {{adversario}} · {{dia}}"
+  },
+  "dias": {
+    "hoje": "Hoje",
+    "amanha": "Amanhã"
+  }
+}

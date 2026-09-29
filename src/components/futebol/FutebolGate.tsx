@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Lock, Sparkles } from 'lucide-react';
 import { useFutebolAccess } from '@/hooks/use-futebol-data';
 import type { FutebolAccess } from '@/services/futebol-data.service';
@@ -53,15 +54,16 @@ const IR_PRO_CADASTRO = {
  * devolve o campo. Aqui só sobra dizer que existe algo ali e que ele é pago.
  */
 export function ValorBloqueado({ rotulo, className = '' }: { rotulo?: string; className?: string }) {
+  const { t } = useTranslation('futebol');
   return (
     <span
-      title="Disponível para assinantes"
+      title={t('gate.disponivelParaAssinantes')}
       className={`inline-flex items-center gap-1 align-middle text-ink-3 ${className}`}
     >
       <Lock className="w-3 h-3" aria-hidden />
       {/* Com rótulo visível o texto só para leitor de tela sai: os dois juntos
           fazem a mesma informação ser anunciada duas vezes. */}
-      {rotulo ? <span>{rotulo}</span> : <span className="sr-only">Disponível para assinantes</span>}
+      {rotulo ? <span>{rotulo}</span> : <span className="sr-only">{t('gate.disponivelParaAssinantes')}</span>}
     </span>
   );
 }
@@ -74,6 +76,7 @@ export function ValorBloqueado({ rotulo, className = '' }: { rotulo?: string; cl
  * tela que existe produto ali dentro; mostrá-las é o vazamento que fechamos.
  */
 export function CartaoBloqueado({ className = '' }: { className?: string }) {
+  const { t } = useTranslation('futebol');
   return (
     <div
       className={`rounded-rebrand-md border border-dashed border-line-2 bg-canvas-2/60 p-4 flex items-center gap-3 ${className}`}
@@ -82,8 +85,8 @@ export function CartaoBloqueado({ className = '' }: { className?: string }) {
         <Lock className="w-4 h-4" />
       </span>
       <div className="min-w-0">
-        <div className="text-[13px] font-semibold text-ink">Oportunidade bloqueada</div>
-        <p className="text-[12px] text-ink-2 leading-snug">A aposta, a odd e o Score são de assinante.</p>
+        <div className="text-[13px] font-semibold text-ink">{t('gate.cartao.titulo')}</div>
+        <p className="text-[12px] text-ink-2 leading-snug">{t('gate.cartao.descricao')}</p>
       </div>
     </div>
   );
@@ -91,9 +94,10 @@ export function CartaoBloqueado({ className = '' }: { className?: string }) {
 
 /** Selo de cadeado pequeno, pra sinalizar o que está bloqueado. */
 export function LockPill({ className = '' }: { className?: string }) {
+  const { t } = useTranslation('futebol');
   return (
     <span className={`inline-flex items-center gap-1 rounded-full bg-forest/10 text-forest text-[10px] font-bold px-2 py-0.5 ${className}`}>
-      <Lock className="w-2.5 h-2.5" /> Premium
+      <Lock className="w-2.5 h-2.5" /> {t('gate.premium')}
     </span>
   );
 }
@@ -107,6 +111,7 @@ export function LockPill({ className = '' }: { className?: string }) {
  * - assinante: nada
  */
 export function FutebolTrialChip() {
+  const { t } = useTranslation('futebol');
   const navigate = useNavigate();
   const { data: access } = useFutebolAccess();
   if (!access || access.state === 'subscribed') return null;
@@ -125,12 +130,12 @@ export function FutebolTrialChip() {
     return (
       <button
         onClick={() => navigate('/futebol/assinar')}
-        title={`Teste grátis · ${tempo.longo}`}
+        title={t('gate.chip.titulo', { tempo: tempo.longo })}
         className={`inline-flex items-center gap-1.5 h-8 px-2.5 rounded-full text-[11px] font-semibold border transition ${
           tempo.acabando ? 'border-amber/50 bg-amber/15 text-amber-2 hover:bg-amber/25' : 'border-line bg-canvas-2 text-ink-2 hover:bg-canvas'
         }`}
       >
-        <Sparkles className="w-3 h-3" /> Teste · {tempo.curto}
+        <Sparkles className="w-3 h-3" /> {t('gate.chip.rotulo', { tempo: tempo.curto })}
       </button>
     );
   }
@@ -142,7 +147,7 @@ export function FutebolTrialChip() {
       className="hidden sm:inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-[11px] font-bold bg-forest text-canvas hover:bg-forest-2 transition"
     >
       {expired ? <Lock className="w-3 h-3" /> : <Sparkles className="w-3 h-3" />}
-      {expired ? 'Assinar Futebol' : '48 horas grátis'}
+      {expired ? t('gate.assinarFutebol') : t('gate.horasGratis')}
     </button>
   );
 }
@@ -155,6 +160,7 @@ export function FutebolTrialChip() {
  * - subscribed: nada
  */
 export function FutebolAccessBanner({ access, className = '' }: { access?: FutebolAccess; className?: string }) {
+  const { t } = useTranslation('futebol');
   const navigate = useNavigate();
   if (!access || !faixaDeAcessoAparece(access)) return null;
 
@@ -164,11 +170,9 @@ export function FutebolAccessBanner({ access, className = '' }: { access?: Futeb
       <div className="flex items-start gap-2.5 flex-1 min-w-0">
         <span className="w-8 h-8 rounded-full bg-forest text-canvas grid place-items-center shrink-0"><Lock className="w-4 h-4" /></span>
         <div className="min-w-0">
-          <div className="text-[13px] font-bold text-ink">{expired ? 'Seu teste grátis acabou' : 'Veja as oportunidades — 48 horas grátis'}</div>
+          <div className="text-[13px] font-bold text-ink">{expired ? t('gate.faixa.expiradoTitulo') : t('gate.faixa.anonTitulo')}</div>
           <p className="text-[12px] text-ink-2 leading-snug">
-            {expired
-              ? 'As oportunidades do dia estão bloqueadas. Assine o Futebol pra continuar vendo os picks.'
-              : 'Crie sua conta e libere os picks do dia por 48 horas, sem cartão.'}
+            {expired ? t('gate.faixa.expiradoTexto') : t('gate.faixa.anonTexto')}
           </p>
         </div>
       </div>
@@ -176,7 +180,7 @@ export function FutebolAccessBanner({ access, className = '' }: { access?: Futeb
         onClick={() => (expired ? navigate('/futebol/assinar') : navigate('/auth', IR_PRO_CADASTRO))}
         className="shrink-0 inline-flex items-center justify-center gap-1.5 rounded-rebrand-sm bg-forest text-canvas text-[12px] font-bold px-4 h-9 hover:bg-forest-2 transition"
       >
-        {expired ? 'Assinar Futebol' : 'Criar conta grátis'}
+        {expired ? t('gate.assinarFutebol') : t('gate.faixa.criarConta')}
       </button>
     </div>
   );

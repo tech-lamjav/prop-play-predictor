@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 import { fmtExato } from '@/utils/formato';
 import { type SerieHistorico, type Story } from '@/utils/futebol-historico';
 import { dia, rotuloMedia, rotuloValor } from '@/utils/futebol-grafico-de-barras';
@@ -81,6 +82,7 @@ export function SerieResultados({
    */
   larguraFixa?: boolean;
 }) {
+  const { t } = useTranslation('futebol');
   return (
     <div className={cn('flex flex-wrap', larguraFixa ? 'gap-1' : 'gap-1.5')}>
       {s.jogos.map((j) => {
@@ -115,7 +117,11 @@ export function SerieResultados({
             // não tem nada a ver com o que o quadro informa.
             className={cn('rounded-lg px-2 py-1.5', larguraFixa && 'w-[84px] shrink-0')}
             style={{ background: c.bg }}
-            title={`${dia(j.data)} · ${j.emCasa ? 'em casa' : 'fora'} contra ${j.adversario}`}
+            title={t('grafico.tituloQuadro', {
+              dia: dia(j.data),
+              mando: j.emCasa ? t('grafico.emCasa') : t('grafico.fora'),
+              adversario: j.adversario,
+            })}
           >
             <div className="tabular-nums text-[12.5px] font-bold leading-none text-center" style={{ color: c.fg }}>
               {j.placar}
@@ -205,6 +211,7 @@ export function BarrasEmSequencia({
   rotuloDentro?: boolean;
   referencia?: number | null;
 }) {
+  const { t } = useTranslation('futebol');
   const util = altura - TOPO_ROTULO;
   const amplitude = teto - piso || 1;
   const zero = ((0 - piso) / amplitude) * util;
@@ -251,9 +258,13 @@ export function BarrasEmSequencia({
                   <div
                     key={`${j.ordem}-${j.data}`}
                     className="relative flex-1 min-w-[6px] max-w-[44px] h-full"
-                    title={`${dia(j.data)} · ${j.emCasa ? 'em casa' : 'fora'} contra ${j.adversario} · ${j.placar}${
-                      v != null ? ` · ${rotuloValor(v, s.metrica)}` : ' · sem dado'
-                    }`}
+                    title={t('grafico.tituloBarra', {
+                      dia: dia(j.data),
+                      mando: j.emCasa ? t('grafico.emCasa') : t('grafico.fora'),
+                      adversario: j.adversario,
+                      placar: j.placar,
+                      valor: v != null ? rotuloValor(v, s.metrica) : t('grafico.semDado'),
+                    })}
                   >
                     {comRotulo && (
                       <span
@@ -367,6 +378,7 @@ export function BlocoSerie({
   mostraComoLer: boolean;
   referencia?: Story['referencia'];
 }) {
+  const { t } = useTranslation('futebol');
   const util = PLOT - TOPO_ROTULO;
   const amplitude = teto - piso || 1;
   /** Onde o zero cai, medido do fundo do gráfico. É 0 quando não há negativo. */
@@ -408,9 +420,13 @@ export function BlocoSerie({
               <div
                 key={`${j.ordem}-${j.data}`}
                 className="flex-1 min-w-[6px] max-w-[44px] flex flex-col items-center justify-end"
-                title={`${dia(j.data)} · ${j.emCasa ? 'em casa' : 'fora'} contra ${j.adversario} · ${j.placar}${
-                  j.valor != null ? ` · ${rotuloValor(j.valor, s.metrica)}` : ' · sem dado'
-                }`}
+                title={t('grafico.tituloBarra', {
+                  dia: dia(j.data),
+                  mando: j.emCasa ? t('grafico.emCasa') : t('grafico.fora'),
+                  adversario: j.adversario,
+                  placar: j.placar,
+                  valor: j.valor != null ? rotuloValor(j.valor, s.metrica) : t('grafico.semDado'),
+                })}
               >
                 {(() => {
                   const alt = j.valor == null ? 3 : Math.max(3, y(j.valor));
@@ -455,9 +471,13 @@ export function BlocoSerie({
                 <div
                   key={`${j.ordem}-${j.data}`}
                   className="relative flex-1 min-w-[6px] max-w-[44px]"
-                  title={`${dia(j.data)} · ${j.emCasa ? 'em casa' : 'fora'} contra ${j.adversario} · ${j.placar}${
-                    v != null ? ` · ${rotuloValor(v, s.metrica)}` : ' · sem dado'
-                  }`}
+                  title={t('grafico.tituloBarra', {
+                    dia: dia(j.data),
+                    mando: j.emCasa ? t('grafico.emCasa') : t('grafico.fora'),
+                    adversario: j.adversario,
+                    placar: j.placar,
+                    valor: v != null ? rotuloValor(v, s.metrica) : t('grafico.semDado'),
+                  })}
                 >
                   {/* 4px, o mesmo respiro do `mb-1` do caminho de cima: os dois
                       desenhos precisam ser indistinguíveis onde medem a mesma

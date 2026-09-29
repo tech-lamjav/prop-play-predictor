@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next';
+
 /**
  * A legenda do bloco "Como chegam".
  *
@@ -22,10 +24,10 @@
  * e porque o bloco pode voltar a ter dois donos.
  */
 export function ComoChegamLegenda({ className = '', cor = '#8d8672' }: { className?: string; cor?: string }) {
+  const { t } = useTranslation('futebol');
   return (
     <p className={`text-[10.5px] leading-snug ${className}`} style={{ color: cor }}>
-      Últimos 10 jogos, a mesma janela das premissas. Nos gols, o mandante em casa e o visitante fora;
-      em "sem sofrer gol", a janela inteira.
+      {t('comoChegam.legenda')}
     </p>
   );
 }
