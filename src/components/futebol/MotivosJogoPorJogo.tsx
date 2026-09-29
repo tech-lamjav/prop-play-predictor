@@ -431,11 +431,12 @@ function PainelPremissa({
                 <span className="text-[12px] font-semibold text-ink">{s.titulo}</span>
                 <span className="text-[10.5px] ml-auto" style={{ color: '#8d8672' }}>{s.sub}</span>
               </div>
-              {/* Em `ambos` a cor não é vitória nem derrota: é o fato ter
-                  acontecido ou não. Pintar de verde uma vitória em que só um
-                  time marcou seria a cor respondendo outra pergunta que a da
-                  premissa. */}
-              <SerieResultados s={s} corPor={s.metrica === 'ambos' ? 'valor' : 'resultado'} />
+              {/* Nas binárias a cor segue o que a PREMISSA quer, e não o
+                  resultado nem o fato cru: a mesma métrica atende premissas de
+                  direções opostas, e o fato cru pintaria de verde, na
+                  `ambos_marcam`, justamente o jogo em que o time passou em
+                  branco. */}
+              <SerieResultados s={s} corPor={s.metrica === 'resultado' ? 'resultado' : 'favorece'} />
             </div>
           ))}
         </div>
