@@ -65,5 +65,8 @@ jobs:
           supabase functions deploy ops-healthcheck --no-verify-jwt
           supabase functions deploy notify-futebol-oferta --no-verify-jwt
           supabase functions deploy crm-comportamento
+          # ⚠️ DESCARTÁVEL — sonda de cabeçalhos de origem. Só staging, nunca
+          # produção. Sai daqui junto com a pasta assim que a resposta for lida.
+          supabase functions deploy sonda-geo
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
