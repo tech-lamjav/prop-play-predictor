@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/use-auth";
 import { Camera, Crown, CheckCircle2, XCircle, ArrowRight, ArrowDown, Lightbulb, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -13,36 +14,45 @@ import { SHOW_BOLAO_ENTRY_POINTS } from "@/config/bolao";
  * tráfego pago cai direto nas LPs de produto; aqui chega orgânico/busca de
  * marca. Formato "prateleira": cada produto tem uma seção inteira com mockup
  * grande emoldurado, alternando lados. Paleta "Direção A" do rebrand.
+ *
+ * A copy vem do catálogo `planos` no idioma ativo (#540), e não mais de texto
+ * fixo aqui: é a primeira tela de quem chega de Peru, Argentina, México ou
+ * Chile. Os nomes próprios — times, jogadores, Betinho, NBA — ficam em código,
+ * porque não se traduzem.
  */
 
 // Moldura de janela compartilhada pelos mockups (mesma das LPs de produto).
 const WindowFrame = ({
   url,
-  tag = "dados de exemplo",
+  tag,
   children,
 }: {
   url: string;
   tag?: string;
   children: React.ReactNode;
-}) => (
-  <div className="rounded-rebrand-xl overflow-hidden shadow-2xl border border-line-2 bg-canvas">
-    <div className="flex items-center justify-between gap-3 bg-ink px-4 py-2.5">
-      <div className="flex items-center gap-1.5">
-        <span className="w-2.5 h-2.5 rounded-full bg-white/15" />
-        <span className="w-2.5 h-2.5 rounded-full bg-white/15" />
-        <span className="w-2.5 h-2.5 rounded-full bg-white/15" />
+}) => {
+  const { t } = useTranslation("planos");
+  return (
+    <div className="rounded-rebrand-xl overflow-hidden shadow-2xl border border-line-2 bg-canvas">
+      <div className="flex items-center justify-between gap-3 bg-ink px-4 py-2.5">
+        <div className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-white/15" />
+          <span className="w-2.5 h-2.5 rounded-full bg-white/15" />
+          <span className="w-2.5 h-2.5 rounded-full bg-white/15" />
+        </div>
+        <span className="font-mono text-[10px] text-white/50 truncate">{url}</span>
+        <span className="font-mono text-[9px] font-bold uppercase tracking-wider text-amber bg-amber/15 border border-amber/40 rounded-full px-2 py-0.5 whitespace-nowrap">
+          {tag ?? t("landing.mock.exemplo")}
+        </span>
       </div>
-      <span className="font-mono text-[10px] text-white/50 truncate">{url}</span>
-      <span className="font-mono text-[9px] font-bold uppercase tracking-wider text-amber bg-amber/15 border border-amber/40 rounded-full px-2 py-0.5 whitespace-nowrap">
-        {tag}
-      </span>
+      <div className="p-3 sm:p-4 space-y-3">{children}</div>
     </div>
-    <div className="p-3 sm:p-4 space-y-3">{children}</div>
-  </div>
-);
+  );
+};
 
 // Mockup NBA — insight clicável que filtra o gráfico (mini-demo da LP /nba).
 const MockNBA = () => {
+  const { t } = useTranslation("planos");
   const [filtered, setFiltered] = useState(false);
   const base = [24, 31, 28, 33, 22, 30, 27, 35, 29, 25, 32, 28];
   const semMurray = [31, 34, 36, 30, 35, 38, 27, 33];
@@ -72,7 +82,7 @@ const MockNBA = () => {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
               <h3 className="text-[15px] font-bold text-ink leading-tight">Nikola Jokic</h3>
-              <span className="text-forest font-semibold text-[11px]">· Ativo</span>
+              <span className="text-forest font-semibold text-[11px]">· {t("landing.mock.nba.ativo")}</span>
             </div>
             <div className="flex items-center gap-1.5 text-[11px] text-ink-2 mt-0.5">
               <img src={getTeamLogoUrl("Denver Nuggets")} alt="Denver Nuggets" className="w-3.5 h-3.5 object-contain" loading="lazy" />
@@ -81,15 +91,15 @@ const MockNBA = () => {
           </div>
           <div className="flex items-center gap-3 sm:gap-4 shrink-0">
             <div className="text-right">
-              <div className="text-[9px] font-bold uppercase tracking-[0.1em] text-ink-3">Pontos</div>
+              <div className="text-[9px] font-bold uppercase tracking-[0.1em] text-ink-3">{t("landing.mock.nba.pontos")}</div>
               <div className="text-base font-bold text-ink tabular-nums">{avgPts}</div>
             </div>
             <div className="text-right hidden sm:block">
-              <div className="text-[9px] font-bold uppercase tracking-[0.1em] text-ink-3">Assist.</div>
+              <div className="text-[9px] font-bold uppercase tracking-[0.1em] text-ink-3">{t("landing.mock.nba.assistencias")}</div>
               <div className="text-base font-bold text-ink tabular-nums">10.2</div>
             </div>
             <div className="text-right hidden sm:block">
-              <div className="text-[9px] font-bold uppercase tracking-[0.1em] text-ink-3">Rebotes</div>
+              <div className="text-[9px] font-bold uppercase tracking-[0.1em] text-ink-3">{t("landing.mock.nba.rebotes")}</div>
               <div className="text-base font-bold text-ink tabular-nums">12.8</div>
             </div>
           </div>
@@ -108,28 +118,37 @@ const MockNBA = () => {
       >
         <div className="flex items-center gap-2 mb-1.5">
           <Lightbulb className="w-3.5 h-3.5 text-amber-2 shrink-0" />
-          <span className="text-[9px] font-bold text-amber-2 uppercase tracking-widest">Insight</span>
-          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-status-danger/10 text-status-danger">OUT</span>
+          <span className="text-[9px] font-bold text-amber-2 uppercase tracking-widest">{t("landing.mock.nba.insight")}</span>
+          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-status-danger/10 text-status-danger">{t("landing.mock.nba.fora")}</span>
         </div>
         <p className="text-[13px] text-ink leading-snug">
-          Com <span className="font-bold text-status-danger">Murray</span> fora, os{" "}
-          <span className="font-bold text-forest">pontos</span> de Jokic sobem{" "}
-          <span className="font-bold text-forest">+15%</span>
-          {!filtered && <span className="text-ink-3"> — clique pra filtrar o gráfico</span>}
+          {/* `Trans`, e não concatenação: os três destaques caem no meio da
+              frase, e em outro idioma caem em outro lugar. */}
+          <Trans
+            t={t}
+            i18nKey="landing.mock.nba.insightTexto"
+            values={{ desfalque: "Murray", jogador: "Jokic", alta: "+15%" }}
+            components={[
+              <span className="font-bold text-status-danger" key="desfalque" />,
+              <span className="font-bold text-forest" key="pontos" />,
+              <span className="font-bold text-forest" key="alta" />,
+            ]}
+          />
+          {!filtered && <span className="text-ink-3">{" "}{t("landing.mock.nba.insightDica")}</span>}
         </p>
       </button>
 
       <div className="rounded-rebrand-lg bg-white border border-line overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 px-4 pt-3 pb-2.5 border-b border-line">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2">Gráfico de desempenho</span>
+            <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2">{t("landing.mock.nba.grafico")}</span>
             {filtered ? (
               <button
                 type="button"
                 onClick={() => setFiltered(false)}
                 className="inline-flex items-center gap-1 h-5 px-1.5 rounded-rebrand-sm bg-forest text-white text-[9px] font-semibold hover:bg-forest-2 transition-colors"
               >
-                Sem Murray em quadra
+                {t("landing.mock.nba.filtro", { desfalque: "Murray" })}
                 <X className="w-2.5 h-2.5 opacity-80" />
               </button>
             ) : (
@@ -137,7 +156,7 @@ const MockNBA = () => {
             )}
           </div>
           <span className="text-[11px] text-ink-2">
-            Taxa de acerto{" "}
+            {t("landing.mock.nba.taxaAcerto")}{" "}
             <span className="font-semibold text-forest tabular-nums">{hitRate}%</span>{" "}
             <span className="text-ink-3 tabular-nums">({over}/{values.length})</span>
           </span>
@@ -166,13 +185,13 @@ const MockNBA = () => {
           </div>
           <div className="flex items-center gap-4 mt-3 text-[11px] text-ink-2">
             <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-status-success" /> Over ({over})
+              <span className="w-2 h-2 rounded-full bg-status-success" /> {t("landing.mock.nba.acima", { total: over })}
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-status-danger" /> Under ({values.length - over})
+              <span className="w-2 h-2 rounded-full bg-status-danger" /> {t("landing.mock.nba.abaixo", { total: values.length - over })}
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-3 h-px bg-ink" /> Linha
+              <span className="w-3 h-px bg-ink" /> {t("landing.mock.nba.linha")}
             </span>
           </div>
         </div>
@@ -182,81 +201,108 @@ const MockNBA = () => {
 };
 
 // Mockup Betinho — print no Telegram + narrativa + KPIs.
-const MockBetinho = () => (
-  <WindowFrame url="smartbetting.app/betting-dashboard">
-    <div className="rounded-rebrand-lg bg-white border border-line p-3.5">
-      <p className="text-[10px] uppercase tracking-[0.14em] font-bold text-ink-3 mb-2">Telegram · @betinho</p>
-      <div className="inline-flex items-center gap-2 bg-canvas-2 border border-line rounded-rebrand-md px-3 py-2">
-        <Camera className="w-4 h-4 text-ink-3" />
-        <span className="font-mono text-[11px] text-ink">bilhete_bet365.png</span>
-        <span className="text-[10px] text-ink-3">21:34</span>
-      </div>
-    </div>
-    <div className="relative overflow-hidden rounded-rebrand-lg bg-forest text-white p-4">
-      <div
-        className="absolute inset-0 opacity-[0.06] pointer-events-none"
-        style={{ backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)", backgroundSize: "8px 8px" }}
-      />
-      <div className="relative flex items-start gap-3">
-        <span className="w-9 h-9 rounded-full bg-amber text-forest grid place-items-center text-[15px] font-black shrink-0">
-          B
-        </span>
-        <p className="text-[15px] font-extrabold leading-snug pt-1">
-          Recebi! Registrada. Seu mês: <span className="text-amber tabular-nums">+11,8% de ROI</span> em 33 apostas.
-        </p>
-      </div>
-    </div>
-    <div className="grid grid-cols-2 gap-3">
-      <div className="rounded-rebrand-lg border border-forest/30 bg-forest/[0.05] p-3">
-        <div className="text-[9px] uppercase tracking-[0.14em] font-extrabold text-forest mb-1">Oportunidade</div>
-        <div className="text-[12px] font-extrabold text-ink leading-tight mb-1">Props da NBA é sua mina</div>
-        <div className="text-[11px] text-ink-2 leading-snug">
-          <span className="font-bold text-forest tabular-nums">+38%</span> de ROI em 12 apostas
+const MockBetinho = () => {
+  const { t } = useTranslation("planos");
+  return (
+    <WindowFrame url="smartbetting.app/betting-dashboard">
+      <div className="rounded-rebrand-lg bg-white border border-line p-3.5">
+        <p className="text-[10px] uppercase tracking-[0.14em] font-bold text-ink-3 mb-2">Telegram · @betinho</p>
+        <div className="inline-flex items-center gap-2 bg-canvas-2 border border-line rounded-rebrand-md px-3 py-2">
+          <Camera className="w-4 h-4 text-ink-3" />
+          <span className="font-mono text-[11px] text-ink">bilhete_bet365.png</span>
+          <span className="text-[10px] text-ink-3">21:34</span>
         </div>
       </div>
-      <div className="rounded-rebrand-lg border border-status-danger/30 bg-status-danger/[0.05] p-3">
-        <div className="text-[9px] uppercase tracking-[0.14em] font-extrabold text-status-danger mb-1">Alerta</div>
-        <div className="text-[12px] font-extrabold text-ink leading-tight mb-1">Serie A te custa caro</div>
-        <div className="text-[11px] text-ink-2 leading-snug">
-          <span className="font-bold text-status-danger tabular-nums">−45%</span> no Over/Under
+      <div className="relative overflow-hidden rounded-rebrand-lg bg-forest text-white p-4">
+        <div
+          className="absolute inset-0 opacity-[0.06] pointer-events-none"
+          style={{ backgroundImage: "radial-gradient(circle at 1px 1px, white 1px, transparent 0)", backgroundSize: "8px 8px" }}
+        />
+        <div className="relative flex items-start gap-3">
+          <span className="w-9 h-9 rounded-full bg-amber text-forest grid place-items-center text-[15px] font-black shrink-0">
+            B
+          </span>
+          <p className="text-[15px] font-extrabold leading-snug pt-1">
+            {/* Os números ficam FORA do catálogo e entram por interpolação: o
+                que se traduz é a frase, não o valor. */}
+            <Trans
+              t={t}
+              i18nKey="landing.mock.betinho.resposta"
+              values={{ roi: "+11,8%", apostas: 33 }}
+              components={[<span className="text-amber tabular-nums" key="roi" />]}
+            />
+          </p>
         </div>
       </div>
-    </div>
-  </WindowFrame>
-);
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-rebrand-lg border border-forest/30 bg-forest/[0.05] p-3">
+          <div className="text-[9px] uppercase tracking-[0.14em] font-extrabold text-forest mb-1">{t("landing.mock.betinho.oportunidade")}</div>
+          <div className="text-[12px] font-extrabold text-ink leading-tight mb-1">{t("landing.mock.betinho.oportunidadeTitulo")}</div>
+          <div className="text-[11px] text-ink-2 leading-snug">
+            <Trans
+              t={t}
+              i18nKey="landing.mock.betinho.oportunidadeTexto"
+              values={{ roi: "+38%", apostas: 12 }}
+              components={[<span className="font-bold text-forest tabular-nums" key="roi" />]}
+            />
+          </div>
+        </div>
+        <div className="rounded-rebrand-lg border border-status-danger/30 bg-status-danger/[0.05] p-3">
+          <div className="text-[9px] uppercase tracking-[0.14em] font-extrabold text-status-danger mb-1">{t("landing.mock.betinho.alerta")}</div>
+          <div className="text-[12px] font-extrabold text-ink leading-tight mb-1">{t("landing.mock.betinho.alertaTitulo")}</div>
+          <div className="text-[11px] text-ink-2 leading-snug">
+            <Trans
+              t={t}
+              i18nKey="landing.mock.betinho.alertaTexto"
+              values={{ roi: "−45%" }}
+              components={[<span className="font-bold text-status-danger tabular-nums" key="roi" />]}
+            />
+          </div>
+        </div>
+      </div>
+    </WindowFrame>
+  );
+};
 
 // Mockup Bolão — ranking do grupo.
-const MockBolao = () => (
-  <WindowFrame url="smartbetting.app/bolao">
-    <div className="rounded-rebrand-lg bg-white border border-line overflow-hidden">
-      <div className="flex items-center justify-between px-4 pt-3 pb-2.5 border-b border-line">
-        <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2">Bolão da Firma</span>
-        <span className="text-[10px] text-ink-3">14 participantes · 104 jogos</span>
+const MockBolao = () => {
+  const { t } = useTranslation("planos");
+  /* `eu` é uma marca no dado, e não uma comparação com o nome: o nome vem
+     traduzido, e comparar texto de tela com string fixa quebraria em espanhol
+     sem quebrar em português. */
+  const ranking = [
+    { pos: 1, nome: "Carlão", pts: 47, lider: true, eu: false },
+    { pos: 2, nome: "Dudu", pts: 44, lider: false, eu: false },
+    { pos: 3, nome: t("landing.mock.bolao.voce"), pts: 41, lider: false, eu: true },
+    { pos: 4, nome: "Renata", pts: 39, lider: false, eu: false },
+    { pos: 5, nome: "Tonhão", pts: 35, lider: false, eu: false },
+  ];
+  return (
+    <WindowFrame url="smartbetting.app/bolao">
+      <div className="rounded-rebrand-lg bg-white border border-line overflow-hidden">
+        <div className="flex items-center justify-between px-4 pt-3 pb-2.5 border-b border-line">
+          <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2">{t("landing.mock.bolao.titulo")}</span>
+          <span className="text-[10px] text-ink-3">{t("landing.mock.bolao.info", { participantes: 14, jogos: 104 })}</span>
+        </div>
+        <div className="p-3 space-y-2">
+          {ranking.map((r) => (
+            <div
+              key={r.pos}
+              className={`flex items-center gap-3 rounded-rebrand-md px-3 py-2 ${
+                r.lider ? "bg-amber/15 border border-amber/40" : r.eu ? "bg-forest/[0.06] border border-forest/30" : "bg-canvas-2 border border-line"
+              }`}
+            >
+              <span className="font-mono text-[11px] font-bold text-ink-3 w-4 tabular-nums">{r.pos}</span>
+              <span className="text-[13px] font-bold text-ink flex-1">{r.nome}</span>
+              {r.lider && <Crown className="w-3.5 h-3.5 text-amber-2" />}
+              <span className="font-mono text-[12px] font-bold text-ink tabular-nums">{r.pts} pts</span>
+            </div>
+          ))}
+        </div>
       </div>
-      <div className="p-3 space-y-2">
-        {[
-          { pos: 1, nome: "Carlão", pts: 47, lider: true },
-          { pos: 2, nome: "Dudu", pts: 44, lider: false },
-          { pos: 3, nome: "Você", pts: 41, lider: false },
-          { pos: 4, nome: "Renata", pts: 39, lider: false },
-          { pos: 5, nome: "Tonhão", pts: 35, lider: false },
-        ].map((r) => (
-          <div
-            key={r.pos}
-            className={`flex items-center gap-3 rounded-rebrand-md px-3 py-2 ${
-              r.lider ? "bg-amber/15 border border-amber/40" : r.nome === "Você" ? "bg-forest/[0.06] border border-forest/30" : "bg-canvas-2 border border-line"
-            }`}
-          >
-            <span className="font-mono text-[11px] font-bold text-ink-3 w-4 tabular-nums">{r.pos}</span>
-            <span className="text-[13px] font-bold text-ink flex-1">{r.nome}</span>
-            {r.lider && <Crown className="w-3.5 h-3.5 text-amber-2" />}
-            <span className="font-mono text-[12px] font-bold text-ink tabular-nums">{r.pts} pts</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  </WindowFrame>
-);
+    </WindowFrame>
+  );
+};
 
 // Escudo do time no mock do Futebol — logo real do bucket, cai pras iniciais no 404.
 const FutebolCrest = ({ teamId, sigla, className = "" }: { teamId: number; sigla: string; className?: string }) => {
@@ -280,30 +326,49 @@ const FutebolCrest = ({ teamId, sigla, className = "" }: { teamId: number; sigla
   );
 };
 
+/* A faixa é um IDENTIFICADOR, e não o rótulo de tela: a cor é escolhida por ele
+   e o rótulo vem do catálogo. Comparar a cor com a palavra "Alta" pintaria tudo
+   de cinza no dia em que a palavra fosse traduzida. */
+type Faixa = "alta" | "media";
+
 // Mockup Futebol — quadro de oportunidades de valor (mini-demo da LP /futebol).
 const MockFutebol = () => {
+  const { t } = useTranslation("planos");
   const jogos = [
-    { homeId: 127, awayId: 121, hs: "FLA", as: "PAL", jogo: "Flamengo × Palmeiras", pick: "Mais de 2,5 gols", faixa: "Alta", score: 71 },
-    { homeId: 130, awayId: 119, hs: "GRE", as: "INT", jogo: "Grêmio × Internacional", pick: "Grêmio ou empate", faixa: "Alta", score: 63 },
-    { homeId: 126, awayId: 131, hs: "SAO", as: "COR", jogo: "São Paulo × Corinthians", pick: "Ambos marcam", faixa: "Média", score: 49 },
+    {
+      homeId: 127, awayId: 121, hs: "FLA", as: "PAL",
+      casa: "Flamengo", visitante: "Palmeiras",
+      pick: t("landing.mock.futebol.picks.maisGols"),
+      faixa: "alta" as Faixa, score: 71,
+    },
+    {
+      homeId: 130, awayId: 119, hs: "GRE", as: "INT",
+      casa: "Grêmio", visitante: "Internacional",
+      pick: t("landing.mock.futebol.picks.ouEmpate", { time: "Grêmio" }),
+      faixa: "alta" as Faixa, score: 63,
+    },
+    {
+      homeId: 126, awayId: 131, hs: "SAO", as: "COR",
+      casa: "São Paulo", visitante: "Corinthians",
+      pick: t("landing.mock.futebol.picks.ambosMarcam"),
+      faixa: "media" as Faixa, score: 49,
+    },
   ];
-  const faixaCls = (f: string) =>
-    f === "Alta"
+  const faixaCls = (f: Faixa) =>
+    f === "alta"
       ? "bg-forest text-white"
-      : f === "Média"
-        ? "bg-amber/15 text-amber-2 border border-amber/40"
-        : "bg-canvas-2 text-ink-3 border border-line";
+      : "bg-amber/15 text-amber-2 border border-amber/40";
   return (
     <WindowFrame url="smartbetting.app/futebol">
       <div className="rounded-rebrand-lg bg-white border border-line overflow-hidden">
         <div className="flex items-center justify-between px-4 pt-3 pb-2.5 border-b border-line">
-          <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2">Oportunidades de hoje</span>
-          <span className="text-[10px] text-ink-3">Brasileirão · 3 com valor</span>
+          <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2">{t("landing.mock.futebol.titulo")}</span>
+          <span className="text-[10px] text-ink-3">{t("landing.mock.futebol.info", { comValor: 3 })}</span>
         </div>
         <div className="p-3 space-y-2">
           {jogos.map((j, idx) => (
             <div
-              key={j.jogo}
+              key={j.casa}
               className={`flex items-center gap-3 rounded-rebrand-md px-3 py-2 ${
                 idx === 0 ? "bg-forest/[0.06] border border-forest/30" : "bg-canvas-2 border border-line"
               }`}
@@ -313,77 +378,48 @@ const MockFutebol = () => {
                 <FutebolCrest teamId={j.awayId} sigla={j.as} className="-ml-1.5" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-[12px] font-bold text-ink leading-tight truncate">{j.jogo}</div>
+                <div className="text-[12px] font-bold text-ink leading-tight truncate">{j.casa} × {j.visitante}</div>
                 <div className="text-[11px] text-ink-2 truncate">{j.pick}</div>
               </div>
-              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${faixaCls(j.faixa)}`}>{j.faixa}</span>
+              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${faixaCls(j.faixa)}`}>
+                {t(`landing.mock.futebol.faixas.${j.faixa}`)}
+              </span>
               <span className="font-mono text-[12px] font-bold text-ink tabular-nums w-7 text-right">{j.score}</span>
             </div>
           ))}
         </div>
       </div>
       <div className="rounded-rebrand-lg border border-forest/30 bg-forest/[0.05] p-3">
-        <div className="text-[9px] uppercase tracking-[0.14em] font-extrabold text-forest mb-1">Por que Flamengo × Palmeiras</div>
+        <div className="text-[9px] uppercase tracking-[0.14em] font-extrabold text-forest mb-1">
+          {t("landing.mock.futebol.porque", { casa: "Flamengo", visitante: "Palmeiras" })}
+        </div>
         <p className="text-[11px] text-ink-2 leading-snug">
-          Chance real <span className="font-bold text-forest tabular-nums">58%</span> · a odd{" "}
-          <span className="font-bold text-ink tabular-nums">1.95</span> embute só{" "}
-          <span className="tabular-nums">51%</span> — a diferença é o{" "}
-          <span className="font-bold text-forest">valor</span>.
+          <Trans
+            t={t}
+            i18nKey="landing.mock.futebol.porqueTexto"
+            values={{ chance: "58%", odd: "1.95", embutida: "51%" }}
+            components={[
+              <span className="font-bold text-forest tabular-nums" key="chance" />,
+              <span className="font-bold text-ink tabular-nums" key="odd" />,
+              <span className="tabular-nums" key="embutida" />,
+              <span className="font-bold text-forest" key="valor" />,
+            ]}
+          />
         </p>
       </div>
     </WindowFrame>
   );
 };
 
+/* A prateleira: só a ESTRUTURA vive aqui — a ordem, o número, a rota e o
+   mockup. Toda a copy sai do catálogo pela chave do produto
+   (`landing.produtos.<id>.*`), porque este array é montado fora do componente
+   e não tem `t`. */
 const TODOS_PRODUCTS = [
-  {
-    id: "futebol",
-    num: "01",
-    kicker: "Futebol · Aposta de valor",
-    title: "Onde a odd paga mais do que o risco de verdade.",
-    body: "Todo dia, os jogos em que a chance real supera o que a odd embute — com Score próprio, o porquê de cada pick e o que ficar de olho. Brasileirão, Copa do Brasil e ligas europeias.",
-    facts: ["Quadro de oportunidades do dia", "Score de valor + o porquê", "Brasileirão, Copa do BR e Europa"],
-    cta: "Conhecer o Futebol",
-    route: "/futebol/comecar",
-    Mock: MockFutebol,
-    available: true,
-  },
-  {
-    id: "betinho",
-    num: "02",
-    kicker: "Betinho · Seu assistente no Telegram",
-    title: "Você aposta. O resto o Betinho faz sozinho.",
-    body: "Print do bilhete → registrado. Jogo acabou → fechado. Fim do mês → seu ROI real na mão. Sem planilha, sem digitação, sem autoengano — e as oportunidades do dia chegam no mesmo chat.",
-    facts: ["Registra pelo print, fecha sozinho", "Banca e ROI reais, sempre à vista", "Oportunidades do dia no Telegram"],
-    cta: "Conhecer o Betinho",
-    route: "/betinho",
-    Mock: MockBetinho,
-    available: true,
-  },
-  {
-    id: "nba",
-    num: "03",
-    kicker: "Análise NBA · Prop Bets",
-    title: "A casa demora pra ajustar a linha. Você chega antes.",
-    body: "Desfalque confirmado muda os números de quem fica em quadra — e a linha demora pra acompanhar. A análise cruza injury report com histórico e te mostra onde a janela abriu.",
-    facts: ["12 mercados de props", "Injury report diário", "Oportunidades por desfalque"],
-    cta: "Explorar a análise NBA",
-    route: "/nba",
-    Mock: MockNBA,
-    available: true,
-  },
-  {
-    id: "bolao",
-    num: "04",
-    kicker: "Bolão Copa 2026",
-    title: "O bolão da galera. Sem planilha do Excel.",
-    body: "Cria em 30 segundos, manda o link no grupo, e pronto. A gente cuida do ranking, dos placares e dos palpites de campeão — você cuida da zoeira.",
-    facts: ["104 jogos da Copa", "Grátis até 20 pessoas", "Ranking automático"],
-    cta: "Criar meu bolão",
-    route: "/bolao",
-    Mock: MockBolao,
-    available: true,
-  },
+  { id: "futebol", num: "01", route: "/futebol/comecar", Mock: MockFutebol, available: true },
+  { id: "betinho", num: "02", route: "/betinho", Mock: MockBetinho, available: true },
+  { id: "nba", num: "03", route: "/nba", Mock: MockNBA, available: true },
+  { id: "bolao", num: "04", route: "/bolao", Mock: MockBolao, available: true },
 ];
 
 // A Copa acabou — o bolão sai da vitrine (mantém a rota de pé pra quem tem link).
@@ -391,7 +427,10 @@ const PRODUCTS = TODOS_PRODUCTS.filter(
   (p) => p.id !== 'bolao' || SHOW_BOLAO_ENTRY_POINTS,
 );
 
+const FATOS = ['um', 'dois', 'tres'] as const;
+
 const LandingEcossistema = () => {
+  const { t } = useTranslation(["planos", "comum"]);
   const navigate = useNavigate();
   const { user } = useAuth();
 
@@ -399,24 +438,15 @@ const LandingEcossistema = () => {
     document.getElementById(`produto-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const FAQ: FaqItem[] = [
-    {
-      q: "Vocês são tipsters?",
-      a: "Não. Tipster te dá o palpite e pede fé. A gente te dá o dado — a linha, o histórico, o contexto — e devolve a decisão pra você. Nenhum produto da casa promete ganho; quem promete, desconfia.",
-    },
-    {
-      q: "O que é grátis?",
-      a: "Todos os produtos têm porta de entrada grátis: na análise NBA, dashboards de jogadores liberados sem login; no Betinho, 3 registros por dia; no Bolão, tudo grátis até 20 pessoas. Os detalhes estão na página de cada um.",
-    },
-    {
-      q: "Preciso assinar tudo junto?",
-      a: "Não. Cada produto tem seu plano, separado — você assina só o que usa. O Bolão nem assinatura tem: pagamento único por bolão, e só se o grupo passar de 20 pessoas.",
-    },
-    {
-      q: "Por onde eu começo?",
-      a: "Pela sua dor. Aposta em NBA e quer decidir com dado? Análise NBA. Não sabe se tá no lucro? Betinho. Quer reunir a galera na Copa? Bolão. Todas começam grátis — testa e fica na que te servir.",
-    },
-  ];
+  /* O FAQ alimenta a tela E o structured data da página. Ele segue o idioma
+     ativo porque é a MESMA copy que o visitante lê — prefixo de caminho por
+     idioma e marcação de idioma alternativo são outro trabalho (#532). */
+  const FAQ: FaqItem[] = (["tipsters", "gratis", "tudoJunto", "porOndeComecar"] as const).map(
+    (chave) => ({
+      q: t(`landing.faq.${chave}.pergunta`),
+      a: t(`landing.faq.${chave}.resposta`),
+    }),
+  );
 
   return (
     <div className="theme-bolao min-h-screen bg-canvas text-ink overflow-x-hidden">
@@ -435,14 +465,14 @@ const LandingEcossistema = () => {
               onClick={() => navigate(user ? "/inicio" : "/auth")}
               className="inline-flex items-center h-10 px-3 sm:px-4 rounded-rebrand-md border border-line-2 bg-white text-ink hover:border-forest/40 font-semibold text-sm transition-colors"
             >
-              {user ? "Acessar" : "Entrar"}
+              {user ? t("landing.nav.acessar") : t("comum:acoes.entrar")}
             </button>
             <button
               type="button"
               onClick={() => navigate("/auth")}
               className="inline-flex items-center h-10 px-3 sm:px-4 rounded-rebrand-md bg-amber text-white hover:bg-amber-2 font-bold text-sm shadow-sm transition-colors whitespace-nowrap"
             >
-              Começar Grátis
+              {t("landing.nav.comecarGratis")}
             </button>
           </div>
         </div>
@@ -454,16 +484,19 @@ const LandingEcossistema = () => {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_85%_15%,rgba(212,160,23,0.16),transparent_50%)] pointer-events-none" />
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-14 sm:pt-20 pb-16 sm:pb-24">
           <p className="font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-amber mb-5">
-            Smart Betting · O ecossistema
+            {t("landing.hero.etiqueta")}
           </p>
           <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-black leading-[1.05] mb-5 max-w-3xl">
-            Tudo que o apostador precisa,{" "}
-            <span className="text-amber">menos a casa.</span>
+            {/* `Trans`, e não duas chaves coladas: o destaque fecha a frase em
+                português e pode cair em outro lugar em espanhol. */}
+            <Trans
+              t={t}
+              i18nKey="landing.hero.titulo"
+              components={[<span className="text-amber" key="destaque" />]}
+            />
           </h1>
           <p className="text-base sm:text-lg text-white/75 mb-8 max-w-xl leading-relaxed">
-            Valor no futebol, análise na NBA, gestão de banca no Telegram e
-            bolão pra zoar os amigos — e zero promessa de ganho em nenhum deles.
-            Escolhe por onde começar:
+            {t("landing.hero.chamada")}
           </p>
           <div className="flex flex-wrap gap-2">
             {PRODUCTS.map((p) => (
@@ -478,13 +511,13 @@ const LandingEcossistema = () => {
                 }`}
               >
                 <span className="font-mono text-[10px] text-amber">{p.num}</span>
-                {p.kicker.split("·")[0].trim()}
+                {t(`landing.produtos.${p.id}.nome`)}
                 <ArrowDown className="w-3.5 h-3.5 opacity-60" />
               </button>
             ))}
           </div>
           <p className="text-[12px] text-white/55 mt-5">
-            Planos separados · Todas começam grátis · A decisão é sempre sua
+            {t("landing.hero.rodape")}
           </p>
         </div>
       </section>
@@ -497,19 +530,19 @@ const LandingEcossistema = () => {
             <div className="max-w-6xl mx-auto px-4 sm:px-6 py-14 sm:py-24 grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-14 items-center">
               <div className={`min-w-0 ${flip ? "md:order-2" : ""}`}>
                 <p className="font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-forest mb-4">
-                  <span className="text-amber-2">{p.num}</span> · {p.kicker}
+                  <span className="text-amber-2">{p.num}</span> · {t(`landing.produtos.${p.id}.etiqueta`)}
                 </p>
                 <h2 className="font-display text-3xl sm:text-4xl font-black text-ink leading-tight mb-4">
-                  {p.title}
+                  {t(`landing.produtos.${p.id}.titulo`)}
                 </h2>
                 <p className="text-[15px] text-ink-2 leading-relaxed mb-5 max-w-lg">
-                  {p.body}
+                  {t(`landing.produtos.${p.id}.texto`)}
                 </p>
                 <ul className="space-y-2 mb-7">
-                  {p.facts.map((fact) => (
-                    <li key={fact} className="font-mono text-[11px] uppercase tracking-[0.1em] text-ink-2 flex items-center gap-2.5">
+                  {FATOS.map((n) => (
+                    <li key={n} className="font-mono text-[11px] uppercase tracking-[0.1em] text-ink-2 flex items-center gap-2.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-amber-2 shrink-0" />
-                      {fact}
+                      {t(`landing.produtos.${p.id}.fatos.${n}`)}
                     </li>
                   ))}
                 </ul>
@@ -522,7 +555,7 @@ const LandingEcossistema = () => {
                       : "border border-amber/50 bg-amber/[0.06] text-amber-2 hover:bg-amber/[0.12] shadow-none"
                   }`}
                 >
-                  {p.cta}
+                  {t(`landing.produtos.${p.id}.acao`)}
                   <ArrowRight className="h-4 w-4" />
                 </button>
               </div>
@@ -537,11 +570,11 @@ const LandingEcossistema = () => {
       {/* Faixa de fatos da marca */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 mt-2">
         <div className="border-y border-line py-4 flex flex-col sm:flex-row sm:flex-wrap items-center justify-center gap-y-2 sm:gap-x-8 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-2">
-          <span>O dado na frente</span>
+          <span>{t("landing.faixa.um")}</span>
           <span className="hidden sm:inline text-amber-2">·</span>
-          <span>Sem promessa de ganho</span>
+          <span>{t("landing.faixa.dois")}</span>
           <span className="hidden sm:inline text-amber-2">·</span>
-          <span>A decisão é sempre sua</span>
+          <span>{t("landing.faixa.tres")}</span>
         </div>
       </section>
 
@@ -550,49 +583,39 @@ const LandingEcossistema = () => {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(212,160,23,0.10),transparent_50%)] pointer-events-none" />
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-14 sm:py-20">
           <p className="font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-amber mb-3">
-            Transparência
+            {t("landing.combinado.etiqueta")}
           </p>
           <h2 className="font-display text-3xl sm:text-4xl font-black leading-tight mb-10 sm:mb-12 max-w-2xl">
-            O combinado que a gente assina
+            {t("landing.combinado.titulo")}
           </h2>
 
           <div className="grid md:grid-cols-2 gap-x-16 gap-y-10">
             <div>
               <h3 className="text-[12px] font-bold uppercase tracking-[0.14em] text-white/60 pb-3 border-b border-white/15">
-                O que você nunca vai ver aqui
+                {t("landing.combinado.nunca.titulo")}
               </h3>
-              {[
-                "Promessa de ganho garantido",
-                "Entrada pra você copiar às cegas",
-                "Taxa de acerto de marketing",
-                "Depoimento inventado",
-              ].map((item) => (
-                <div key={item} className="flex items-center gap-3 py-3.5 border-b border-white/10 text-[14px] text-white/85">
+              {(["um", "dois", "tres", "quatro"] as const).map((n) => (
+                <div key={n} className="flex items-center gap-3 py-3.5 border-b border-white/10 text-[14px] text-white/85">
                   <XCircle className="w-4 h-4 text-white/40 shrink-0" />
-                  {item}
+                  {t(`landing.combinado.nunca.${n}`)}
                 </div>
               ))}
             </div>
             <div>
               <h3 className="text-[12px] font-bold uppercase tracking-[0.14em] text-amber pb-3 border-b border-white/15">
-                O que você sempre vai ter
+                {t("landing.combinado.sempre.titulo")}
               </h3>
-              {[
-                "O dado na frente da decisão",
-                "O porquê de cada análise",
-                "Sua banca e sua decisão — sempre suas",
-                "Transparência como princípio, não slogan",
-              ].map((item) => (
-                <div key={item} className="flex items-center gap-3 py-3.5 border-b border-white/10 text-[14px] text-white">
+              {(["um", "dois", "tres", "quatro"] as const).map((n) => (
+                <div key={n} className="flex items-center gap-3 py-3.5 border-b border-white/10 text-[14px] text-white">
                   <CheckCircle2 className="w-4 h-4 text-amber shrink-0" />
-                  {item}
+                  {t(`landing.combinado.sempre.${n}`)}
                 </div>
               ))}
             </div>
           </div>
 
           <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-white/40 mt-10">
-            — Smart Betting · combinado válido em todos os produtos
+            {t("landing.combinado.rodape")}
           </p>
         </div>
       </section>
@@ -601,9 +624,9 @@ const LandingEcossistema = () => {
       <section className="max-w-3xl mx-auto px-4 sm:px-6 py-14 sm:py-16">
         <div className="text-center mb-8">
           <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-forest mb-2">
-            Perguntas frequentes
+            {t("landing.faq.etiqueta")}
           </p>
-          <h2 className="font-display text-2xl sm:text-3xl font-black text-ink">Bora tirar dúvida</h2>
+          <h2 className="font-display text-2xl sm:text-3xl font-black text-ink">{t("landing.faq.titulo")}</h2>
         </div>
         <div className="space-y-3">
           {FAQ.map((item) => (
@@ -625,11 +648,10 @@ const LandingEcossistema = () => {
       <section className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="border-t border-line py-14 sm:py-20">
           <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-black text-ink leading-tight mb-3">
-            Escolhe sua porta de entrada.
+            {t("landing.final.titulo")}
           </h2>
           <p className="text-[15px] text-ink-2 leading-relaxed max-w-lg mb-8">
-            Todas começam grátis. Entra na que resolve a sua dor de hoje —
-            as outras continuam aqui.
+            {t("landing.final.texto")}
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-3xl">
             {PRODUCTS.filter((p) => p.available).map((p) => (
@@ -639,7 +661,7 @@ const LandingEcossistema = () => {
                 onClick={() => navigate(p.route)}
                 className="inline-flex items-center justify-between gap-2 h-12 px-5 rounded-rebrand-md border border-line-2 bg-white text-ink hover:border-forest/40 font-bold text-[14px] transition-colors"
               >
-                {p.kicker.split("·")[0].trim()}
+                {t(`landing.produtos.${p.id}.nome`)}
                 <ArrowRight className="h-4 w-4 text-amber-2" />
               </button>
             ))}

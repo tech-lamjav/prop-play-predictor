@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { ArrowRight, CalendarDays } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
@@ -19,6 +20,7 @@ import { brtToday, fmtDayShort, yearOf } from '@/utils/futebol-datas';
  */
 
 export default function FutebolCampeonatos() {
+  const { t } = useTranslation('futebol');
   const { data: comps, isLoading, isError } = useFutebolCompetitions();
   const hoje = brtToday();
 
@@ -43,12 +45,12 @@ export default function FutebolCampeonatos() {
       <div className="bg-white border-b border-line">
         <div className="max-w-[1480px] w-full mx-auto px-4 md:px-6 py-5 md:py-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
           <div>
-            <div className="text-[11px] uppercase tracking-[0.2em] font-bold text-ink-3">Futebol</div>
+            <div className="text-[11px] uppercase tracking-[0.2em] font-bold text-ink-3">{t('campeonatos.sobretitulo')}</div>
             <h1 className="font-display text-2xl md:text-[28px] font-extrabold tracking-tight text-ink mt-1">
-              Campeonatos
+              {t('campeonatos.titulo')}
             </h1>
             <p className="text-[13px] mt-1 text-ink-2">
-              Escolha um campeonato pra ver rodadas, classificação e artilheiros.
+              {t('campeonatos.descricao')}
             </p>
           </div>
           <Link
@@ -56,7 +58,7 @@ export default function FutebolCampeonatos() {
             className="h-9 px-3 shrink-0 self-start sm:self-auto rounded-rebrand-sm text-xs font-semibold bg-white text-ink border border-line hover:bg-canvas-2 transition inline-flex items-center gap-1.5"
           >
             <CalendarDays className="w-3.5 h-3.5" />
-            Jogos do dia
+            {t('cta.jogosDoDia')}
           </Link>
         </div>
       </div>
@@ -64,7 +66,7 @@ export default function FutebolCampeonatos() {
       <div className="max-w-[1480px] w-full mx-auto px-4 md:px-6 py-6 flex-1">
         {isError ? (
           <div className="bg-white border border-line rounded-rebrand-md p-6 text-center text-sm text-status-danger">
-            Erro ao carregar os campeonatos.
+            {t('campeonatos.erro')}
           </div>
         ) : isLoading ? (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -74,7 +76,7 @@ export default function FutebolCampeonatos() {
           </div>
         ) : ligas.length === 0 ? (
           <div className="bg-white border border-line rounded-rebrand-md p-6 text-center text-sm text-ink-3">
-            Nenhum campeonato disponível.
+            {t('campeonatos.vazio')}
           </div>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -93,28 +95,32 @@ export default function FutebolCampeonatos() {
                     </div>
                     {emAndamento && (
                       <span className="px-1.5 h-5 inline-flex items-center rounded text-[9px] font-bold uppercase tracking-[0.1em] bg-forest/10 text-forest">
-                        Em andamento
+                        {t('campeonatos.emAndamento')}
                       </span>
                     )}
                   </div>
                   <div className="mt-3 text-[15px] font-bold tracking-tight text-ink">{competitionLabel(slug)}</div>
                   <div className="text-[12px] text-ink-2 mt-0.5">
-                    {atual ? `${atual.jogos} jogos · temporada ${atual.season}` : 'Sem jogos'}
+                    {atual
+                      ? t('campeonatos.jogosNaTemporada', { count: atual.jogos, season: atual.season })
+                      : t('campeonatos.semJogos')}
                   </div>
                   {atual?.primeiro && atual?.ultimo && (
                     <div className="text-[11px] text-ink-3 mt-0.5">
-                      {fmtDayShort(atual.primeiro)} até{' '}
                       {/* Ano só quando a temporada atravessa o ano (La Liga vai de
                           ago/2026 a mai/2027), senão "30 de mai" fica ambíguo. */}
-                      {fmtDayShort(atual.ultimo, yearOf(atual.primeiro) !== yearOf(atual.ultimo))}
+                      {t('campeonatos.periodo', {
+                        de: fmtDayShort(atual.primeiro),
+                        ate: fmtDayShort(atual.ultimo, yearOf(atual.primeiro) !== yearOf(atual.ultimo)),
+                      })}
                     </div>
                   )}
                   <div className="mt-3 flex items-center justify-between gap-2">
                     <span className="text-[11px] text-ink-3">
-                      {temporadas.length > 1 ? `${temporadas.length} temporadas` : '1 temporada'}
+                      {t('campeonatos.temporadas', { count: temporadas.length })}
                     </span>
                     <span className="text-[11px] font-semibold text-forest inline-flex items-center gap-1 group-hover:gap-1.5 transition-all">
-                      Abrir <ArrowRight className="w-3 h-3" />
+                      {t('campeonatos.abrir')} <ArrowRight className="w-3 h-3" />
                     </span>
                   </div>
                 </Link>

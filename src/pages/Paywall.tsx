@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Lock, Zap, BarChart3, ArrowRight, ArrowLeft, MessageCircle, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { Lock, Zap, BarChart3, ArrowRight, MessageCircle, Loader2 } from "lucide-react";
 import { useNavigate, useSearchParams, Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { whatsappDoTime } from "@/config/contato";
@@ -14,12 +15,21 @@ import AnalyticsNav from "@/components/AnalyticsNav";
 // Você pode obter isso no Stripe Dashboard → Products → Seu Produto → Price ID
 const STRIPE_PRICE_ID = import.meta.env.VITE_STRIPE_PRICE_ID_BETINHO; // Configure no .env.local
 
+/**
+ * Paywall do Betinho (rota /paywall). Tela pública: a copy vem do catálogo
+ * `planos` no idioma ativo (#540).
+ *
+ * ⚠️ A mensagem pré-preenchida do WhatsApp segue em português de propósito:
+ * ela é escrita PARA o time de suporte, e texto de WhatsApp está fora do
+ * escopo do #532, que é interface.
+ */
 export default function Paywall() {
+  const { t } = useTranslation('planos');
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user, isLoading: authLoading } = useAuth();
   const supabase = createClient();
-  
+
   const [subscriptionStatus, setSubscriptionStatus] = useState<'free' | 'premium' | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
@@ -66,8 +76,8 @@ export default function Paywall() {
   useEffect(() => {
     if (success && sessionId && user?.id) {
       toast({
-        title: "Pagamento realizado!",
-        description: "Verificando sua assinatura...",
+        title: t('checkout.pagoTitulo'),
+        description: t('checkout.pagoTexto'),
         variant: "default",
       });
 
@@ -80,8 +90,8 @@ export default function Paywall() {
           if (result.verified) {
             setSubscriptionStatus('premium');
             toast({
-              title: "Assinatura ativada!",
-              description: "Seu plano premium está ativo. Redirecionando...",
+              title: t('checkout.ativaTitulo'),
+              description: t('checkout.ativaTexto'),
               variant: "default",
             });
             setTimeout(() => navigate(redirectAfterPremium), 1000);
@@ -103,12 +113,12 @@ export default function Paywall() {
 
     if (canceled) {
       toast({
-        title: "Pagamento cancelado",
-        description: "Você cancelou o processo de pagamento. Tente novamente quando estiver pronto.",
+        title: t('checkout.canceladoTitulo'),
+        description: t('checkout.canceladoTexto'),
         variant: "default",
       });
     }
-  }, [success, canceled, sessionId, user?.id, navigate]);
+  }, [success, canceled, sessionId, user?.id, navigate, redirectAfterPremium, t]);
 
   const handleStripeCheckout = async () => {
     // Se ainda está carregando a autenticação, aguarde
@@ -119,8 +129,8 @@ export default function Paywall() {
     // Se não está logado, redireciona para login
     if (!user) {
       toast({
-        title: "Login necessário",
-        description: "Por favor, faça login para continuar com o pagamento.",
+        title: t('checkout.loginTitulo'),
+        description: t('checkout.loginTexto'),
         variant: "destructive",
       });
       navigate('/auth');
@@ -132,15 +142,15 @@ export default function Paywall() {
       if (!STRIPE_PRICE_ID) {
         throw new Error('Price ID não configurado. Verifique a variável de ambiente VITE_STRIPE_PRICE_ID_BETINHO.');
       }
-      
+
       console.log('Creating checkout session with Price ID:', STRIPE_PRICE_ID);
       const { url } = await stripeService.createCheckoutSession(STRIPE_PRICE_ID, 'betinho');
       await stripeService.redirectToCheckout(url);
     } catch (error) {
       console.error('Error creating checkout session:', error);
       toast({
-        title: "Erro ao processar pagamento",
-        description: error instanceof Error ? error.message : "Ocorreu um erro ao iniciar o checkout. Tente novamente.",
+        title: t('checkout.erroTitulo'),
+        description: error instanceof Error ? error.message : t('checkout.erroTexto'),
         variant: "destructive",
       });
     } finally {
@@ -152,7 +162,7 @@ export default function Paywall() {
     // Open WhatsApp with pre-filled message for upgrade (Betinho)
     const message = "Oi, gostaria de fazer upgrade do meu plano Betinho (registro de apostas)";
     const whatsappUrl = whatsappDoTime(message);
-    
+
     // Open WhatsApp with pre-filled message
     window.open(whatsappUrl, '_blank');
   };
@@ -173,17 +183,17 @@ export default function Paywall() {
             <Lock className="h-10 w-10 text-white" />
           </div>
           <h1 className="text-4xl md:text-5xl font-bold text-ink mb-4">
-            Você chegou ao limite do plano gratuito!
+            {t('paywall.titulo')}
           </h1>
           <p className="text-base text-ink-2">
-            O plano gratuito é ideal para começar. 
+            {t('paywall.textoUm')}
             <br />
-            Para continuar registrando apostas e acompanhar seus resultados, faça upgrade para o plano premium.
+            {t('paywall.textoDois')}
           </p>
           {isCheckingStatus && (
             <div className="mt-4 flex items-center justify-center gap-2 text-ink-2">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span className="text-sm">Verificando status da assinatura...</span>
+              <span className="text-sm">{t('checkout.verificandoAssinatura')}</span>
             </div>
           )}
         </div>
@@ -192,9 +202,9 @@ export default function Paywall() {
           {/* Main Card */}
           <Card className="mb-8 bg-white border border-line">
             <CardHeader>
-              <CardTitle className="text-2xl text-ink">Desbloqueie o Plano Premium</CardTitle>
+              <CardTitle className="text-2xl text-ink">{t('paywall.cartaoTitulo')}</CardTitle>
               <CardDescription className="text-ink-2">
-                Apostar mais exige mais controle.
+                {t('paywall.cartaoChamada')}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -206,9 +216,9 @@ export default function Paywall() {
                       <Zap className="h-4 w-4 text-forest" />
                     </div>
                     <div>
-                      <p className="font-semibold text-ink">Registro ilimitado de apostas</p>
+                      <p className="font-semibold text-ink">{t('paywall.itens.registro.titulo')}</p>
                       <p className="text-sm text-ink-2">
-                        Registre quantas apostas quiser, sem limites diários
+                        {t('paywall.itens.registro.texto')}
                       </p>
                     </div>
                   </div>
@@ -217,9 +227,9 @@ export default function Paywall() {
                       <BarChart3 className="h-4 w-4 text-forest" />
                     </div>
                     <div>
-                      <p className="font-semibold text-ink">Dashboard Completo de gestão de apostas</p>
+                      <p className="font-semibold text-ink">{t('paywall.itens.dashboard.titulo')}</p>
                       <p className="text-sm text-ink-2">
-                        Visualize lucro, prejuízo, ROI e evolução da sua banca em um só lugar
+                        {t('paywall.itens.dashboard.texto')}
                       </p>
                     </div>
                   </div>
@@ -228,9 +238,9 @@ export default function Paywall() {
                       <ArrowRight className="h-4 w-4 text-forest" />
                     </div>
                     <div>
-                      <p className="font-semibold text-ink">Histórico e organização</p>
+                      <p className="font-semibold text-ink">{t('paywall.itens.historico.titulo')}</p>
                       <p className="text-sm text-ink-2">
-                        Tenha todas as apostas organizadas para analisar padrões e decisões
+                        {t('paywall.itens.historico.texto')}
                       </p>
                     </div>
                   </div>
@@ -248,17 +258,17 @@ export default function Paywall() {
                     {isLoading ? (
                       <>
                         <Loader2 className="h-5 w-5 animate-spin" />
-                        <span>Processando...</span>
+                        <span>{t('checkout.processando')}</span>
                       </>
                     ) : authLoading ? (
                       <>
                         <Loader2 className="h-5 w-5 animate-spin" />
-                        <span>Verificando autenticação...</span>
+                        <span>{t('checkout.verificandoAuth')}</span>
                       </>
                     ) : (
                       <>
                         <Zap className="h-5 w-5" />
-                        <span>Desbloquear Plano Premium</span>
+                        <span>{t('paywall.acao')}</span>
                         <ArrowRight className="h-5 w-5" />
                       </>
                     )}
@@ -273,20 +283,26 @@ export default function Paywall() {
                     >
                       <MessageCircle className="h-5 w-5" />
                       <span className="text-sm sm:text-lg text-center">
-                        Ou fale com a gente pelo WhatsApp
+                        {t('checkout.whatsapp')}
                       </span>
                     </Button>
 
                   {!user && (
                     <p className="text-sm text-ink-2 text-center">
-                      <Button
-                        variant="link"
-                        onClick={() => navigate('/auth')}
-                        className="p-0 h-auto text-forest"
-                      >
-                        Faça login
-                      </Button>
-                      {" "}para continuar com o pagamento
+                      {/* `Trans`, e não concatenação: o link cai NO MEIO da frase,
+                          e em outro idioma ele cai em outro lugar. */}
+                      <Trans
+                        t={t}
+                        i18nKey="checkout.loginParaPagar"
+                        components={[
+                          <Button
+                            key="login"
+                            variant="link"
+                            onClick={() => navigate('/auth')}
+                            className="p-0 h-auto text-forest"
+                          />,
+                        ]}
+                      />
                     </p>
                   )}
                 </div>
@@ -298,8 +314,7 @@ export default function Paywall() {
           <Card className="bg-canvas-2 border border-line">
             <CardContent className="pt-6">
               <p className="text-sm text-ink-2 text-center">
-                O limite diário é resetado automaticamente à meia-noite (horário GMT-3).
-                Você pode continuar usando o plano gratuito ou fazer upgrade para apostas ilimitadas.
+                {t('paywall.rodape')}
               </p>
             </CardContent>
           </Card>
@@ -308,4 +323,3 @@ export default function Paywall() {
     </div>
   );
 }
-

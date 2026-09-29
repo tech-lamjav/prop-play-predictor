@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Maximize2, Minus, Plus, RotateCcw, X } from 'lucide-react';
 import { Crest } from './Crest';
 import { ehMataMata, rodadaLonga } from '@/utils/futebol-rodadas';
@@ -29,13 +30,18 @@ import type { FutebolFixture } from '@/services/futebol-data.service';
  *    inventar.
  */
 
-/** O formato de cada competição, em uma linha. Só o que é estável e checável. */
+/**
+ * O formato de cada competição, em uma linha. Só o que é estável e checável.
+ *
+ * O valor é a CHAVE do catálogo, não a frase: a tela pode estar em espanhol
+ * (#538). Competição fora do mapa não ganha linha de formato, como antes.
+ */
 const FORMATOS: Record<string, string> = {
-  copa_do_brasil: 'mata-mata em ida e volta, com final em dois jogos',
-  libertadores: '8 grupos, 2 passam por grupo, mata-mata em ida e volta e final única',
-  sudamericana: '8 grupos, mata-mata em ida e volta e final única',
-  champions_league: 'fase de liga, playoff, mata-mata em ida e volta e final única',
-  copa_mundo: 'grupos e mata-mata em jogo único',
+  copa_do_brasil: 'chaveamento.formato.copaDoBrasil',
+  libertadores: 'chaveamento.formato.libertadores',
+  sudamericana: 'chaveamento.formato.sudamericana',
+  champions_league: 'chaveamento.formato.championsLeague',
+  copa_mundo: 'chaveamento.formato.copaMundo',
 };
 
 type Lado = { id: number; nome: string; gols: number };
@@ -49,15 +55,18 @@ type Confronto = {
 };
 type Coluna = { chave: string; titulo: string; confrontos: Confronto[]; vagas: number };
 
+/** O tradutor, na forma mínima que este módulo usa. */
+type Traduzir = (chave: string, valores?: Record<string, unknown>) => string;
+
 /** Nome da fase pelo número de confrontos, pras fases que ainda não existem. */
-function tituloPorVagas(n: number): string {
-  if (n <= 1) return 'Final';
-  if (n === 2) return 'Semifinal';
-  if (n === 4) return 'Quartas de final';
-  if (n === 8) return 'Oitavas de final';
-  if (n === 16) return '16 avos de final';
-  if (n === 32) return '32 avos de final';
-  return `${n} confrontos`;
+function tituloPorVagas(n: number, t: Traduzir): string {
+  if (n <= 1) return t('chaveamento.vagas.final');
+  if (n === 2) return t('chaveamento.vagas.semifinal');
+  if (n === 4) return t('chaveamento.vagas.quartas');
+  if (n === 8) return t('chaveamento.vagas.oitavas');
+  if (n === 16) return t('chaveamento.vagas.dezesseisAvos');
+  if (n === 32) return t('chaveamento.vagas.trintaEDoisAvos');
+  return t('chaveamento.vagas.confrontos', { count: n });
 }
 
 function montaConfrontos(jogos: FutebolFixture[], idsDaProxima: Set<number>): Confronto[] {
@@ -127,13 +136,14 @@ function LadoDoConfronto({ lado, c }: { lado: Lado; c: Confronto }) {
 }
 
 function CardConfronto({ c, hrefDoJogo }: { c: Confronto; hrefDoJogo: (id: number) => string }) {
+  const { t } = useTranslation('futebol');
   const ultimo = c.jogos[c.jogos.length - 1];
   return (
     <Link
       to={ultimo ? hrefDoJogo(ultimo.fixture_id) : '#'}
       className="w-full text-left rounded-rebrand-sm overflow-hidden bg-white hover:shadow-sm transition"
       style={{ border: '1px solid #ded2b6' }}
-      title={c.jogos.length > 1 ? 'ida e volta somadas' : undefined}
+      title={c.jogos.length > 1 ? t('chaveamento.idaEVoltaSomadas') : undefined}
     >
       <LadoDoConfronto lado={c.a} c={c} />
       <div style={{ height: 1, background: '#f1e9d6' }} />
@@ -143,6 +153,7 @@ function CardConfronto({ c, hrefDoJogo }: { c: Confronto; hrefDoJogo: (id: numbe
 }
 
 function CardVago() {
+  const { t } = useTranslation('futebol');
   return (
     <div className="rounded-rebrand-sm overflow-hidden" style={{ border: '1px dashed #e5d9bd', background: '#fdfbf6' }}>
       {[0, 1].map((i) => (
@@ -153,7 +164,7 @@ function CardVago() {
         >
           <span className="w-[15px] h-[15px] rounded-full shrink-0" style={{ background: '#f1e9d6' }} />
           <span className="text-[10.5px]" style={{ color: '#c4bda8' }}>
-            a definir
+            {t('chaveamento.aDefinir')}
           </span>
         </div>
       ))}
@@ -264,6 +275,7 @@ function ChaveExpandida({
   onFechar: () => void;
   titulo: string;
 }) {
+  const { t } = useTranslation('futebol');
   const [escala, setEscala] = useState(1);
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const arrasto = useRef<{ x: number; y: number; px: number; py: number; moveu: boolean } | null>(null);
@@ -370,7 +382,7 @@ function ChaveExpandida({
       >
         <span className="text-[12.5px] font-bold text-ink truncate">{titulo}</span>
         <span className="hidden md:block text-[11px]" style={{ color: '#8d8672' }}>
-          arraste para mover, role para aproximar
+          {t('chaveamento.arrasteRole')}
         </span>
 
         <div className="ml-auto flex items-center gap-1.5">
@@ -378,7 +390,7 @@ function ChaveExpandida({
             onClick={() => zoom(-0.15)}
             className="w-8 h-8 grid place-items-center rounded-rebrand-sm bg-white"
             style={{ border: '1px solid #ded2b6', color: '#6b6350' }}
-            aria-label="Afastar"
+            aria-label={t('chaveamento.aria.afastar')}
           >
             <Minus className="w-4 h-4" />
           </button>
@@ -389,7 +401,7 @@ function ChaveExpandida({
             onClick={() => zoom(0.15)}
             className="w-8 h-8 grid place-items-center rounded-rebrand-sm bg-white"
             style={{ border: '1px solid #ded2b6', color: '#6b6350' }}
-            aria-label="Aproximar"
+            aria-label={t('chaveamento.aria.aproximar')}
           >
             <Plus className="w-4 h-4" />
           </button>
@@ -397,7 +409,7 @@ function ChaveExpandida({
             onClick={enquadrar}
             className="w-8 h-8 grid place-items-center rounded-rebrand-sm bg-white"
             style={{ border: '1px solid #ded2b6', color: '#6b6350' }}
-            aria-label="Enquadrar a chave inteira"
+            aria-label={t('chaveamento.aria.enquadrar')}
           >
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
@@ -406,7 +418,7 @@ function ChaveExpandida({
             className="h-8 px-3 rounded-rebrand-sm bg-forest text-canvas text-[12px] font-semibold inline-flex items-center gap-1.5"
           >
             <X className="w-3.5 h-3.5" />
-            Fechar
+            {t('chaveamento.fechar')}
           </button>
         </div>
       </div>
@@ -514,6 +526,7 @@ export function ChaveamentoBracket({
   /** O endereço da tela do jogo. Destino de link, não ação (#341). */
   hrefDoJogo: (fixtureId: number) => string;
 }) {
+  const { t } = useTranslation('futebol');
   const [expandido, setExpandido] = useState(false);
   const puxar = useArrastarParaRolar();
 
@@ -534,7 +547,7 @@ export function ChaveamentoBracket({
           });
       }
       const confrontos = montaConfrontos(jogos, idsDaProxima);
-      return { chave: round, titulo: rodadaLonga(round), confrontos, vagas: confrontos.length };
+      return { chave: round, titulo: rodadaLonga(round, t), confrontos, vagas: confrontos.length };
     };
 
     // Da fase aberta pra frente; na fase de grupos, o mata-mata inteiro.
@@ -557,19 +570,19 @@ export function ChaveamentoBracket({
     const futuras: Coluna[] = [];
     let vagas = ultima ? Math.floor(ultima.vagas / 2) : 0;
     while (vagas >= 1) {
-      futuras.push({ chave: `vagas-${vagas}`, titulo: tituloPorVagas(vagas), confrontos: [], vagas });
+      futuras.push({ chave: `vagas-${vagas}`, titulo: tituloPorVagas(vagas, t), confrontos: [], vagas });
       if (vagas === 1) break;
       vagas = Math.floor(vagas / 2);
     }
 
     return [...reais, ...futuras];
-  }, [fixtures, rounds, idxSelecionado]);
+  }, [fixtures, rounds, idxSelecionado, t]);
 
   if (!colunas.length) return null;
 
   const temConfronto = colunas.some((c) => c.confrontos.length);
-  const titulo = `Chaveamento · ${competitionLabel(competition)}`;
-  const formato = FORMATOS[competition];
+  const titulo = t('chaveamento.tituloCompeticao', { competicao: competitionLabel(competition) });
+  const chaveDoFormato = FORMATOS[competition];
 
   return (
     <>
@@ -579,14 +592,14 @@ export function ChaveamentoBracket({
           style={{ background: '#f4eddc', borderBottom: '1px solid #ded2b6' }}
         >
           <span className="text-[10.5px] uppercase tracking-[0.16em] font-bold" style={{ color: '#6b6350' }}>
-            Chaveamento
+            {t('chaveamento.titulo')}
           </span>
           {temConfronto && (
             <button
               onClick={() => setExpandido(true)}
               className="text-[11px] font-semibold text-forest inline-flex items-center gap-1"
             >
-              expandir
+              {t('chaveamento.expandir')}
               <Maximize2 className="w-3 h-3" />
             </button>
           )}
@@ -594,9 +607,9 @@ export function ChaveamentoBracket({
 
         {!temConfronto ? (
           <div className="px-6 py-9 text-center">
-            <div className="text-[14px] font-semibold text-ink">Chaveamento ainda não definido</div>
+            <div className="text-[14px] font-semibold text-ink">{t('chaveamento.vazioTitulo')}</div>
             <div className="mt-1.5 text-[12.5px] leading-relaxed" style={{ color: '#8d8672' }}>
-              Os confrontos aparecem quando o sorteio das fases entrar na coleta.
+              {t('chaveamento.vazioTexto')}
             </div>
           </div>
         ) : (
@@ -612,8 +625,11 @@ export function ChaveamentoBracket({
               className="px-4 py-2 text-[10.5px] leading-relaxed"
               style={{ borderTop: '1px solid #f1e9d6', background: '#fdfbf6', color: '#8d8672' }}
             >
-              O número é o agregado de ida e volta.{formato ? ` Formato: ${formato}.` : ''} Quem enfrenta quem nas
-              fases seguintes depende do sorteio, então elas ficam como "a definir" até sair.
+              {t('chaveamento.nota', {
+                formato: chaveDoFormato
+                  ? t('chaveamento.notaFormato', { formato: t(chaveDoFormato) })
+                  : '',
+              })}
             </div>
           </>
         )}

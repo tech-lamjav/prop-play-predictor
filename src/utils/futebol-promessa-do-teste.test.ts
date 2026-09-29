@@ -43,6 +43,11 @@ const TELAS = [
   'src/pages/lp/LpVariant.tsx',
   'src/pages/lp/variants.ts',
   'src/seo/public-routes.json',
+  // Os catálogos entram porque a copy do futebol MUDOU DE CASA (#537, #538): a
+  // frase saiu do JSX e passou a viver aqui, um arquivo por idioma. Guarda que
+  // só lesse o .tsx passaria a ver tela silenciosa e chamaria isso de aprovado.
+  'src/i18n/locales/pt/futebol.json',
+  'src/i18n/locales/es/futebol.json',
 ];
 
 /**
@@ -71,12 +76,19 @@ describe('a promessa do teste grátis', () => {
   it('as telas de venda continuam dizendo quanto o teste dura', () => {
     // Sem isto, apagar a promessa passaria pela guarda de cima: a tela ficaria
     // silenciosa sobre a duração, que é pior que dizê-la errada.
+    //
+    // A landing e a tela de assinar do futebol não aparecem aqui pelo nome do
+    // .tsx, e sim pelos CATÁLOGOS: depois do #538 elas não têm frase própria, e
+    // exigir "48 horas" dentro do JSX delas seria exigir que a migração para o
+    // catálogo não tivesse acontecido. Cada IDIOMA é cobrado, porque uma
+    // tradução que esquece a duração é a mesma tela silenciosa em espanhol.
     const vendem = [
       'src/components/lp/LpOferta.tsx',
-      'src/pages/FutebolLP.tsx',
       'src/pages/Planos.tsx',
       'src/pages/lp/variants.ts',
       'src/seo/public-routes.json',
+      'src/i18n/locales/pt/futebol.json',
+      'src/i18n/locales/es/futebol.json',
     ];
     for (const tela of vendem) {
       const conteudo = readFileSync(resolve(RAIZ, tela), 'utf8');

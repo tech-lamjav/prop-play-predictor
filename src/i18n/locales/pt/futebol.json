@@ -143,14 +143,18 @@
     "oportunidades_other": "{{count}} oportunidades",
     "campeonatos_zero": "{{count}} campeonatos",
     "campeonatos_one": "{{count}} campeonato",
-    "campeonatos_other": "{{count}} campeonatos"
+    "campeonatos_other": "{{count}} campeonatos",
+    "times_zero": "{{count}} times",
+    "times_one": "{{count}} time",
+    "times_other": "{{count}} times"
   },
   "corte": {
     "acima": "acima",
     "abaixo": "abaixo"
   },
   "cta": {
-    "verAnalise": "Ver análise completa"
+    "verAnalise": "Ver análise completa",
+    "jogosDoDia": "Jogos do dia"
   },
   "desfecho": {
     "bateu": "bateu",
@@ -639,5 +643,448 @@
   "dias": {
     "hoje": "Hoje",
     "amanha": "Amanhã"
+  },
+  "campeonatos": {
+    "sobretitulo": "Futebol",
+    "titulo": "Campeonatos",
+    "descricao": "Escolha um campeonato pra ver rodadas, classificação e artilheiros.",
+    "erro": "Erro ao carregar os campeonatos.",
+    "vazio": "Nenhum campeonato disponível.",
+    "emAndamento": "Em andamento",
+    "jogosNaTemporada_zero": "{{count}} jogos · temporada {{season}}",
+    "jogosNaTemporada_one": "{{count}} jogo · temporada {{season}}",
+    "jogosNaTemporada_other": "{{count}} jogos · temporada {{season}}",
+    "semJogos": "Sem jogos",
+    "periodo": "{{de}} até {{ate}}",
+    "temporadas_zero": "{{count}} temporadas",
+    "temporadas_one": "{{count}} temporada",
+    "temporadas_other": "{{count}} temporadas",
+    "abrir": "Abrir"
+  },
+  "campeonato": {
+    "competicao": "Competição",
+    "trocar": "Trocar",
+    "subtitulo": {
+      "temporada": "Temporada {{season}}",
+      "ondeEstamos": "{{rodada}} de {{total}}"
+    },
+    "estat": {
+      "mediaDeGols": "Média de gols",
+      "porJogo": "por jogo",
+      "maisDe25": "Mais de 2,5",
+      "dosJogos": "dos jogos",
+      "vitoriaDoMandante": "Vitória do mandante",
+      "naTemporada": "na temporada",
+      "ambosMarcam": "Ambos marcam"
+    },
+    "resumo": {
+      "rodadaEncerrada": "Rodada encerrada",
+      "faseEncerrada": "Fase encerrada",
+      "nestaRodada": "Nesta rodada",
+      "nestaFase": "Nesta fase",
+      "semLeituraNestaRodada": "sem leitura nesta rodada",
+      "semLeituraNestaFase": "sem leitura nesta fase",
+      "semJogos": "sem jogos",
+      "leiturasBateram": "leituras bateram",
+      "comLeitura": "com leitura",
+      "comLeituraMelhorScore": "com leitura · melhor Score {{score}}"
+    },
+    "vazioRodada": {
+      "titulo": "Nenhum jogo nesta rodada",
+      "texto": "O calendário desta competição pode não ter entrado na coleta ainda."
+    },
+    "vazioTabela": {
+      "pontosTitulo": "Classificação ainda não coletada",
+      "pontosTexto": "Entra assim que a competição passar pela coleta.",
+      "mataMataTitulo": "Competição de mata-mata",
+      "mataMataTexto": "Sem tabela de pontos, o que vale é o chaveamento de cada fase."
+    },
+    "vazioArtilheiros": {
+      "titulo": "Artilheiros ainda não coletados",
+      "texto": "Entram assim que a competição passar pela coleta."
+    },
+    "legendaTabela_zero": "após {{count}} rodadas",
+    "legendaTabela_one": "após {{count}} rodada",
+    "legendaTabela_other": "após {{count}} rodadas",
+    "abas": {
+      "rodada": "Rodada",
+      "fase": "Fase",
+      "tabela": "Tabela",
+      "grupos": "Grupos",
+      "chave": "Chave",
+      "artilheiros": "Artilheiros"
+    }
+  },
+  "time": {
+    "erro": "Não foi possível carregar este time.",
+    "colocado": "{{rank}}º colocado",
+    "kpi": {
+      "pontos": "Pts",
+      "jogos": "J",
+      "saldo": "SG",
+      "vitorias": "Vitórias",
+      "empates": "Empates",
+      "derrotas": "Derrotas",
+      "gols": "Gols"
+    },
+    "medias": {
+      "titulo": "Médias por mando",
+      "geral": "Geral",
+      "casa": "Casa",
+      "fora": "Fora",
+      "golsMarcados": "Gols marcados",
+      "golsSofridos": "Gols sofridos",
+      "posse": "Posse de bola",
+      "finalizacoes": "Finalizações",
+      "escanteios": "Escanteios"
+    },
+    "eficiencia": {
+      "titulo": "Eficiência · gols × xG",
+      "totais_zero": "totais · {{count}} jogos",
+      "totais_one": "totais · {{count}} jogo",
+      "totais_other": "totais · {{count}} jogos",
+      "explicacao": "O xG estima quantos gols as chances valiam. Real bem acima do xG é fase quente; bem abaixo, azar, e os dois tendem a voltar ao normal.",
+      "ataque": "Ataque (gols feitos)",
+      "defesa": "Defesa (gols sofridos)",
+      "semDados": "Sem dados de xG para esta temporada.",
+      "vsEsperado": "{{delta}} vs esperado",
+      "real": "Real",
+      "esperado": "Esperado (xG)",
+      "ataqueEmLinha": "Marca em linha com as chances que cria, número sustentável.",
+      "ataqueAcima": "Marca acima das chances que cria, costuma normalizar (esfriar).",
+      "ataqueAbaixo": "Marca menos do que as chances valem, tende a melhorar.",
+      "defesaEmLinha": "Sofre em linha com as chances do adversário, número sustentável.",
+      "defesaAcima": "Sofre mais do que as chances mereciam, tende a melhorar.",
+      "defesaAbaixo": "Sofre menos do que as chances do adversário, pode subir (volta ao normal)."
+    },
+    "raiox": {
+      "titulo": "Raio-X da temporada",
+      "semSofrerGol": "Sem sofrer gol",
+      "semSofrerGolSub": "jogos sem sofrer",
+      "naoMarcou": "Não marcou",
+      "naoMarcouSub": "jogos sem gol",
+      "invicto": "Invicto há",
+      "invictoSub": "jogos",
+      "sequenciaVitorias": "Sequência V",
+      "sequenciaVitoriasSub": "vitórias seguidas",
+      "over25": "% Over 2.5",
+      "over25Sub": "dos jogos",
+      "ambosMarcam": "% Ambos marcam",
+      "ambosMarcamSub": "dos jogos"
+    },
+    "resultados": {
+      "titulo": "Últimos resultados",
+      "casa": "Casa",
+      "fora": "Fora",
+      "vazio": "Sem jogos recentes."
+    }
+  },
+  "classificacao": {
+    "titulo": "Classificação",
+    "vazioTitulo": "Classificação não disponível",
+    "vazioTexto": "Entra assim que a competição passar pela coleta.",
+    "col": {
+      "posicao": "#",
+      "time": "Time",
+      "jogos": "J",
+      "vitorias": "V",
+      "empates": "E",
+      "derrotas": "D",
+      "saldo": "SG",
+      "pontos": "Pts"
+    },
+    "faixaUnica": "{{de}}º",
+    "faixaIntervalo": "{{de}}º ao {{ate}}º",
+    "miolo": "{{de}}º ao {{ate}}º · {{times}}",
+    "mostrar": "mostrar",
+    "ocultar": "ocultar",
+    "zona": {
+      "rebaixamento": "Rebaixamento",
+      "preLibertadores": "Pré-Libertadores",
+      "libertadores": "Libertadores",
+      "sulAmericana": "Sul-Americana",
+      "championsLeague": "Champions League",
+      "europaLeague": "Europa League",
+      "conferenceLeague": "Conference League",
+      "acesso": "Acesso"
+    }
+  },
+  "artilheiros": {
+    "titulo": "Artilheiros",
+    "verTop": "ver só o top {{count}}",
+    "verTodos": "ver os {{count}}",
+    "gols": "gols",
+    "vazioTitulo": "Artilheiros não disponíveis",
+    "vazioTexto": "Entram assim que a competição passar pela coleta."
+  },
+  "grupos": {
+    "titulo": "Fase de grupos",
+    "contagem_zero": "{{count}} grupos",
+    "contagem_one": "{{count}} grupo",
+    "contagem_other": "{{count}} grupos",
+    "nome": "Grupo {{letra}}",
+    "colunas": "J · SG · Pts",
+    "vazioTitulo": "Grupos ainda não coletados",
+    "vazioTexto": "Entram assim que a competição passar pela coleta."
+  },
+  "chaveamento": {
+    "titulo": "Chaveamento",
+    "tituloCompeticao": "Chaveamento · {{competicao}}",
+    "expandir": "expandir",
+    "fechar": "Fechar",
+    "aDefinir": "a definir",
+    "idaEVoltaSomadas": "ida e volta somadas",
+    "arrasteRole": "arraste para mover, role para aproximar",
+    "vazioTitulo": "Chaveamento ainda não definido",
+    "vazioTexto": "Os confrontos aparecem quando o sorteio das fases entrar na coleta.",
+    "nota": "O número é o agregado de ida e volta.{{formato}} Quem enfrenta quem nas fases seguintes depende do sorteio, então elas ficam como \"a definir\" até sair.",
+    "notaFormato": " Formato: {{formato}}.",
+    "aria": {
+      "afastar": "Afastar",
+      "aproximar": "Aproximar",
+      "enquadrar": "Enquadrar a chave inteira"
+    },
+    "formato": {
+      "copaDoBrasil": "mata-mata em ida e volta, com final em dois jogos",
+      "libertadores": "8 grupos, 2 passam por grupo, mata-mata em ida e volta e final única",
+      "sudamericana": "8 grupos, mata-mata em ida e volta e final única",
+      "championsLeague": "fase de liga, playoff, mata-mata em ida e volta e final única",
+      "copaMundo": "grupos e mata-mata em jogo único"
+    },
+    "vagas": {
+      "final": "Final",
+      "semifinal": "Semifinal",
+      "quartas": "Quartas de final",
+      "oitavas": "Oitavas de final",
+      "dezesseisAvos": "16 avos de final",
+      "trintaEDoisAvos": "32 avos de final",
+      "confrontos_zero": "{{count}} confrontos",
+      "confrontos_one": "{{count}} confronto",
+      "confrontos_other": "{{count}} confrontos"
+    }
+  },
+  "rodada": {
+    "semRodada": "—",
+    "curto": {
+      "grupos": "Grupos {{numero}}",
+      "qualificacao": "Pré {{numero}}",
+      "final": "Final",
+      "semifinal": "Semi",
+      "quartas": "Quartas",
+      "oitavas": "Oitavas",
+      "dezesseisAvos": "16 avos",
+      "trintaEDoisAvos": "32 avos",
+      "sessentaEQuatroAvos": "64 avos",
+      "primeiraFase": "1ª fase",
+      "fasePreliminar": "Pré",
+      "playoff": "Playoff",
+      "terceiraPreliminar": "3ª pré",
+      "segundaPreliminar": "2ª pré",
+      "primeiraPreliminar": "1ª pré"
+    },
+    "longo": {
+      "rodada": "Rodada {{numero}}",
+      "semNumero": "Rodada",
+      "grupos": "Fase de grupos, {{numero}}ª rodada",
+      "faseDeGrupos": "Fase de grupos",
+      "qualificacao": "{{numero}}ª fase preliminar",
+      "final": "Final",
+      "semifinal": "Semifinal",
+      "quartas": "Quartas de final",
+      "oitavas": "Oitavas de final",
+      "dezesseisAvos": "16 avos de final",
+      "trintaEDoisAvos": "32 avos de final",
+      "sessentaEQuatroAvos": "64 avos de final",
+      "primeiraFase": "Primeira fase",
+      "fasePreliminar": "Fase preliminar",
+      "playoff": "Playoff",
+      "terceiraPreliminar": "Terceira fase preliminar",
+      "segundaPreliminar": "Segunda fase preliminar",
+      "primeiraPreliminar": "Primeira fase preliminar"
+    }
+  },
+  "reguaRodadas": {
+    "rodada": "Rodada",
+    "fase": "Fase",
+    "anterior": "Rodada anterior",
+    "proxima": "Próxima rodada",
+    "rodadasJogadas_zero": "{{count}} rodadas jogadas",
+    "rodadasJogadas_one": "{{count}} rodada jogada",
+    "rodadasJogadas_other": "{{count}} rodadas jogadas",
+    "fases_zero": "{{count}} fases",
+    "fases_one": "{{count}} fase",
+    "fases_other": "{{count}} fases",
+    "resumo": "{{rodadas}} · {{jogos}} nesta"
+  },
+  "teste": {
+    "restanteDias_one": "falta {{count}} dia",
+    "restanteDias_other": "faltam {{count}} dias",
+    "restanteHoras_one": "falta {{count}} hora",
+    "restanteHoras_other": "faltam {{count}} horas",
+    "restanteMenosDeUmaHora": "falta menos de 1 hora"
+  },
+  "assinar": {
+    "tituloExpirou": "Seu teste grátis acabou.",
+    "titulo": "Assinar o Futebol",
+    "subtituloExpirou": "A análise continua livre pra você. Só o pick de valor de cada oportunidade é que fica com assinante.",
+    "subtituloTeste": "Ainda {{tempo}} de teste. Assinando agora, você não perde o acesso quando acabar.",
+    "subtituloPadrao": "O pick de valor de cada jogo, com o porquê do lado.",
+    "inclui": {
+      "pickDeValor": "O pick de valor de cada oportunidade, com o porquê do lado",
+      "score": "Score de Confiabilidade de 0 a 100 em todos os jogos",
+      "competicoes": "Brasil, América do Sul e Europa — as principais competições",
+      "alertas": "Alertas no Telegram quando as oportunidades do dia saem",
+      "betinho": "Betinho ilimitado pra registrar suas apostas"
+    },
+    "preco": {
+      "porMes": "/mês",
+      "cancela": "Cancela quando quiser, direto no app."
+    },
+    "botao": {
+      "abrindo": "Abrindo o pagamento...",
+      "verificando": "Verificando...",
+      "assinar": "Assinar o Futebol",
+      "criarConta": "Criar conta e assinar"
+    },
+    "whatsapp": "Ou fale com a gente pelo WhatsApp",
+    "whatsappMensagem": "Oi! Tenho uma dúvida sobre a assinatura do Futebol (R$ 39,90/mês).",
+    "stripe": "Pagamento no Stripe. A gente não guarda os dados do seu cartão.",
+    "rodape": "Não é recomendação de aposta, e não existe promessa de lucro. A gente mostra onde a odd paga mais do que o risco — quem bate o martelo é você.",
+    "toast": {
+      "recebidoTitulo": "Pagamento recebido!",
+      "recebidoTexto": "Confirmando sua assinatura...",
+      "ativaTitulo": "Assinatura ativa!",
+      "ativaTexto": "Bom proveito. Te levando pras oportunidades...",
+      "canceladoTitulo": "Pagamento cancelado",
+      "canceladoTexto": "Nada foi cobrado. Quando quiser, é só voltar aqui.",
+      "indisponivelTitulo": "Assinatura indisponível",
+      "indisponivelTexto": "Não conseguimos abrir o pagamento agora. Fala com a gente que resolvemos.",
+      "erroTitulo": "Erro ao abrir o pagamento",
+      "erroTexto": "Tente de novo em instantes."
+    }
+  },
+  "lp": {
+    "nav": {
+      "acessar": "Acessar",
+      "entrar": "Entrar",
+      "comecarGratis": "Começar Grátis"
+    },
+    "hero": {
+      "sobretitulo": "Futebol · Aposta de Valor",
+      "titulo": "Não precisa cravar o placar.",
+      "tituloDestaque": "Só achar a odd que paga demais.",
+      "descricao": "Pra cada jogo, a gente estima a chance real e compara com a odd da casa. Quando a odd paga mais do que o risco, tem valor — e a gente ranqueia por um Score de Confiabilidade de 0 a 100. Testa num jogo real: <0>clica numa oportunidade aí embaixo.</0>",
+      "ctaCriarConta": "Criar conta — 48 horas grátis",
+      "ctaEspiar": "Espiar sem login",
+      "rodape": "48 horas de Premium, sem cartão · Depois segue free com a análise toda · Sem promessa de lucro, a decisão é sua"
+    },
+    "mock": {
+      "dadosDeExemplo": "dados de exemplo",
+      "boardTitulo": "Oportunidades de hoje",
+      "boardSubtitulo": "Ranqueadas por confiabilidade · clique pra abrir",
+      "regua": "abaixo: sem valor claro",
+      "cardTitulo": "O que olhar neste jogo",
+      "atencao": "Pontos de atenção",
+      "confiabilidade": "Confiabilidade",
+      "aviso": "Leitura de risco, não recomendação de aposta.",
+      "veredito": {
+        "forte": "Valor forte",
+        "medio": "Valor",
+        "leve": "Valor leve"
+      },
+      "ctaProduto": "Ver as oportunidades de verdade",
+      "ctaProdutoRodape": "Sem login pra olhar · 48 horas de Premium ao criar a conta",
+      "flaPal": {
+        "mercado": "Gols (Over/Under)",
+        "pick": "Mais de 2,5 gols",
+        "porque1": "Os dois somam muitos gols (casa + fora)",
+        "porque2": "Ataques entre os melhores do campeonato",
+        "porque3": "Confronto recente com 3+ gols na maioria das vezes",
+        "atencao1": "Palmeiras às vezes segura o ritmo fora de casa",
+        "atencao2": "Se o Flamengo sair na frente cedo, pode controlar"
+      },
+      "greInt": {
+        "mercado": "Dupla chance",
+        "pick": "Grêmio ou empate",
+        "porque1": "Grêmio forte como mandante",
+        "porque2": "Internacional oscila longe de casa",
+        "porque3": "Clássico equilibrado — o empate protege a aposta",
+        "atencao1": "Inter vem em sequência melhor de resultados",
+        "atencao2": "Em clássico, o mando pesa menos"
+      },
+      "saoCor": {
+        "mercado": "Ambos marcam",
+        "pick": "Sim",
+        "porque1": "Os dois balançam a rede com frequência",
+        "porque2": "Defesas vazadas nas últimas rodadas",
+        "atencao1": "São Paulo costuma jogar mais fechado em casa",
+        "atencao2": "Clássico tende a ser truncado no começo"
+      },
+      "bahFlu": {
+        "mercado": "Resultado (1X2)",
+        "pick": "Bahia",
+        "porque1": "Leve vantagem do mando",
+        "atencao1": "A odd está perto do justo — valor magro",
+        "atencao2": "Fluminense reage bem fora de casa"
+      }
+    },
+    "fatos": {
+      "mercados": "5 mercados de valor",
+      "score": "Score 0–100",
+      "odds": "Odds pré-jogo (não ao vivo)",
+      "competicoes": "Brasil · América do Sul · Europa"
+    },
+    "dentro": {
+      "sobretitulo": "O que tem dentro",
+      "titulo": "O valor não tá na cara. A gente acha pra você.",
+      "descricao": "Achar uma aposta de valor na mão dá trabalho: estimar a chance real, tirar a margem da casa, comparar com a melhor odd. A plataforma faz essa conta em todo jogo.",
+      "oportunidadesTitulo": "Oportunidades de valor",
+      "oportunidadesTexto": "A cada jogo, comparamos a chance real com a odd da casa. Onde a odd paga mais do que o risco, vira oportunidade — e ela chega ranqueada por confiabilidade, como no exemplo lá em cima.",
+      "scoreTitulo": "Score de Confiabilidade",
+      "scoreTexto": "De 0 a 100. Junta o tamanho do valor, as premissas do jogo (ataque, defesa, mando, forma), se a odd não é exagerada e se as casas vêm concordando. Não é chance de acerto — é o quanto dá pra confiar.",
+      "porqueTitulo": "O porquê de cada pick",
+      "porqueTexto": "Toda oportunidade vem com as premissas que sustentam a tese e os pontos de atenção, mastigados. Sem 'entrada garantida', sem mandar quanto apostar.",
+      "leituraTitulo": "A leitura do jogo inteira",
+      "leituraTexto": "Modelo de gols, escalação confirmada, desfalques, confrontos diretos e estatísticas da temporada — pra você bater o martelo com o jogo na frente, não no escuro."
+    },
+    "combinado": {
+      "sobretitulo": "Transparência",
+      "titulo": "O combinado que a gente assina",
+      "nuncaTitulo": "O que você nunca vai ver aqui",
+      "nunca1": "Promessa de lucro garantido",
+      "nunca2": "Pick às cegas, sem o porquê junto",
+      "nunca3": "Sugestão de quanto apostar",
+      "nunca4": "Taxa de acerto de marketing",
+      "nunca5": "Depoimento inventado",
+      "sempreTitulo": "O que você sempre vai ter",
+      "sempre1": "A chance estimada e a odd, lado a lado",
+      "sempre2": "O porquê de cada oportunidade — premissas e pontos de atenção",
+      "sempre3": "Odds pré-jogo das principais casas",
+      "sempre4": "A análise toda livre — só o pick de valor é Premium",
+      "sempre5": "A decisão sempre na sua mão",
+      "assinatura": "— Smart Betting · combinado válido desde o primeiro dia"
+    },
+    "faq": {
+      "sobretitulo": "Perguntas frequentes",
+      "titulo": "Bora tirar dúvida",
+      "valorP": "O que é uma aposta de 'valor'?",
+      "valorR": "É quando a odd paga mais do que a chance real do evento. Se algo acontece em ~55% das vezes, a odd justa é ~1.82; se a casa paga 2.00, tem valor. A gente acha essas diferenças e ranqueia por confiabilidade.",
+      "dicaP": "Vocês dão dica de aposta?",
+      "dicaR": "A gente mapeia onde a odd paga mais do que o risco e mostra com o porquê do lado. O que não fazemos é mandar 'entrada garantida' nem dizer quanto apostar. Quem bate o martelo é você.",
+      "gratisP": "É grátis pra testar?",
+      "gratisR": "São 48 horas de Premium completo, sem cartão. Depois segue free: você continua vendo o Score, a leitura do jogo, a classificação e os times — só o pick de valor de cada oportunidade fica bloqueado.",
+      "estatisticaP": "Preciso entender de estatística?",
+      "estatisticaR": "Não. Cada oportunidade vem mastigada: o lado, a odd, a chance estimada e o porquê. O Score (0–100) resume o quanto dá pra confiar naquela aposta.",
+      "dadosP": "De onde vêm os dados?",
+      "dadosR": "Estatísticas oficiais dos jogos e odds pré-jogo das principais casas, das principais competições do Brasil, América do Sul e Europa, atualizadas ao longo do dia.",
+      "acertoP": "Qual a taxa de acerto de vocês?",
+      "acertoR": "Não publicamos taxa de acerto. O que você recebe é o dado e o porquê antes de apostar — a chance estimada, a odd e as premissas. Quem avalia se a oportunidade vale é você, com o número na frente."
+    },
+    "final": {
+      "titulo": "Testa 48 horas grátis.",
+      "descricao": "Premium completo, sem cartão. Depois segue free com a análise toda — só o pick de valor é que fica pra quem assina.",
+      "ctaComecar": "Começar grátis",
+      "ctaEspiar": "Espiar sem login"
+    }
   }
 }

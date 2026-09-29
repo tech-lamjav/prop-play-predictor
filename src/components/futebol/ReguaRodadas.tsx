@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { rodadaCurta } from '@/utils/futebol-rodadas';
 
@@ -30,6 +31,7 @@ export function ReguaRodadas({
   jogosNaRodada: number;
   porPontos: boolean;
 }) {
+  const { t } = useTranslation('futebol');
   const ativoRef = useRef<HTMLButtonElement | null>(null);
   const trilhaRef = useRef<HTMLDivElement | null>(null);
 
@@ -93,7 +95,7 @@ export function ReguaRodadas({
         className="hidden sm:block shrink-0 text-[9.5px] uppercase tracking-[0.14em] font-bold pr-1"
         style={{ color: '#8d8672' }}
       >
-        {porPontos ? 'Rodada' : 'Fase'}
+        {porPontos ? t('reguaRodadas.rodada') : t('reguaRodadas.fase')}
       </span>
 
       <button
@@ -101,7 +103,7 @@ export function ReguaRodadas({
         disabled={idx <= 0}
         className="shrink-0 w-7 h-7 grid place-items-center rounded-rebrand-sm transition disabled:opacity-30 hover:bg-canvas-2"
         style={{ color: '#8d8672', background: '#f8f4ea' }}
-        aria-label="Rodada anterior"
+        aria-label={t('reguaRodadas.anterior')}
       >
         <ChevronLeft className="w-4 h-4" />
       </button>
@@ -133,7 +135,7 @@ export function ReguaRodadas({
                       }
               }
             >
-              {rodadaCurta(rounds[p.i])}
+              {rodadaCurta(rounds[p.i], t)}
               {p.i === idx && (
                 <span className="w-[5px] h-[5px] rounded-full" style={{ background: '#fbbf24' }} />
               )}
@@ -147,15 +149,21 @@ export function ReguaRodadas({
         disabled={idx >= rounds.length - 1}
         className="shrink-0 w-7 h-7 grid place-items-center rounded-rebrand-sm transition disabled:opacity-30 hover:bg-canvas-2"
         style={{ color: '#8d8672', background: '#f8f4ea' }}
-        aria-label="Próxima rodada"
+        aria-label={t('reguaRodadas.proxima')}
       >
         <ChevronRight className="w-4 h-4" />
       </button>
 
       <span className="hidden lg:block ml-auto shrink-0 text-[11px]" style={{ color: '#8d8672' }}>
-        {porPontos
-          ? `${jogadas} ${jogadas === 1 ? 'rodada jogada' : 'rodadas jogadas'} · ${jogosNaRodada} ${jogosNaRodada === 1 ? 'jogo' : 'jogos'} nesta`
-          : `${rounds.length} fases · ${jogosNaRodada} ${jogosNaRodada === 1 ? 'jogo' : 'jogos'} nesta`}
+        {/* ⚠️ `jogadas` vale ZERO na primeira rodada, e o CLDR classifica zero
+            como SINGULAR em português: sem a forma `_zero` no catálogo, aqui
+            sairia "0 rodada jogada". */}
+        {t('reguaRodadas.resumo', {
+          rodadas: porPontos
+            ? t('reguaRodadas.rodadasJogadas', { count: jogadas })
+            : t('reguaRodadas.fases', { count: rounds.length }),
+          jogos: t('contagem.jogos', { count: jogosNaRodada }),
+        })}
       </span>
     </div>
   );

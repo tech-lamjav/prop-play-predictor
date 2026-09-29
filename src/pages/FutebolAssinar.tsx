@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { Check, Loader2, Lock, MessageCircle } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
-import { tempoDeTeste } from '@/components/futebol/tempo-de-teste';
+import { restanteDoTeste } from '@/components/futebol/tempo-de-teste';
 import { Button } from '@/components/ui/button';
 import { whatsappDoTime } from '@/config/contato';
 import { useAuth } from '@/hooks/use-auth';
@@ -25,15 +26,17 @@ import { Seo } from '@/components/Seo';
 
 const STRIPE_PRICE_ID = import.meta.env.VITE_STRIPE_PRICE_ID_FUTEBOL as string | undefined;
 
+/** O que a assinatura inclui, por CHAVE — o texto sai do catálogo (#538). */
 const INCLUI = [
-  'O pick de valor de cada oportunidade, com o porquê do lado',
-  'Score de Confiabilidade de 0 a 100 em todos os jogos',
-  'Brasil, América do Sul e Europa — as principais competições',
-  'Alertas no Telegram quando as oportunidades do dia saem',
-  'Betinho ilimitado pra registrar suas apostas',
-];
+  'assinar.inclui.pickDeValor',
+  'assinar.inclui.score',
+  'assinar.inclui.competicoes',
+  'assinar.inclui.alertas',
+  'assinar.inclui.betinho',
+] as const;
 
 export default function FutebolAssinar() {
+  const { t } = useTranslation('futebol');
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user, isLoading: authLoading } = useAuth();
@@ -53,7 +56,7 @@ export default function FutebolAssinar() {
     if (!success || !sessionId || !user?.id) return;
 
     let cancelado = false;
-    toast({ title: 'Pagamento recebido!', description: 'Confirmando sua assinatura...' });
+    toast({ title: t('assinar.toast.recebidoTitulo'), description: t('assinar.toast.recebidoTexto') });
 
     const verificar = async (tentativa: number) => {
       if (cancelado) return;
@@ -62,7 +65,7 @@ export default function FutebolAssinar() {
         if (r.verified) {
           setAssinouAgora(true);
           await refetchAccess();
-          toast({ title: 'Assinatura ativa!', description: 'Bom proveito. Te levando pras oportunidades...' });
+          toast({ title: t('assinar.toast.ativaTitulo'), description: t('assinar.toast.ativaTexto') });
           setTimeout(() => navigate('/futebol/oportunidades'), 1200);
           return;
         }
@@ -74,23 +77,22 @@ export default function FutebolAssinar() {
 
     verificar(0);
     return () => { cancelado = true; };
-  }, [success, sessionId, user?.id, navigate, refetchAccess]);
+  }, [success, sessionId, user?.id, navigate, refetchAccess, t]);
 
   useEffect(() => {
     if (canceled) {
       toast({
-        title: 'Pagamento cancelado',
-        description: 'Nada foi cobrado. Quando quiser, é só voltar aqui.',
+        title: t('assinar.toast.canceladoTitulo'),
+        description: t('assinar.toast.canceladoTexto'),
       });
     }
-  }, [canceled]);
+  }, [canceled, t]);
 
   // A mensagem já vem escrita, como no resto do app: diz de onde a pessoa veio,
   // senão a conversa começa com um "oi" solto e o time gasta uma rodada só para
   // descobrir o assunto. O número vive em `config/contato` — nunca literal aqui.
   const falarNoWhatsApp = () => {
-    const mensagem = 'Oi! Tenho uma dúvida sobre a assinatura do Futebol (R$ 39,90/mês).';
-    window.open(whatsappDoTime(mensagem), '_blank');
+    window.open(whatsappDoTime(t('assinar.whatsappMensagem')), '_blank');
   };
 
   const assinar = async () => {
@@ -106,8 +108,8 @@ export default function FutebolAssinar() {
       // Falha de configuração: dizer isso em vez de fingir que o clique funcionou.
       console.error('VITE_STRIPE_PRICE_ID_FUTEBOL não configurado');
       toast({
-        title: 'Assinatura indisponível',
-        description: 'Não conseguimos abrir o pagamento agora. Fala com a gente que resolvemos.',
+        title: t('assinar.toast.indisponivelTitulo'),
+        description: t('assinar.toast.indisponivelTexto'),
         variant: 'destructive',
       });
       return;
@@ -120,8 +122,8 @@ export default function FutebolAssinar() {
     } catch (error) {
       console.error('Erro ao criar checkout:', error);
       toast({
-        title: 'Erro ao abrir o pagamento',
-        description: error instanceof Error ? error.message : 'Tente de novo em instantes.',
+        title: t('assinar.toast.erroTitulo'),
+        description: error instanceof Error ? error.message : t('assinar.toast.erroTexto'),
         variant: 'destructive',
       });
       setIsLoading(false);
@@ -135,7 +137,9 @@ export default function FutebolAssinar() {
 
   const expirou = access?.state === 'expired';
   const noTeste = access?.state === 'trial';
-  const tempo = tempoDeTeste(access);
+  // As PARTES do tempo restante, não a frase pronta: a frase se monta no idioma
+  // ativo, e a decisão de contar em dias ou em horas continua num lugar só.
+  const restante = restanteDoTeste(access);
 
   return (
     <div className="theme-bolao min-h-screen bg-canvas text-ink flex flex-col">
@@ -149,14 +153,21 @@ export default function FutebolAssinar() {
               <Lock className="h-8 w-8 text-white" />
             </div>
             <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-3">
-              {expirou ? 'Seu teste grátis acabou.' : 'Assinar o Futebol'}
+              {expirou ? t('assinar.tituloExpirou') : t('assinar.titulo')}
             </h1>
             <p className="text-[15px] text-ink-2">
               {expirou
-                ? 'A análise continua livre pra você. Só o pick de valor de cada oportunidade é que fica com assinante.'
-                : noTeste && tempo
-                  ? `Ainda ${tempo.longo} de teste. Assinando agora, você não perde o acesso quando acabar.`
-                  : 'O pick de valor de cada jogo, com o porquê do lado.'}
+                ? t('assinar.subtituloExpirou')
+                : noTeste && restante
+                  ? t('assinar.subtituloTeste', {
+                      tempo:
+                        restante.unidade === 'menosDeUmaHora'
+                          ? t('teste.restanteMenosDeUmaHora')
+                          : restante.unidade === 'dias'
+                            ? t('teste.restanteDias', { count: restante.quantidade })
+                            : t('teste.restanteHoras', { count: restante.quantidade }),
+                    })
+                  : t('assinar.subtituloPadrao')}
             </p>
           </div>
 
@@ -164,15 +175,15 @@ export default function FutebolAssinar() {
             <div className="flex items-baseline gap-1.5 mb-1">
               <span className="text-lg font-bold opacity-60">R$</span>
               <span className="text-[42px] font-extrabold leading-none tracking-tight tabular-nums">39,90</span>
-              <span className="text-[15px] text-ink-2">/mês</span>
+              <span className="text-[15px] text-ink-2">{t('assinar.preco.porMes')}</span>
             </div>
-            <p className="text-[13px] text-ink-2 mb-6">Cancela quando quiser, direto no app.</p>
+            <p className="text-[13px] text-ink-2 mb-6">{t('assinar.preco.cancela')}</p>
 
             <ul className="space-y-3 mb-7">
-              {INCLUI.map((item) => (
-                <li key={item} className="flex items-start gap-2.5">
+              {INCLUI.map((chave) => (
+                <li key={chave} className="flex items-start gap-2.5">
                   <Check className="h-4 w-4 text-forest shrink-0 mt-0.5" />
-                  <span className="text-[14px] text-ink-2">{item}</span>
+                  <span className="text-[14px] text-ink-2">{t(chave)}</span>
                 </li>
               ))}
             </ul>
@@ -186,10 +197,10 @@ export default function FutebolAssinar() {
               {isLoading || authLoading ? (
                 <>
                   <Loader2 className="h-5 w-5 animate-spin" />
-                  <span>{isLoading ? 'Abrindo o pagamento...' : 'Verificando...'}</span>
+                  <span>{isLoading ? t('assinar.botao.abrindo') : t('assinar.botao.verificando')}</span>
                 </>
               ) : (
-                <span>{user ? 'Assinar o Futebol' : 'Criar conta e assinar'}</span>
+                <span>{user ? t('assinar.botao.assinar') : t('assinar.botao.criarConta')}</span>
               )}
             </Button>
 
@@ -200,17 +211,16 @@ export default function FutebolAssinar() {
               className="w-full py-6 mt-3 gap-2 bg-white border-line text-ink hover:bg-canvas-2"
             >
               <MessageCircle className="h-5 w-5" />
-              <span className="text-sm sm:text-base text-center">Ou fale com a gente pelo WhatsApp</span>
+              <span className="text-sm sm:text-base text-center">{t('assinar.whatsapp')}</span>
             </Button>
 
             <p className="text-[12px] text-ink-3 text-center mt-4">
-              Pagamento no Stripe. A gente não guarda os dados do seu cartão.
+              {t('assinar.stripe')}
             </p>
           </div>
 
           <p className="text-[13px] text-ink-2 text-center mt-8">
-            Não é recomendação de aposta, e não existe promessa de lucro. A gente mostra onde a odd
-            paga mais do que o risco — quem bate o martelo é você.
+            {t('assinar.rodape')}
           </p>
         </div>
       </div>
