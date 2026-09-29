@@ -201,7 +201,16 @@ export function EstatisticasDoJogo({
                 <div className="text-[11.5px] font-semibold text-ink truncate mb-2">{s.titulo}</div>
                 <SerieResultados
                   s={s}
-                  corPor={doMercado.metrica === 'ambos' ? 'valor' : 'resultado'}
+                  // A cascata acompanha o `EH_QUADRO` logo acima: tudo que
+                  // não é `resultado` e chega aqui é binário, e binária se
+                  // pinta pelo FATO. Enquanto ela dizia `ambos` por extenso, o
+                  // `EH_QUADRO` alargou e ela não — e uma binária nova cairia
+                  // no `resultado`, pintando vitória e derrota num dado que
+                  // não tem nenhuma das duas.
+                  //
+                  // `valor` e não `favorece` porque nesta aba não há premissa:
+                  // a pergunta é o fato, não para que lado ele puxa.
+                  corPor={doMercado.metrica === 'resultado' ? 'resultado' : 'valor'}
                   comData
                   larguraFixa
                 />

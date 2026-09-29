@@ -101,8 +101,36 @@ describe('a legenda da binária não promete cor que ela não controla', () => {
     // "Verde quando marcou" acertaria a `ambos_marcam` e mentiria na
     // `ataque_trava`, que lê a MESMA métrica com a direção trocada.
     const texto = storyDaPremissa('btts', 'ambos_marcam', umEmBranco, null, null)!.comoLer;
-    expect(texto).toContain('Cada quadro é um jogo');
+    expect(texto).toContain('Cada quadrado é um jogo');
     expect(texto).toContain('o lado que a premissa quer');
     expect(texto).not.toContain('barra');
+  });
+});
+
+describe('as binárias do mercado de Gols mudaram junto, e de propósito', () => {
+  // A regra é da MÉTRICA, não do mercado: `ataques_fracos`, `clean_sheets_altos`
+  // e `ambos_vazam` leem as mesmas `sem_marcar`/`sem_sofrer` e sofriam os mesmos
+  // três defeitos. Consertar só no Ambos marcam deixaria a mesma métrica
+  // desenhada de dois jeitos conforme o mercado, que é pior que o defeito.
+  //
+  // Este teste existe porque elas entraram no diff SEM terem sido pedidas: a
+  // cobertura é o que torna a carona explicita em vez de silenciosa.
+  const doisEUm: FutebolFixtureHistorico[] = [
+    jogo({ ordem: 1, past_fixture_id: 1, gols_contra: 0, sem_sofrer: true }),
+    jogo({ ordem: 2, past_fixture_id: 2, gols_contra: 2, sem_sofrer: false }),
+    jogo({ side: 'away', team_id: 2, team_name: 'England', em_casa: false, ordem: 1, past_fixture_id: 3, gols_contra: 0, sem_sofrer: true }),
+  ];
+
+  it('a `clean_sheets_altos` pinta a favor o jogo sem sofrer gol', () => {
+    const s = storyDaPremissa('goals_over_under', 'clean_sheets_altos', doisEUm, null, 2.5)!
+      .series.find((x) => x.teamId === 1)!;
+    expect(s.metrica).toBe('sem_sofrer');
+    expect(s.jogos.map((j) => j.favorece)).toEqual([true, false]);
+  });
+
+  it('e a `ambos_vazam`, que lê a mesma métrica de trás para frente, inverte', () => {
+    const s = storyDaPremissa('goals_over_under', 'ambos_vazam', doisEUm, null, 2.5)!
+      .series.find((x) => x.teamId === 1)!;
+    expect(s.jogos.map((j) => j.favorece)).toEqual([false, true]);
   });
 });

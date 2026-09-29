@@ -33,6 +33,7 @@ function renderAba(
       extras={extras}
       historico={[]}
       numeros={[]}
+      saida={null}
       lado={null}
       linha={1.5}
       saidaLabel="Mais de 1,5 gols"
@@ -134,6 +135,7 @@ describe('a premissa presta contas do modelo na tela', () => {
         extras={[]}
         historico={historico(ga)}
         numeros={[]}
+        saida={null}
         lado="home"
         linha={3.25}
         saidaLabel="Menos de 3,25 gols"
@@ -234,6 +236,7 @@ describe('rolagem ao abrir a premissa', () => {
         extras={[]}
         historico={comHistorico}
         numeros={[]}
+        saida={null}
         lado="home"
         linha={3.25}
         saidaLabel="Menos de 3,25 gols"
@@ -325,6 +328,7 @@ describe('o histórico de Ambos marcam mostra o placar de cada jogo', () => {
         extras={[]}
         historico={cincoJogos}
         numeros={[]}
+        saida={null}
         lado={null}
         linha={null}
         saidaLabel="Ambos marcam: Não"
@@ -345,7 +349,7 @@ describe('o histórico de Ambos marcam mostra o placar de cada jogo', () => {
     // A legenda vinha do mapa por métrica e dizia "Cada barra é um jogo". Com o
     // desenho trocado, ela passou a descrever outro gráfico que o da tela.
     abrir('historico_btts');
-    expect(screen.getByText(/Cada quadro é um jogo/)).toBeInTheDocument();
+    expect(screen.getByText(/Cada quadrado é um jogo/)).toBeInTheDocument();
     expect(screen.queryByText(/Cada barra é um jogo: cheia quando os dois/)).not.toBeInTheDocument();
   });
 });

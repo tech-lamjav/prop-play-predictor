@@ -488,10 +488,10 @@ const COMO_LER: Record<Metrica, string> = {
   // `ambos_marcam`, que quer poucos jogos em branco, e pela `ataque_trava`,
   // que quer muitos. "Verde quando marcou" acertaria uma e mentiria na outra.
   // Quem sabe qual é o lado bom é a premissa, e é ela que a cor segue.
-  ambos: 'Cada quadro é um jogo, com o placar e o adversário. Verde é jogo do lado que a premissa quer, vermelho é o contrário. O que ela usa é em quantos dos jogos os dois marcaram.',
-  resultado: 'Cada quadro é um jogo, com o placar e o adversário. Verde é vitória, cinza empate, vermelho derrota.',
-  sem_sofrer: 'Cada quadro é um jogo, com o placar e o adversário. Verde é jogo do lado que a premissa quer, vermelho é o contrário. O que ela usa é o percentual de jogos sem sofrer gol.',
-  sem_marcar: 'Cada quadro é um jogo, com o placar e o adversário. Verde é jogo do lado que a premissa quer, vermelho é o contrário. O que ela usa é o percentual de jogos sem marcar.',
+  ambos: 'Cada quadrado é um jogo, com o placar e o adversário. Verde é jogo do lado que a premissa quer, vermelho é o contrário. O que ela usa é em quantos dos jogos os dois marcaram.',
+  resultado: 'Cada quadrado é um jogo, com o placar e o adversário. Verde é vitória, cinza empate, vermelho derrota.',
+  sem_sofrer: 'Cada quadrado é um jogo, com o placar e o adversário. Verde é jogo do lado que a premissa quer, vermelho é o contrário. O que ela usa é o percentual de jogos sem sofrer gol.',
+  sem_marcar: 'Cada quadrado é um jogo, com o placar e o adversário. Verde é jogo do lado que a premissa quer, vermelho é o contrário. O que ela usa é o percentual de jogos sem marcar.',
 };
 
 /**

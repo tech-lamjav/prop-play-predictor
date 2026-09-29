@@ -649,7 +649,7 @@ export function MotivosJogoPorJogo({
    * Sim") e este é a chave do mart: derivar um do outro amarraria a busca no
    * banco à copy, e trocar uma palavra da tela zeraria a evidência em silêncio.
    */
-  saida?: string | null;
+  saida: string | null;
   lado: 'home' | 'away' | null;
   linha: number | null;
   /** A saída analisada, para o fechamento dizer a favor de quê. */

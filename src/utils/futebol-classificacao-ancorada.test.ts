@@ -69,6 +69,7 @@ const evidenciaDe = (slug: string, linhas: FutebolFixtureNumeros[], mercado = 'm
     slug,
     numeros: linhas,
     historico: undefined,
+    saida: null,
     lado: 'home',
     linha: null,
     acesa: true,

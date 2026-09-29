@@ -141,8 +141,13 @@ export function premissasAcesasDaLeitura(
     historico: FutebolFixtureHistorico[] | undefined;
     /** O valor medido pelo mart (#464). Ausência é normal, não erro. */
     insumos?: InsumoMedido[] | undefined;
-    /** A saída do mart (`Home`, `1X`, `Yes`…), que acha a linha do valor medido. */
-    saida?: string | null;
+    /**
+     * A saída do mart (`Home`, `1X`, `Yes`…), que acha a linha do valor medido.
+     *
+     * Obrigatória e nula-aceitando, pelo mesmo motivo da `evidenciaDaPremissa`:
+     * opcional, quem esquecesse saía da rota do valor medido em silêncio.
+     */
+    saida: string | null;
     lado: 'home' | 'away' | null;
     /**
      * A linha da saída, quando o texto da evidência depende dela.

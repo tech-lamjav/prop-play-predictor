@@ -70,11 +70,13 @@ export function evidenciaDaPremissa({
    * marcam não existe lado nenhum. Quem acha a linha do mart é ela; quem monta a
    * frase é o `lado`.
    *
-   * Opcional: a rota do valor medido é a única que a usa, e quem não a passa
-   * simplesmente não entra nessa rota — que é o mesmo que acontecia antes com um
-   * mercado sem insumo publicado.
+   * ⚠️ OBRIGATÓRIA, embora aceite nulo. Opcional ela compilava em qualquer
+   * chamador, e quem esquecesse de passá-la saía da rota do valor medido sem
+   * erro de tipo e sem teste reprovando — a premissa voltaria calada a mostrar o
+   * número do histórico. Nula é uma resposta ("esta leitura não tem saída"); a
+   * ausência era um descuido indistinguível dela.
    */
-  saida?: string | null;
+  saida: string | null;
   lado: 'home' | 'away' | null;
   linha: number | null;
   /**
@@ -93,7 +95,7 @@ export function evidenciaDaPremissa({
   // Os quatro nomes, e não dois. `time`/`adversario` só existem onde a aposta
   // tem lado, e `mandante`/`visitante` existem sempre — é deles que o Ambos
   // marcam precisa, onde nenhum dos dois é o lado apostado.
-  const medido = evidenciaDoInsumoMedido(mercado, slug, saida ?? null, insumos, {
+  const medido = evidenciaDoInsumoMedido(mercado, slug, saida, insumos, {
     time: lado ? numeros?.find((n) => n.side === lado)?.team_name : undefined,
     adversario: lado ? numeros?.find((n) => n.side !== lado)?.team_name : undefined,
     mandante: numeros?.find((n) => n.side === 'home')?.team_name,

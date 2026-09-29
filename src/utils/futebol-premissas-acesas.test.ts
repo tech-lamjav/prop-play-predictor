@@ -31,6 +31,7 @@ const COMO_O_PAINEL = { max: 4, incluirPesoZero: false };
 const semContexto = {
   numeros: undefined,
   historico: undefined,
+  saida: null,
   lado: null,
   linha: null,
 };
@@ -134,6 +135,7 @@ describe('premissasAcesasDaLeitura', () => {
           acesas: ['xg_baixo_combinado'],
           numeros: undefined,
           historico: [jogo('home', 0.5), jogo('home', 0.5), jogo('away', 0.6), jogo('away', 0.6)],
+          saida: null,
           lado: 'home',
           linha: null,
         },
@@ -151,6 +153,7 @@ describe('premissasAcesasDaLeitura', () => {
           acesas: ['xg_baixo_combinado'],
           numeros: undefined,
           historico: [],
+          saida: null,
           lado: 'home',
           linha: null,
         },
