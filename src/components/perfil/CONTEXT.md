@@ -29,11 +29,19 @@ nós mesmos escrevemos.
 _Avoid_: país do usuário, endereço, país de cadastro
 
 **Registro de presença**:
-Uma linha por pessoa por dia, com o IP visto, o veredito e o momento. É um
-diário de quem apareceu, e **não** um log de tráfego: abrir dez telas no mesmo
-dia continua sendo uma linha só. O formato é o da frase que ele precisa
+Uma linha por pessoa por dia, com o IP visto, a origem, o veredito e o momento.
+É um diário de quem apareceu, e **não** um log de tráfego: abrir dez telas no
+mesmo dia continua sendo uma linha só. O formato é o da frase que ele precisa
 sustentar — "no dia tal, tantas pessoas ativas, e de onde".
 _Avoid_: log de acesso, histórico de sessões, auditoria
+
+**Origem** (do registro):
+O que o endereço disse naquele acesso: brasil, fora, ou não sei. É uma
+**observação**, e é ela que serve de prova — continua valendo mesmo com o
+bloqueio desligado, quando todo mundo entra e nenhum veredito diria nada.
+Observação envelhece melhor que decisão: se a política mudar, os vereditos
+antigos passam a significar outra coisa, e as origens antigas não.
+_Avoid_: país, veredito, localização
 
 **Porteiro**:
 A decisão de deixar entrar ou barrar, tomada **uma vez por sessão** e do lado do

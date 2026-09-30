@@ -684,6 +684,47 @@ export type Database = {
           },
         ]
       }
+      registro_de_presenca: {
+        Row: {
+          criado_em: string
+          dia: string
+          ip: string
+          origem: string
+          pais: string | null
+          pais_resolvido_em: string | null
+          user_id: string
+          veredito: string
+        }
+        Insert: {
+          criado_em?: string
+          dia: string
+          ip: string
+          origem: string
+          pais?: string | null
+          pais_resolvido_em?: string | null
+          user_id: string
+          veredito: string
+        }
+        Update: {
+          criado_em?: string
+          dia?: string
+          ip?: string
+          origem?: string
+          pais?: string | null
+          pais_resolvido_em?: string | null
+          user_id?: string
+          veredito?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "registro_de_presenca_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       share_links: {
         Row: {
           created_at: string | null

@@ -19,6 +19,7 @@ import { ChegadaDoTelegram } from "./components/ChegadaDoTelegram";
 import { IdentidadeAnalytics } from "./components/IdentidadeAnalytics";
 import { CrossSellManager } from "./components/crosssell/CrossSellManager";
 import { PesquisaDePerfil } from "./components/perfil/PesquisaDePerfil";
+import { Porteiro } from "./components/perfil/Porteiro";
 import { EnvironmentBanner } from "./components/EnvironmentBanner";
 import Footer from "./components/Footer";
 import { lazyWithRetry } from "./lib/lazy-with-retry";
@@ -133,6 +134,10 @@ const App = () => (
             aqui com os outros sentinelas, e não pendurada numa página. Ela
             segura os tours enquanto estiver na frente. (#523) */}
         <PesquisaDePerfil />
+        {/* Pergunta ao servidor de onde a pessoa está acessando, uma vez por
+            carregamento. Por ora só registra; quem obedece a resposta é a
+            fatia seguinte. (#550) */}
+        <Porteiro />
         <Suspense fallback={<LazyFallback />}>
           <Routes>
             <Route path="/" element={<LandingEcossistema />} />
