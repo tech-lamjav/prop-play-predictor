@@ -5,6 +5,7 @@ import { Calendar, ChevronDown } from 'lucide-react';
 import { getTeamLogoUrl } from '@/utils/team-logos';
 
 import { Skeleton } from '@/components/ui/skeleton';
+import { fmtDecimal, fmtPct } from '@/utils/formato';
 
 interface NextGamesCardProps {
   team?: Team;
@@ -143,7 +144,7 @@ export const NextGamesCard: React.FC<NextGamesCardProps> = ({
     if (!rank) return null;
     const color = getMatchupColor(rank);
     const ehPct = mapping.unidade === 'estatisticas.unidade.pct';
-    const formatted = ehPct ? `${(value * 100).toFixed(1)}%` : value.toFixed(1);
+    const formatted = ehPct ? fmtPct(value, 1) : fmtDecimal(value, 1);
     return { rank, formatted, label: t(mapping.rotulo), color };
   })();
 
@@ -250,7 +251,7 @@ export const NextGamesCard: React.FC<NextGamesCardProps> = ({
                 { chave: 'estatisticas.cedidas.indiceDefensivo', value: opponentRankings.def_rating, rank: opponentRankings.def_rating_rank },
               ] as { chave: string; value: number; rank: number; isPct?: boolean }[]).map(item => {
                 const color = item.rank >= 21 ? 'text-forest' : item.rank >= 11 ? 'text-amber-700' : 'text-rose-700';
-                const formatted = item.isPct ? `${(item.value * 100).toFixed(1)}%` : item.value.toFixed(1);
+                const formatted = item.isPct ? fmtPct(item.value, 1) : fmtDecimal(item.value, 1);
                 return (
                   <div key={item.chave} className="flex items-center justify-between text-[11px] tabular text-ink-2">
                     <span className="text-ink-dim">{t(item.chave)}</span>
@@ -292,7 +293,7 @@ export const NextGamesCard: React.FC<NextGamesCardProps> = ({
                 <div key={item.chave} className="flex items-center justify-between text-[11px] tabular text-ink-2">
                   <span className="text-ink-dim">{t(item.chave)}</span>
                   <span>
-                    {item.ppp.toFixed(2)} <span className="font-bold text-ink-2">#{item.rank}</span>
+                    {fmtDecimal(item.ppp, 2)} <span className="font-bold text-ink-2">#{item.rank}</span>
                   </span>
                 </div>
               ))}

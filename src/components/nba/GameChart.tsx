@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { fmtNumero } from '@/utils/formato';
+import { fmtDecimal, fmtDecimalAte, fmtLinhaAnalisada, fmtNumero, fmtPct } from '@/utils/formato';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, ReferenceLine, Label, Tooltip, LabelList } from 'recharts';
 import { GamePlayerStats, TeamPlayer } from '@/services/nba-data.service';
 import { RotateCcw, Info, Globe, Home, Plane, X, ChevronDown, ChevronLeft, ChevronRight, Star, SlidersHorizontal } from 'lucide-react';
@@ -78,7 +78,7 @@ const CustomTooltip = ({ active, payload }: any) => {
     const hasScore = data.playerScore !== null && data.oppScore !== null;
     const margin = hasScore ? Math.abs((data.playerScore ?? 0) - (data.oppScore ?? 0)) : null;
     const isOver = data.line > 0 ? data.value > data.line : null;
-    const statDisplay = data.value % 1 === 0 ? String(data.value) : data.value.toFixed(1);
+    const statDisplay = fmtDecimalAte(data.value, 1);
 
     return (
       <div className="bg-white border border-line rounded-lg shadow-lg p-3 w-44">
@@ -107,7 +107,7 @@ const CustomTooltip = ({ active, payload }: any) => {
           </div>
           {data.line > 0 && (
             <div className="text-right">
-              <div className="text-[9px] text-ink-dim mb-0.5">{t('grafico.tooltipLinha', { valor: data.line.toFixed(1) })}</div>
+              <div className="text-[9px] text-ink-dim mb-0.5">{t('grafico.tooltipLinha', { valor: fmtLinhaAnalisada(data.line) })}</div>
               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${isOver ? 'bg-emerald-100 text-forest' : 'bg-rose-100 text-rose-700'}`}>
                 {isOver ? t('grafico.acima') : t('grafico.abaixo')}
               </span>
@@ -277,14 +277,14 @@ export const GameChart: React.FC<GameChartProps> = ({
     : fullChartData;
 
   const average = chartData.length > 0
-    ? (chartData.reduce((sum, game) => sum + game.value, 0) / chartData.length).toFixed(1)
+    ? fmtDecimal(chartData.reduce((sum, game) => sum + game.value, 0) / chartData.length, 1)
     : '0.0';
 
   const hitRate = adjustedLine && chartData.length > 0
     ? {
         hits: chartData.filter(g => g.value > adjustedLine).length,
         total: chartData.length,
-        percentage: ((chartData.filter(g => g.value > adjustedLine).length / chartData.length) * 100).toFixed(1)
+        taxa: chartData.filter((g) => g.value > adjustedLine).length / chartData.length
       }
     : null;
 
@@ -678,15 +678,15 @@ export const GameChart: React.FC<GameChartProps> = ({
           {hitRate && (
             <span className="text-ink-2">
               {t('grafico.taxaAcerto')}{' '}
-              <span className={`font-semibold ml-1 ${parseFloat(hitRate.percentage) >= 50 ? 'text-forest' : 'text-rose-700'}`}>
-                {hitRate.percentage}%
+              <span className={`font-semibold ml-1 ${hitRate.taxa >= 0.5 ? 'text-forest' : 'text-rose-700'}`}>
+                {fmtPct(hitRate.taxa, 1)}
               </span>{' '}
               <span className="text-ink-dim">({hitRate.hits}/{hitRate.total})</span>
             </span>
           )}
           {adjustedLine !== null && (
             <span className="text-ink-2">
-              {t('grafico.linha')} <span className="font-semibold ml-1 text-ink">{adjustedLine.toFixed(1)}</span>
+              {t('grafico.linha')} <span className="font-semibold ml-1 text-ink">{fmtLinhaAnalisada(adjustedLine)}</span>
             </span>
           )}
         </div>
@@ -760,7 +760,7 @@ export const GameChart: React.FC<GameChartProps> = ({
         {adjustedLine !== null && (
           <div className="hidden sm:flex items-center gap-1.5 shrink-0 ml-auto">
             <span className="text-[11px] font-semibold tabular text-ink-2">
-              {t('grafico.linha')} <span className="text-ink ml-1">{adjustedLine.toFixed(1)}</span>
+              {t('grafico.linha')} <span className="text-ink ml-1">{fmtLinhaAnalisada(adjustedLine)}</span>
             </span>
             <TooltipProvider>
               <UITooltip>
@@ -852,7 +852,7 @@ export const GameChart: React.FC<GameChartProps> = ({
                     content={(props: any) => {
                       const { viewBox } = props;
                       if (!viewBox) return null;
-                      const v = adjustedLine.toFixed(1);
+                      const v = fmtLinhaAnalisada(adjustedLine);
                       const w = v.length > 4 ? 38 : 32;
                       const x = viewBox.x + viewBox.width - w + 2;
                       const y = viewBox.y - 10;
@@ -965,7 +965,7 @@ export const GameChart: React.FC<GameChartProps> = ({
         <div className="flex items-center gap-3 text-ink-dim flex-wrap">
           <span>{t('grafico.media')} <span className="font-medium text-ink opacity-100">{average}</span></span>
           {seasonAvg !== undefined && seasonAvg !== null && (
-            <span>{t('grafico.mediaTemporada')} <span className="font-medium text-ink opacity-100">{Number(seasonAvg).toFixed(1)}</span></span>
+            <span>{t('grafico.mediaTemporada')} <span className="font-medium text-ink opacity-100">{fmtDecimal(Number(seasonAvg), 1)}</span></span>
           )}
           {/* Potential assists (season) — só faz sentido na aba de Assistências.
               balldontlie nao expoe potential_ast game-by-game, entao mostramos
@@ -974,7 +974,7 @@ export const GameChart: React.FC<GameChartProps> = ({
             <span title={t('grafico.astPotenciaisTitulo')}>
               {t('grafico.astPotenciais')}{' '}
               <span className="font-medium text-ink opacity-100">
-                {potentialAstSeason.toFixed(1)}
+                {fmtDecimal(potentialAstSeason, 1)}
               </span>
               {potentialAstSeasonRank != null && (
                 <span className="opacity-70"> · #{potentialAstSeasonRank}</span>

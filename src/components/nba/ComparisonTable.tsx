@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronDown } from 'lucide-react';
 import { GamePlayerStats } from '@/services/nba-data.service';
+import { fmtDecimal, fmtLinhaAnalisada } from '@/utils/formato';
 
 interface ComparisonTableProps {
   gameStats: GamePlayerStats[];
@@ -87,9 +88,9 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({ gameStats }) =
                     </td>
                     <td className="px-1 md:px-2 py-2 font-semibold text-ink whitespace-nowrap">{game.played_against}</td>
                     <td className="px-1 md:px-2 py-2 text-ink-2 whitespace-nowrap">{isHome ? t('tabelaRecentes.casa') : t('tabelaRecentes.fora')}</td>
-                    <td className="px-1 md:px-2 py-2 text-right font-semibold text-ink whitespace-nowrap">{statValue.toFixed(1)}</td>
+                    <td className="px-1 md:px-2 py-2 text-right font-semibold text-ink whitespace-nowrap">{fmtDecimal(statValue, 1)}</td>
                     <td className="px-1 md:px-2 py-2 text-right text-ink-dim whitespace-nowrap">
-                      {hasValidLine ? lineValue.toFixed(1) : t('jogador.semDado')}
+                      {hasValidLine ? fmtLinhaAnalisada(lineValue) : t('jogador.semDado')}
                     </td>
                     <td className="px-2 md:px-4 py-2 text-right whitespace-nowrap">
                       {diffPercent !== null ? (
