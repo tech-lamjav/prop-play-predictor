@@ -22,6 +22,7 @@ import { PesquisaDePerfil } from "./components/perfil/PesquisaDePerfil";
 import { EnvironmentBanner } from "./components/EnvironmentBanner";
 import Footer from "./components/Footer";
 import { lazyWithRetry } from "./lib/lazy-with-retry";
+import { TituloPadrao } from "@/components/TituloPadrao";
 
 // Lazy-loaded pages (not critical for first paint).
 // Usa `lazyWithRetry` em vez de `React.lazy` direto pra detectar falha de
@@ -128,6 +129,9 @@ const App = () => (
             BrowserRouter porque leem a rota. */}
         <IdentidadeAnalytics />
         <ChegadaDoTelegram />
+        {/* O título da aba para quem não monta <Seo>. Fica com os outros
+            sentinelas porque é da PESSOA e não de uma tela. Ver TituloPadrao. */}
+        <TituloPadrao />
         <CrossSellManager />
         {/* A pesquisa de perfil é da PESSOA, não de uma tela: por isso mora
             aqui com os outros sentinelas, e não pendurada numa página. Ela

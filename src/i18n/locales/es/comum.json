@@ -8,5 +8,50 @@
   "idioma": {
     "rotulo": "Idioma",
     "escolher": "Elegir idioma"
+  },
+  "rodape": {
+    "aria": "Pie del sitio",
+    "sobre": "Análisis, gestión de bankroll y herramientas para quien quiere decidir con datos. Pronósticos de NBA y fútbol actualizados a diario, con score de fiabilidad en cada oportunidad.",
+    "colunas": {
+      "analises": "Análisis",
+      "ferramentas": "Herramientas",
+      "suporte": "Soporte"
+    },
+    "links": {
+      "futebol": "Fútbol",
+      "bolao": "Bolão Mundial 2026",
+      "planos": "Planes y precios",
+      "comoUsar": "Cómo usar",
+      "configuracoes": "Configuración de la cuenta",
+      "indicar": "Invita a un amigo",
+      "falarComOTime": "Hablar con el equipo"
+    },
+    "social": {
+      "email": "Correo electrónico"
+    },
+    "legal": {
+      "termos": "Términos de uso y privacidad",
+      "aviso": "Contenido analítico. No es recomendación de apuesta. Juega con responsabilidad."
+    }
+  },
+  "nav": {
+    "voltar": "Volver",
+    "inicio": "Inicio",
+    "analises": "Análisis",
+    "betinho": "Betinho",
+    "bolao": "Bolão",
+    "perfil": "Perfil",
+    "hoje": "Hoy",
+    "oportunidades": "Oportunidades",
+    "analise360": "Análisis 360",
+    "jogos": "Partidos",
+    "relatorio": "Informe",
+    "campeonatos": "Ligas",
+    "crm": "CRM",
+    "metodologia": "Metodología",
+    "apostas": "Apuestas",
+    "dashboard": "Panel",
+    "futebol": "Fútbol",
+    "nba": "NBA"
   }
 }

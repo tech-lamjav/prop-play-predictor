@@ -460,14 +460,14 @@ const LandingEcossistema = () => {
             {/* logo branca vira escura no canvas claro (mesmo filtro do Footer) */}
             <img src="/logo.png" alt="Smart Betting" className="h-9 invert hue-rotate-180" />
           </div>
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 ml-3 shrink-0">
             {/* Sem usuário não há menu da conta, e é lá que o idioma mora.
                 Esta tela tem cabeçalho próprio, então precisa do seu. */}
             <SeletorDeIdiomaCompacto tom="claro" />
             <button
               type="button"
               onClick={() => navigate(user ? "/inicio" : "/auth")}
-              className="inline-flex items-center h-10 px-3 sm:px-4 rounded-rebrand-md border border-line-2 bg-white text-ink hover:border-forest/40 font-semibold text-sm transition-colors"
+              className="hidden sm:inline-flex items-center h-10 px-3 sm:px-4 rounded-rebrand-md border border-line-2 bg-white text-ink hover:border-forest/40 font-semibold text-sm transition-colors"
             >
               {user ? t("landing.nav.acessar") : t("comum:acoes.entrar")}
             </button>

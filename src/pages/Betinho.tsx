@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { fmtOdd, fmtDinheiro } from '@/utils/formato';
 import { Seo } from "@/components/Seo";
 import { faqPageSchema, type FaqItem } from "@/lib/structured-data";
@@ -18,12 +19,24 @@ import { SeletorDeIdiomaCompacto } from '@/components/SeletorDeIdioma';
 
 type MockBetStatus = "pending" | "won" | "lost" | "cashout";
 
+// ⚠️ Esta é uma banca FICTÍCIA montada FORA do componente, e por isso ela não
+// guarda frase: guarda IDENTIFICADOR (#532). O esporte é um dos dois valores
+// abaixo, a descrição é a chave de um texto do catálogo, e o dia é nulo quando a
+// aposta é de hoje — quem transforma tudo isso em palavra é a pintura, que tem o
+// tradutor. Frase escrita aqui ficaria em português por cima da tela espanhola.
+//
+// O que NÃO é chave: nome de time, liga e nome de arquivo. Esses são os mesmos em
+// qualquer idioma.
+type MockEsporte = "basquete" | "futebol";
+
 interface MockBet {
   id: string;
-  bet_date: string;
-  bet_description: string;
+  /** Dia do registro (DD/MM), ou `null` quando é de hoje. */
+  bet_date: string | null;
+  /** Chave em `betinho:demo.apostas.*`. */
+  descricaoChave: string;
   match_description?: string;
-  sport: string;
+  esporte: MockEsporte;
   league?: string | null;
   stake_amount: number;
   odds: number;
@@ -37,9 +50,9 @@ const INITIAL_BETS: MockBet[] = [
   {
     id: "1",
     bet_date: "02/02",
-    bet_description: "LeBron 25+ pontos",
+    descricaoChave: "lebronPontos",
     match_description: "Lakers vs Warriors",
-    sport: "Basquete",
+    esporte: "basquete",
     league: "NBA",
     stake_amount: 150,
     odds: 1.85,
@@ -49,9 +62,9 @@ const INITIAL_BETS: MockBet[] = [
   {
     id: "2",
     bet_date: "01/02",
-    bet_description: "Corinthians ML",
+    descricaoChave: "corinthiansML",
     match_description: "Corinthians vs Santos",
-    sport: "Futebol",
+    esporte: "futebol",
     league: "Brasileirão",
     stake_amount: 100,
     odds: 2.1,
@@ -61,9 +74,9 @@ const INITIAL_BETS: MockBet[] = [
   {
     id: "3",
     bet_date: "30/01",
-    bet_description: "Curry 5+ bolas de 3",
+    descricaoChave: "curryTres",
     match_description: "Warriors vs Celtics",
-    sport: "Basquete",
+    esporte: "basquete",
     league: "NBA",
     stake_amount: 150,
     odds: 1.7,
@@ -74,9 +87,9 @@ const INITIAL_BETS: MockBet[] = [
   {
     id: "4",
     bet_date: "28/01",
-    bet_description: "Under 2.5 gols",
+    descricaoChave: "underGols",
     match_description: "Juventus vs Milan",
-    sport: "Futebol",
+    esporte: "futebol",
     league: "Serie A",
     stake_amount: 80,
     odds: 2.3,
@@ -91,10 +104,10 @@ const QUEUED_PRINTS: Array<{ file: string; bet: MockBet }> = [
     file: "bilhete_bet365.png",
     bet: {
       id: "sim-1",
-      bet_date: "hoje",
-      bet_description: "Jokic 25+ pts & 8+ asts",
+      bet_date: null,
+      descricaoChave: "jokicPontosAssistencias",
       match_description: "Nuggets vs Suns",
-      sport: "Basquete",
+      esporte: "basquete",
       league: "NBA",
       stake_amount: 120,
       odds: 2.45,
@@ -106,10 +119,10 @@ const QUEUED_PRINTS: Array<{ file: string; bet: MockBet }> = [
     file: "bilhete_betano.png",
     bet: {
       id: "sim-2",
-      bet_date: "hoje",
-      bet_description: "Flamengo ML",
+      bet_date: null,
+      descricaoChave: "flamengoML",
       match_description: "Flamengo vs Palmeiras",
-      sport: "Futebol",
+      esporte: "futebol",
       league: "Brasileirão",
       stake_amount: 200,
       odds: 1.95,
@@ -121,10 +134,10 @@ const QUEUED_PRINTS: Array<{ file: string; bet: MockBet }> = [
     file: "bilhete_superbet.png",
     bet: {
       id: "sim-3",
-      bet_date: "hoje",
-      bet_description: "Over 215.5 pontos",
+      bet_date: null,
+      descricaoChave: "overPontos",
       match_description: "Celtics vs Knicks",
-      sport: "Basquete",
+      esporte: "basquete",
       league: "NBA",
       stake_amount: 80,
       odds: 1.9,
@@ -146,18 +159,21 @@ const PERIOD_BASE = {
 
 const formatMoney = (value: number) => fmtDinheiro(value);
 
-const STATUS_CHIP: Record<MockBetStatus, { label: string; cls: string }> = {
-  won: { label: "GANHOU", cls: "text-status-success bg-status-success/10" },
-  lost: { label: "PERDEU", cls: "text-status-danger bg-status-danger/10" },
-  pending: { label: "PENDENTE", cls: "text-amber-2 bg-amber/10" },
-  cashout: { label: "CASHOUT", cls: "text-status-info bg-status-info/10" },
+// Cor por status, e a chave do rótulo — a cor é decisão de tela, o rótulo é texto.
+const STATUS_CHIP: Record<MockBetStatus, { rotuloChave: string; cls: string }> = {
+  won: { rotuloChave: "ganhou", cls: "text-status-success bg-status-success/10" },
+  lost: { rotuloChave: "perdeu", cls: "text-status-danger bg-status-danger/10" },
+  pending: { rotuloChave: "pendente", cls: "text-amber-2 bg-amber/10" },
+  cashout: { rotuloChave: "cashout", cls: "text-status-info bg-status-info/10" },
 };
 
 // ── Visualizações do dashboard analítico (espelho do /betting-dashboard novo) ──
 
 // Heatmap "ROI por liga × mercado" — banca fictícia, coerente com os insights.
 type HeatCell = { roi: number; n: number } | null;
-const HEATMAP_COLS = ["Player Props", "ML", "Over/Under"];
+// Colunas por CHAVE: "Player Props" e "Over/Under" são jargão em português e têm
+// par próprio em espanhol ("Props de jugador", "Más/Menos"); "ML" é sigla e não muda.
+const HEATMAP_COLS = ["props", "ml", "overUnder"];
 const HEATMAP_ROWS: Array<{ league: string; cells: HeatCell[]; key: string }> = [
   { league: "NBA", key: "nba", cells: [{ roi: 38, n: 12 }, null, { roi: 6, n: 5 }] },
   { league: "Brasileirão", key: "br", cells: [null, { roi: 12, n: 8 }, { roi: -8, n: 3 }] },
@@ -178,35 +194,25 @@ const heatCellStyle = (cell: HeatCell): { bg: string; text: string } => {
 };
 
 // "Plano de ação" — espelho dos InsightCards (oportunidade / alerta / disciplina).
+// Também só identificador: o `type` escolhe a cor e, pela tabela de baixo, o grupo
+// do catálogo onde o rótulo, o título e o corpo moram.
+type MockInsightType = "opportunity" | "warning" | "discipline";
+
 const MOCK_INSIGHTS: Array<{
-  type: "opportunity" | "warning" | "discipline";
-  label: string;
-  title: string;
-  body: string;
+  type: MockInsightType;
   targetCell: string | null;
 }> = [
-  {
-    type: "opportunity",
-    label: "Oportunidade",
-    title: "Props da NBA é sua mina",
-    body: "+38% de ROI em 12 apostas. É a sua melhor fatia — volume aqui tem pagado.",
-    targetCell: "nba-0",
-  },
-  {
-    type: "warning",
-    label: "Alerta",
-    title: "Serie A tá custando caro",
-    body: "−45% de ROI no Over/Under da Serie A: 4 apostas, 3 reds. Vale repensar essa fatia.",
-    targetCell: "seriea-2",
-  },
-  {
-    type: "discipline",
-    label: "Disciplina",
-    title: "Stake dobrada depois de red",
-    body: "Sua média é R$ 120, mas depois de perder você dobra a mão. Constância paga mais que recuperação.",
-    targetCell: null,
-  },
+  { type: "opportunity", targetCell: "nba-0" },
+  { type: "warning", targetCell: "seriea-2" },
+  { type: "discipline", targetCell: null },
 ];
+
+/** O grupo do catálogo de cada insight, num lugar só. */
+const INSIGHT_CHAVE: Record<MockInsightType, string> = {
+  opportunity: "oportunidade",
+  warning: "alerta",
+  discipline: "disciplina",
+};
 
 const INSIGHT_TONE: Record<string, { wrapper: string; label: string }> = {
   opportunity: { wrapper: "border-forest/30 bg-forest/[0.05]", label: "text-forest" },
@@ -215,6 +221,9 @@ const INSIGHT_TONE: Record<string, { wrapper: string; label: string }> = {
 };
 
 const Betinho = () => {
+  // `betinho` é a área desta tela; `comum` traz os botões de cabeçalho que toda
+  // tela pública repete (entrar, começar grátis) e que não são desta tela.
+  const { t } = useTranslation(["betinho", "comum"]);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const location = useLocation();
@@ -312,28 +321,19 @@ const Betinho = () => {
     };
   }, [bets]);
 
-  const FAQ: FaqItem[] = [
-    {
-      q: "É grátis?",
-      a: "É. No plano grátis você registra até 3 apostas por dia pelo bot e usa o gestor completo — banca, ROI, filtros e exportação. O Premium libera registros ilimitados e as análises do Betinho IA no dashboard.",
-    },
-    {
-      q: "Funciona no WhatsApp?",
-      a: "Não — o Betinho mora no Telegram. Você conecta sua conta em segundos e todo o registro acontece por lá.",
-    },
-    {
-      q: "Funciona com print de qualquer casa?",
-      a: "Serve print de bilhete de qualquer casa — a IA lê o texto da imagem e extrai jogo, odd e valor. Saiu algo errado? Você corrige no dashboard em segundos. E se quiser, manda o caso pro suporte: cada bilhete que a IA erra ajuda a gente a melhorar a leitura.",
-    },
-    {
-      q: "Vocês têm acesso ao meu dinheiro?",
-      a: "Zero. O Betinho não conecta na sua conta da casa de aposta — ele registra o que você manda. É um caderno inteligente, não uma carteira.",
-    },
-    {
-      q: "Dá trabalho manter?",
-      a: 'Uma mensagem por aposta. Resolveu? Responde "ganhou", "perdeu" ou "cashout" e o painel atualiza. Planilha nunca mais.',
-    },
-  ];
+  /** A descrição da aposta recém-registrada, já traduzida. Vazia quando não há. */
+  const apostaRecemRegistrada = bets.find((b) => b.id === lastAddedId);
+  const descricaoRecemRegistrada = apostaRecemRegistrada
+    ? t(`demo.apostas.${apostaRecemRegistrada.descricaoChave}`)
+    : "";
+
+  // O FAQ alimenta a tela E o JSON-LD da página. Os dois saem do MESMO catálogo de
+  // propósito: o Google exige que o dado estruturado bata com o que está na tela, e
+  // uma segunda cópia em português divergiria no dia em que a frase mudasse.
+  const FAQ: FaqItem[] = ["gratis", "whatsapp", "print", "dinheiro", "trabalho"].map((chave) => ({
+    q: t(`faq.itens.${chave}.pergunta`),
+    a: t(`faq.itens.${chave}.resposta`),
+  }));
 
   return (
     <div className="theme-bolao min-h-screen bg-canvas text-ink overflow-x-hidden">
@@ -349,23 +349,23 @@ const Betinho = () => {
             {/* logo branca vira escura no canvas claro (mesmo filtro do Footer) */}
             <img src="/logo.png" alt="Smart Betting" className="h-9 invert hue-rotate-180" />
           </div>
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 ml-3 shrink-0">
             {/* Sem usuário não há menu da conta, e é lá que o idioma mora.
                 Esta tela tem cabeçalho próprio, então precisa do seu. */}
             <SeletorDeIdiomaCompacto tom="claro" />
             <button
               type="button"
               onClick={navigateToAuth}
-              className="inline-flex items-center h-10 px-3 sm:px-4 rounded-rebrand-md border border-line-2 bg-white text-ink hover:border-forest/40 font-semibold text-sm transition-colors"
+              className="hidden sm:inline-flex items-center h-10 px-3 sm:px-4 rounded-rebrand-md border border-line-2 bg-white text-ink hover:border-forest/40 font-semibold text-sm transition-colors"
             >
-              Entrar
+              {t("comum:acoes.entrar")}
             </button>
             <button
               type="button"
               onClick={navigateToAuth}
               className="inline-flex items-center h-10 px-3 sm:px-4 rounded-rebrand-md bg-amber text-white hover:bg-amber-2 font-bold text-sm shadow-sm transition-colors whitespace-nowrap"
             >
-              Começar Grátis
+              {t("comum:acoes.comecarGratis")}
             </button>
           </div>
         </div>
@@ -379,16 +379,14 @@ const Betinho = () => {
           {isBolaoVariant ? (
             <>
               <p className="font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-amber mb-5">
-                Vindo do bolão da Copa
+                {t("hero.bolao.etiqueta")}
               </p>
               <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-black leading-[1.05] mb-5 max-w-3xl">
-                Você acabou de palpitar no bolão.<br />
-                <span className="text-amber">E as apostas de verdade, você anota?</span>
+                {t("hero.bolao.tituloLinhaUm")}<br />
+                <span className="text-amber">{t("hero.bolao.tituloLinhaDois")}</span>
               </h1>
               <p className="text-base sm:text-lg text-white/75 mb-8 max-w-xl leading-relaxed">
-                Documenta tudo no Telegram em 10 segundos — print do bilhete, a IA
-                registra, e a sua banca aparece organizada no dashboard. Sem planilha,
-                sem app novo.
+                {t("hero.bolao.chamada")}
               </p>
               <button
                 type="button"
@@ -397,23 +395,27 @@ const Betinho = () => {
                 }}
                 className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-rebrand-md bg-amber text-white hover:bg-amber-2 font-bold text-[15px] shadow-md transition-colors"
               >
-                Ver como funciona
+                {t("acoes.verComoFunciona")}
                 <ArrowDown className="h-5 w-5" />
               </button>
             </>
           ) : (
             <>
               <p className="font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-amber mb-5">
-                Betinho · Gestão de banca no Telegram
+                {t("hero.padrao.etiqueta")}
               </p>
               <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl font-black leading-[1.05] mb-5 max-w-3xl">
-                Você tá no lucro ou no prejuízo?<br />
-                <span className="text-amber">O Betinho sabe de cabeça.</span>
+                {t("hero.padrao.tituloLinhaUm")}<br />
+                <span className="text-amber">{t("hero.padrao.tituloLinhaDois")}</span>
               </h1>
               <p className="text-base sm:text-lg text-white/75 mb-8 max-w-xl leading-relaxed">
-                Manda o print do bilhete no Telegram. A IA lê, registra e te devolve
-                banca, ROI e taxa de acerto — sem planilha, sem digitação. Testa aí
-                embaixo: <span className="text-white font-semibold">manda um print pro Betinho.</span>
+                {/* O destaque está no MEIO da frase, então quem decide onde ele cai é
+                    o catálogo (<0>…</0>) e não o arranjo do JSX. */}
+                <Trans
+                  t={t}
+                  i18nKey="hero.padrao.chamada"
+                  components={[<span className="text-white font-semibold" key="destaque" />]}
+                />
               </p>
               <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
                 <button
@@ -422,7 +424,7 @@ const Betinho = () => {
                   className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-rebrand-md bg-amber text-white hover:bg-amber-2 font-bold text-[15px] shadow-md transition-colors"
                 >
                   <MessageCircle className="h-5 w-5 shrink-0" />
-                  Começar grátis no Telegram
+                  {t("acoes.telegram")}
                 </button>
                 <button
                   type="button"
@@ -431,11 +433,11 @@ const Betinho = () => {
                   }}
                   className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-rebrand-md bg-white text-forest hover:bg-white/90 font-bold text-[15px] shadow-md transition-colors"
                 >
-                  Ver o dashboard
+                  {t("acoes.verPainel")}
                 </button>
               </div>
               <p className="text-[12px] text-white/55 mt-4">
-                3 apostas por dia grátis · Sem cartão · A banca é sua, a gente só organiza
+                {t("hero.padrao.rodape")}
               </p>
             </>
           )}
@@ -456,7 +458,7 @@ const Betinho = () => {
               smartbetting.app/betting-dashboard
             </span>
             <span className="font-mono text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-amber bg-amber/15 border border-amber/40 rounded-full px-2 py-0.5 whitespace-nowrap">
-              dados de exemplo
+              {t("demo.selo")}
             </span>
           </div>
 
@@ -470,17 +472,20 @@ const Betinho = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[10px] uppercase tracking-[0.14em] font-bold text-ink-3 mb-1">
-                      Telegram · @betinho
+                      {t("demo.chat.remetente")}
                     </p>
                     {reading ? (
                       <div className="inline-flex items-center gap-2 bg-canvas-2 border border-line rounded-rebrand-md px-3 py-2 text-[13px] text-ink-2">
                         <span className="w-2 h-2 rounded-full bg-amber animate-pulse" />
-                        lendo o bilhete…
+                        {t("demo.chat.lendo")}
                       </div>
                     ) : simDone ? (
                       <p className="text-[13px] text-ink-2">
-                        Esses eram os 3 prints de exemplo — no bot é igual:{" "}
-                        <span className="font-bold text-ink">3 registros por dia grátis.</span>
+                        <Trans
+                          t={t}
+                          i18nKey="demo.chat.fim"
+                          components={[<span className="font-bold text-ink" key="destaque" />]}
+                        />
                       </p>
                     ) : (
                       <div className="inline-flex items-center gap-2 bg-canvas-2 border border-line rounded-rebrand-md px-3 py-2 text-[13px] text-ink">
@@ -497,7 +502,7 @@ const Betinho = () => {
                     onClick={navigateToAuth}
                     className="shrink-0 inline-flex items-center justify-center gap-2 h-10 px-4 rounded-rebrand-md bg-amber text-white hover:bg-amber-2 font-bold text-[13px] shadow-sm transition-colors"
                   >
-                    Quero o bot de verdade
+                    {t("demo.chat.queroBot")}
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 ) : (
@@ -508,7 +513,7 @@ const Betinho = () => {
                     className="shrink-0 inline-flex items-center justify-center gap-2 h-10 px-4 rounded-rebrand-md bg-forest text-white hover:bg-forest-2 disabled:opacity-60 font-bold text-[13px] shadow-sm transition-colors"
                   >
                     <Send className="w-4 h-4" />
-                    Mandar print pro Betinho
+                    {t("demo.chat.mandarPrint")}
                   </button>
                 )}
               </div>
@@ -529,20 +534,27 @@ const Betinho = () => {
                     B
                   </div>
                   <div className="text-[10px] uppercase tracking-[0.18em] text-amber font-extrabold leading-tight pt-1">
-                    Betinho · resumo do período
+                    {t("demo.narrativa.etiqueta")}
                   </div>
                 </div>
                 <p className="text-[17px] sm:text-[19px] font-extrabold leading-snug" style={{ letterSpacing: "-0.01em" }}>
+                  {/* Qual das duas frases entra é decidido por lastAddedId, o
+                      identificador da última aposta registrada — nunca comparando o
+                      texto da frase. */}
                   {lastAddedId ? (
-                    <>
-                      Recebi! <span className="text-amber">{bets.find((b) => b.id === lastAddedId)?.bet_description}</span>{" "}
-                      registrada como pendente. Resolveu? Me conta que eu atualizo a banca.
-                    </>
+                    <Trans
+                      t={t}
+                      i18nKey="demo.narrativa.recebi"
+                      values={{ aposta: descricaoRecemRegistrada }}
+                      components={[<span className="text-amber" key="aposta" />]}
+                    />
                   ) : (
-                    <>
-                      Seu mês tá positivo: <span className="text-amber">{stats.roi >= 0 ? "+" : ""}{stats.roi.toFixed(1)}% de ROI</span>{" "}
-                      — as props da NBA puxaram o resultado.
-                    </>
+                    <Trans
+                      t={t}
+                      i18nKey="demo.narrativa.resumo"
+                      values={{ roi: `${stats.roi >= 0 ? "+" : ""}${stats.roi.toFixed(1)}%` }}
+                      components={[<span className="text-amber" key="roi" />]}
+                    />
                   )}
                 </p>
               </div>
@@ -552,25 +564,40 @@ const Betinho = () => {
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               {[
                 {
-                  label: "ROI",
+                  chave: "roi",
+                  label: t("demo.kpis.roi"),
                   value: `${stats.roi >= 0 ? "+" : ""}${stats.roi.toFixed(1)}%`,
                   cls: stats.roi >= 0 ? "text-status-success" : "text-status-danger",
                 },
                 {
-                  label: "Lucro líquido",
+                  chave: "lucro",
+                  label: t("demo.kpis.lucro"),
                   value: formatMoney(stats.profit),
                   cls: stats.profit >= 0 ? "text-status-success" : "text-status-danger",
                 },
-                { label: "Total apostado", value: formatMoney(stats.totalStaked), cls: "text-ink" },
-                { label: "Taxa de acerto", value: `${stats.hitRate.toFixed(1)}%`, cls: "text-ink" },
                 {
-                  label: "Apostas",
+                  chave: "totalApostado",
+                  label: t("demo.kpis.totalApostado"),
+                  value: formatMoney(stats.totalStaked),
+                  cls: "text-ink",
+                },
+                {
+                  chave: "taxa",
+                  label: t("demo.kpis.taxa"),
+                  value: `${stats.hitRate.toFixed(1)}%`,
+                  cls: "text-ink",
+                },
+                {
+                  chave: "apostas",
+                  label: t("demo.kpis.apostas"),
                   value: `${stats.total}`,
-                  sub: `${stats.pendingCount} pendente${stats.pendingCount === 1 ? "" : "s"}`,
+                  // Plural pelo i18next, com `_zero` explícito: em português o CLDR
+                  // trata ZERO como singular, e "0 pendente" estaria errado.
+                  sub: t("demo.kpis.pendentes", { count: stats.pendingCount }),
                   cls: "text-ink",
                 },
               ].map((kpi) => (
-                <div key={kpi.label} className="rounded-rebrand-lg bg-white border border-line p-3.5">
+                <div key={kpi.chave} className="rounded-rebrand-lg bg-white border border-line p-3.5">
                   <div className="text-[10px] font-semibold tracking-[0.16em] text-ink-2 uppercase mb-1">
                     {kpi.label}
                   </div>
@@ -584,31 +611,32 @@ const Betinho = () => {
             <div className="rounded-rebrand-lg bg-white border border-line p-4">
               <div className="mb-3">
                 <div className="text-[10px] uppercase tracking-[0.18em] text-amber-2 font-extrabold">
-                  Plano de ação
+                  {t("demo.plano.etiqueta")}
                 </div>
                 <h3 className="text-[16px] font-extrabold tracking-tight text-ink mt-0.5">
-                  3 movimentos que aumentariam seu ROI
+                  {t("demo.plano.titulo")}
                 </h3>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 {MOCK_INSIGHTS.map((insight) => {
                   const tone = INSIGHT_TONE[insight.type];
+                  const grupo = `demo.plano.${INSIGHT_CHAVE[insight.type]}`;
                   return (
-                    <div key={insight.title} className={`rounded-rebrand-md border p-4 ${tone.wrapper}`}>
+                    <div key={insight.type} className={`rounded-rebrand-md border p-4 ${tone.wrapper}`}>
                       <div className={`text-[9px] uppercase tracking-[0.14em] font-extrabold mb-2 ${tone.label}`}>
-                        {insight.label}
+                        {t(`${grupo}.rotulo`)}
                       </div>
                       <div className="text-[13px] font-extrabold text-ink leading-tight mb-1.5">
-                        {insight.title}
+                        {t(`${grupo}.titulo`)}
                       </div>
-                      <div className="text-[11px] text-ink-2 leading-snug">{insight.body}</div>
+                      <div className="text-[11px] text-ink-2 leading-snug">{t(`${grupo}.texto`)}</div>
                       {insight.targetCell && (
                         <button
                           type="button"
                           onClick={() => setHighlightCell(insight.targetCell)}
                           className={`mt-3 inline-flex items-center gap-1 text-[11px] font-bold transition-colors ${tone.label}`}
                         >
-                          Ver fatia no mapa
+                          {t("demo.plano.verFatia")}
                           <ArrowRight className="w-3 h-3" />
                         </button>
                       )}
@@ -622,10 +650,10 @@ const Betinho = () => {
             <div className="rounded-rebrand-lg bg-white border border-line p-4">
               <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                 <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2">
-                  ROI por liga × mercado
+                  {t("demo.mapa.titulo")}
                 </span>
                 <span className="text-[10px] text-ink-3">
-                  Verde = lucro · vermelho = prejuízo · cinza = sem volume
+                  {t("demo.mapa.legenda")}
                 </span>
               </div>
               <div className="overflow-x-auto">
@@ -634,7 +662,7 @@ const Betinho = () => {
                     <div />
                     {HEATMAP_COLS.map((col) => (
                       <div key={col} className="text-[9px] uppercase tracking-[0.1em] font-bold text-ink-3 text-center">
-                        {col}
+                        {t(`demo.mapa.colunas.${col}`)}
                       </div>
                     ))}
                   </div>
@@ -661,7 +689,7 @@ const Betinho = () => {
                                 <div className="text-[9px] opacity-80 mt-1 tabular-nums">n={cell.n}</div>
                               </>
                             ) : (
-                              <div className="text-[10px] text-ink-3 py-1.5">sem dados</div>
+                              <div className="text-[10px] text-ink-3 py-1.5">{t("demo.mapa.semDados")}</div>
                             )}
                           </div>
                         );
@@ -676,23 +704,23 @@ const Betinho = () => {
             <div className="rounded-rebrand-lg bg-white border border-line p-4">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2">
-                  Últimos registros
+                  {t("demo.tabela.titulo")}
                 </span>
                 <span className="text-[10px] text-ink-3 tabular-nums">
-                  {stats.total} apostas no período · mostrando as últimas 5
+                  {t("demo.tabela.contagem", { total: stats.total })}
                 </span>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="text-left">
-                      <th className="pb-2 pr-3 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3 font-medium">Data</th>
-                      <th className="pb-2 pr-3 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3 font-medium">Descrição</th>
-                      <th className="pb-2 pr-3 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3 font-medium hidden sm:table-cell">Esporte</th>
-                      <th className="pb-2 pr-3 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3 font-medium text-right">Valor</th>
-                      <th className="pb-2 pr-3 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3 font-medium text-right hidden sm:table-cell">Odd</th>
-                      <th className="pb-2 pr-3 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3 font-medium text-right">Retorno</th>
-                      <th className="pb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3 font-medium text-right">Situação</th>
+                      <th className="pb-2 pr-3 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3 font-medium">{t("demo.tabela.colunas.data")}</th>
+                      <th className="pb-2 pr-3 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3 font-medium">{t("demo.tabela.colunas.descricao")}</th>
+                      <th className="pb-2 pr-3 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3 font-medium hidden sm:table-cell">{t("demo.tabela.colunas.esporte")}</th>
+                      <th className="pb-2 pr-3 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3 font-medium text-right">{t("demo.tabela.colunas.valor")}</th>
+                      <th className="pb-2 pr-3 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3 font-medium text-right hidden sm:table-cell">{t("demo.tabela.colunas.odd")}</th>
+                      <th className="pb-2 pr-3 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3 font-medium text-right">{t("demo.tabela.colunas.retorno")}</th>
+                      <th className="pb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3 font-medium text-right">{t("demo.tabela.colunas.situacao")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -701,15 +729,17 @@ const Betinho = () => {
                         key={bet.id}
                         className={`border-t border-line transition-colors ${bet.id === lastAddedId ? "bg-amber/[0.08]" : ""}`}
                       >
-                        <td className="py-2 pr-3 text-ink-2 tabular-nums whitespace-nowrap">{bet.bet_date}</td>
+                        <td className="py-2 pr-3 text-ink-2 tabular-nums whitespace-nowrap">
+                          {bet.bet_date ?? t("demo.tabela.hoje")}
+                        </td>
                         <td className="py-2 pr-3">
-                          <div className="font-semibold text-ink">{bet.bet_description}</div>
+                          <div className="font-semibold text-ink">{t(`demo.apostas.${bet.descricaoChave}`)}</div>
                           {bet.match_description && (
                             <div className="text-[10px] text-ink-3">{bet.match_description}</div>
                           )}
                         </td>
                         <td className="py-2 pr-3 text-ink-3 hidden sm:table-cell whitespace-nowrap">
-                          {bet.sport}
+                          {t(`demo.esportes.${bet.esporte}`)}
                           {bet.league ? ` · ${bet.league}` : ""}
                         </td>
                         <td className="py-2 pr-3 text-right text-ink tabular-nums whitespace-nowrap">
@@ -735,7 +765,7 @@ const Betinho = () => {
                         </td>
                         <td className="py-2 text-right">
                           <span className={`inline-block px-2 py-0.5 text-[10px] font-bold rounded ${STATUS_CHIP[bet.status].cls}`}>
-                            {STATUS_CHIP[bet.status].label}
+                            {t(`demo.status.${STATUS_CHIP[bet.status].rotuloChave}`)}
                           </span>
                         </td>
                       </tr>
@@ -755,10 +785,10 @@ const Betinho = () => {
             className="inline-flex items-center gap-2 h-12 px-8 rounded-rebrand-md bg-amber text-white hover:bg-amber-2 font-bold text-[15px] shadow-md transition-colors"
           >
             <MessageCircle className="h-5 w-5" />
-            Começar grátis no Telegram
+            {t("acoes.telegram")}
           </button>
           <p className="text-sm text-ink-3 mt-3">
-            3 apostas por dia grátis · sem cartão
+            {t("demo.rodape")}
           </p>
         </div>
       </section>
@@ -766,15 +796,15 @@ const Betinho = () => {
       {/* Faixa de fatos */}
       <section className="max-w-6xl mx-auto px-4 sm:px-6 mt-14 sm:mt-20">
         <div className="border-y border-line py-4 flex flex-col sm:flex-row sm:flex-wrap items-center justify-center gap-y-2 sm:gap-x-8 font-mono text-[11px] uppercase tracking-[0.14em] text-ink-2">
-          <span>Print ou texto</span>
+          <span>{t("fatos.um")}</span>
           <span className="hidden sm:inline text-amber-2">·</span>
-          <span>1 mensagem = 1 aposta</span>
+          <span>{t("fatos.dois")}</span>
           <span className="hidden sm:inline text-amber-2">·</span>
-          <span>Banca, ROI e taxa</span>
+          <span>{t("fatos.tres")}</span>
           <span className="hidden sm:inline text-amber-2">·</span>
-          <span>Cashout e status</span>
+          <span>{t("fatos.quatro")}</span>
           <span className="hidden sm:inline text-amber-2">·</span>
-          <span>Tags e filtros</span>
+          <span>{t("fatos.cinco")}</span>
         </div>
       </section>
 
@@ -783,29 +813,17 @@ const Betinho = () => {
         <section id="how-it-works" className="max-w-4xl mx-auto px-4 sm:px-6 py-14 sm:py-20">
           <div className="text-center mb-10">
             <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-forest mb-2">
-              Como funciona
+              {t("comoFunciona.etiqueta")}
             </p>
             <h2 className="font-display text-2xl sm:text-3xl font-black text-ink">
-              3 passos. Sem complicação.
+              {t("comoFunciona.titulo")}
             </h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {[
-              {
-                num: "1",
-                title: "Conecta seu Telegram",
-                text: "Sincroniza o bot com sua conta em segundos.",
-              },
-              {
-                num: "2",
-                title: "Manda como você fala",
-                text: '"Apostei 50 no Brasil a 1.85" ou o print do bilhete. A IA extrai e organiza tudo.',
-              },
-              {
-                num: "3",
-                title: "Vê tudo no dashboard",
-                text: "Banca, ROI, taxa de acerto. Organizado, automático.",
-              },
+              { num: "1", chave: "um" },
+              { num: "2", chave: "dois" },
+              { num: "3", chave: "tres" },
             ].map((step) => (
               <div key={step.num} className="rounded-rebrand-lg border border-line bg-white p-5">
                 <div className="flex items-center gap-3 mb-3">
@@ -813,8 +831,12 @@ const Betinho = () => {
                     {step.num}
                   </span>
                 </div>
-                <h3 className="text-[16px] font-bold text-ink mb-1">{step.title}</h3>
-                <p className="text-[13px] text-ink-2 leading-relaxed">{step.text}</p>
+                <h3 className="text-[16px] font-bold text-ink mb-1">
+                  {t(`comoFunciona.passos.${step.chave}.titulo`)}
+                </h3>
+                <p className="text-[13px] text-ink-2 leading-relaxed">
+                  {t(`comoFunciona.passos.${step.chave}.texto`)}
+                </p>
               </div>
             ))}
           </div>
@@ -826,14 +848,13 @@ const Betinho = () => {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-14 sm:py-20">
           <div className="text-center mb-10">
             <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-forest mb-2">
-              Sem truque
+              {t("video.etiqueta")}
             </p>
             <h2 className="font-display text-3xl md:text-4xl font-black text-ink mb-3">
-              O Betinho de verdade, em 30 segundos
+              {t("video.titulo")}
             </h2>
             <p className="text-base sm:text-lg text-ink-2 max-w-2xl mx-auto">
-              A demonstração lá em cima é simulada. Isto aqui é gravação real do bot
-              no Telegram — print enviado, aposta confirmada.
+              {t("video.chamada")}
             </p>
           </div>
           <div className="flex items-center justify-center">
@@ -846,7 +867,7 @@ const Betinho = () => {
               playsInline
             >
               <source src={screenshotVideoUrl} type="video/mp4" />
-              Seu navegador não suporta o elemento de vídeo.
+              {t("video.semSuporte")}
             </video>
           </div>
         </div>
@@ -857,46 +878,30 @@ const Betinho = () => {
         <div className="grid md:grid-cols-[minmax(220px,300px)_1fr] gap-10 md:gap-16">
           <div className="md:sticky md:top-24 self-start">
             <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-forest mb-2">
-              O que tem dentro
+              {t("dentro.etiqueta")}
             </p>
             <h2 className="font-display text-3xl sm:text-4xl font-black text-ink leading-tight mb-4">
-              A planilha que se preenche sozinha
+              {t("dentro.titulo")}
             </h2>
             <p className="text-[14px] text-ink-2 leading-relaxed">
-              Todo apostador já tentou anotar as apostas. A planilha morre na segunda
-              semana — não pela falta de vontade, pelo trabalho. O Betinho tira o
-              trabalho da equação.
+              {t("dentro.chamada")}
             </p>
           </div>
 
           <div>
             {[
-              {
-                num: "01",
-                title: "Registro por print ou texto",
-                text: 'Manda o print do bilhete ou escreve "apostei 50 no Corinthians a 2.10". A IA extrai jogo, odd e valor — 1 mensagem, 1 aposta.',
-              },
-              {
-                num: "02",
-                title: "Banca, ROI e taxa sem planilha",
-                text: "Lucro, retorno, média de odds e evolução da banca calculados sozinhos, aposta a aposta. O número que você evita olhar, sempre à vista.",
-              },
-              {
-                num: "03",
-                title: "O Betinho comenta seus números",
-                text: "No dashboard, ele resume seu período em bom português: onde você ganha, onde você insiste em perder. Análise, não julgamento.",
-              },
-              {
-                num: "04",
-                title: "Cashout, status e filtros",
-                text: 'Resolveu a aposta? Responde "ganhou", "perdeu" ou "cashout" no bot e o painel atualiza. Depois filtre por esporte, status, data ou tag.',
-              },
+              { num: "01", chave: "um" },
+              { num: "02", chave: "dois" },
+              { num: "03", chave: "tres" },
+              { num: "04", chave: "quatro" },
             ].map((f) => (
               <div key={f.num} className="grid grid-cols-[56px_1fr] sm:grid-cols-[88px_1fr] gap-4 sm:gap-8 py-7 border-t border-line last:border-b">
                 <span className="font-mono text-3xl sm:text-5xl font-black text-amber leading-none tabular-nums">{f.num}</span>
                 <div>
-                  <h3 className="text-lg font-bold text-ink mb-1.5">{f.title}</h3>
-                  <p className="text-[14px] text-ink-2 leading-relaxed max-w-xl">{f.text}</p>
+                  <h3 className="text-lg font-bold text-ink mb-1.5">{t(`dentro.itens.${f.chave}.titulo`)}</h3>
+                  <p className="text-[14px] text-ink-2 leading-relaxed max-w-xl">
+                    {t(`dentro.itens.${f.chave}.texto`)}
+                  </p>
                 </div>
               </div>
             ))}
@@ -909,49 +914,39 @@ const Betinho = () => {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(212,160,23,0.10),transparent_50%)] pointer-events-none" />
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 py-14 sm:py-20">
           <p className="font-mono text-[11px] font-bold uppercase tracking-[0.2em] text-amber mb-3">
-            Transparência
+            {t("combinado.etiqueta")}
           </p>
           <h2 className="font-display text-3xl sm:text-4xl font-black leading-tight mb-10 sm:mb-12 max-w-2xl">
-            O combinado que a gente assina
+            {t("combinado.titulo")}
           </h2>
 
           <div className="grid md:grid-cols-2 gap-x-16 gap-y-10">
             <div>
               <h3 className="text-[12px] font-bold uppercase tracking-[0.14em] text-white/60 pb-3 border-b border-white/15">
-                O que você nunca vai ver aqui
+                {t("combinado.nuncaTitulo")}
               </h3>
-              {[
-                "Dica de aposta no meio do seu chat",
-                "Acesso à sua conta na casa de aposta",
-                "Spam — o bot só fala de registro",
-                "Número maquiado pra você se sentir melhor",
-              ].map((item) => (
-                <div key={item} className="flex items-center gap-3 py-3.5 border-b border-white/10 text-[14px] text-white/85">
+              {["um", "dois", "tres", "quatro"].map((chave) => (
+                <div key={chave} className="flex items-center gap-3 py-3.5 border-b border-white/10 text-[14px] text-white/85">
                   <XCircle className="w-4 h-4 text-white/40 shrink-0" />
-                  {item}
+                  {t(`combinado.nunca.${chave}`)}
                 </div>
               ))}
             </div>
             <div>
               <h3 className="text-[12px] font-bold uppercase tracking-[0.14em] text-amber pb-3 border-b border-white/15">
-                O que você sempre vai ter
+                {t("combinado.sempreTitulo")}
               </h3>
-              {[
-                "Registro em segundos, por print ou texto",
-                "Seu lucro e seu prejuízo, sem filtro",
-                "Seus dados exportáveis quando quiser",
-                "A banca é sua — a gente só organiza",
-              ].map((item) => (
-                <div key={item} className="flex items-center gap-3 py-3.5 border-b border-white/10 text-[14px] text-white">
+              {["um", "dois", "tres", "quatro"].map((chave) => (
+                <div key={chave} className="flex items-center gap-3 py-3.5 border-b border-white/10 text-[14px] text-white">
                   <CheckCircle2 className="w-4 h-4 text-amber shrink-0" />
-                  {item}
+                  {t(`combinado.sempre.${chave}`)}
                 </div>
               ))}
             </div>
           </div>
 
           <p className="font-mono text-[11px] uppercase tracking-[0.16em] text-white/40 mt-10">
-            — Betinho · combinado válido desde o primeiro print
+            {t("combinado.assinatura")}
           </p>
         </div>
       </section>
@@ -960,9 +955,9 @@ const Betinho = () => {
       <section className="max-w-3xl mx-auto px-4 sm:px-6 py-14 sm:py-16">
         <div className="text-center mb-8">
           <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-forest mb-2">
-            Perguntas frequentes
+            {t("faq.etiqueta")}
           </p>
-          <h2 className="font-display text-2xl sm:text-3xl font-black text-ink">Bora tirar dúvida</h2>
+          <h2 className="font-display text-2xl sm:text-3xl font-black text-ink">{t("faq.titulo")}</h2>
         </div>
         <div className="space-y-3">
           {FAQ.map((item) => (
@@ -985,11 +980,10 @@ const Betinho = () => {
         <div className="border-t border-line py-14 sm:py-20 grid md:grid-cols-[1fr_auto] gap-8 md:gap-12 items-center">
           <div>
             <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-black text-ink leading-tight mb-3">
-              Manda o primeiro print.
+              {t("fechamento.titulo")}
             </h2>
             <p className="text-[15px] text-ink-2 leading-relaxed max-w-lg">
-              Conta grátis em um minuto, bot no Telegram, 3 registros por dia sem
-              pagar nada. Na próxima aposta, você já sabe onde sua banca está.
+              {t("fechamento.texto")}
             </p>
           </div>
           <div className="flex flex-col sm:flex-row md:flex-col gap-3 md:min-w-[260px]">
@@ -999,14 +993,14 @@ const Betinho = () => {
               className="inline-flex items-center justify-center gap-2 h-12 px-8 rounded-rebrand-md bg-amber text-white hover:bg-amber-2 font-bold text-[15px] shadow-md transition-colors"
             >
               <MessageCircle className="h-5 w-5" />
-              Começar grátis no Telegram
+              {t("acoes.telegram")}
             </button>
             <button
               type="button"
               onClick={() => navigate("/como-usar")}
               className="inline-flex items-center justify-center gap-2 h-12 px-8 rounded-rebrand-md border border-line-2 bg-white text-ink hover:border-forest/40 font-bold text-[15px] transition-colors"
             >
-              Guia de uso
+              {t("acoes.guia")}
             </button>
           </div>
         </div>

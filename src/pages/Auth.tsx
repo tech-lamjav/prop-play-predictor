@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { usePostHog } from "@posthog/react";
 import { createClient } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ const Auth = () => {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const posthog = usePostHog();
+  const { t } = useTranslation(['auth', 'comum']);
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -50,16 +52,19 @@ const Auth = () => {
 
   // Branding do Auth: default = nível empresa (Smart Betting cobre análise + gestão + comunidade).
   // Quem chega por convite de bolão (fromBolaoInvite) mantém a copy contextual do Bolão.
+  // Cada item carrega a CHAVE do catálogo, e não o texto: chave é identidade
+  // estável (serve de `key` do React sem remontar a lista quando o idioma
+  // muda) e o texto passa a ser consequência do idioma ativo, não da lista.
   const heroFeatures = fromBolaoInvite
     ? [
-        { icon: Users, title: 'Convite com 1 clique', desc: 'Link direto pro WhatsApp, sem código pra digitar.' },
-        { icon: Sparkles, title: 'Quick Pick em 1 toque', desc: 'Não quer palpitar 104 jogos? Preenche tudo automático e edita depois.' },
-        { icon: Trophy, title: 'Ranking ao vivo', desc: 'Compartilha imagem do ranking nos Stories e zoeia os amigos.' },
+        { icon: Users, chave: 'hero.bolao.itens.convite' },
+        { icon: Sparkles, chave: 'hero.bolao.itens.quickPick' },
+        { icon: Trophy, chave: 'hero.bolao.itens.ranking' },
       ]
     : [
-        { icon: BarChart3, title: 'Análises com edge', desc: 'Props e oportunidades do dia com Score próprio.' },
-        { icon: Send, title: 'Betinho no Telegram', desc: 'Registra por print ou texto e acompanha seu ROI real.' },
-        { icon: ShieldCheck, title: 'Sem tipster, sem achismo', desc: 'Decisão com números, não com palpite.' },
+        { icon: BarChart3, chave: 'hero.padrao.itens.edge' },
+        { icon: Send, chave: 'hero.padrao.itens.betinho' },
+        { icon: ShieldCheck, chave: 'hero.padrao.itens.semTipster' },
       ];
 
   // Detect referral code from URL parameter
@@ -78,7 +83,7 @@ const Auth = () => {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
 
       if (error) {
-        toast({ title: "Erro", description: error.message, variant: "destructive" });
+        toast({ title: t('avisos.erro'), description: error.message, variant: "destructive" });
         return;
       }
 
@@ -92,13 +97,13 @@ const Auth = () => {
         posthog.capture('signed_in', { email: user.email, method: 'email' });
       }
 
-      toast({ title: "Bem-vindo de volta!" });
+      toast({ title: t('avisos.bemVindo') });
       // state.from explícito vence (ex: barrado numa rota protegida → volta pra ela);
       // senão, resolveHomePath decide: conectou o Telegram → /inicio, senão → /onboarding.
       const fallback = user ? await resolveHomePath(supabase, user.id) : '/inicio';
       navigate(getRedirectTarget(location.state, fallback));
     } catch (error) {
-      toast({ title: "Erro", description: "Ocorreu um erro inesperado", variant: "destructive" });
+      toast({ title: t('avisos.erro'), description: t('avisos.inesperado'), variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -135,12 +140,12 @@ const Auth = () => {
       });
 
       if (error) {
-        toast({ title: "Erro", description: error.message, variant: "destructive" });
+        toast({ title: t('avisos.erro'), description: error.message, variant: "destructive" });
         setGoogleLoading(false);
       }
       // Em sucesso o browser navega pro Google — não resetamos o loading.
     } catch (error) {
-      toast({ title: "Erro", description: "Ocorreu um erro inesperado", variant: "destructive" });
+      toast({ title: t('avisos.erro'), description: t('avisos.inesperado'), variant: "destructive" });
       setGoogleLoading(false);
     }
   };
@@ -149,13 +154,13 @@ const Auth = () => {
     e.preventDefault();
 
     if (password !== confirmPassword) {
-      toast({ title: "Erro", description: "As senhas não conferem", variant: "destructive" });
+      toast({ title: t('avisos.erro'), description: t('avisos.senhasDiferentes'), variant: "destructive" });
       return;
     }
 
     const cleanPhone = phoneNumber.replace(/\D/g, '');
     if (cleanPhone.length < 8) {
-      toast({ title: "Erro", description: "Informe um telefone válido", variant: "destructive" });
+      toast({ title: t('avisos.erro'), description: t('avisos.telefoneInvalido'), variant: "destructive" });
       return;
     }
 
@@ -165,7 +170,7 @@ const Auth = () => {
       const { error } = await supabase.auth.signUp({ email, password });
 
       if (error) {
-        toast({ title: "Erro", description: error.message, variant: "destructive" });
+        toast({ title: t('avisos.erro'), description: error.message, variant: "destructive" });
         return;
       }
 
@@ -191,7 +196,7 @@ const Auth = () => {
 
         if (userError) {
           console.error('Error creating user record:', userError);
-          toast({ title: "Erro", description: "Falha ao criar registro de usuário", variant: "destructive" });
+          toast({ title: t('avisos.erro'), description: t('avisos.falhaRegistro'), variant: "destructive" });
         } else if (normalizedReferralCode) {
           try {
             const { data: referrerData, error: referrerError } = await supabase
@@ -234,13 +239,13 @@ const Auth = () => {
         }
       }
 
-      toast({ title: "Conta criada!", description: "Você já pode começar a usar a plataforma." });
+      toast({ title: t('avisos.contaCriada'), description: t('avisos.contaCriadaDescricao') });
       // state.from explícito continua vencendo (ex: vindo da LP do bolão), mas o
       // fallback do CADASTRO é o onboarding do Betinho (decisão D1, 2026-07-08 —
       // docs/onboarding-betinho-redesign.md): o antigo /bolao expira com a Copa.
       navigate(getRedirectTarget(location.state, '/onboarding?src=signup'));
     } catch (error) {
-      toast({ title: "Erro", description: "Ocorreu um erro inesperado", variant: "destructive" });
+      toast({ title: t('avisos.erro'), description: t('avisos.inesperado'), variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -257,7 +262,7 @@ const Auth = () => {
           branca desta barra exigia. */}
       <header className="bg-forest">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-[52px] md:h-[60px] flex items-center justify-between">
-          <a href="/" aria-label="Smartbetting — home" className="flex items-center hover:opacity-80 transition-opacity">
+          <a href="/" aria-label={t('cabecalho.home')} className="flex items-center hover:opacity-80 transition-opacity">
             <img src="/logo.png" alt="Smartbetting" className="h-5 md:h-[26px] w-auto" />
           </a>
           {/* O seletor volta ao lugar de onde o #534 tirou o botão antigo — que
@@ -278,43 +283,41 @@ const Auth = () => {
 
           <div className="relative z-10">
             <div className="text-[12px] uppercase tracking-[0.18em] font-semibold opacity-70 mb-3">
-              {fromBolaoInvite ? 'Bolão · Copa do Mundo 2026' : 'Smart Betting'}
+              {fromBolaoInvite ? t('hero.bolao.etiqueta') : 'Smart Betting'}
             </div>
             {fromBolaoInvite ? (
               <h1 className="font-display text-[42px] xl:text-[52px] leading-[1.05] font-extrabold mb-5 tracking-tight">
-                Reúne a galera.<br />
-                Palpita os 104 jogos.<br />
-                <span className="text-amber">Vê quem manja mais.</span>
+                {t('hero.bolao.titulo1')}<br />
+                {t('hero.bolao.titulo2')}<br />
+                <span className="text-amber">{t('hero.bolao.titulo3')}</span>
               </h1>
             ) : (
               <h1 className="font-display text-[42px] xl:text-[52px] leading-[1.05] font-extrabold mb-5 tracking-tight">
-                Pare de apostar<br />
-                <span className="text-amber">no escuro.</span>
+                {t('hero.padrao.titulo1')}<br />
+                <span className="text-amber">{t('hero.padrao.titulo2')}</span>
               </h1>
             )}
             <p className="text-[15px] opacity-80 leading-relaxed max-w-[420px]">
-              {fromBolaoInvite
-                ? 'Cria seu bolão em 30 segundos, compartilha no zap, e leva a galera junto. Grátis pra até 20 amigos.'
-                : 'Análises que apontam o valor, o Betinho pra gerir suas apostas e o seu ROI real na palma da mão — tudo com dado, sem achismo.'}
+              {fromBolaoInvite ? t('hero.bolao.chamada') : t('hero.padrao.chamada')}
             </p>
           </div>
 
           <div className="relative z-10 space-y-3 max-w-[420px]">
-            {heroFeatures.map(({ icon: Icon, title, desc }) => (
-              <div key={title} className="flex items-start gap-3">
+            {heroFeatures.map(({ icon: Icon, chave }) => (
+              <div key={chave} className="flex items-start gap-3">
                 <div className="w-8 h-8 rounded-rebrand-sm bg-amber/15 grid place-items-center text-amber shrink-0 mt-0.5">
                   <Icon className="w-4 h-4" />
                 </div>
                 <div>
-                  <p className="font-display text-[15px] font-bold">{title}</p>
-                  <p className="text-[13px] opacity-70">{desc}</p>
+                  <p className="font-display text-[15px] font-bold">{t(chave + '.titulo')}</p>
+                  <p className="text-[13px] opacity-70">{t(chave + '.descricao')}</p>
                 </div>
               </div>
             ))}
           </div>
 
           <div className="relative z-10 text-[11px] opacity-50 mt-8">
-            ✓ Grátis pra começar · ✓ Sem cartão · ✓ Sem instalar nada
+            {t('hero.selos')}
           </div>
         </aside>
 
@@ -327,10 +330,10 @@ const Auth = () => {
                 <Trophy className="w-6 h-6" />
               </div>
               <h2 className="font-display text-[24px] font-extrabold text-ink leading-tight">
-                {fromBolaoInvite ? 'Bolão Copa 2026' : 'Smart Betting'}
+                {fromBolaoInvite ? t('marcaMobile.bolaoTitulo') : 'Smart Betting'}
               </h2>
               <p className="text-[13px] text-ink-2 mt-1">
-                {fromBolaoInvite ? 'Cria seu bolão em 30 segundos.' : 'Análise, gestão e ROI real — decida com dados.'}
+                {fromBolaoInvite ? t('marcaMobile.bolaoSubtitulo') : t('marcaMobile.subtitulo')}
               </p>
             </div>
 
@@ -343,10 +346,10 @@ const Auth = () => {
                   </div>
                   <div>
                     <p className="text-[13px] font-bold text-ink leading-tight">
-                      Você foi convidado pro Bolão Copa 2026
+                      {t('convite.titulo')}
                     </p>
                     <p className="text-[12px] text-ink-2 mt-1 leading-snug">
-                      Crie sua conta (grátis) ou entre — depois você cai direto no bolão pra palpitar.
+                      {t('convite.descricao')}
                     </p>
                   </div>
                 </div>
@@ -359,13 +362,13 @@ const Auth = () => {
                   value="signin"
                   className="rounded-rebrand-sm data-[state=active]:bg-white data-[state=active]:text-forest data-[state=active]:shadow-sm font-semibold text-ink-2 text-[13px]"
                 >
-                  Entrar
+                  {t('comum:acoes.entrar')}
                 </TabsTrigger>
                 <TabsTrigger
                   value="signup"
                   className="rounded-rebrand-sm data-[state=active]:bg-white data-[state=active]:text-forest data-[state=active]:shadow-sm font-semibold text-ink-2 text-[13px]"
                 >
-                  Criar conta
+                  {t('abas.criarConta')}
                 </TabsTrigger>
               </TabsList>
 
@@ -373,10 +376,10 @@ const Auth = () => {
               <TabsContent value="signin" className="mt-0">
                 <div className="bg-white border border-line rounded-rebrand-xl p-6 sm:p-7 shadow-sm">
                   <h3 className="font-display text-[20px] font-extrabold text-ink mb-1">
-                    Entrar
+                    {t('comum:acoes.entrar')}
                   </h3>
                   <p className="text-[13px] text-ink-2 mb-5">
-                    Bom te ver de volta. Coloca os dados aí.
+                    {t('entrar.chamada')}
                   </p>
                   <Button
                     type="button"
@@ -387,17 +390,17 @@ const Auth = () => {
                     className="w-full rounded-rebrand-md h-11 bg-white border-line text-ink hover:bg-canvas gap-2 font-semibold"
                   >
                     <GoogleIcon />
-                    {googleLoading ? "Redirecionando..." : "Continuar com o Google"}
+                    {googleLoading ? t('google.carregando') : t('google.acao')}
                   </Button>
                   <div className="flex items-center gap-3 my-4">
                     <div className="h-px flex-1 bg-line" />
-                    <span className="text-[11px] uppercase tracking-wide text-ink-3">ou</span>
+                    <span className="text-[11px] uppercase tracking-wide text-ink-3">{t('ou')}</span>
                     <div className="h-px flex-1 bg-line" />
                   </div>
                   <form onSubmit={handleSignIn} className="space-y-4">
                     <div className="space-y-1.5">
                       <Label htmlFor="email" className="text-[12px] font-semibold text-ink-2 uppercase tracking-wide">
-                        E-mail
+                        {t('campos.email')}
                       </Label>
                       <Input
                         id="email"
@@ -406,12 +409,12 @@ const Auth = () => {
                         onChange={(e) => setEmail(e.target.value)}
                         required
                         className="bg-canvas border-line text-ink h-11 rounded-rebrand-md focus-visible:border-forest focus-visible:ring-forest/20"
-                        placeholder="seu@email.com"
+                        placeholder={t('campos.emailExemplo')}
                       />
                     </div>
                     <div className="space-y-1.5">
                       <Label htmlFor="password" className="text-[12px] font-semibold text-ink-2 uppercase tracking-wide">
-                        Senha
+                        {t('campos.senha')}
                       </Label>
                       <Input
                         id="password"
@@ -429,7 +432,7 @@ const Auth = () => {
                       disabled={loading}
                       className="w-full rounded-rebrand-md h-11"
                     >
-                      {loading ? "Entrando..." : "Entrar"}
+                      {loading ? t('entrar.carregando') : t('comum:acoes.entrar')}
                     </Button>
                   </form>
                 </div>
@@ -439,10 +442,10 @@ const Auth = () => {
               <TabsContent value="signup" className="mt-0">
                 <div className="bg-white border border-line rounded-rebrand-xl p-6 sm:p-7 shadow-sm">
                   <h3 className="font-display text-[20px] font-extrabold text-ink mb-1">
-                    Criar conta
+                    {t('abas.criarConta')}
                   </h3>
                   <p className="text-[13px] text-ink-2 mb-5">
-                    {fromBolaoInvite ? 'Grátis. Sem cartão. Você cria o bolão logo em seguida.' : 'Grátis. Sem cartão. Comece agora.'}
+                    {fromBolaoInvite ? t('criar.chamadaBolao') : t('criar.chamada')}
                   </p>
                   <Button
                     type="button"
@@ -453,17 +456,17 @@ const Auth = () => {
                     className="w-full rounded-rebrand-md h-11 bg-white border-line text-ink hover:bg-canvas gap-2 font-semibold"
                   >
                     <GoogleIcon />
-                    {googleLoading ? "Redirecionando..." : "Continuar com o Google"}
+                    {googleLoading ? t('google.carregando') : t('google.acao')}
                   </Button>
                   <div className="flex items-center gap-3 my-4">
                     <div className="h-px flex-1 bg-line" />
-                    <span className="text-[11px] uppercase tracking-wide text-ink-3">ou</span>
+                    <span className="text-[11px] uppercase tracking-wide text-ink-3">{t('ou')}</span>
                     <div className="h-px flex-1 bg-line" />
                   </div>
                   <form onSubmit={handleSignUp} className="space-y-4">
                     <div className="space-y-1.5">
                       <Label htmlFor="signup-name" className="text-[12px] font-semibold text-ink-2 uppercase tracking-wide">
-                        Nome completo
+                        {t('campos.nome')}
                       </Label>
                       <Input
                         id="signup-name"
@@ -472,12 +475,12 @@ const Auth = () => {
                         onChange={(e) => setName(e.target.value)}
                         required
                         className="bg-canvas border-line text-ink h-11 rounded-rebrand-md focus-visible:border-forest focus-visible:ring-forest/20"
-                        placeholder="Como te chamam"
+                        placeholder={t('campos.nomeExemplo')}
                       />
                     </div>
                     <div className="space-y-1.5">
                       <Label htmlFor="signup-email" className="text-[12px] font-semibold text-ink-2 uppercase tracking-wide">
-                        E-mail
+                        {t('campos.email')}
                       </Label>
                       <Input
                         id="signup-email"
@@ -486,13 +489,13 @@ const Auth = () => {
                         onChange={(e) => setEmail(e.target.value)}
                         required
                         className="bg-canvas border-line text-ink h-11 rounded-rebrand-md focus-visible:border-forest focus-visible:ring-forest/20"
-                        placeholder="seu@email.com"
+                        placeholder={t('campos.emailExemplo')}
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5">
                         <Label htmlFor="signup-password" className="text-[12px] font-semibold text-ink-2 uppercase tracking-wide">
-                          Senha
+                          {t('campos.senha')}
                         </Label>
                         <Input
                           id="signup-password"
@@ -505,7 +508,7 @@ const Auth = () => {
                       </div>
                       <div className="space-y-1.5">
                         <Label htmlFor="confirm-password" className="text-[12px] font-semibold text-ink-2 uppercase tracking-wide">
-                          Confirmar
+                          {t('campos.confirmar')}
                         </Label>
                         <Input
                           id="confirm-password"
@@ -519,7 +522,7 @@ const Auth = () => {
                     </div>
                     <div className="space-y-1.5">
                       <Label htmlFor="signup-phone" className="text-[12px] font-semibold text-ink-2 uppercase tracking-wide">
-                        Telefone
+                        {t('campos.telefone')}
                       </Label>
                       <div className="flex gap-2">
                         <Select value={phoneCountryCode} onValueChange={setPhoneCountryCode}>
@@ -540,7 +543,7 @@ const Auth = () => {
                         <Input
                           id="signup-phone"
                           type="tel"
-                          placeholder="(11) 99999-9999"
+                          placeholder={t('campos.telefoneExemplo')}
                           value={phoneNumber}
                           onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, ''))}
                           className="flex-1 bg-canvas border-line text-ink h-11 rounded-rebrand-md focus-visible:border-forest focus-visible:ring-forest/20"
@@ -548,12 +551,12 @@ const Auth = () => {
                         />
                       </div>
                       <p className="text-[11px] text-ink-3 mt-0.5">
-                        Pra conectar com o bot do Telegram (opcional).
+                        {t('campos.telefoneAjuda')}
                       </p>
                     </div>
                     <div className="space-y-1.5">
                       <Label htmlFor="referral-code" className="text-[12px] font-semibold text-ink-2 uppercase tracking-wide">
-                        Código do amigo <span className="text-ink-3 normal-case font-normal">(opcional)</span>
+                        {t('campos.codigo')} <span className="text-ink-3 normal-case font-normal">{t('campos.opcional')}</span>
                       </Label>
                       <Input
                         id="referral-code"
@@ -566,7 +569,7 @@ const Auth = () => {
                       />
                       {referralCode && (
                         <p className="text-[11px] text-forest font-medium mt-0.5 flex items-center gap-1">
-                          <Check className="w-3 h-3" /> Indicação registrada
+                          <Check className="w-3 h-3" /> {t('campos.codigoRegistrado')}
                         </p>
                       )}
                     </div>
@@ -577,7 +580,7 @@ const Auth = () => {
                       disabled={loading}
                       className="w-full rounded-rebrand-md h-11"
                     >
-                      {loading ? "Criando..." : "Criar conta"}
+                      {loading ? t('criar.carregando') : t('abas.criarConta')}
                     </Button>
                   </form>
                 </div>
@@ -585,7 +588,7 @@ const Auth = () => {
             </Tabs>
 
             <p className="text-[11px] text-ink-3 text-center mt-5">
-              Ao continuar você concorda com os termos de uso.
+              {t('termos')}
             </p>
           </div>
         </main>

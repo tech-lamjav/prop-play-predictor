@@ -8,5 +8,50 @@
   "idioma": {
     "rotulo": "Idioma",
     "escolher": "Escolher idioma"
+  },
+  "rodape": {
+    "aria": "Rodapé do site",
+    "sobre": "Análises, gestão de banca e ferramentas para quem quer decidir com dados. Previsões de NBA e futebol atualizadas diariamente, com score de confiabilidade em cada oportunidade.",
+    "colunas": {
+      "analises": "Análises",
+      "ferramentas": "Ferramentas",
+      "suporte": "Suporte"
+    },
+    "links": {
+      "futebol": "Futebol",
+      "bolao": "Bolão Copa 2026",
+      "planos": "Planos e preços",
+      "comoUsar": "Como usar",
+      "configuracoes": "Configurações da conta",
+      "indicar": "Indique um amigo",
+      "falarComOTime": "Falar com o time"
+    },
+    "social": {
+      "email": "E-mail"
+    },
+    "legal": {
+      "termos": "Termos de uso e privacidade",
+      "aviso": "Conteúdo analítico. Não é recomendação de aposta. Jogue com responsabilidade."
+    }
+  },
+  "nav": {
+    "voltar": "Voltar",
+    "inicio": "Início",
+    "analises": "Análises",
+    "betinho": "Betinho",
+    "bolao": "Bolão",
+    "perfil": "Perfil",
+    "hoje": "Hoje",
+    "oportunidades": "Oportunidades",
+    "analise360": "Análise 360",
+    "jogos": "Jogos",
+    "relatorio": "Relatório",
+    "campeonatos": "Campeonatos",
+    "crm": "CRM",
+    "metodologia": "Metodologia",
+    "apostas": "Apostas",
+    "dashboard": "Dashboard",
+    "futebol": "Futebol",
+    "nba": "NBA"
   }
 }

@@ -173,14 +173,14 @@ const FutebolLP = () => {
       <nav className="sticky top-0 z-50 bg-canvas/85 backdrop-blur-lg border-b border-line">
         <div className="max-w-6xl mx-auto flex items-center justify-between px-4 py-4 sm:px-6">
           <img src="/logo.png" alt="Smart Betting" className="h-9 invert hue-rotate-180" />
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 ml-3 shrink-0">
             {/* Sem usuário não há menu da conta, e é lá que o idioma mora.
                 Esta tela tem cabeçalho próprio, então precisa do seu. */}
             <SeletorDeIdiomaCompacto tom="claro" />
             <button
               type="button"
               onClick={() => navigate(user ? "/futebol" : "/auth")}
-              className="inline-flex items-center h-10 px-3 sm:px-4 rounded-rebrand-md border border-line-2 bg-white text-ink hover:border-forest/40 font-semibold text-sm transition-colors"
+              className="hidden sm:inline-flex items-center h-10 px-3 sm:px-4 rounded-rebrand-md border border-line-2 bg-white text-ink hover:border-forest/40 font-semibold text-sm transition-colors"
             >
               {user ? t('lp.nav.acessar') : t('lp.nav.entrar')}
             </button>

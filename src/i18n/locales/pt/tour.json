@@ -1,0 +1,390 @@
+{
+  "tooltip": {
+    "dicaRapida": "Dica rápida",
+    "passo": "Passo {{atual}} de {{total}}",
+    "pular": "Pular",
+    "voltar": "Voltar",
+    "proximo": "Próximo",
+    "entendi": "Entendi",
+    "fechar": "Fechar"
+  },
+  "demo": {
+    "exemplo": {
+      "titulo": "Dados de exemplo",
+      "texto": "só pra você conhecer a tela; nada aqui é real."
+    },
+    "ferias": {
+      "titulo": "A NBA está de férias",
+      "texto": "você está vendo um exemplo de como a tela fica na temporada."
+    },
+    "selo": "exemplo"
+  },
+  "hub": {
+    "boasVindas": {
+      "titulo": "Bem-vindo à Smartbetting 👋",
+      "texto": "Em 30 segundos te mostro o que cada área faz. Pode pular quando quiser, dá pra rever depois nas configurações."
+    },
+    "futebol": {
+      "titulo": "Futebol",
+      "texto": "As oportunidades do dia: o que o modelo leu em cada jogo, com o Score pra você comparar e o preço de mercado ao lado. É por aqui que a maioria começa."
+    },
+    "betinho": {
+      "titulo": "Betinho",
+      "texto": "Seu gestor de banca no Telegram: registra as apostas, liquida os resultados e te manda o resumo. A banca no automático, sem planilha."
+    },
+    "nba": {
+      "titulo": "Análises NBA",
+      "texto": "Prop bets e painéis dos jogadores, a análise mais completa pra quem acompanha a NBA de perto."
+    },
+    "bolao": {
+      "titulo": "Bolão da Copa",
+      "texto": "Palpites e ranking entre amigos. Entra num bolão, manda seus palpites e acompanha a classificação em tempo real."
+    }
+  },
+  "futebol": {
+    "intro": {
+      "titulo": "Bem-vindo ao Futebol",
+      "texto": "Esta é a sua central do dia. Todo dia a gente cruza as odds das casas com o nosso método e destaca as leituras que o cenário do jogo sustenta. Decisão com dado, não com achismo."
+    },
+    "datas": {
+      "titulo": "Navegue entre os dias",
+      "texto": "Cada dia tem sua própria agenda. Use esta barra pra alternar entre as datas e ver as oportunidades dos próximos jogos."
+    },
+    "resumo": {
+      "titulo": "O raio-x do dia",
+      "texto": "Quatro números: os jogos na agenda, as oportunidades publicadas no dia, e quantas estão em cada faixa — a Alta, de cenário melhor sustentado pelas premissas, e a Média, de sustentação parcial."
+    },
+    "oportunidades": {
+      "titulo": "As oportunidades do dia",
+      "texto": "Aqui ficam as principais leituras do dia, ordenadas pelo Score. Quanto maior o Score, mais o cenário do jogo sustenta aquela linha — o preço não entra nessa nota: a odd aparece ao lado, separada. Cada cartão diz de que campeonato é a aposta, e o botão \"Ver análise completa\" abre o jogo já na leitura daquela linha."
+    },
+    "jogos": {
+      "titulo": "Todos os jogos do dia",
+      "texto": "A agenda completa, com a melhor oportunidade de cada partida destacada. Um atalho pra explorar jogo por jogo."
+    },
+    "metodologia": {
+      "titulo": "Leitura, não garantia",
+      "texto": "Importante: o Score e a faixa medem o quanto o cenário do jogo sustenta a linha — não são chance de acerto nem garantia. Se o preço compensa, quem julga é você, com a odd ao lado. A decisão final é sempre sua."
+    }
+  },
+  "futebolOportunidades": {
+    "intro": {
+      "titulo": "Todas as oportunidades",
+      "texto": "Aqui está a lista completa do dia, ordenada do Score mais alto pro mais baixo."
+    },
+    "datas": {
+      "titulo": "Escolha o dia",
+      "texto": "Cada dia tem sua própria lista. Use esta barra pra alternar entre as datas."
+    },
+    "filtros": {
+      "titulo": "Filtre do seu jeito",
+      "texto": "Quatro recortes: o mercado (resultado, gols, handicap e mais), o estado do jogo (em aberto, ao vivo, encerrados), a faixa do cenário e a competição. Os de marcar vários deixam combinar à vontade, e desmarcar tudo esvazia a lista de propósito."
+    },
+    "lista": {
+      "titulo": "Como ler cada linha",
+      "texto": "Cada linha é uma aposta: o Score e a faixa, a aposta em si, a chance estimada e a melhor odd. A ordem é do Score mais alto para o mais baixo. Toque na linha — ou, no celular, no botão \"Ver análise completa\" — para abrir a análise do jogo."
+    },
+    "metodologia": {
+      "titulo": "Entenda o Score",
+      "texto": "Ficou em dúvida no Score ou nas faixas? Esta parte fica sempre aqui embaixo, explicando como o Score é calculado e o que Alta, Média e Baixa significam."
+    }
+  },
+  "futebolJogo": {
+    "intro": {
+      "titulo": "A leitura do jogo",
+      "texto": "Esta tela responde uma pergunta só: o que os números deste jogo sustentam. A aposta vem depois disso, não antes."
+    },
+    "cabecalho": {
+      "titulo": "O confronto",
+      "texto": "Os dois times, como cada um vem chegando, e à direita a melhor leitura da partida com o Score dela."
+    },
+    "abas": {
+      "titulo": "Três abas",
+      "texto": "Leitura e mercados é onde a análise mora. Escalações traz o time que entra em campo, com banco e desfalques. Estatísticas é o retrato dos dois: campanha e confrontos diretos."
+    },
+    "mercados": {
+      "titulo": "Os cinco mercados, sempre à vista",
+      "texto": "Gols, resultado, handicap, ambos marcam e dupla chance ficam sempre à mão, em coluna no computador e numa fileira que rola no celular. A barra é o Score de cada um, e o tracinho é a régua que separa o que vale olhar."
+    },
+    "folha": {
+      "titulo": "A folha do mercado",
+      "texto": "Clique num mercado e ele abre aqui: a aposta, a chance, a odd e o veredito em uma frase."
+    },
+    "regua": {
+      "titulo": "Arraste a linha",
+      "texto": "Nos gols e no handicap dá para arrastar a bolinha e ver a leitura mudar em cada linha. As bolinhas maiores são as linhas que mais premissas sustentam."
+    },
+    "premissas": {
+      "titulo": "A favor e contra",
+      "texto": "Aqui está o porquê: o que sustenta a leitura, o que faltou acontecer e, em cada premissa, o \"ver os jogos\" abre o gráfico dos jogos que produziram aquele número."
+    }
+  },
+  "futebolJogos": {
+    "intro": {
+      "titulo": "Os jogos do dia",
+      "texto": "Aqui ficam os jogos de todos os campeonatos, dia por dia. É a resposta pra \"o que tem hoje\"."
+    },
+    "datas": {
+      "titulo": "Escolha o dia",
+      "texto": "Use as setas pra andar pelos dias, ou o calendário pra pular pra qualquer data. O pontinho embaixo do dia avisa que tem jogo."
+    },
+    "lista": {
+      "titulo": "A leitura na própria linha",
+      "texto": "Os jogos vêm separados por campeonato, e cada campeonato recolhe. Na linha: o mercado, a aposta, a odd e o selo do Score. Jogo encerrado troca o Score por certo ou errado, dizendo se a leitura bateu."
+    },
+    "painel": {
+      "titulo": "O porquê, do lado",
+      "texto": "Clique num jogo e o resumo abre aqui, sem sair da lista: o que sustenta a leitura, o que pesa contra e como os dois times chegam. Pra ver tudo, é o botão de análise completa."
+    }
+  },
+  "futebolCampeonato": {
+    "intro": {
+      "titulo": "O campeonato inteiro",
+      "texto": "Aqui é a visão de uma competição: rodada a rodada, com os números da temporada."
+    },
+    "cabecalho": {
+      "titulo": "Competição e números",
+      "texto": "Troque de campeonato ou de temporada aqui em cima. Embaixo ficam os números da temporada: média de gols, quanto passa de 2,5, quanto o mandante ganha e em quantos jogos os dois lados marcam."
+    },
+    "rodada": {
+      "copa": {
+        "titulo": "A régua de fases",
+        "texto": "Todas as fases numa linha, da primeira até a final: clique em qualquer uma pra ver os jogos dela. As de areia já passaram, a verde é a que está aberta."
+      },
+      "liga": {
+        "titulo": "A régua de rodadas",
+        "texto": "A temporada inteira numa linha: clique em qualquer rodada pra ver os jogos dela. As de areia já passaram, a verde é a que está aberta."
+      }
+    },
+    "tabela": {
+      "celular": {
+        "copa": {
+          "titulo": "Fase, chave e artilheiros",
+          "texto": "Nestas abas você troca entre os jogos da fase, a chave da competição (ou a tabela dos grupos, quando ela está na fase de grupos) e os artilheiros."
+        },
+        "liga": {
+          "titulo": "Rodada, tabela e artilheiros",
+          "texto": "Nestas abas você troca entre os jogos da rodada, a classificação separada por zona e os artilheiros."
+        }
+      },
+      "computador": {
+        "copa": {
+          "titulo": "A chave e os artilheiros",
+          "texto": "Copa não tem tabela de pontos, tem chave: os confrontos fase a fase até a final, com ida e volta somadas. Na fase de grupos, este mesmo espaço mostra a tabela de cada grupo."
+        },
+        "liga": {
+          "titulo": "A tabela e os artilheiros",
+          "texto": "A classificação vem separada por zona, com o miolo recolhido pra caber na tela, e logo abaixo os artilheiros."
+        }
+      }
+    }
+  },
+  "futebolTime": {
+    "intro": {
+      "titulo": "O perfil do time",
+      "texto": "Como o time vem jogando, traduzido em números."
+    },
+    "cabecalho": {
+      "titulo": "A visão geral",
+      "texto": "Posição na tabela, forma recente e o balanço de vitórias, empates e derrotas."
+    },
+    "medias": {
+      "titulo": "Médias e eficiência",
+      "texto": "As médias por mando (geral, casa e fora) e a eficiência: os gols que fez contra o que era esperado (xG), pra ver se o time está numa fase quente ou fria."
+    },
+    "raiox": {
+      "titulo": "O raio-X da temporada",
+      "texto": "Jogos sem sofrer gol, sequências, e a frequência de over 2.5 e de ambos marcam."
+    },
+    "resultados": {
+      "titulo": "Os últimos jogos",
+      "texto": "Os resultados recentes, com placar, adversário e mando."
+    }
+  },
+  "betinho": {
+    "intro": {
+      "titulo": "Bem-vindo ao Betinho",
+      "texto": "Este é o Betinho, seu gestor de banca. Ele registra e acompanha suas apostas pra você enxergar o resultado real, sem planilha."
+    },
+    "telegram": {
+      "titulo": "Comece pelo Telegram",
+      "texto": "É aqui que tudo começa: manda o bilhete pro Betinho no Telegram, por texto, áudio ou print, e esta tela enche sozinha. Prefere na mão? Dá pra cadastrar manualmente também."
+    },
+    "numeros": {
+      "titulo": "Seus números",
+      "textoCelular": "Sua banca num relance: taxa de acerto, ROI, total de apostas e a evolução no tempo.",
+      "textoComputador": "Sempre atualizados: ROI, lucro líquido, total apostado e taxa de acerto."
+    },
+    "evolucao": {
+      "titulo": "A evolução da banca",
+      "texto": "A evolução da sua banca ao longo do tempo, pra ver se a estratégia está no caminho."
+    },
+    "lista": {
+      "titulo": "Suas apostas",
+      "texto": "Todas as suas apostas ficam aqui, com filtros por status, período, liga e mercado. Cada aposta que você liquida entra nos números lá de cima."
+    }
+  },
+  "betinhoPainel": {
+    "intro": {
+      "titulo": "O raio-x da banca",
+      "texto": "Este é o raio-x da sua banca: onde você ganha, onde perde, e o que dá pra ajustar."
+    },
+    "cabecalho": {
+      "titulo": "Escolha o período",
+      "texto": "Comece pelo período. Dá pra ver os números em R$ ou em unidades, e baixar tudo em planilha."
+    },
+    "resumo": {
+      "titulo": "Seu resumo",
+      "textoCelular": "Seu resumo do período num relance: lucro, ROI, acerto e a evolução.",
+      "textoComputador": "Seu resumo do período: banca atual, lucro, ROI e taxa de acerto."
+    },
+    "diagnostico": {
+      "titulo": "A leitura do Betinho",
+      "texto": "Aqui o Betinho lê suas apostas e conta, em texto, onde você está ganhando e onde está vazando dinheiro."
+    },
+    "heatmap": {
+      "titulo": "O mapa de calor",
+      "texto": "Cada quadradinho cruza liga e mercado, pintado pelo seu resultado: verde você lucra, vermelho você perde. Toque num pra abrir o detalhe."
+    },
+    "etiquetas": {
+      "titulo": "Resultado por etiqueta",
+      "texto": "O resultado das etiquetas que você cria pra agrupar apostas (tipo \"live\", \"gols\", \"palpite do grupo\"). Dá pra selecionar e comparar."
+    },
+    "odds": {
+      "titulo": "Faixa de odd",
+      "texto": "Em quais faixas de odd a sua banca cresce e em quais ela perde dinheiro."
+    },
+    "atividade": {
+      "titulo": "Quando você aposta",
+      "texto": "Seus dias mais ativos e as sequências, pra enxergar o seu padrão de atividade."
+    }
+  },
+  "bankroll": {
+    "intro": {
+      "titulo": "O fluxo de caixa da banca",
+      "texto": "Aqui fica o dinheiro que entra e sai da sua banca, separado do lucro das apostas."
+    },
+    "acoes": {
+      "titulo": "Aportes e resgates",
+      "texto": "Registre aportes (o que você põe) e resgates (o que você tira) por aqui. O saldo recalcula na hora."
+    },
+    "resumo": {
+      "titulo": "O resumo da banca",
+      "texto": "Saldo atual, total aportado, total retirado e o lucro acumulado das apostas."
+    },
+    "extrato": {
+      "titulo": "O extrato",
+      "texto": "O histórico em ordem: cada aposta liquidada, aporte e resgate, com o saldo evoluindo linha a linha."
+    }
+  },
+  "nba": {
+    "intro": {
+      "titulo": "Bem-vindo às Análises NBA",
+      "texto": "Todo dia a gente cruza jogadores, lesões e jogos pra achar as melhores oportunidades de prop bet da NBA."
+    },
+    "hero": {
+      "titulo": "Comece por um jogador",
+      "texto": "Busque um jogador aqui pra abrir a Análise 360 dele: prop bets, médias e o histórico por trás de cada pick."
+    },
+    "quentes": {
+      "titulo": "Oportunidades quentes",
+      "texto": "As props mais quentes do dia. Toque numa pra ver a análise, ou abra a lista completa pra comparar lado a lado."
+    },
+    "lesoes": {
+      "titulo": "Lesões que mexem no jogo",
+      "texto": "As lesões que mais impactam os jogos de hoje, e quem tende a se valorizar por causa delas."
+    },
+    "jogos": {
+      "titulo": "Jogos de hoje",
+      "texto": "Os jogos do dia. Toque num pra abrir o confronto completo, com escalações e oportunidades."
+    },
+    "relatorio": {
+      "titulo": "Relatório do dia",
+      "texto": "Um resumo com as melhores análises e picks do dia, tudo num lugar só."
+    }
+  },
+  "nbaJogos": {
+    "intro": {
+      "titulo": "Os jogos da NBA",
+      "texto": "Todos os jogos de NBA do dia, num lugar só."
+    },
+    "data": {
+      "titulo": "Escolha o dia",
+      "texto": "Navegue entre as datas aqui pra ver os jogos de outros dias."
+    },
+    "lista": {
+      "titulo": "Os jogos",
+      "texto": "Cada card é um jogo: horário, times e o placar quando rola. Toque pra abrir o confronto completo."
+    },
+    "lateral": {
+      "titulo": "Atalhos do dia",
+      "texto": "Na lateral: a melhor oportunidade, as lesões do dia e o atalho pro relatório."
+    }
+  },
+  "nbaJogo": {
+    "intro": {
+      "titulo": "O confronto",
+      "texto": "Tudo sobre o jogo num lugar só, pra você montar suas props com contexto."
+    },
+    "times": {
+      "titulo": "Os dois times",
+      "texto": "O placar ou o horário, e as notas de ataque e defesa de cada lado."
+    },
+    "abas": {
+      "titulo": "As visões do jogo",
+      "texto": "Escalações e lesões, oportunidades de prop do jogo, e as estatísticas completas quando a partida termina. Toque nas abas pra alternar."
+    }
+  },
+  "nbaPainel": {
+    "intro": {
+      "titulo": "O painel do jogador",
+      "texto": "Médias, histórico e as props do dia deste jogador, tudo num lugar."
+    },
+    "cabecalho": {
+      "titulo": "O jogador em números",
+      "texto": "Foto, time e as médias que importam pra ler as linhas."
+    },
+    "oportunidades": {
+      "titulo": "As oportunidades do dia",
+      "texto": "As props do jogador pra hoje, com a linha e a vantagem."
+    },
+    "grafico": {
+      "titulo": "O gráfico de desempenho",
+      "texto": "Escolha a estatística e veja jogo a jogo, com a linha da aposta na frente pra comparar."
+    }
+  },
+  "analise360Lista": {
+    "intro": {
+      "titulo": "Análise 360",
+      "texto": "Parte de um desfalque (um titular fora) e mostra quem herda os minutos e se valoriza nas props."
+    },
+    "cabecalho": {
+      "titulo": "O impacto das lesões de hoje",
+      "texto": "A lista é do dia: traz as lesões e desfalques de hoje e quem se beneficia com cada um."
+    },
+    "gatilhos": {
+      "titulo": "Os gatilhos do dia",
+      "texto": "Cada card é uma lesão, agrupada por status (fora, dúvida). Toque num pra ver os companheiros valorizados."
+    }
+  },
+  "analise360Detalhe": {
+    "intro": {
+      "titulo": "A Análise 360 do gatilho",
+      "texto": "Quem se valoriza quando este jogador não joga, e o quanto cada linha muda."
+    },
+    "jogador": {
+      "titulo": "O jogador que saiu",
+      "texto": "O status, as estrelas de impacto e, nas abas, a estatística que você quer analisar."
+    },
+    "cadeia": {
+      "titulo": "A cadeia de impacto",
+      "texto": "Com ele de fora, pra onde vão os minutos e os chutes do time, e quem herda o quê. Toque num jogador pra abrir a análise."
+    }
+  },
+  "bolao": {
+    "hero": {
+      "titulo": "Bolão com a galera",
+      "texto": "Crie um bolão do zero ou entre num com o código, mande seus palpites e acompanhe o ranking em tempo real."
+    }
+  }
+}
