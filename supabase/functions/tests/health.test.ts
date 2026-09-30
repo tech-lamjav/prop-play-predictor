@@ -1,6 +1,6 @@
 // Testes da lógica do ops-healthcheck (health.ts).
 import { assertEquals } from "./_assert.ts";
-import { failingStreaks, flakyFns, type RunRow } from "../ops-healthcheck/health.ts";
+import { avisoDoPorteiro, failingStreaks, flakyFns, type RunRow } from "../ops-healthcheck/health.ts";
 
 const T0 = Date.parse("2026-08-27T12:00:00Z"); // "agora" fixo dos testes
 const MIN = 60_000;
@@ -99,4 +99,51 @@ Deno.test("flaky ordena por nome e separa funções", () => {
     { fn: "a", failures: 3, total: 3 },
     { fn: "z", failures: 3, total: 3 },
   ]);
+});
+
+// ── o porteiro que parou de saber (#554) ─────────────────────
+//
+// O porteiro deixa entrar quando não consegue decidir de onde a pessoa veio.
+// É escolha, não descuido — mas fail-open silencioso é um bloqueio que morreu
+// sem ninguém ver, e a operação continuaria normal para quem deveria estar
+// barrado. Estes testes protegem o barulho.
+
+const ligado = { bloqueioLigado: true };
+
+Deno.test("porteiro cego em proporção alta → avisa", () => {
+  const aviso = avisoDoPorteiro({ naoSei: 30, total: 40 }, ligado);
+  assertEquals(aviso?.naoSei, 30);
+  assertEquals(aviso?.total, 40);
+});
+
+Deno.test("poucos 'não sei' não viram notícia, mesmo em proporção alta", () => {
+  // 1 de 2 é 50% e não diz nada num dia de movimento fraco. É por isso que a
+  // proporção sozinha não basta.
+  assertEquals(avisoDoPorteiro({ naoSei: 1, total: 2 }, ligado), null);
+});
+
+Deno.test("muitos 'não sei' diluídos em muito acesso não viram notícia", () => {
+  // 20 em 20 mil é ruído. É por isso que o piso absoluto sozinho não basta.
+  assertEquals(avisoDoPorteiro({ naoSei: 20, total: 20_000 }, ligado), null);
+});
+
+Deno.test("com o bloqueio desligado o vigia fica calado", () => {
+  assertEquals(avisoDoPorteiro({ naoSei: 999, total: 1000 }, { bloqueioLigado: false }), null);
+});
+
+Deno.test("sem acesso nenhum na janela não há o que avisar", () => {
+  // Sem esta guarda, zero dividido por zero viraria NaN e a comparação
+  // devolveria sempre falso — calado pelo motivo errado.
+  assertEquals(avisoDoPorteiro({ naoSei: 0, total: 0 }, ligado), null);
+});
+
+Deno.test("o limite pode ser afrouxado sem deploy", () => {
+  const presenca = { naoSei: 6, total: 20 };
+  assertEquals(avisoDoPorteiro(presenca, ligado)?.naoSei, 6);
+  assertEquals(avisoDoPorteiro(presenca, { ...ligado, minimo: 50 }), null);
+});
+
+Deno.test("a proporção relatada é a que foi medida", () => {
+  const aviso = avisoDoPorteiro({ naoSei: 10, total: 40 }, ligado);
+  assertEquals(aviso?.proporcao, 0.25);
 });

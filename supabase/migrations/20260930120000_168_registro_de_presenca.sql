@@ -139,6 +139,15 @@ insert into public.ops_config (key, value)
 values ('bloqueio_brasil_ligado', 'nao')
 on conflict (key) do nothing;
 
+-- ── Quando o vigia reclama do porteiro (#554) ───────────────────────────────
+-- Quantos acessos sem origem conhecida, na janela de 48h, já são notícia. Existe
+-- junto de uma proporção no código: um piso absoluto sozinho alarmaria num dia
+-- fraco (1 em 2 é 50% e não é notícia), e uma proporção sozinha alarmaria com
+-- ruído de madrugada.
+insert into public.ops_config (key, value)
+values ('porteiro_nao_sei_minimo', '5')
+on conflict (key) do nothing;
+
 -- ── O lote que preenche o país (#553) ───────────────────────────────────────
 -- Fica comentado, como os outros crons desta casa: ele depende de dois segredos
 -- no vault que precisam ser criados à mão. Sem eles o cron roda MUDO — já
