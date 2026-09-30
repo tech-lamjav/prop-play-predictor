@@ -52,6 +52,28 @@
     "apostas": "Apostas",
     "dashboard": "Dashboard",
     "futebol": "Futebol",
-    "nba": "NBA"
+    "nba": "NBA",
+    "inicioNba": "Início NBA",
+    "oportunidadesDoDia": "Oportunidades do Dia",
+    "painel": "Painel"
+  },
+  "erro": {
+    "404": {
+      "codigo": "Erro 404",
+      "titulo": "Página não encontrada"
+    }
+  },
+  "espera": {
+    "oQueAcontece": "O que acontece agora?",
+    "avisos": "Você receberá atualizações por email",
+    "prioridadeLancamento": "Acesso prioritário quando lançarmos",
+    "desconto": "Desconto especial para os primeiros",
+    "nome": "Nome completo *",
+    "nomeExemplo": "Seu nome completo",
+    "email": "Email *",
+    "whatsapp": "WhatsApp (opcional)",
+    "beneficios": "Benefícios da lista de espera:",
+    "prioridade": "Acesso prioritário no lançamento",
+    "ligas": "Brasileirão, Copa do Brasil e ligas europeias"
   }
 }

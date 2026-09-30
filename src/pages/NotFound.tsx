@@ -1,8 +1,10 @@
 import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
 import { Seo } from "@/components/Seo";
+import { useTranslation } from 'react-i18next';
 
 const NotFound = () => {
+  const { t: tComum } = useTranslation('comum');
   const location = useLocation();
 
   useEffect(() => {
@@ -17,10 +19,10 @@ const NotFound = () => {
       {/* Sendo SPA, qualquer URL inexistente responde 200 com o shell, e o
           Google trata isso como página fantasma (soft 404). O noindex evita
           que essas URLs entrem no índice. */}
-      <Seo noindex title="Página não encontrada | Smart Betting" />
+      <Seo noindex title={`${tComum('erro.404.titulo')} | Smart Betting`} />
       <div className="text-center">
-        <p className="font-mono text-[13px] font-bold uppercase tracking-[0.2em] text-forest mb-3">Erro 404</p>
-        <h1 className="font-display text-5xl font-black text-ink mb-3">Página não encontrada</h1>
+        <p className="font-mono text-[13px] font-bold uppercase tracking-[0.2em] text-forest mb-3">{tComum('erro.404.codigo')}</p>
+        <h1 className="font-display text-5xl font-black text-ink mb-3">{tComum('erro.404.titulo')}</h1>
         <p className="text-[15px] text-ink-2 mb-6 max-w-sm mx-auto">
           A página que você procurou não existe ou foi movida.
         </p>

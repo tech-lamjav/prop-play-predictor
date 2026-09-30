@@ -38,15 +38,15 @@ export default function MainNav({ className }: MainNavProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const analysisItems = [
-    { name: 'Início NBA', href: '/home-nba', icon: BarChart3 },
-    { name: 'Oportunidades do Dia', href: '/oportunidades', icon: TrendingUp },
-    { name: 'Jogos', href: '/home-games', icon: TrendingUp },
-    { name: 'Relatório', href: '/report', icon: FileText },
+    { chave: 'nav.inicioNba', href: '/home-nba', icon: BarChart3 },
+    { chave: 'nav.oportunidadesDoDia', href: '/oportunidades', icon: TrendingUp },
+    { chave: 'nav.jogos', href: '/home-games', icon: TrendingUp },
+    { chave: 'nav.relatorio', href: '/report', icon: FileText },
   ];
 
   const betinhoModuleItems = [
-    { name: 'Painel', href: '/betting-dashboard', icon: BarChart3 },
-    { name: 'Apostas', href: '/bets', icon: Target },
+    { chave: 'nav.painel', href: '/betting-dashboard', icon: BarChart3 },
+    { chave: 'nav.apostas', href: '/bets', icon: Target },
   ];
 
   const isActive = (path: string) => {
@@ -56,7 +56,7 @@ export default function MainNav({ className }: MainNavProps) {
   const isBolaoActive = location.pathname.startsWith('/bolao');
 
   const activeModuleName = analysisItems.some((i) => isActive(i.href))
-    ? 'Análises'
+    ? tComum('nav.analises')
     : betinhoModuleItems.some((i) => isActive(i.href))
     ? 'Betinho'
     : isBolaoActive
@@ -91,7 +91,7 @@ export default function MainNav({ className }: MainNavProps) {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center gap-2">
-                  <span>Análises</span>
+                  <span>{tComum('nav.analises')}</span>
                   <ChevronDown className="w-4 h-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -106,7 +106,7 @@ export default function MainNav({ className }: MainNavProps) {
                       className={`cursor-pointer ${isActive(item.href) ? 'font-semibold' : ''}`}
                     >
                       <Icon className="w-4 h-4 mr-2" />
-                      {item.name}
+                      {tComum(item.chave)}
                     </DropdownMenuItem>
                   );
                 })}
@@ -131,7 +131,7 @@ export default function MainNav({ className }: MainNavProps) {
                       className={`cursor-pointer ${isActive(item.href) ? 'font-semibold' : ''}`}
                     >
                       <Icon className="w-4 h-4 mr-2" />
-                      {item.name}
+                      {tComum(item.chave)}
                     </DropdownMenuItem>
                   );
                 })}
@@ -203,14 +203,14 @@ export default function MainNav({ className }: MainNavProps) {
               {/* Seção Análises */}
               <div>
                 <p className="px-3 mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Análises
+                  {tComum('nav.analises')}
                 </p>
                 <div className="space-y-1">
                   {analysisItems.map((item) => {
                     const Icon = item.icon;
                     return (
                       <Button
-                        key={item.name}
+                        key={item.chave}
                         variant={isActive(item.href) ? "default" : "ghost"}
                         onClick={() => handleNavigation(item.href)}
                         className={`w-full justify-start flex items-center space-x-3 ${
@@ -220,7 +220,7 @@ export default function MainNav({ className }: MainNavProps) {
                         }`}
                       >
                         <Icon className="w-4 h-4" />
-                        <span className="font-medium">{item.name}</span>
+                        <span className="font-medium">{tComum(item.chave)}</span>
                       </Button>
                     );
                   })}
@@ -240,7 +240,7 @@ export default function MainNav({ className }: MainNavProps) {
                     const Icon = item.icon;
                     return (
                       <Button
-                        key={item.name}
+                        key={item.chave}
                         variant={isActive(item.href) ? "default" : "ghost"}
                         onClick={() => handleNavigation(item.href)}
                         className={`w-full justify-start flex items-center space-x-3 ${
@@ -250,7 +250,7 @@ export default function MainNav({ className }: MainNavProps) {
                         }`}
                       >
                         <Icon className="w-4 h-4" />
-                        <span className="font-medium">{item.name}</span>
+                        <span className="font-medium">{tComum(item.chave)}</span>
                       </Button>
                     );
                   })}

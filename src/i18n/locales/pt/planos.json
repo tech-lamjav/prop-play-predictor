@@ -280,7 +280,8 @@
     "final": {
       "titulo": "Comece grátis hoje",
       "texto": "Cria a conta, testa 48 horas e só depois decide. Se não for pra você, é só cancelar."
-    }
+    },
+    "gratis": "Grátis"
   },
   "checkout": {
     "processando": "Processando...",

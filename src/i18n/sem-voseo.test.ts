@@ -49,10 +49,33 @@ const LEGITIMAS = new Set([
   'señala', 'señalan',
   // Nome de variável de interpolação que aparece dentro do texto.
   'janela',
+  // ⚠️ FUTUROS IRREGULARES. O futuro regular é pego por `FUTURO` abaixo, mas
+  // estes encurtam o radical e terminam em `-drás`, `-brás` ou `-rrás`, que o
+  // padrão não alcança. E não dá para alcançar: "querrás" (futuro legítimo)
+  // tem exatamente a forma de "cerrás" (presente do voseo). Por sorte é
+  // conjunto FECHADO — o espanhol tem uma dúzia — então a lista é completa e
+  // não cresce.
+  'habrás', 'cabrás', 'podrás', 'querrás', 'sabrás', 'pondrás',
+  'saldrás', 'tendrás', 'valdrás', 'vendrás',
 ]);
 
 /** A forma clássica: infinitivo sem o -r, com acento na última sílaba. */
 const SUFIXO_ACENTUADO = /^[a-záéíóúñü]+(á|é|í|ás|és|ís)$/;
+
+/**
+ * O FUTURO do indicativo, que é igual em "tú" e em "vos".
+ *
+ * ⚠️ Esta exceção nasceu de a guarda acusar "Recibirás", que é espanhol
+ * perfeito e pan-hispânico. O futuro de segunda pessoa termina em `-ás` e
+ * colide com o presente do voseo: "hablarás" (futuro, legítimo) contra
+ * "hablás" (presente, rio-platense).
+ *
+ * O que os separa é a forma: o futuro é o INFINITIVO INTEIRO mais `-ás`, então
+ * termina em `-arás`, `-erás` ou `-irás`. O presente do voseo é o radical mais
+ * `-ás`, e só cai nesse padrão quando o radical já acaba em `r` — "cerrás"
+ * termina em `rrás`, e continua sendo acusado, que é o certo.
+ */
+const FUTURO = /(arás|erás|irás)$/;
 
 /**
  * A forma com pronome colado, que PERDE o acento: "ajustala", "suscribite".
@@ -73,6 +96,7 @@ function ehVoseo(palavra: string): boolean {
   const b = palavra.toLowerCase();
   if (LEGITIMAS.has(b)) return false;
   if (MARCAS.has(b)) return true;
+  if (FUTURO.test(b)) return false;
   if (SUFIXO_ACENTUADO.test(b)) return true;
   return COM_PRONOME_COLADO.test(b) && !TEM_ACENTO.test(b) && silabas(b) >= 3;
 }
@@ -110,6 +134,8 @@ describe('o espanhol do produto é pan-hispânico', () => {
       'podés', 'hacé', 'Mirá', 'Recibí', 'Creá', 'liberá', 'Indicá', 'Marcá', 'Cambiá',
       'ajustala', 'registrala', 'suscribite', 'hacelo', 'fijate', 'probalo', 'decime',
       'sos', 'vos',
+      // Presente do voseo cujo radical acaba em r: parece futuro e não é.
+      'cerrás',
     ]) {
       expect(ehVoseo(escapou), `deveria acusar: ${escapou}`).toBe(true);
     }
@@ -120,6 +146,8 @@ describe('o espanhol do produto é pan-hispânico', () => {
       'está', 'después', 'país', 'interés', 'más', 'aquí', 'estás', 'esté',
       'principales', 'empate', 'modelo', 'cancela', 'ajústala', 'regístrala',
       'suscríbete', 'míralo', 'puedes', 'prueba', 'haz',
+      // Futuro do indicativo: igual em tú e em vos, e portanto legítimo.
+      'recibirás', 'hablarás', 'podrás', 'tendrás', 'vivirás',
     ]) {
       expect(ehVoseo(legitimo), `não deveria acusar: ${legitimo}`).toBe(false);
     }
