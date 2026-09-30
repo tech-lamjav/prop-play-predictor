@@ -19,12 +19,16 @@
 // ============================================================
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { failingStreaks, flakyFns, type RunRow } from "./health.ts";
+import { avisoDoPorteiro, failingStreaks, flakyFns, type RunRow } from "./health.ts";
 
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
 const CRON_SECRET = Deno.env.get("CRON_SECRET") || "";
 const FAIL_THRESHOLD = 3; // de 5 execuções recentes
 const RUNS_WINDOW_H = 48;  // janela de message_runs lida a cada check
+// Janela do registro de presença. Mesmo número por enquanto, constante própria
+// de propósito: as duas respondem perguntas diferentes e vão querer números
+// diferentes no dia em que uma delas fizer barulho demais.
+const PRESENCA_WINDOW_H = 48;
 
 interface JobHealth {
   jobname: string;
@@ -91,7 +95,48 @@ serve(async (req) => {
     const failingFns = failingStreaks(runs, FAIL_THRESHOLD);
     const flaky = flakyFns(runs).filter((f) => !failingFns.includes(f.fn));
 
-    if (mode !== "report" && (problems.length > 0 || failingFns.length > 0 || flaky.length > 0)) {
+    // ── O porteiro que parou de saber de onde as pessoas vêm (#554) ────────
+    //
+    // A contagem sai do registro de presença, e não do log da função: log não
+    // se consulta por SQL, e o que precisa ser vigiado é justamente o que fica
+    // gravado. Efeito colateral aceito: visitante deslogado não gera linha, e
+    // portanto não entra nesta conta — o sinal cobre quem tem conta, que é
+    // quem a evidência fiscal precisa descrever.
+    const desde = new Date(Date.now() - PRESENCA_WINDOW_H * 3_600_000).toISOString();
+    const [{ count: totalPresenca }, { count: naoSeiPresenca }, cfgBloqueio, cfgLimite, cfgProporcao] =
+      await Promise.all([
+        supabase
+          .from("registro_de_presenca")
+          .select("*", { count: "exact", head: true })
+          .gte("criado_em", desde),
+        supabase
+          .from("registro_de_presenca")
+          .select("*", { count: "exact", head: true })
+          .gte("criado_em", desde)
+          .eq("origem", "nao_sei"),
+        supabase.from("ops_config").select("value").eq("key", "bloqueio_brasil_ligado").maybeSingle(),
+        supabase.from("ops_config").select("value").eq("key", "porteiro_nao_sei_minimo").maybeSingle(),
+        supabase.from("ops_config").select("value").eq("key", "porteiro_nao_sei_proporcao").maybeSingle(),
+      ]);
+
+    const limite = Number(cfgLimite.data?.value);
+    const proporcao = Number(cfgProporcao.data?.value);
+    const avisoPorteiro = avisoDoPorteiro(
+      { naoSei: naoSeiPresenca ?? 0, total: totalPresenca ?? 0 },
+      {
+        bloqueioLigado: cfgBloqueio.data?.value === "sim",
+        // Valor inválido na tabela cai no padrão do módulo em vez de virar NaN
+        // — um limite NaN nunca dispara, e o aviso morreria calado.
+        minimo: Number.isFinite(limite) && limite > 0 ? limite : undefined,
+        proporcaoMaxima:
+          Number.isFinite(proporcao) && proporcao > 0 && proporcao < 1 ? proporcao : undefined,
+      },
+    );
+
+    if (
+      mode !== "report" &&
+      (problems.length > 0 || failingFns.length > 0 || flaky.length > 0 || avisoPorteiro)
+    ) {
       const lines = ["🚨 ops-healthcheck — problemas encontrados:", ""];
       for (const p of problems) {
         if (p.missing_secrets.length > 0) {
@@ -107,12 +152,19 @@ serve(async (req) => {
       for (const f of flaky) {
         lines.push(`• ${f.fn}: ${f.failures} de ${f.total} runs falharam nas últimas 24h (message_runs) — intermitente, não quebrada`);
       }
+      if (avisoPorteiro) {
+        const pct = Math.round(avisoPorteiro.proporcao * 100);
+        lines.push(
+          `• porteiro: ${avisoPorteiro.naoSei} de ${avisoPorteiro.total} acessos das últimas ${PRESENCA_WINDOW_H}h sem origem conhecida (${pct}%) — o bloqueio está DEIXANDO ENTRAR quem não consegue identificar`,
+        );
+      }
       // Runbook sob medida: a linha fixa de antes mandava caçar secret em
       // incidente que não tinha secret nenhum envolvido.
       const dicas: string[] = [];
       if (problems.some((p) => p.missing_secrets.length > 0)) dicas.push("secret faltando → vault.create_secret");
       if (problems.some((p) => p.failed_recent >= FAIL_THRESHOLD)) dicas.push("falha de cron → cron.job_run_details");
       if (failingFns.length > 0 || flaky.length > 0) dicas.push("falha de função → message_runs.errors");
+      if (avisoPorteiro) dicas.push("porteiro cego → logs da função porteiro, cabeçalho cf-connecting-ip");
       if (dicas.length > 0) lines.push("", `Runbook: ${dicas.join(" · ")}.`);
       if (adminChat) {
         await sendAdminDm(adminChat, lines.join("\n"));
@@ -133,6 +185,7 @@ serve(async (req) => {
       })),
       failing_message_fns: failingFns,
       flaky_message_fns: flaky,
+      porteiro: avisoPorteiro,
       admin_configured: adminChat != null,
     });
   } catch (e) {
