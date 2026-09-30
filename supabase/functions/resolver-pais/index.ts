@@ -27,6 +27,18 @@
 // vault que precisam ser criados à mão — sem eles o cron roda mudo, que já
 // aconteceu três vezes nesta casa.
 //
+// ⚠️ ONDE JÁ ESTÁ FEITO, em 30/09/2026:
+//
+//   • STAGING — sim. Os dois segredos existem e o job está agendado (5h20
+//     diário). O segredo foi COPIADO de dentro do próprio banco, a partir do
+//     `ops_healthcheck_cron_secret`, então o valor nunca passou por ninguém.
+//     Conferido com uma execução de verdade: {"pendentes":1,"atualizadas":1}.
+//
+//   • PRODUÇÃO — não. Segredo e agendamento são por ambiente e NÃO viajam no
+//     merge: quando a develop for para a main, refazer lá os mesmos passos.
+//     Enquanto não forem refeitos, o país das linhas de produção fica vazio —
+//     o que não quebra acesso nenhum, só deixa o relatório incompleto.
+//
 // ?mode=report → devolve o que faria, sem escrever nada.
 //
 // Segredos (env): SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, CRON_SECRET.
