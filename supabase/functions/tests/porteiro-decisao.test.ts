@@ -1,5 +1,5 @@
 import { assertEquals } from "./_assert.ts";
-import { decidir, type EstadoDoPorteiro } from "../porteiro/decisao.ts";
+import { decidir, deveRevogarASessao, type EstadoDoPorteiro } from "../porteiro/decisao.ts";
 import { ipDaRequisicao } from "../shared/origem-da-requisicao.ts";
 
 /**
@@ -59,6 +59,30 @@ Deno.test("barrar exige as três condições ao mesmo tempo", () => {
   assertEquals(decidir(com({ origem: "nao" })).veredito, "entrou");
   assertEquals(decidir(com({ origem: "sim", bloqueioLigado: false })).veredito, "entrou");
   assertEquals(decidir(com({ origem: "sim", ehSocio: true })).veredito, "entrou");
+});
+
+// ── Derrubar a sessão ───────────────────────────────────────────────────────
+
+Deno.test("a sessão cai quando a pessoa logada é barrada", () => {
+  const barrado = decidir(com({ origem: "sim" }));
+  assertEquals(deveRevogarASessao(barrado, true), true);
+});
+
+Deno.test("quem entrou não perde a sessão", () => {
+  assertEquals(deveRevogarASessao(decidir(com({ origem: "nao" })), true), false);
+  assertEquals(deveRevogarASessao(decidir(com({ origem: "nao_sei" })), true), false);
+  assertEquals(deveRevogarASessao(decidir(com({ origem: "sim", ehSocio: true })), true), false);
+  assertEquals(
+    deveRevogarASessao(decidir(com({ origem: "sim", bloqueioLigado: false })), true),
+    false,
+  );
+});
+
+Deno.test("visitante deslogado não tem sessão para derrubar", () => {
+  // Sem esta condição, toda visita anônima do Brasil chamaria a API de
+  // administração à toa — e a página pública é justamente a mais visitada.
+  const barrado = decidir(com({ origem: "sim" }));
+  assertEquals(deveRevogarASessao(barrado, false), false);
 });
 
 // ── De onde sai o endereço ──────────────────────────────────────────────────

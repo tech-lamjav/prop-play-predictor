@@ -32,7 +32,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { ehDoBrasil } from "../shared/faixas-do-brasil.ts";
 import { ipDaRequisicao } from "../shared/origem-da-requisicao.ts";
-import { decidir } from "./decisao.ts";
+import { decidir, deveRevogarASessao } from "./decisao.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -57,6 +57,14 @@ function diaDeHoje(): string {
     month: "2-digit",
     day: "2-digit",
   }).format(new Date());
+}
+
+/** O token cru do cabeçalho, sem o "Bearer". */
+function tokenDaRequisicao(req: Request): string | null {
+  const cabecalho = req.headers.get("Authorization") || req.headers.get("authorization");
+  if (!cabecalho) return null;
+  const token = cabecalho.replace("Bearer ", "").trim();
+  return token === "" ? null : token;
 }
 
 /** O `sub` do token, ou null para quem chegou com a chave anônima. */
@@ -125,6 +133,30 @@ serve(async (req) => {
           { onConflict: "user_id,dia", ignoreDuplicates: true },
         );
       if (error) console.error("[porteiro] registro de presenca falhou:", error.message);
+    }
+
+    // ── A sessão cai depois da linha ser gravada, e antes da resposta sair ──
+    //
+    // Barrar só na tela é um pedido educado: o token continuaria valendo, e
+    // quem falasse direto com a API entraria do mesmo jeito. Aqui o token
+    // morre, e nenhuma regra de acesso precisou ser tocada.
+    //
+    // ⚠️ A ORDEM É A REGRA. A pessoa precisa ver a tela que explica, e não a
+    // de entrar. Isso funciona porque a resposta com `barrado` sai desta
+    // função ANTES de o navegador perceber que perdeu a sessão — e porque a
+    // porta, do outro lado, decide pelo veredito e não pelo estado de login:
+    // mesmo que o app tente empurrar a pessoa para a tela de entrada, a tela
+    // de bloqueio continua por cima.
+    const token = tokenDaRequisicao(req);
+    if (deveRevogarASessao(decisao, pessoa !== null) && token) {
+      // 'global' derruba todas as sessões da pessoa, e não só esta aba. Quem
+      // foi barrado num aparelho está barrado em todos — a regra é sobre de
+      // onde a conta é usada, não sobre qual navegador.
+      const { error } = await supabase.auth.admin.signOut(token, "global");
+      // Falhar aqui não pode segurar a resposta: a pessoa já vai ver a tela de
+      // bloqueio, e uma sessão que sobreviveu um pouco mais é menos grave do
+      // que uma requisição pendurada.
+      if (error) console.error("[porteiro] revogar sessao falhou:", error.message);
     }
 
     // O `nao_sei` sai no log para o vigia poder contar (#554). Ele é a única

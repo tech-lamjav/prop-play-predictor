@@ -65,3 +65,20 @@ export function decidir(estado: EstadoDoPorteiro): DecisaoDoPorteiro {
 
   return { origem, veredito: barrado ? 'barrado' : 'entrou' };
 }
+
+/**
+ * A sessão desta pessoa deve ser derrubada?
+ *
+ * Barrar só na tela é um pedido educado: o token continua valendo, e quem
+ * estiver disposto a falar direto com a API entra do mesmo jeito. Derrubar a
+ * sessão é o que transforma o bloqueio em bloqueio — sem sessão, nenhum dado
+ * sai, e nenhuma regra de acesso precisou ser tocada.
+ *
+ * Duas condições, e as duas são óbvias só depois de escritas: precisa ter sido
+ * barrado, e precisa haver uma sessão para derrubar. Visitante deslogado que
+ * bate na porta vê a tela e não tem o que revogar — tentar mesmo assim faria a
+ * função chamar a API de administração à toa em toda visita anônima.
+ */
+export function deveRevogarASessao(decisao: DecisaoDoPorteiro, temPessoa: boolean): boolean {
+  return decisao.veredito === 'barrado' && temPessoa;
+}
