@@ -7,6 +7,7 @@ significa a mesma coisa dentro do seu contexto.
 |---|---|---|
 | Futebol — leitura de mercados | `CONTEXT.md` | Como linhas analisadas e preços viram oportunidades publicadas. |
 | CRM dos sócios | `src/components/socios/CONTEXT.md` | Como um cadastro vira lead abordado, e o que os sócios registram sobre ele. |
+| A pessoa — declarado e observado | `src/components/perfil/CONTEXT.md` | Quem é a pessoa, de onde ela acessa, e o que a plataforma decide sobre isso. |
 
 Um aviso que vale para os dois: **oportunidade** é palavra do futebol e não tem
 sentido comercial nenhum. No CRM, quem está por abordar é **lead**.
