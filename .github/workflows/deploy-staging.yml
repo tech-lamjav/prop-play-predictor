@@ -69,6 +69,8 @@ jobs:
           # a chave anônima já é um JWT válido do projeto, então visitante
           # deslogado também chega aqui. (#550)
           supabase functions deploy porteiro
+          # O lote que preenche o país das linhas do registro (#553).
+          supabase functions deploy resolver-pais --no-verify-jwt
           # ⚠️ DESCARTÁVEL — sonda de cabeçalhos de origem. Só staging, nunca
           # produção. Sai daqui junto com a pasta assim que a resposta for lida.
           supabase functions deploy sonda-geo

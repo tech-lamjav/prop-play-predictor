@@ -69,5 +69,7 @@ jobs:
           # a chave anônima já é um JWT válido do projeto, então visitante
           # deslogado também chega aqui. (#550)
           supabase functions deploy porteiro
+          # O lote que preenche o país das linhas do registro (#553).
+          supabase functions deploy resolver-pais --no-verify-jwt
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}

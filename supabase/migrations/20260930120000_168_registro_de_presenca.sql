@@ -138,3 +138,24 @@ create index if not exists registro_de_presenca_pais_pendente
 insert into public.ops_config (key, value)
 values ('bloqueio_brasil_ligado', 'nao')
 on conflict (key) do nothing;
+
+-- ── O lote que preenche o país (#553) ───────────────────────────────────────
+-- Fica comentado, como os outros crons desta casa: ele depende de dois segredos
+-- no vault que precisam ser criados à mão. Sem eles o cron roda MUDO — já
+-- aconteceu três vezes aqui, e é por isso que o ops-healthcheck existe.
+--
+-- Criar antes de descomentar:
+--   select vault.create_secret('<url da função>', 'resolver_pais_url');
+--   select vault.create_secret('<segredo>',       'resolver_pais_cron_secret');
+--
+-- select cron.schedule('resolver-pais', '20 5 * * *', $job$
+--   select net.http_post(
+--     url := (select decrypted_secret from vault.decrypted_secrets where name = 'resolver_pais_url'),
+--     headers := jsonb_build_object(
+--       'Content-Type', 'application/json',
+--       'x-cron-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'resolver_pais_cron_secret')
+--     ),
+--     body := '{}'::jsonb,
+--     timeout_milliseconds := 60000
+--   );
+-- $job$);

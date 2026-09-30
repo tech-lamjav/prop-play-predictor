@@ -1,6 +1,6 @@
 // ⚠️ ARQUIVO GERADO. Não edite à mão.
 //
-// Gerado por `node scripts/gerar-faixas-brasil.mjs` a partir da publicação de
+// Gerado por `node scripts/gerar-faixas-de-ip.mjs` a partir da publicação de
 // delegações do LACNIC. Regerar quando alguém reclamar de bloqueio indevido, ou
 // de tempos em tempos — alocação de país muda devagar, não muda de semana para
 // semana.
