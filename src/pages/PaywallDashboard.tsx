@@ -8,6 +8,7 @@ import { whatsappDoTime } from "@/config/contato";
 import { createClient } from "@/integrations/supabase/client";
 import { stripeService } from "@/services/stripe.service";
 import { toast } from "@/hooks/use-toast";
+import { SeletorDeIdiomaCompacto } from '@/components/SeletorDeIdioma';
 
 const STRIPE_PRICE_ID = import.meta.env.VITE_STRIPE_PRICE_ID_BETINHO;
 
@@ -191,6 +192,9 @@ export default function PaywallDashboard() {
             <span className="text-lg sm:text-2xl font-bold text-foreground">Smart Betting</span>
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
+            {/* Sem usuário não há menu da conta, e é lá que o idioma mora.
+                Esta tela tem cabeçalho próprio, então precisa do seu. */}
+            <SeletorDeIdiomaCompacto tom="claro" />
             <Button
               variant="outline"
               onClick={() => navigate("/bets")}

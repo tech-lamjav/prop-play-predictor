@@ -7,6 +7,7 @@ import { FREE_PLAYERS } from "@/config/freemium";
 import { getTeamLogoUrl, getPlayerPhotoUrl, teamAbbrToName } from "@/utils/team-logos";
 import { Seo } from "@/components/Seo";
 import { faqPageSchema, type FaqItem } from "@/lib/structured-data";
+import { SeletorDeIdiomaCompacto } from '@/components/SeletorDeIdioma';
 
 const getFreePlayerDashboardPath = () => {
   const name = FREE_PLAYERS[0];
@@ -195,6 +196,9 @@ const Landing = () => {
             <img src="/logo.png" alt="Smart Betting" className="h-9 invert hue-rotate-180" />
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Sem usuário não há menu da conta, e é lá que o idioma mora.
+                Esta tela tem cabeçalho próprio, então precisa do seu. */}
+            <SeletorDeIdiomaCompacto tom="claro" />
             <button
               type="button"
               onClick={() => navigate(user ? "/onboarding" : "/auth")}

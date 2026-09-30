@@ -103,6 +103,44 @@ export function idiomaDeAbertura(): Idioma {
   );
 }
 
+/**
+ * A configuração, separada da inicialização para poder ser MEDIDA.
+ *
+ * Ela sai daqui porque o critério de aceite mais importante do #536 — "só o
+ * idioma em uso é baixado" — é sobre o que a configuração faz o i18next pedir
+ * pelo cabo, e isso não dá para observar depois que o singleton global já está
+ * de pé. O arquivo de preparação dos testes inicializa o i18next com os
+ * catálogos em memória, então um teste que chamasse `iniciarIdioma` mediria o
+ * nada e passaria. Ver `so-o-idioma-em-uso.test.ts`.
+ */
+export function configuracaoDoIdioma(idioma: Idioma) {
+  return {
+    lng: idioma,
+    // ⚠️ SEM `fallbackLng`, e isso é decisão medida, não esquecimento.
+    //
+    // Com recuo declarado, o i18next resolve `es` como a hierarquia
+    // `['es', 'pt']` e PRÉ-CARREGA as duas: um visitante peruano pagava o
+    // catálogo português inteiro junto com o dele. O dobro do texto pelo cabo,
+    // em silêncio, com o build verde e a tela correta — e o desempenho de
+    // carregamento é exatamente o que este trabalho não podia piorar.
+    //
+    // O que substitui o recuo é a guarda de paridade: chave faltando não chega
+    // na develop. Pagar 100% a mais de texto em toda visita para cobrir um caso
+    // que o CI impede é a troca errada.
+    //
+    // `returnedObjectHandler` e o recuo para a própria chave continuam valendo
+    // como último fio: se um catálogo falhar em rede, a tela mostra a chave em
+    // vez de sumir. É pior que português, e é por isso que a guarda existe.
+    fallbackLng: false as const,
+    supportedLngs: [...IDIOMAS],
+    ns: ['comum'],
+    defaultNS: 'comum',
+    // O React já escapa; escapar de novo transformaria acento em entidade.
+    interpolation: { escapeValue: false },
+    react: { useSuspense: false },
+  };
+}
+
 let iniciado = false;
 
 export function iniciarIdioma(): typeof i18next {
@@ -115,19 +153,7 @@ export function iniciarIdioma(): typeof i18next {
   void i18next
     .use(carregadorDeTexto)
     .use(initReactI18next)
-    .init({
-      lng: idioma,
-      // Chave sem tradução mostra o PORTUGUÊS, nunca o código da chave. É rede
-      // de segurança e não estratégia: quem impede a chave faltante de chegar
-      // na develop é a guarda de paridade, não este recuo.
-      fallbackLng: IDIOMA_DE_REFERENCIA,
-      supportedLngs: [...IDIOMAS],
-      ns: ['comum'],
-      defaultNS: 'comum',
-      // O React já escapa; escapar de novo transformaria acento em entidade.
-      interpolation: { escapeValue: false },
-      react: { useSuspense: false },
-    });
+    .init(configuracaoDoIdioma(idioma));
 
   return i18next;
 }

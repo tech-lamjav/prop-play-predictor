@@ -2,7 +2,8 @@
   "acoes": {
     "assinar": "Suscribirse",
     "entrar": "Iniciar sesión",
-    "fechar": "Cerrar"
+    "fechar": "Cerrar",
+    "comecarGratis": "Empezar gratis"
   },
   "idioma": {
     "rotulo": "Idioma",

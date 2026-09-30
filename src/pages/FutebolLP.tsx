@@ -9,6 +9,7 @@ import { useScrollDepthPixel } from "@/hooks/use-scroll-depth-pixel";
 import { PlayCircle, ArrowRight, CheckCircle2, XCircle, ChevronRight } from "lucide-react";
 import { getFutebolTeamLogoUrl } from "@/utils/futebol-logos";
 import { onboardingFrom, ONBOARDING_SRC_LP_FUTEBOL } from "@/utils/onboarding-return";
+import { SeletorDeIdiomaCompacto } from '@/components/SeletorDeIdioma';
 
 // ============================================================
 // FutebolLP — landing page pública do módulo de Futebol (Aposta de Valor).
@@ -173,6 +174,9 @@ const FutebolLP = () => {
         <div className="max-w-6xl mx-auto flex items-center justify-between px-4 py-4 sm:px-6">
           <img src="/logo.png" alt="Smart Betting" className="h-9 invert hue-rotate-180" />
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Sem usuário não há menu da conta, e é lá que o idioma mora.
+                Esta tela tem cabeçalho próprio, então precisa do seu. */}
+            <SeletorDeIdiomaCompacto tom="claro" />
             <button
               type="button"
               onClick={() => navigate(user ? "/futebol" : "/auth")}

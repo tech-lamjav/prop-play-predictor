@@ -8,6 +8,7 @@ import { faqPageSchema, webSiteSchema, type FaqItem } from "@/lib/structured-dat
 import { getPlayerPhotoUrl, getTeamLogoUrl } from "@/utils/team-logos";
 import { getFutebolTeamLogoUrl } from "@/utils/futebol-logos";
 import { SHOW_BOLAO_ENTRY_POINTS } from "@/config/bolao";
+import { SeletorDeIdiomaCompacto } from '@/components/SeletorDeIdioma';
 
 /**
  * Landing geral do ecossistema (rota /). Papel: porta de entrada que ROTEIA —
@@ -460,6 +461,9 @@ const LandingEcossistema = () => {
             <img src="/logo.png" alt="Smart Betting" className="h-9 invert hue-rotate-180" />
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Sem usuário não há menu da conta, e é lá que o idioma mora.
+                Esta tela tem cabeçalho próprio, então precisa do seu. */}
+            <SeletorDeIdiomaCompacto tom="claro" />
             <button
               type="button"
               onClick={() => navigate(user ? "/inicio" : "/auth")}

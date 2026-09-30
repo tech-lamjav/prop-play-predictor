@@ -40,10 +40,10 @@ export const MOEDA_PADRAO = 'BRL';
  * O idioma ativo, que a camada de tradução empurra para cá quando a pessoa
  * troca (`src/i18n/init.ts`).
  *
- * Fica como estado de módulo, e não como parâmetro em 46 chamadas, porque a
- * régua é do PRODUTO e não de cada tela. E a seta aponta para cá: é o i18n que
- * conhece a formatação, não o contrário — assim este arquivo continua puro,
- * testável sem navegador e sem biblioteca de tradução carregada.
+ * Fica como estado de módulo, e não como parâmetro nas 86 chamadas que o
+ * seguem, porque a régua é do PRODUTO e não de cada tela. E a seta aponta para
+ * cá: é o i18n que conhece a formatação, não o contrário, e assim este arquivo
+ * continua puro, testável sem navegador e sem tradução carregada.
  */
 let localeAtivoAgora: string = LOCALE_PADRAO;
 
@@ -211,7 +211,7 @@ export function fmtDecimalAte(
  * mercado internacional escreve "Over 2.5", com ponto.
  *
  * Hoje ela segue o PAÍS, que é o que o produto já fazia em português. Se a
- * decisão for que ela segue o setor, muda aqui, uma vez, e os seis lugares que
+ * decisão for que ela segue o setor, muda aqui, uma vez, e os 11 lugares que
  * a desenham acompanham. Era exatamente essa caçada que o #529 existe para
  * evitar.
  */

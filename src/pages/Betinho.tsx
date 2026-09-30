@@ -14,6 +14,7 @@ import {
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { createClient } from "@/integrations/supabase/client";
+import { SeletorDeIdiomaCompacto } from '@/components/SeletorDeIdioma';
 
 type MockBetStatus = "pending" | "won" | "lost" | "cashout";
 
@@ -349,6 +350,9 @@ const Betinho = () => {
             <img src="/logo.png" alt="Smart Betting" className="h-9 invert hue-rotate-180" />
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Sem usuário não há menu da conta, e é lá que o idioma mora.
+                Esta tela tem cabeçalho próprio, então precisa do seu. */}
+            <SeletorDeIdiomaCompacto tom="claro" />
             <button
               type="button"
               onClick={navigateToAuth}
@@ -686,9 +690,9 @@ const Betinho = () => {
                       <th className="pb-2 pr-3 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3 font-medium">Descrição</th>
                       <th className="pb-2 pr-3 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3 font-medium hidden sm:table-cell">Esporte</th>
                       <th className="pb-2 pr-3 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3 font-medium text-right">Valor</th>
-                      <th className="pb-2 pr-3 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3 font-medium text-right hidden sm:table-cell">Odds</th>
+                      <th className="pb-2 pr-3 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3 font-medium text-right hidden sm:table-cell">Odd</th>
                       <th className="pb-2 pr-3 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3 font-medium text-right">Retorno</th>
-                      <th className="pb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3 font-medium text-right">Status</th>
+                      <th className="pb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-3 font-medium text-right">Situação</th>
                     </tr>
                   </thead>
                   <tbody>

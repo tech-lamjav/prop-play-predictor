@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CheckCircle, ArrowLeft } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { SeletorDeIdiomaCompacto } from '@/components/SeletorDeIdioma';
 
 const Waitlist = () => {
   const navigate = useNavigate();
@@ -74,6 +75,7 @@ const Waitlist = () => {
               <img src="/logo-sem-texto.png" alt="Smart Betting" className="h-8 w-8" />
               <span className="text-xl font-bold text-foreground">Smartbetting</span>
             </div>
+            <SeletorDeIdiomaCompacto tom="claro" />
           </div>
 
           <Card className="text-center">
@@ -122,6 +124,7 @@ const Waitlist = () => {
             <img src="/logo-sem-texto.png" alt="Smart Betting" className="h-8 w-8" />
             <span className="text-xl font-bold text-foreground">Smartbetting</span>
           </div>
+          <SeletorDeIdiomaCompacto tom="claro" />
         </div>
 
         <Card>

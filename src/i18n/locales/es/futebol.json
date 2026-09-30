@@ -274,7 +274,7 @@
     },
     "faixa": {
       "expiradoTitulo": "Tu prueba gratis terminó",
-      "expiradoTexto": "Las oportunidades del día están bloqueadas. Suscribite a Fútbol para seguir viendo los picks.",
+      "expiradoTexto": "Las oportunidades del día están bloqueadas. Suscríbete a Fútbol para seguir viendo los picks.",
       "anonTitulo": "Mira las oportunidades — 48 horas gratis",
       "anonTexto": "Crea tu cuenta y libera los picks del día por 48 horas, sin tarjeta.",
       "criarConta": "Crear cuenta gratis"
@@ -605,7 +605,7 @@
     "atalho": "{{rotulo}} · {{valor}}",
     "notaReferencia": "Confirma la cuota en tu casa de apuestas antes de registrar. La referencia recolectada fue {{odd}}.",
     "notaSemCotacao": "Indica la cuota que encontraste para registrar la apuesta.",
-    "notaMelhor": "¿Conseguiste otra cuota? Ajustala arriba — la completamos con la mejor que encontramos ({{odd}}).",
+    "notaMelhor": "¿Conseguiste otra cuota? Ajústala arriba — la completamos con la mejor que encontramos ({{odd}}).",
     "retorno": "Retorno potencial",
     "erro": "No fue posible registrar la apuesta. Prueba de nuevo.",
     "precisaLogin": "Inicia sesión para registrar la apuesta.",
@@ -613,7 +613,7 @@
     "botao": "Registrar apuesta",
     "rodape": "Control personal de apuestas. No es una recomendación ni una garantía de retorno.",
     "apostou": "¿Apostaste en esta oportunidad?",
-    "registreNoBetinho": "Registrala en Betinho",
+    "registreNoBetinho": "Regístrala en Betinho",
     "curto": "Registrar"
   },
   "regua": {

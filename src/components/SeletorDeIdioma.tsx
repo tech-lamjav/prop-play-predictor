@@ -68,7 +68,28 @@ export function SeletorDeIdioma({
  * as ações que o negócio quer em primeiro plano. O idioma precisa ser
  * encontrável, não chamativo.
  */
-export function SeletorDeIdiomaCompacto({ className }: { className?: string }) {
+const TOM = {
+  /** Cabeçalho verde: o da área logada e o da tela de entrar. */
+  escuro: 'text-white/85 hover:bg-white/10',
+  /** Cabeçalho claro: as landings, as LPs e os paywalls. */
+  claro: 'text-ink border border-line-2 bg-white hover:border-forest/40',
+} as const;
+
+export function SeletorDeIdiomaCompacto({
+  tom = 'escuro',
+  className,
+}: {
+  /**
+   * O fundo em que ele vai pousar.
+   *
+   * Existe como propriedade e não como classe passada de fora porque o seletor
+   * mora em SETE cabeçalhos diferentes, uns verdes e uns claros, e deixar cada
+   * chamador inventar a cor foi como o produto acabou com oito definições de
+   * moeda. Duas opções nomeadas, e não uma fenda aberta.
+   */
+  tom?: keyof typeof TOM;
+  className?: string;
+}) {
   const { t } = useTranslation('comum');
   const atual = idiomaAtivo();
 
@@ -78,7 +99,7 @@ export function SeletorDeIdiomaCompacto({ className }: { className?: string }) {
         <button
           type="button"
           aria-label={t('idioma.escolher')}
-          className={`h-9 px-2.5 inline-flex items-center gap-1.5 rounded-[10px] text-xs font-medium text-white/85 hover:bg-white/10 transition-colors ${className ?? ''}`}
+          className={`h-9 px-2.5 inline-flex items-center gap-1.5 rounded-[10px] text-xs font-medium transition-colors ${TOM[tom]} ${className ?? ''}`}
         >
           <Globe className="w-4 h-4" />
           <span className="uppercase">{atual}</span>

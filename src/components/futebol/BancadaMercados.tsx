@@ -693,7 +693,11 @@ export function BancadaMercados({
     return {
       bars: bars.map((b) => ({ ...b, h: `${(b.p / max) * 100}%`, pct: `${Math.round(b.p * 100)}%`, menos: b.kn < linha })),
       divisor: `${((Math.floor(linha) + 1) / bars.length) * 100}%`,
-      lambda: fmtDecimal(lambda, 1),
+      // ⚠️ O NÚMERO CRU, e não a string formatada. Guardar texto aqui dentro
+      // deixava o separador preso no idioma em que o memo foi calculado: o
+      // `formato.ts` guarda o idioma ativo em estado de módulo, que é invisível
+      // ao React e não invalida memo nenhum. Quem formata é a pintura.
+      lambda,
     };
   }, [mercado.slug, tendencies, linha]);
 
@@ -1570,7 +1574,7 @@ export function BancadaMercados({
                 <div className="absolute -top-1 bottom-4 w-0 opacity-35" style={{ left: dist.divisor, borderLeft: '2px dashed #1a1d1a' }} />
               </div>
               <p className="text-[10.5px] leading-relaxed mt-2" style={{ color: '#8d8672' }}>
-                {t('bancada.dist.media', { gols: dist.lambda })}
+                {t('bancada.dist.media', { gols: fmtDecimal(dist.lambda, 1) })}
               </p>
             </div>
           )}

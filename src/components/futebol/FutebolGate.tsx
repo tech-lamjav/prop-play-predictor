@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Lock, Sparkles } from 'lucide-react';
 import { useFutebolAccess } from '@/hooks/use-futebol-data';
 import type { FutebolAccess } from '@/services/futebol-data.service';
-import { tempoDeTeste } from './tempo-de-teste';
+import { restanteDoTeste, tempoDeTeste } from './tempo-de-teste';
 import { faixaDeAcessoAparece } from '@/utils/futebol-bloqueio';
 import { onboardingFrom, ONBOARDING_SRC_GATE_FUTEBOL } from '@/utils/onboarding-return';
 
@@ -121,6 +121,23 @@ export function FutebolTrialChip() {
     // Sem tempo não há pílula: uma pílula de teste sem número restante não
     // informa nada e ainda ocupa o lugar de quem informa.
     if (!tempo) return null;
+
+    // ⚠️ A frase longa vem do CATÁLOGO, e não do campo `longo` do tempo de
+    // teste. Aquele campo é português escrito dentro de `tempo-de-teste.ts`, e
+    // numa tela em espanhol este título lia "Prueba gratis · faltam 31 horas".
+    // A peça que resolve isto (`restanteDoTeste`) nasceu no #538 e ficou sem
+    // ser ligada aqui — foi uma revisão de dois eixos que pegou.
+    //
+    // O recuo para `tempo.longo` cobre o caso em que o acesso deixa de ser
+    // teste entre as duas chamadas: preferir português a não mostrar nada.
+    const restante = restanteDoTeste(access);
+    const fraseDoRestante = !restante
+      ? tempo.longo
+      : restante.unidade === 'menosDeUmaHora'
+        ? t('teste.restanteMenosDeUmaHora')
+        : restante.unidade === 'dias'
+          ? t('teste.restanteDias', { count: restante.quantidade })
+          : t('teste.restanteHoras', { count: restante.quantidade });
     // A pílula aparece no celular também. Era `hidden sm:inline-flex`, e sumia
     // abaixo de 640px — o que significava nenhum contador no celular, porque
     // durante o teste ela é a ÚNICA superfície que mostra o tempo restante: a
@@ -130,7 +147,7 @@ export function FutebolTrialChip() {
     return (
       <button
         onClick={() => navigate('/futebol/assinar')}
-        title={t('gate.chip.titulo', { tempo: tempo.longo })}
+        title={t('gate.chip.titulo', { tempo: fraseDoRestante })}
         className={`inline-flex items-center gap-1.5 h-8 px-2.5 rounded-full text-[11px] font-semibold border transition ${
           tempo.acabando ? 'border-amber/50 bg-amber/15 text-amber-2 hover:bg-amber/25' : 'border-line bg-canvas-2 text-ink-2 hover:bg-canvas'
         }`}

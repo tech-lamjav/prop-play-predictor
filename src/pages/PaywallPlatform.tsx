@@ -9,6 +9,7 @@ import { whatsappDoTime } from "@/config/contato";
 import { createClient } from "@/integrations/supabase/client";
 import { stripeService } from "@/services/stripe.service";
 import { toast } from "@/hooks/use-toast";
+import { SeletorDeIdiomaCompacto } from '@/components/SeletorDeIdioma';
 
 // Price ID do Stripe para a Plataforma de Análises
 const STRIPE_PRICE_ID = import.meta.env.VITE_STRIPE_PRICE_ID_PLATFORM; // Configure no .env.local
@@ -170,12 +171,15 @@ export default function PaywallPlatform() {
               </div>
               <span className="text-lg sm:text-2xl font-bold text-foreground">Smartbetting</span>
             </div>
+            <div className="flex items-center gap-2 sm:gap-4">
+            <SeletorDeIdiomaCompacto tom="claro" />
             <Button
               onClick={() => navigate("/bets")}
               className="bg-gradient-primary hover:opacity-90 text-sm sm:text-base px-3 sm:px-4 py-2"
             >
               {t('paywallPlataforma.dashboard')}
             </Button>
+            </div>
           </div>
         </nav>
 
@@ -219,6 +223,9 @@ export default function PaywallPlatform() {
             <span className="text-lg sm:text-2xl font-bold text-foreground">Smartbetting</span>
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
+            {/* Sem usuário não há menu da conta, e é lá que o idioma mora.
+                Esta tela tem cabeçalho próprio, então precisa do seu. */}
+            <SeletorDeIdiomaCompacto tom="claro" />
             <Button
               variant="outline"
               onClick={() => navigate("/auth")}

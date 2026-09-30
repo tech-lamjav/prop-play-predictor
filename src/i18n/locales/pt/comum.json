@@ -2,7 +2,8 @@
   "acoes": {
     "assinar": "Assinar",
     "entrar": "Entrar",
-    "fechar": "Fechar"
+    "fechar": "Fechar",
+    "comecarGratis": "Começar Grátis"
   },
   "idioma": {
     "rotulo": "Idioma",

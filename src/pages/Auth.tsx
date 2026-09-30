@@ -11,6 +11,7 @@ import { Trophy, Users, Sparkles, Check, BarChart3, Send, ShieldCheck } from "lu
 import { toast } from "@/hooks/use-toast";
 import { OAUTH_REDIRECT_KEY, OAUTH_REFERRAL_KEY } from "@/lib/oauth-state";
 import { getRedirectTarget, resolveHomePath } from "@/lib/post-login";
+import { SeletorDeIdiomaCompacto } from '@/components/SeletorDeIdioma';
 
 // lucide não tem ícones de marca; SVG oficial multicolor do Google inline.
 const GoogleIcon = () => (
@@ -259,6 +260,11 @@ const Auth = () => {
           <a href="/" aria-label="Smartbetting — home" className="flex items-center hover:opacity-80 transition-opacity">
             <img src="/logo.png" alt="Smartbetting" className="h-5 md:h-[26px] w-auto" />
           </a>
+          {/* O seletor volta ao lugar de onde o #534 tirou o botão antigo — que
+              não traduzia nada, mas ficava justamente aqui. Esta é a tela onde
+              alguém de fora cria conta, então ela precisa falar a língua dele
+              antes de pedir os dados. */}
+          <SeletorDeIdiomaCompacto tom="escuro" />
         </div>
       </header>
 

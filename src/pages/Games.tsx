@@ -116,7 +116,7 @@ function LastResults({ results }: { results: string | null }) {
                 : 'bg-status-danger/10 text-status-danger border border-status-danger/20'
             }`}
           >
-            {isWin ? 'V' : 'D'}
+            {isWin ? t('grade.vitoria') : t('grade.derrota')}
           </span>
         );
       })}
