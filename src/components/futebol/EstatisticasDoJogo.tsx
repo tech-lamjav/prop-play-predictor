@@ -16,6 +16,7 @@ import {
 import { cabeRotulo, pisoDaEscala, tetoDaEscala } from '@/utils/futebol-grafico-de-barras';
 import { EH_QUADRO } from '@/utils/futebol-historico';
 import { Chip } from './Chip';
+import { useCopyDoFutebol } from '@/hooks/use-copy-do-futebol';
 import { ITEM_SELETOR, SeletorDeMenu } from './SeletorDeMenu';
 import { ReguaDeLinhas } from './ReguaDeLinhas';
 import { BarrasEmSequencia, COR_CONTRA, COR_FAVOR, SerieResultados } from './GraficoDeBarras';
@@ -67,6 +68,7 @@ export function EstatisticasDoJogo({
   linhaInicial?: number | null;
 }) {
   const { t } = useTranslation('futebol');
+  const copy = useCopyDoFutebol();
   const [escolha, setEscolha] = useState<EscolhaDaEstatistica>(() => {
     const mercado = ehMercadoDoGrafico(mercadoInicial) ? mercadoInicial : ESCOLHA_PADRAO.mercado;
     const { paradas, padrao } = MERCADOS_NO_GRAFICO[mercado];
@@ -139,7 +141,7 @@ export function EstatisticasDoJogo({
             <div className="flex items-center gap-1.5 min-w-0 overflow-x-auto no-scrollbar -my-1 py-1">
               {(Object.keys(MERCADOS_NO_GRAFICO) as MercadoDoGrafico[]).map((slug) => (
                 <Chip key={slug} ativo={escolha.mercado === slug} onClick={() => trocaMercado(slug)}>
-                  {MERCADOS_NO_GRAFICO[slug].chip}
+                  {copy.mercadoCurto(slug)}
                 </Chip>
               ))}
             </div>

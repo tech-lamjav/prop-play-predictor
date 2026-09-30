@@ -5,7 +5,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Link } from 'react-router-dom';
 import { fmtTime, isFinished, isLive } from '@/utils/futebol-datas';
 import { interceptarCliqueSimples } from '@/utils/navegacao-por-link';
-import { chancePct, ehDestaque, ehFaixaAlta, marketShort, pickLabel } from '@/utils/futebol-score';
+import { chancePct, ehDestaque, ehFaixaAlta } from '@/utils/futebol-score';
+import { useCopyDoFutebol } from '@/hooks/use-copy-do-futebol';
 import { ValorBloqueado } from '@/components/futebol/FutebolGate';
 import { linhaBloqueada } from '@/utils/futebol-bloqueio';
 import { settleFutebol, isHit } from '@/utils/futebol-settlement';
@@ -96,6 +97,7 @@ export function FixtureRow({
   locked?: boolean;
 }) {
   const { t } = useTranslation('futebol');
+  const copy = useCopyDoFutebol();
   const fim = isFinished(fixture.status_short);
   const live = isLive(fixture.status_short);
   /**
@@ -261,7 +263,7 @@ export function FixtureRow({
             a coluna passa da altura reservada e a linha volta a empurrar — o
             defeito de volta, pela porta dos fundos. */}
         <span className="hidden sm:block text-[9px] uppercase tracking-[0.14em] font-semibold truncate" style={{ color: '#8d8672' }}>
-          {best ? marketShort(best.market) : apitou ? t('leitura.semLeitura') : t('leitura.semLeituraAinda')}
+          {best ? copy.mercadoCurto(best.market) : apitou ? t('leitura.semLeitura') : t('leitura.semLeituraAinda')}
         </span>
         {best && bloqueado ? (
           // A linha existe e não é entregue. Dizer "sem leitura" aqui seria
@@ -277,7 +279,7 @@ export function FixtureRow({
                 única coisa que esta coluna existe para dizer. Duas linhas cabem
                 porque a odd saiu daqui (ver abaixo), então a altura não muda. */}
             <span className="block sm:mt-0.5 text-[11.5px] sm:text-[12.5px] font-semibold text-ink line-clamp-2 sm:truncate">
-              {pickLabel(best, fixture.home_team_name, fixture.away_team_name)}
+              {copy.pick(best, fixture.home_team_name, fixture.away_team_name)}
             </span>
             {/* A odd é só do DESKTOP. No celular ela disputava a coluna com a
                 aposta e ganhava, sobrando reticências no lugar do que importa.

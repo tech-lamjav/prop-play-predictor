@@ -5,7 +5,7 @@ import { Maximize2, Minus, Plus, RotateCcw, X } from 'lucide-react';
 import { Crest } from './Crest';
 import { ehMataMata, rodadaLonga } from '@/utils/futebol-rodadas';
 import { isFinished } from '@/utils/futebol-datas';
-import { competitionLabel } from '@/utils/futebol-competitions';
+import { useCopyDoFutebol } from '@/hooks/use-copy-do-futebol';
 import type { FutebolFixture } from '@/services/futebol-data.service';
 
 /**
@@ -527,6 +527,7 @@ export function ChaveamentoBracket({
   hrefDoJogo: (fixtureId: number) => string;
 }) {
   const { t } = useTranslation('futebol');
+  const copy = useCopyDoFutebol();
   const [expandido, setExpandido] = useState(false);
   const puxar = useArrastarParaRolar();
 
@@ -581,7 +582,7 @@ export function ChaveamentoBracket({
   if (!colunas.length) return null;
 
   const temConfronto = colunas.some((c) => c.confrontos.length);
-  const titulo = t('chaveamento.tituloCompeticao', { competicao: competitionLabel(competition) });
+  const titulo = t('chaveamento.tituloCompeticao', { competicao: copy.competicao(competition) });
   const chaveDoFormato = FORMATOS[competition];
 
   return (

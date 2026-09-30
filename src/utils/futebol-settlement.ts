@@ -102,15 +102,44 @@ export function margemDaSaida(
   return null;
 }
 
+/**
+ * O selo de cada veredito de liquidação. Fonte única do texto em português.
+ *
+ * ⚠️ O glossário em espanhol é explícito em NÃO importar "green" e "red": o par
+ * não aparece em glossário hispano nenhum, e o mercado escreve "ganada" e
+ * "perdida". Então a tradução do selo não é transliteração — ver
+ * `src/i18n/locales/es/premissas.json`.
+ */
+export const COPY_DO_SELO_DE_RESULTADO: Record<BetResult, string> = {
+  won: 'Green',
+  half_won: 'Meio green',
+  push: 'Anulada',
+  half_lost: 'Meio red',
+  lost: 'Red',
+};
+
+/** O tom do selo por veredito: o que a cor precisa saber, e nada de texto. */
+const TOM_DO_SELO_DE_RESULTADO: Record<BetResult, 'won' | 'lost' | 'push'> = {
+  won: 'won',
+  half_won: 'won',
+  push: 'push',
+  half_lost: 'lost',
+  lost: 'lost',
+};
+
 /** Rótulo + tom pro selo de resultado. */
 export function resultBadge(r: BetResult): { label: string; tone: 'won' | 'lost' | 'push' } {
-  switch (r) {
-    case 'won': return { label: 'Green', tone: 'won' };
-    case 'half_won': return { label: 'Meio green', tone: 'won' };
-    case 'push': return { label: 'Anulada', tone: 'push' };
-    case 'half_lost': return { label: 'Meio red', tone: 'lost' };
-    case 'lost': return { label: 'Red', tone: 'lost' };
-  }
+  return { label: COPY_DO_SELO_DE_RESULTADO[r], tone: TOM_DO_SELO_DE_RESULTADO[r] };
+}
+
+/**
+ * A chave de idioma do selo de resultado.
+ *
+ * O identificador é o próprio `BetResult`, que já é estável e já atravessa o
+ * produto: a tela não precisa de uma segunda taxonomia para pedir a frase.
+ */
+export function chaveDoSeloDeResultado(r: BetResult): string {
+  return `liquidacao.${r}`;
 }
 
 /** Conta positiva pro resumo do dia (meio-ganho conta como acerto). */

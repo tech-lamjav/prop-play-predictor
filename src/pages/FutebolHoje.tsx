@@ -13,14 +13,14 @@ import FutebolDayStepper, { ALTURA_DA_PILULA } from '@/components/FutebolDayStep
 import { CartaoBloqueado, FutebolAccessBanner, ValorBloqueado } from '@/components/futebol/FutebolGate';
 import { linhaBloqueada } from '@/utils/futebol-bloqueio';
 import { AjudaCampo } from '@/components/futebol/AjudaCampo';
-import { textoDoScore, TEXTO_CHANCE, TEXTO_ODD } from '@/utils/futebol-ajuda-copy';
+import { useCopyDoFutebol } from '@/hooks/use-copy-do-futebol';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
-import { competitionLabel, fixtureScopesFor } from '@/utils/futebol-competitions';
+import { fixtureScopesFor } from '@/utils/futebol-competitions';
 import { LigaCrest } from '@/components/futebol/LigaCrest';
 import { VerAnaliseCTA } from '@/components/futebol/VerAnaliseCTA';
 import {
-  pickLabel, marketLabel, groupBoardByFixture,
-  faixaBadgeCls, faixaWord, faixaTone, topEvidencia, chancePct, ehDestaque, compararOportunidades, escalaDeExibicao,
+  groupBoardByFixture,
+  faixaBadgeCls, faixaTone, topEvidencia, chancePct, ehDestaque, compararOportunidades, escalaDeExibicao,
 } from '@/utils/futebol-score';
 import type { FutebolValueBoardRow, FutebolFixture } from '@/services/futebol-data.service';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
@@ -49,7 +49,6 @@ import {
 import { oportunidadesDoDia, type OppLike } from '@/utils/futebol-registradas';
 import { estadoDosMotivos, explicacaoDaLeitura, type MotivoExibivel as Motivo } from '@/utils/futebol-motivos';
 import { ladoDaSaida } from '@/utils/futebol-evidencias';
-import { rotuloPremissa } from '@/utils/futebol-premissas';
 import { useNow } from '@/hooks/use-now';
 import { comDia, useDiaNaUrl } from '@/hooks/use-dia-na-url';
 // Quantos dias futuros (com jogos) o navegador mostra — janela curta, não a temporada toda.
@@ -114,7 +113,8 @@ function HeroStat({ label, value, dark, ajuda }: { label: string; value: string;
 // Alta = gradiente forest (texto branco); Média = card claro com acento âmbar.
 function TopValueHero({ o, to, favor, contra, textoScore, carregandoMotivos = false, aoClicar }: { o: FutebolValueBoardRow; to: string; favor: Motivo[]; contra: Motivo[]; textoScore: string; carregandoMotivos?: boolean; aoClicar?: () => void }) {
   const { t } = useTranslation('futebol');
-  const pick = pickLabel(o, o.home_team_name, o.away_team_name);
+  const copy = useCopyDoFutebol();
+  const pick = copy.pick(o, o.home_team_name, o.away_team_name);
   const ev = topEvidencia(o.evidencias);
   const d = true; // hero sempre no fundo forest (mockup); a faixa vai no selo, não na cor do card
   const chance = chancePct(o.prob_justa_fechamento);
@@ -171,7 +171,7 @@ function TopValueHero({ o, to, favor, contra, textoScore, carregandoMotivos = fa
                 leitura é o cenário, não o preço. */}
             <Zap className="w-3 h-3" /> {t('hoje.destaque.selo')}
           </span>
-          <div className={`text-[11px] uppercase tracking-[0.16em] font-semibold mt-5 ${d ? 'text-white/50' : 'text-ink-3'}`}>{marketLabel(o.market)} · {competitionLabel(o.competition)}</div>
+          <div className={`text-[11px] uppercase tracking-[0.16em] font-semibold mt-5 ${d ? 'text-white/50' : 'text-ink-3'}`}>{copy.mercadoLongo(o.market)} · {copy.competicao(o.competition)}</div>
           <div className={`text-[28px] md:text-[32px] font-bold tracking-tight leading-[1.1] mt-2 ${d ? '' : 'text-ink'}`}>{pick}</div>
           {/* No celular a data desce para a própria linha. Tudo numa fileira só,
               os nomes quebravam no meio e o escudo do visitante ficava órfão
@@ -277,14 +277,14 @@ function TopValueHero({ o, to, favor, contra, textoScore, carregandoMotivos = fa
             </div>
             <span className={`inline-flex items-center gap-1.5 mt-2 px-2 h-6 rounded text-[10px] uppercase tracking-[0.14em] font-bold ${d ? '' : 'bg-amber/15 text-amber-2'}`}
               style={d ? { background: 'rgba(220,239,226,0.15)', color: '#dcefe2' } : undefined}>
-              <span className="w-1.5 h-1.5 rounded-full" style={{ background: d ? '#fbbf24' : 'var(--amber)' }} />{t('hoje.destaque.faixa', { faixa: faixaWord(o.faixa) })}
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: d ? '#fbbf24' : 'var(--amber)' }} />{t('hoje.destaque.faixa', { faixa: copy.palavraDaFaixa(o.faixa) })}
             </span>
             {/* Os dois numa linha só: eles são a mesma leitura — a chance
                 estimada e o preço — e lidos em sequência dizem mais do que
                 empilhados. Eram três, e a diferença entre os dois saiu (#519). */}
             <div className="grid grid-cols-2 gap-x-3 gap-y-3 mt-5">
-              {chance != null && <HeroStat label={t('numeros.chance')} value={`${chance}%`} dark={d} ajuda={TEXTO_CHANCE} />}
-              <HeroStat label={t('numeros.odd')} value={fmtOdd(o.best_odd)} dark={d} ajuda={TEXTO_ODD} />
+              {chance != null && <HeroStat label={t('numeros.chance')} value={`${chance}%`} dark={d} ajuda={copy.textoDaChance()} />}
+              <HeroStat label={t('numeros.odd')} value={fmtOdd(o.best_odd)} dark={d} ajuda={copy.textoDaOdd()} />
             </div>
           </div>
         </div>
@@ -296,7 +296,8 @@ function TopValueHero({ o, to, favor, contra, textoScore, carregandoMotivos = fa
 // ── Card de oportunidade ───────────────────────────────────
 function OppCard({ o, to, aoClicar, aoAparecer }: { o: FutebolValueBoardRow; to: string; aoClicar?: () => void; aoAparecer?: () => void }) {
   const { t } = useTranslation('futebol');
-  const pick = pickLabel(o, o.home_team_name, o.away_team_name);
+  const copy = useCopyDoFutebol();
+  const pick = copy.pick(o, o.home_team_name, o.away_team_name);
   const chance = chancePct(o.prob_justa_fechamento);
   // O gancho é chamado AQUI, e não no pai: hook não roda dentro de `.map`, e o
   // que se observa é este cartão. O pai só diz o que fazer quando ele aparece.
@@ -320,8 +321,8 @@ function OppCard({ o, to, aoClicar, aoAparecer }: { o: FutebolValueBoardRow; to:
       <div className="flex items-start justify-between gap-3 sm:grow">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
-            <span className="px-1.5 h-5 inline-flex items-center rounded text-[10px] font-semibold uppercase tracking-[0.1em] bg-canvas-2 text-ink-2">{marketLabel(o.market)}</span>
-            <span className={`px-1.5 h-5 inline-flex items-center rounded text-[10px] font-bold uppercase tracking-[0.1em] ${faixaBadgeCls(o.faixa)}`}>{faixaWord(o.faixa)}</span>
+            <span className="px-1.5 h-5 inline-flex items-center rounded text-[10px] font-semibold uppercase tracking-[0.1em] bg-canvas-2 text-ink-2">{copy.mercadoLongo(o.market)}</span>
+            <span className={`px-1.5 h-5 inline-flex items-center rounded text-[10px] font-bold uppercase tracking-[0.1em] ${faixaBadgeCls(o.faixa)}`}>{copy.palavraDaFaixa(o.faixa)}</span>
           </div>
           {/* Mesma métrica da linha dos times logo abaixo — escudo de 16,
               o mesmo vão, o mesmo corpo de 12px — para os dois nomes começarem
@@ -330,7 +331,7 @@ function OppCard({ o, to, aoClicar, aoAparecer }: { o: FutebolValueBoardRow; to:
               do que duas linhas claramente diferentes. */}
           <div className="flex items-center gap-1.5 mt-2 min-w-0 text-[12px] text-ink-3">
             <LigaCrest slug={o.competition} size={16} />
-            <span className="truncate">{competitionLabel(o.competition)}</span>
+            <span className="truncate">{copy.competicao(o.competition)}</span>
           </div>
           <div className="text-[16px] font-semibold tracking-tight mt-2 text-ink">{pick}</div>
           <div className="flex items-center gap-1.5 text-[12px] mt-1 text-ink-3 min-w-0">
@@ -403,6 +404,7 @@ function GameRailRow({ f, best, to, locked, aoClicar }: { f: FutebolFixture & { 
 
 export default function FutebolHoje() {
   const { t } = useTranslation('futebol');
+  const copy = useCopyDoFutebol();
   // UM instante para a tela inteira, e ele anda: o seletor de dias, o corte de
   // "já começou" e a janela do calendário têm que concordar sobre que horas são.
   const agora = useNow();
@@ -653,19 +655,21 @@ export default function FutebolHoje() {
       { max: 3, incluirPesoZero: false, maxContra: 2 },
     );
 
+    // A frase vem do catálogo de idioma, pedida por mercado+slug+mando — o
+    // `slug` continua sendo a identidade do motivo para a tela (#544).
     const traduzir = (itens: typeof explicacao.itens, negativo: boolean) =>
       itens.map(({ premissa }) => ({
         slug: premissa.slug,
-        texto: rotuloPremissa(premissa, lado, negativo),
+        texto: copy.premissa(heroOpp.market, premissa, lado, negativo),
       }));
 
     return {
       favor: traduzir(explicacao.itens, false),
       contra: traduzir(explicacao.contra, true),
     };
-  }, [heroOpp, contratoMotivos]);
+  }, [heroOpp, contratoMotivos, copy]);
   // A escala da janela, e não a da linha: a registrada não declara versão.
-  const textoScore = textoDoScore(escalaDeExibicao(dayRows));
+  const textoScore = copy.textoDoScore(escalaDeExibicao(dayRows));
   // A população que a home exibe E que a tela de Oportunidades lista por
   // padrão: faixa Alta ou Média, com número. É ela que manda na conta do
   // convite — nunca o total do dia.

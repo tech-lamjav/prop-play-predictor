@@ -5,7 +5,7 @@ import AnalyticsNav from '@/components/AnalyticsNav';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFutebolTeamProfile, useFutebolTeamSeason, useFutebolStandings, useFutebolFixtures } from '@/hooks/use-futebol-data';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
-import { competitionLabel } from '@/utils/futebol-competitions';
+import { useCopyDoFutebol } from '@/hooks/use-copy-do-futebol';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { FUTEBOL_TIME_TOUR_ID, makeFutebolTimeSteps } from '@/components/onboarding/tours';
@@ -103,6 +103,7 @@ function trailingStreak(form: string | null | undefined, keep: (c: string) => bo
 
 export default function FutebolTime() {
   const { t } = useTranslation('futebol');
+  const copy = useCopyDoFutebol();
   const { teamId } = useParams<{ teamId: string }>();
   const [params] = useSearchParams();
   const competition = (params.get('c') as Competition) || 'brasileirao';
@@ -220,7 +221,7 @@ export default function FutebolTime() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 min-w-0"><h1 className="text-xl md:text-[28px] font-extrabold tracking-tight leading-tight text-ink truncate">{profile.team.team_name}</h1>{isDemo && <DemoBadge />}</div>
                   <p className="text-xs mt-1 text-ink-2">
-                    {competitionLabel(competition)} · {season}
+                    {copy.competicao(competition)} · {season}
                     {stand?.rank ? (
                       <>
                         {' '}

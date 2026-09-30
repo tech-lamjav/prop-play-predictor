@@ -6,7 +6,8 @@ import AnalyticsNav from '@/components/AnalyticsNav';
 import { LigaCrest } from '@/components/futebol/LigaCrest';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useFutebolCompetitions } from '@/hooks/use-futebol-data';
-import { competitionLabel, sortCompetitions } from '@/utils/futebol-competitions';
+import { sortCompetitions } from '@/utils/futebol-competitions';
+import { useCopyDoFutebol } from '@/hooks/use-copy-do-futebol';
 import { brtToday, fmtDayShort, yearOf } from '@/utils/futebol-datas';
 
 /**
@@ -21,6 +22,7 @@ import { brtToday, fmtDayShort, yearOf } from '@/utils/futebol-datas';
 
 export default function FutebolCampeonatos() {
   const { t } = useTranslation('futebol');
+  const copy = useCopyDoFutebol();
   const { data: comps, isLoading, isError } = useFutebolCompetitions();
   const hoje = brtToday();
 
@@ -99,7 +101,7 @@ export default function FutebolCampeonatos() {
                       </span>
                     )}
                   </div>
-                  <div className="mt-3 text-[15px] font-bold tracking-tight text-ink">{competitionLabel(slug)}</div>
+                  <div className="mt-3 text-[15px] font-bold tracking-tight text-ink">{copy.competicao(slug)}</div>
                   <div className="text-[12px] text-ink-2 mt-0.5">
                     {atual
                       ? t('campeonatos.jogosNaTemporada', { count: atual.jogos, season: atual.season })

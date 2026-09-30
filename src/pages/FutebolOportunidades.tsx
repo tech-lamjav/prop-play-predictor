@@ -18,11 +18,11 @@ import { FaixasLegenda } from '@/components/futebol/FaixasLegenda';
 import { OportunidadesFiltros, type MarketFilter } from '@/components/futebol/OportunidadesFiltros';
 import { draftFromBoardRow } from '@/components/futebol/registrar-aposta-utils';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
-import { competitionLabel, sortCompetitions, fixtureScopesFor } from '@/utils/futebol-competitions';
+import { sortCompetitions, fixtureScopesFor } from '@/utils/futebol-competitions';
+import { useCopyDoFutebol } from '@/hooks/use-copy-do-futebol';
 import { VerAnaliseCTA } from '@/components/futebol/VerAnaliseCTA';
 import {
-  pickLabel, marketLabel, marketShort,
-  faixaBadgeCls, faixaWord, faixaTone, chancePct,
+  faixaBadgeCls, faixaTone, chancePct,
   opcoesDeFaixa, passaNoFiltroDeFaixas, versaoDaJanela, compararOportunidades,
   FAIXAS_FILTRO_PADRAO, type Faixa,
   ESTADOS_DO_JOGO, passaNoFiltroDeEstado, type EstadoDoJogo,
@@ -125,7 +125,8 @@ function OppRow({ o, to, muted, locked, result, homeGoals, awayGoals, aoClicar, 
   aoAparecer?: () => void;
 }) {
   const { t } = useTranslation('futebol');
-  const pick = pickLabel(o, o.home_team_name, o.away_team_name);
+  const copy = useCopyDoFutebol();
+  const pick = copy.pick(o, o.home_team_name, o.away_team_name);
   const chance = chancePct(o.prob_justa_fechamento);
   // Dentro do componente, e não no pai: hook não roda dentro de `.map`.
   const refDeImpressao = useImpressaoDeOportunidade({ chave: idDaOportunidade(o), aoAparecer });
@@ -151,7 +152,7 @@ function OppRow({ o, to, muted, locked, result, homeGoals, awayGoals, aoClicar, 
         {bloqueada ? <ValorBloqueado /> : o.score ?? '—'}
       </span>
       <span className={`px-1.5 h-5 w-fit inline-flex items-center rounded text-[10px] font-bold uppercase tracking-[0.1em] ${badgeCls}`}>
-        {bloqueada ? '—' : o.faixa != null ? faixaWord(o.faixa) : '—'}
+        {bloqueada ? '—' : o.faixa != null ? copy.palavraDaFaixa(o.faixa) : '—'}
       </span>
       <div className="flex items-center gap-2.5 min-w-0">
         <div className="flex items-center gap-1 shrink-0">
@@ -174,9 +175,9 @@ function OppRow({ o, to, muted, locked, result, homeGoals, awayGoals, aoClicar, 
       </div>
       <div className="min-w-0">
         {!bloqueada && (
-          <span className="px-1.5 h-5 inline-flex items-center rounded text-[10px] font-semibold uppercase tracking-[0.08em] bg-canvas-2 text-ink-2">{marketLabel(o.market)}</span>
+          <span className="px-1.5 h-5 inline-flex items-center rounded text-[10px] font-semibold uppercase tracking-[0.08em] bg-canvas-2 text-ink-2">{copy.mercadoLongo(o.market)}</span>
         )}
-        <div className="text-[10px] mt-1 tabular-nums text-ink-3 truncate">{competitionLabel(o.competition)} · {fmtHour(o.kickoff_utc)}</div>
+        <div className="text-[10px] mt-1 tabular-nums text-ink-3 truncate">{copy.competicao(o.competition)} · {fmtHour(o.kickoff_utc)}</div>
       </div>
       {bloqueada ? (
         <>
@@ -202,7 +203,8 @@ function OppMobileCard({ o, to, locked, result, homeGoals, awayGoals, canRegiste
   aoAparecer?: () => void;
 }) {
   const { t } = useTranslation('futebol');
-  const pick = pickLabel(o, o.home_team_name, o.away_team_name);
+  const copy = useCopyDoFutebol();
+  const pick = copy.pick(o, o.home_team_name, o.away_team_name);
   const chance = chancePct(o.prob_justa_fechamento);
   const refDeImpressao = useImpressaoDeOportunidade({ chave: idDaOportunidade(o), aoAparecer });
   const showLock = !!locked && !result;
@@ -234,11 +236,11 @@ function OppMobileCard({ o, to, locked, result, homeGoals, awayGoals, canRegiste
                    aparece, então a etiqueta cortava seco. Com um span próprio,
                    ele é um item de flex de verdade e trunca como se espera. */
                 <span className="min-w-0 px-1.5 h-5 inline-flex items-center rounded text-[9px] font-semibold uppercase tracking-[0.08em] bg-canvas-2 text-ink-2">
-                  <span className="truncate">{marketShort(o.market)}</span>
+                  <span className="truncate">{copy.mercadoCurto(o.market)}</span>
                 </span>
               )}
               {!bloqueada && o.faixa != null && (
-                <span className={`shrink-0 px-1.5 h-5 inline-flex items-center rounded text-[9px] font-bold uppercase tracking-[0.1em] ${faixaBadgeCls(o.faixa)}`}>{faixaWord(o.faixa)}</span>
+                <span className={`shrink-0 px-1.5 h-5 inline-flex items-center rounded text-[9px] font-bold uppercase tracking-[0.1em] ${faixaBadgeCls(o.faixa)}`}>{copy.palavraDaFaixa(o.faixa)}</span>
               )}
               {result && <ResultBadge r={result} />}
             </div>
@@ -310,19 +312,21 @@ function FaixaKpi({ n, label, tone }: { n: number; label: string; tone: 'alta' |
 
 // Selo de resultado (histórico): Bateu / Anulada / Não bateu (verde/cinza/vermelho).
 function ResultBadge({ r }: { r: BetResult }) {
+  const copy = useCopyDoFutebol();
   const b = resultBadge(r);
   const style = b.tone === 'won' ? { background: '#dcefe2', color: '#0a3d2e' }
     : b.tone === 'push' ? { background: '#eef0ec', color: '#5a625a' }
     : { background: '#fbeeec', color: '#b8341c' };
   return (
     <span className="shrink-0 px-1.5 h-5 inline-flex items-center rounded text-[10px] font-bold uppercase tracking-[0.06em]" style={style}>
-      {b.label}
+      {copy.seloDeResultado(r)}
     </span>
   );
 }
 
 export default function FutebolOportunidades() {
   const { t } = useTranslation('futebol');
+  const copy = useCopyDoFutebol();
   const navigate = useNavigate();
   const posthog = usePostHog();
   const { data: rows, isLoading: lBoard } = useFutebolValueBoard();
@@ -559,7 +563,7 @@ export default function FutebolOportunidades() {
     return s;
   }, [allRows, selectedDay, registradasAll]);
 
-  const compOptions = sortCompetitions([...compsOnDay]).map((c) => ({ value: c, label: competitionLabel(c) }));
+  const compOptions = sortCompetitions([...compsOnDay]).map((c) => ({ value: c, label: copy.competicao(c) }));
 
   // Lista do dia = board + oportunidades registradas que o board não tem mais.
   // Uma lista só: as duas são oportunidade daquele dia, a diferença é de onde

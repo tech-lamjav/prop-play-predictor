@@ -19,12 +19,12 @@ import {
 import type { FutebolFixtureByDay, FutebolValueBoardRow } from '@/services/futebol-data.service';
 import { addDays, brtToday, fmtDayHeader } from '@/utils/futebol-datas';
 import { groupBoardByFixture } from '@/utils/futebol-score';
-import { sufixoDeLeitura } from '@/utils/futebol-leitura';
 import { mergeBoardAndHistory } from '@/utils/futebol-history';
 import { hrefDaSaida } from '@/utils/futebol-links';
 import { idDaOportunidade, jogoClicado } from '@/lib/analytics';
 import { useNow } from '@/hooks/use-now';
-import { competitionLabel, sortCompetitions } from '@/utils/futebol-competitions';
+import { sortCompetitions } from '@/utils/futebol-competitions';
+import { useCopyDoFutebol } from '@/hooks/use-copy-do-futebol';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
 import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { FUT_JOGOS_TOUR_ID, makeFutebolJogosSteps } from '@/components/onboarding/tours';
@@ -86,6 +86,7 @@ function monthRange(dayKey: string): { from: string; to: string } {
 
 export default function FutebolJogos() {
   const { t } = useTranslation('futebol');
+  const copy = useCopyDoFutebol();
   const hasPanel = useHasPanel();
   const [params, setParams] = useSearchParams();
 
@@ -293,7 +294,7 @@ export default function FutebolJogos() {
                 : t('jogos.resumo', {
                     jogos: t('contagem.jogos', { count: total }),
                     campeonatos: t('contagem.campeonatos', { count: grupos.length }),
-                    leitura: sufixoDeLeitura(leituraCarregando, comLeitura),
+                    leitura: copy.sufixoDeLeitura(leituraCarregando, comLeitura),
                   })}
           </span>
           <div className="ml-auto min-w-0" data-tour="fut-jogos-datas">
@@ -369,12 +370,12 @@ export default function FutebolJogos() {
                               className="text-[10.5px] uppercase tracking-[0.16em] font-bold truncate"
                               style={{ color: '#6b6350' }}
                             >
-                              {competitionLabel(comp)}
+                              {copy.competicao(comp)}
                             </span>
                           </button>
                           <Link
                             to={`/futebol/campeonato/${comp}`}
-                            aria-label={t('jogos.abrirCampeonato', { campeonato: competitionLabel(comp) })}
+                            aria-label={t('jogos.abrirCampeonato', { campeonato: copy.competicao(comp) })}
                             className="shrink-0 w-5 h-5 grid place-items-center rounded hover:text-forest transition"
                             style={{ color: '#8d8672' }}
                           >
@@ -383,7 +384,7 @@ export default function FutebolJogos() {
                           <span className="ml-auto text-[10.5px] shrink-0 tabular-nums" style={{ color: '#8d8672' }}>
                             {t('jogos.grupoResumo', {
                               jogos: t('contagem.jogos', { count: jogos.length }),
-                              leitura: sufixoDeLeitura(
+                              leitura: copy.sufixoDeLeitura(
                                 leituraCarregando,
                                 jogos.filter((j) => bestByFixture.has(j.fixture_id)).length,
                               ),

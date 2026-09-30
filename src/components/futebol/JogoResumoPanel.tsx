@@ -18,9 +18,9 @@ import {
 } from '@/hooks/use-futebol-data';
 import { fmtDayChip, fmtTime, isFinished, isLive } from '@/utils/futebol-datas';
 import { hrefDaSaida } from '@/utils/futebol-links';
-import { chancePct, pickLabel } from '@/utils/futebol-score';
-import { marketShort, rotuloDaFaixa } from '@/utils/futebol-score';
-import { contaQueValem, rotuloPremissa, pesoForte } from '@/utils/futebol-premissas';
+import { chancePct } from '@/utils/futebol-score';
+import { contaQueValem, pesoForte } from '@/utils/futebol-premissas';
+import { useCopyDoFutebol } from '@/hooks/use-copy-do-futebol';
 import { melhorLeitura, resumoDosMercados } from '@/utils/futebol-leitura';
 import { mesmaSaida } from '@/utils/futebol-saida';
 import { estadoDosMotivos, explicacaoDaLeitura } from '@/utils/futebol-motivos';
@@ -105,6 +105,9 @@ export function JogoResumoPanel({
   demo?: { premissas: FutebolFixturePremissas[]; numeros: FutebolFixtureNumeros[] };
 }) {
   const { t } = useTranslation('futebol');
+  // A copy que vive fora da tela — premissa, mercado, faixa, pick — pedida por
+  // IDENTIFICADOR, e nunca por texto. Ver `use-copy-do-futebol.ts`.
+  const copy = useCopyDoFutebol();
   const { data: premissasReais, isLoading: premissasCarregando } = useFutebolFixturePremissas(
     demo ? undefined : fixture.fixture_id,
   );
@@ -163,9 +166,9 @@ export function JogoResumoPanel({
         ? (premissas ?? []).find((r) => mesmaSaida(r, best))
         : null) ?? resumos.find((r) => r.mercado.slug === mercadoLeitura)?.candidato ?? null;
   const pick = best
-    ? pickLabel(best, fixture.home_team_name, fixture.away_team_name)
+    ? copy.pick(best, fixture.home_team_name, fixture.away_team_name)
     : topo
-      ? pickLabel(topo.candidato, fixture.home_team_name, fixture.away_team_name)
+      ? copy.pick(topo.candidato, fixture.home_team_name, fixture.away_team_name)
       : null;
 
   // No tour os dados são de mentira e chegam prontos: não há espera a mostrar.
@@ -248,13 +251,12 @@ export function JogoResumoPanel({
   // Com preço são motivos, e motivo tem lado. Sem preço são premissas acesas, e
   // não há lado — o sufixo não pode prometer o que o rótulo acabou de tirar.
   //
-  // ⚠️ A comparação é contra o texto CRU do `explicacaoDaLeitura`, que ainda não
-  // passou pelo catálogo (`futebol-motivos.ts` está fora do #537). É o que faz o
-  // rótulo aparecer em português numa tela em espanhol, e é por isso que ele não
-  // pode ser comparado contra `t('motivos.porque')`: no dia em que a util for
-  // traduzida, esta linha tem de virar um estado e não um texto.
+  // ⚠️ A comparação é por IDENTIFICADOR, e não pelo texto do rótulo (#544).
+  // Enquanto ela era `=== 'Por quê'`, traduzir o rótulo quebrava esta decisão em
+  // SILÊNCIO — e nenhum teste pegava, porque em teste a interface está em
+  // português e a comparação continuava dando certo.
   const sufixoDaExplicacao =
-    explicacao.rotulo === 'Por quê'
+    explicacao.rotulo === 'porque'
       ? t('premissas.aFavor', { count: explicacao.total })
       : t('premissas.acesa', { count: explicacao.total });
 
@@ -274,7 +276,9 @@ export function JogoResumoPanel({
     ? t('painel.naoAtingiram', {
         count: explicacao.contra.length,
         lista: explicacao.contra
-          .map(({ premissa }) => rotuloPremissa(premissa, lado, true).toLowerCase())
+          .map(({ premissa }) =>
+            copy.premissa(mercadoLeitura ?? '', premissa, lado, true).toLowerCase(),
+          )
           .join(t('lista.juntorE')),
       })
     : null;
@@ -383,7 +387,7 @@ export function JogoResumoPanel({
             <div className="min-w-0">
               <div className="flex items-center gap-2 h-[17px]">
                 <span className="text-[9.5px] uppercase tracking-[0.16em]" style={{ color: 'rgba(255,255,255,.45)' }}>
-                  {t('painel.melhorLeitura', { mercado: marketShort(mercadoLeitura!) })}
+                  {t('painel.melhorLeitura', { mercado: copy.mercadoCurto(mercadoLeitura!) })}
                 </span>
                 {desfecho && (
                   <span
@@ -438,7 +442,7 @@ export function JogoResumoPanel({
                 {valorFechado
                   ? t('gate.deAssinante')
                   : best
-                    ? t('numeros.scoreFaixa', { faixa: rotuloDaFaixa(best.faixa) })
+                    ? t('numeros.scoreFaixa', { faixa: copy.rotuloDaFaixa(best.faixa) })
                     : t('premissas.aFavorRotulo')}
               </div>
             </div>
@@ -454,7 +458,7 @@ export function JogoResumoPanel({
                   mostra" seria a mesma promessa que o rótulo acabou de tirar:
                   sem preço não há aposta a favor de quê. */}
               {t('painel.explicacaoCabecalho', {
-                rotulo: explicacao.rotulo,
+                rotulo: copy.rotuloDaExplicacao(explicacao.rotulo),
                 total: explicacao.total,
                 sufixo: sufixoDaExplicacao,
               })}
@@ -477,7 +481,7 @@ export function JogoResumoPanel({
                     {pesoForte(p) ? t('peso.forte') : t('peso.medio')}
                   </span>
                   <span className="flex-1 min-w-0 text-[12.5px] leading-relaxed" style={{ color: '#3f463d' }}>
-                    <b className="font-semibold">{rotuloPremissa(p, lado)}.</b>
+                    <b className="font-semibold">{copy.premissa(mercadoLeitura ?? '', p, lado)}.</b>
                     {ev ? ` ${ev.texto}.` : ''}
                   </span>
                 </div>

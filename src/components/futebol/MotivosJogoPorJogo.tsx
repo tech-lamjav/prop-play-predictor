@@ -3,7 +3,8 @@ import { Trans, useTranslation } from 'react-i18next';
 import { fmtExato, fmtLinhaAnalisada } from '@/utils/formato';
 import { ChevronRight } from 'lucide-react';
 import type { FutebolFixtureHistorico, FutebolFixtureNumeros } from '@/services/futebol-data.service';
-import { pesoPalavra, pesoForte, rotuloPremissa, type Premissa } from '@/utils/futebol-premissas';
+import { pesoForte, type Premissa } from '@/utils/futebol-premissas';
+import { useCopyDoFutebol } from '@/hooks/use-copy-do-futebol';
 import { evidenciaDe, type Evidencia } from '@/utils/futebol-evidencias';
 import { alinharAbaixoDoCabecalho } from '@/utils/rolagem';
 import { EH_QUADRO, evidenciaDoHistorico, storyDaPremissa, type SerieHistorico, type Story } from '@/utils/futebol-historico';
@@ -505,6 +506,7 @@ function PainelPremissa({
  * direita. A barra inteira é clicável e o gráfico abre embaixo, na mesma linha.
  */
 function LinhaPremissa({
+  mercado,
   p,
   modo,
   lado,
@@ -515,6 +517,15 @@ function LinhaPremissa({
   onAlternar,
   saidaLabel,
 }: {
+  /**
+   * O mercado da premissa.
+   *
+   * Necessário porque a frase é pedida por mercado+slug e não pelo slug: o
+   * mesmo `defesas_vazaveis` existe em gols e em ambos marcam, com pesos
+   * diferentes — e a chave de idioma segue a mesma régua da tabela de apoio do
+   * banco, para as duas não se descolarem (#544).
+   */
+  mercado: string;
   p: Premissa;
   modo: 'favor' | 'contra';
   lado: 'home' | 'away' | null;
@@ -526,6 +537,7 @@ function LinhaPremissa({
   saidaLabel: string;
 }) {
   const { t } = useTranslation('futebol');
+  const copy = useCopyDoFutebol();
   const forte = pesoForte(p);
   const podeAbrir = story != null;
   // Existe bloco de explicação embaixo do cabeçalho? É ele quem dá o respiro
@@ -611,10 +623,10 @@ function LinhaPremissa({
                 : { background: '#eae2cf', color: '#8d8672' }
           }
         >
-          {pesoPalavra(p)}
+          {copy.peso(p)}
         </span>
         <span className="flex-1 min-w-0 text-[13.5px] font-semibold" style={{ color: aberta ? '#fff' : '#1a1d1a' }}>
-          {rotuloPremissa(p, lado, modo === 'contra')}
+          {copy.premissa(mercado, p, lado, modo === 'contra')}
         </span>
         {podeAbrir ? (
           <span className="shrink-0 inline-flex items-center gap-1.5 text-[11.5px] font-semibold" style={{ color: aberta ? '#fbbf24' : '#0a3d2e' }}>
@@ -636,7 +648,7 @@ function LinhaPremissa({
               que não ajuda está na lista a favor". */}
           {p.peso === 0 && p.motivo && (
             <span className="block mt-1 text-[11.5px]" style={{ color: '#8d8672' }}>
-              {t('painelPremissa.naoAjuda', { motivo: p.motivo })}
+              {t('painelPremissa.naoAjuda', { motivo: copy.motivoDaPremissa(mercado, p) })}
             </span>
           )}
         </div>
@@ -707,6 +719,7 @@ export function MotivosJogoPorJogo({
   ) => void;
 }) {
   const { t } = useTranslation('futebol');
+  const copy = useCopyDoFutebol();
   const acesa = modo === 'favor';
   const itens = useMemo(
     () =>
@@ -830,6 +843,7 @@ export function MotivosJogoPorJogo({
           return (
             <LinhaPremissa
               key={p.slug}
+              mercado={mercado}
               p={p}
               modo={modo}
               lado={lado}
@@ -860,7 +874,7 @@ export function MotivosJogoPorJogo({
           {t('motivos.semJogoAJogo', {
             lista: itens
               .filter((x) => x.story == null)
-              .map((x) => rotuloPremissa(x.p, lado, modo === 'contra').toLowerCase())
+              .map((x) => copy.premissa(mercado, x.p, lado, modo === 'contra').toLowerCase())
               .join('; '),
           })}
         </div>

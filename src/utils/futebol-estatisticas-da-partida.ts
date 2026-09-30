@@ -71,13 +71,18 @@ export interface EscolhaDaEstatistica {
  * o mesmo par que a bancada trata como mercado de linha. Ambos marcam é binário
  * e Resultado não tem quantidade nenhuma: desenhar uma linha neles seria
  * oferecer um corte sobre um número que não existe.
+ *
+ * ⚠️ O `chip` com o NOME de cada mercado saiu daqui (#544). Ele era uma quarta
+ * cópia desse nome, e verbatim a mesma de `marketShort` nos cinco slugs — cópia
+ * verbatim é como duas fontes divergem no dia em que alguém renomeia um mercado
+ * num lugar só, e foi ela que deixou os chips desta aba em português numa tela
+ * em espanhol. O nome agora sai do catálogo de idioma, pela chave do slug.
  */
 export const MERCADOS_NO_GRAFICO: Record<
   MercadoDoGrafico,
   {
     metrica: Metrica;
     temLinha: boolean;
-    chip: string;
     paradas: number[];
     padrao: number | null;
   }
@@ -86,11 +91,11 @@ export const MERCADOS_NO_GRAFICO: Record<
   // das seis paradas de gols é 3,5 e a linha canônica é 2,5, o que faria quase
   // tudo nascer abaixo da linha e parecer defeito.
   goals_over_under: {
-    metrica: 'total', temLinha: true, chip: 'Gols',
+    metrica: 'total', temLinha: true,
     paradas: [0.5, 1.5, 2.5, 3.5, 4.5, 5.5], padrao: 2.5,
   },
   asian_handicap: {
-    metrica: 'saldo', temLinha: true, chip: 'Handicap',
+    metrica: 'saldo', temLinha: true,
     paradas: [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5], padrao: -0.5,
   },
   // ── Os BINÁRIOS ──────────────────────────────────────────────────────────
@@ -104,15 +109,15 @@ export const MERCADOS_NO_GRAFICO: Record<
   // blocos nomeados, um por time, e ver os dois de uma vez é justamente o que
   // se quer num confronto.
   match_winner: {
-    metrica: 'resultado', temLinha: false, chip: 'Resultado',
+    metrica: 'resultado', temLinha: false,
     paradas: [], padrao: null,
   },
   double_chance: {
-    metrica: 'resultado', temLinha: false, chip: 'Dupla chance',
+    metrica: 'resultado', temLinha: false,
     paradas: [], padrao: null,
   },
   btts: {
-    metrica: 'ambos', temLinha: false, chip: 'Ambos marcam',
+    metrica: 'ambos', temLinha: false,
     paradas: [], padrao: null,
   },
 };

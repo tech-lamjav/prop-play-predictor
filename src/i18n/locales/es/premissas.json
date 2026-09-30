@@ -1,0 +1,488 @@
+{
+  "mercado": {
+    "catalogo": {
+      "goals_over_under": "Goles (más o menos)",
+      "match_winner": "Resultado",
+      "asian_handicap": "Hándicap asiático",
+      "btts": "Ambos equipos marcan",
+      "double_chance": "Doble oportunidad"
+    },
+    "longo": {
+      "match_winner": "Ganador (1X2)",
+      "goals_over_under": "Goles (más/menos)",
+      "asian_handicap": "Hándicap asiático",
+      "btts": "Ambos equipos marcan",
+      "double_chance": "Doble oportunidad"
+    },
+    "curto": {
+      "match_winner": "Resultado",
+      "goals_over_under": "Goles",
+      "asian_handicap": "Hándicap",
+      "btts": "Ambos equipos marcan",
+      "double_chance": "Doble oportunidad"
+    }
+  },
+  "premissa": {
+    "goals_over_under": {
+      "defesas_firmes": {
+        "label": {
+          "any": "Defensas firmes de los dos lados"
+        },
+        "negativo": {
+          "any": "La solidez de las defensas no entró como señal a favor"
+        }
+      },
+      "defesas_vazaveis": {
+        "label": {
+          "any": "Defensas frágiles de los dos lados"
+        },
+        "negativo": {
+          "any": "La fragilidad de las defensas no entró como señal a favor"
+        }
+      },
+      "ataque_combinado": {
+        "label": {
+          "any": "Los dos suman muchos goles"
+        },
+        "negativo": {
+          "any": "El ataque de los dos equipos no entró como señal a favor"
+        }
+      },
+      "xg_baixo_combinado": {
+        "label": {
+          "any": "Los dos crean pocas ocasiones de gol"
+        },
+        "negativo": {
+          "any": "El bajo volumen de ocasiones no entró como señal a favor"
+        }
+      },
+      "xg_combinado_alto": {
+        "label": {
+          "any": "Los dos crean muchas ocasiones de gol"
+        },
+        "negativo": {
+          "any": "El alto volumen de ocasiones no entró como señal a favor"
+        }
+      },
+      "clean_sheets_altos": {
+        "label": {
+          "any": "Los dos pasan muchos partidos sin recibir gol"
+        },
+        "negativo": {
+          "any": "Los partidos sin recibir gol no entraron como señal a favor"
+        }
+      },
+      "ataques_fracos": {
+        "label": {
+          "any": "Ataque débil en al menos un lado"
+        },
+        "negativo": {
+          "any": "La limitación de los ataques no entró como señal a favor"
+        },
+        "motivo": "el precio ya lo cobra"
+      },
+      "historico_under": {
+        "label": {
+          "any": "Historial de partidos con pocos goles"
+        },
+        "negativo": {
+          "any": "El historial de pocos goles no entró como señal a favor"
+        },
+        "motivo": "señal débil"
+      },
+      "ambos_vazam": {
+        "label": {
+          "any": "Los dos reciben gol casi todos los partidos"
+        },
+        "negativo": {
+          "any": "Los goles recibidos no entraron como señal a favor"
+        },
+        "motivo": "el precio ya lo cobra"
+      },
+      "ritmo_alto": {
+        "label": {
+          "any": "Partido de ritmo alto"
+        },
+        "negativo": {
+          "any": "El ritmo del partido no entró como señal a favor"
+        },
+        "motivo": "estorba en las dos pruebas"
+      },
+      "historico_over": {
+        "label": {
+          "any": "Historial de partidos con muchos goles"
+        },
+        "negativo": {
+          "any": "El historial de muchos goles no entró como señal a favor"
+        },
+        "motivo": "estorba en las dos pruebas"
+      },
+      "linha_subindo": {
+        "label": {
+          "any": "El mercado empuja la línea hacia arriba"
+        },
+        "negativo": {
+          "any": "El movimiento de la línea no entró como señal a favor"
+        },
+        "motivo": "estorba en las dos pruebas"
+      },
+      "linha_descendo": {
+        "label": {
+          "any": "El mercado empuja la línea hacia abajo"
+        },
+        "negativo": {
+          "any": "El movimiento de la línea no entró como señal a favor"
+        },
+        "motivo": "estorba en las dos pruebas"
+      },
+      "linha_extrema": {
+        "label": {
+          "any": "Línea muy lejos de lo normal"
+        },
+        "negativo": {
+          "any": "La línea no está lejos de lo normal"
+        }
+      }
+    },
+    "match_winner": {
+      "forma": {
+        "label": {
+          "any": "En buen momento, viene ganando"
+        },
+        "negativo": {
+          "any": "La forma reciente no entró como señal a favor"
+        }
+      },
+      "mando": {
+        "label": {
+          "any": "Jugar en casa pesa en este partido",
+          "home": "Rinde bien como local",
+          "away": "Rinde bien como visitante"
+        },
+        "negativo": {
+          "any": "El rendimiento no entró como señal a favor",
+          "home": "Como local, el rendimiento no entró como señal a favor",
+          "away": "Como visitante, el rendimiento no entró como señal a favor"
+        }
+      },
+      "superioridade_tabela": {
+        "label": {
+          "any": "Bastante por delante en la tabla"
+        },
+        "negativo": {
+          "any": "La posición en la tabla no entró como señal a favor"
+        }
+      },
+      "forca_mismatch": {
+        "label": {
+          "any": "Ataque fuerte contra defensa frágil del rival"
+        },
+        "negativo": {
+          "any": "El duelo entre ataque y defensa no entró como señal a favor"
+        },
+        "motivo": "entiende el partido, pero el precio ya cobra casi todo"
+      },
+      "superioridade_xg": {
+        "label": {
+          "any": "Crea más ocasiones de gol que el rival"
+        },
+        "negativo": {
+          "any": "La creación de ocasiones no entró como señal a favor"
+        },
+        "motivo": "la ocasión de gol predice goles, no quién gana"
+      },
+      "h2h_favoravel": {
+        "label": {
+          "any": "Saca ventaja en los enfrentamientos directos"
+        },
+        "negativo": {
+          "any": "Los enfrentamientos directos no entraron como señal a favor"
+        },
+        "motivo": "todo el mundo lo mira, así que ya está en la cuota"
+      },
+      "desfalque_adversario": {
+        "label": {
+          "any": "Rival con baja de un titular importante"
+        },
+        "negativo": {
+          "any": "Las bajas del rival no entraron como señal a favor"
+        },
+        "motivo": "la lista de bajas sale solo cerca del partido"
+      },
+      "pick_empate": {
+        "label": {
+          "any": "El empate es el resultado más difícil de predecir"
+        },
+        "negativo": {
+          "any": "No es apuesta al empate"
+        },
+        "motivo": "suspendida hasta tener muestra"
+      },
+      "desfalque_proprio": {
+        "label": {
+          "any": "Equipo apostado con baja de un titular importante"
+        },
+        "negativo": {
+          "any": "El propio equipo no tiene bajas"
+        }
+      }
+    },
+    "asian_handicap": {
+      "tende_golear": {
+        "label": {
+          "any": "Suele ganar por muchos goles"
+        },
+        "negativo": {
+          "any": "El margen de las victorias no entró como señal a favor"
+        }
+      },
+      "supremacia": {
+        "label": {
+          "any": "Muy superior al rival"
+        },
+        "negativo": {
+          "any": "La superioridad sobre el rival no entró como señal a favor"
+        }
+      },
+      "defesa_fora_solida": {
+        "label": {
+          "any": "Defensa sólida como visitante",
+          "home": "Defensa sólida como local"
+        },
+        "negativo": {
+          "any": "La solidez defensiva no entró como señal a favor",
+          "home": "Como local, la solidez defensiva no entró como señal a favor"
+        }
+      },
+      "sem_rodizio": {
+        "label": {
+          "any": "Debe salir con la máxima fuerza"
+        },
+        "negativo": {
+          "any": "La alineación esperada no entró como señal a favor"
+        }
+      },
+      "raramente_perde_por_2": {
+        "label": {
+          "any": "Cuando pierde, pierde por poco"
+        },
+        "negativo": {
+          "any": "El margen de las derrotas no entró como señal a favor"
+        },
+        "motivo": "señal casi nula, pero es la que abre la puerta del no favorito"
+      },
+      "adversario_fragil_fora": {
+        "label": {
+          "any": "Rival débil como visitante",
+          "away": "Rival débil como local"
+        },
+        "negativo": {
+          "any": "El rendimiento del rival no entró como señal a favor"
+        },
+        "motivo": "el precio ya lo cobra todo"
+      },
+      "mando_forte": {
+        "label": {
+          "any": "Rinde muy bien como local",
+          "away": "Rinde muy bien como visitante"
+        },
+        "negativo": {
+          "any": "El rendimiento no entró como señal a favor"
+        },
+        "motivo": "el precio ya lo cobra todo"
+      },
+      "handicap_alto": {
+        "label": {
+          "any": "Hándicap muy alto"
+        },
+        "negativo": {
+          "any": "El hándicap no es alto"
+        },
+        "motivo": "efecto cero en las dos pruebas"
+      }
+    },
+    "btts": {
+      "ambos_marcam": {
+        "label": {
+          "any": "Los dos suelen marcar"
+        },
+        "negativo": {
+          "any": "Los goles de los dos equipos no entraron como señal a favor"
+        }
+      },
+      "ataque_dos_dois": {
+        "label": {
+          "any": "Los dos atacan bien"
+        },
+        "negativo": {
+          "any": "El ataque de los dos equipos no entró como señal a favor"
+        }
+      },
+      "defesas_vazaveis": {
+        "label": {
+          "any": "Defensas frágiles de los dos lados"
+        },
+        "negativo": {
+          "any": "La fragilidad de las defensas no entró como señal a favor"
+        }
+      },
+      "defesa_forte": {
+        "label": {
+          "any": "Defensa fuerte de uno de los lados"
+        },
+        "negativo": {
+          "any": "La fuerza defensiva no entró como señal a favor"
+        }
+      },
+      "ataque_trava": {
+        "label": {
+          "any": "Uno de los ataques suele quedarse en blanco"
+        },
+        "negativo": {
+          "any": "La limitación ofensiva no entró como señal a favor"
+        }
+      },
+      "historico_btts": {
+        "label": {
+          "any": "En los últimos partidos, los dos marcaron"
+        },
+        "negativo": {
+          "any": "El historial de ambos equipos marcan no entró como señal a favor"
+        },
+        "motivo": "el historial ya está en la cuota"
+      },
+      "historico_seco": {
+        "label": {
+          "any": "Partidos recientes sin que los dos marquen"
+        },
+        "negativo": {
+          "any": "El historial de partidos sin que los dos marquen no entró como señal a favor"
+        },
+        "motivo": "el historial ya está en la cuota"
+      }
+    },
+    "double_chance": {
+      "lado_coberto_forte": {
+        "label": {
+          "any": "El lado cubierto es fuerte"
+        },
+        "negativo": {
+          "any": "La fuerza del lado cubierto no entró como señal a favor"
+        }
+      },
+      "equilibrio_defensivo": {
+        "label": {
+          "any": "Equilibrio defensivo"
+        },
+        "negativo": {
+          "any": "El equilibrio defensivo no entró como señal a favor"
+        }
+      },
+      "adversario_limitado": {
+        "label": {
+          "any": "Rival con campaña débil"
+        },
+        "negativo": {
+          "any": "La campaña del rival no entró como señal a favor"
+        }
+      },
+      "invicto_recente": {
+        "label": {
+          "any": "Invicto en los últimos partidos"
+        },
+        "negativo": {
+          "any": "La racha invicta no entró como señal a favor"
+        },
+        "motivo": "el historial ya está en la cuota"
+      }
+    }
+  },
+  "saida": {
+    "vitoriaDe": "Victoria de {{time}}",
+    "empate": "Empate",
+    "over": "Más de {{linha}} goles",
+    "under": "Menos de {{linha}} goles",
+    "handicap": "{{time}} {{linha}}",
+    "time": "{{time}}",
+    "bttsSim": "Ambos equipos marcan: Sí",
+    "bttsNao": "Ambos equipos marcan: No",
+    "ladoOuEmpate": "{{time}} o empate",
+    "umOuOutro": "{{time}} o {{outro}}",
+    "cru": "{{outcome}}"
+  },
+  "pick": {
+    "over": "Más de {{linha}} goles",
+    "under": "Menos de {{linha}} goles",
+    "handicap": "{{time}} {{linha}}",
+    "time": "{{time}}",
+    "bttsSim": "Ambos equipos marcan: Sí",
+    "bttsNao": "Ambos equipos marcan: No",
+    "casaOuEmpate": "{{time}} o empate",
+    "empateOuFora": "Empate o {{time}}",
+    "empate": "Empate",
+    "cru": "{{outcome}}"
+  },
+  "peso": {
+    "aCalibrar": "Peso por calibrar",
+    "pesaMuito": "Pesa mucho",
+    "pesa": "Pesa",
+    "naoAjuda": "No ayuda",
+    "pesaPouco": "Pesa poco"
+  },
+  "leitura": {
+    "semcal": "Mercado en revisión",
+    "forte": "Lectura fuerte",
+    "parcial": "Lectura parcial",
+    "fraco": "Lectura débil"
+  },
+  "faixa": {
+    "palavra": {
+      "alta": "Alta",
+      "media": "Media",
+      "baixa": "Baja"
+    },
+    "rotulo": {
+      "sem": "sin franja",
+      "alta": "franja alta",
+      "media": "franja media",
+      "baixa": "franja baja"
+    }
+  },
+  "liquidacao": {
+    "won": "Ganada",
+    "half_won": "Ganada a medias",
+    "push": "Anulada",
+    "half_lost": "Perdida a medias",
+    "lost": "Perdida"
+  },
+  "competicao": {
+    "brasileirao": "Brasileirão",
+    "serie_b": "Serie B",
+    "copa_do_brasil": "Copa de Brasil",
+    "libertadores": "Libertadores",
+    "sudamericana": "Sudamericana",
+    "la_liga": "La Liga",
+    "premier_league": "Premier League",
+    "copa_mundo": "Copa del Mundo",
+    "champions_league": "Champions League",
+    "bundesliga": "Bundesliga",
+    "ligue_1": "Ligue 1",
+    "primeira_liga": "Primeira Liga",
+    "serie_a_ita": "Serie A (Italia)",
+    "nations_league": "Nations League",
+    "nenhuma": "—"
+  },
+  "sufixo": {
+    "comLeitura": " · {{n}} con lectura"
+  },
+  "ajuda": {
+    "scoreContexto": "Mide cuánto del escenario favorable aparece en esta línea: ataque, defensa, jugar en casa, forma, enfrentamientos directos. No es probabilidad de acierto, y no mira el precio — la cuota aparece al lado, por separado.",
+    "scoreLegacy": "Mide la confiabilidad de la lectura, de 0 a 100. Junta el escenario del partido con cuánto paga la cuota por encima del riesgo estimado. No es probabilidad de acierto.",
+    "chance": "La probabilidad que el mercado le asigna a esta salida, después de quitar el margen de la casa. No es nuestra estimación: es la lectura de las cuotas.",
+    "odd": "La mejor cuota encontrada entre las casas que seguimos, en el momento de la recolección. Es ella la que define el retorno si la apuesta ocurre."
+  },
+  "explicacao": {
+    "porque": "Porqué",
+    "oQueOJogoMostra": "Lo que muestra el partido"
+  }
+}

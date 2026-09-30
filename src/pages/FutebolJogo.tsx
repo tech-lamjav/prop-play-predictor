@@ -19,9 +19,7 @@ import {
   computeMatchupTendencies,
 } from '@/utils/futebol-tendencias';
 import { type SaidaPreferida } from '@/utils/futebol-leitura';
-import {
-  pickLabel, marketLabel,
-} from '@/utils/futebol-score';
+import { useCopyDoFutebol } from '@/hooks/use-copy-do-futebol';
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
 import { escalacaoExibida, rotuloEscalacao } from '@/utils/futebol-escalacao';
 import { escalacaoDoTime, ultimoJogoDoTime } from '@/utils/futebol-escalacao-referencia';
@@ -219,6 +217,7 @@ const CARD = 'bg-white border border-line rounded-rebrand-xl';
 // Selo de resultado (jogo encerrado): Green / Meio green / Anulada / Meio red / Red.
 // Cor + texto (não só cor) e um ponto pra reforçar o estado à distância.
 function ResultBadge({ r, big }: { r: BetResult; big?: boolean }) {
+  const copy = useCopyDoFutebol();
   const b = resultBadge(r);
   const c = b.tone === 'won' ? { bg: '#dcefe2', fg: '#0a3d2e', dot: '#2f7d50' }
     : b.tone === 'push' ? { bg: '#eef0ec', fg: '#5a625a', dot: '#8a8f86' }
@@ -229,7 +228,7 @@ function ResultBadge({ r, big }: { r: BetResult; big?: boolean }) {
       style={{ background: c.bg, color: c.fg }}
     >
       <span className="w-1.5 h-1.5 rounded-full" style={{ background: c.dot }} />
-      {b.label}
+      {copy.seloDeResultado(r)}
     </span>
   );
 }

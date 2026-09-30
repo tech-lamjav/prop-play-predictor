@@ -10,8 +10,8 @@ import { RegistrarApostaCTA } from '@/components/futebol/RegistrarAposta';
 import type { FutebolFixturePremissas, FutebolFixtureValueRow, FutebolFormResult } from '@/services/futebol-data.service';
 import { melhorLeitura, resumoDosMercados, type SaidaPreferida } from '@/utils/futebol-leitura';
 import type { Saida } from '@/utils/futebol-saida';
-import { rotuloDaFaixa } from '@/utils/futebol-score';
-import { outcomeLabel, contaQueValem, PORTA_PREMISSAS } from '@/utils/futebol-premissas';
+import { contaQueValem, PORTA_PREMISSAS } from '@/utils/futebol-premissas';
+import { useCopyDoFutebol } from '@/hooks/use-copy-do-futebol';
 import { isFinished, isLive } from '@/utils/futebol-datas';
 import type { JogoInfo } from './jogo-info';
 
@@ -202,6 +202,7 @@ export function FaixaPartida({
   cortadas: readonly Saida[];
 }) {
   const { t } = useTranslation('futebol');
+  const copy = useCopyDoFutebol();
   const resumos = useMemo(() => resumoDosMercados(premissas, valueRows, preferida, ocultos, cortadas), [premissas, valueRows, preferida, ocultos, cortadas]);
   const top = useMemo(() => melhorLeitura(resumos), [resumos]);
   const fim = isFinished(jogo.statusShort);
@@ -213,7 +214,7 @@ export function FaixaPartida({
   const rolando = isLive(jogo.statusShort);
 
   const pick = top
-    ? outcomeLabel(top.candidato, jogo.home, jogo.away)
+    ? copy.saida(top.candidato, jogo.home, jogo.away)
     : null;
   // Sem acesso o valor é anulado NA ORIGEM, e não em cada número lá embaixo.
   // Assim todos os ramos "sem dado" que já existem assumem sozinhos, e não fica
@@ -428,7 +429,7 @@ export function FaixaPartida({
               {locked
                 ? t('gate.deAssinante')
                 : v
-                  ? t('numeros.scoreFaixa', { faixa: rotuloDaFaixa(v.faixa) })
+                  ? t('numeros.scoreFaixa', { faixa: copy.rotuloDaFaixa(v.faixa) })
                   : t('premissas.aFavorRotulo')}
             </div>
             {podeRegistrar && !empilhado && (

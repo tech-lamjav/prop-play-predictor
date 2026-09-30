@@ -23,10 +23,10 @@ import {
 import type { Competition, FutebolFixture, FutebolValueBoardRow } from '@/services/futebol-data.service';
 import { brtDayOf, fmtDayHeader, isFinished } from '@/utils/futebol-datas';
 import { groupBoardByFixture } from '@/utils/futebol-score';
-import { sufixoDeLeitura } from '@/utils/futebol-leitura';
 import { hrefDaSaida, hrefDoJogo } from '@/utils/futebol-links';
 import { settleFutebol, isHit } from '@/utils/futebol-settlement';
-import { competitionLabel, sortCompetitions } from '@/utils/futebol-competitions';
+import { sortCompetitions } from '@/utils/futebol-competitions';
+import { useCopyDoFutebol } from '@/hooks/use-copy-do-futebol';
 import { ChaveamentoBracket } from '@/components/futebol/ChaveamentoBracket';
 import { GruposFase } from '@/components/futebol/GruposFase';
 import { ehCampeonatoDePontos, ehMataMata, rodadaLonga } from '@/utils/futebol-rodadas';
@@ -95,6 +95,7 @@ function Estatistica({ rotulo, valor, unidade }: { rotulo: string; valor: string
 
 export default function FutebolCampeonato() {
   const { t } = useTranslation('futebol');
+  const copy = useCopyDoFutebol();
   const { slug } = useParams<{ slug: string }>();
   const [params, setParams] = useSearchParams();
 
@@ -349,7 +350,7 @@ export default function FutebolCampeonato() {
                 </span>
                 <span className="text-[10.5px]" style={{ color: '#8d8672' }}>
                   {t('contagem.jogos', { count: games.length })}
-                  {sufixoDeLeitura(leituraCarregando, comLeitura)}
+                  {copy.sufixoDeLeitura(leituraCarregando, comLeitura)}
                 </span>
               </div>
               {games.map((f, i) => (
@@ -447,7 +448,7 @@ export default function FutebolCampeonato() {
             </span>
             <div className="min-w-0">
               <h1 className="font-display text-[19px] md:text-[22px] font-bold tracking-tight text-ink truncate">
-                {competitionLabel(competition)}
+                {copy.competicao(competition)}
               </h1>
               <div className="text-[11.5px] md:text-[12px] truncate" style={{ color: '#8d8672' }}>
                 <span className="md:hidden">{subtituloCurto}</span>
@@ -462,7 +463,7 @@ export default function FutebolCampeonato() {
                     className="h-8 px-3 rounded-rebrand-sm bg-white text-[12px] font-semibold text-ink inline-flex items-center gap-1.5"
                     style={{ border: `1px solid ${menuLiga ? '#0a3d2e' : '#ded2b6'}` }}
                   >
-                    <span className="hidden sm:inline">{competitionLabel(competition)}</span>
+                    <span className="hidden sm:inline">{copy.competicao(competition)}</span>
                     <span className="sm:hidden">{t('campeonato.trocar')}</span>
                     <ChevronDown className="w-3.5 h-3.5" style={{ color: '#8d8672' }} />
                   </button>
@@ -500,7 +501,7 @@ export default function FutebolCampeonato() {
                         <span
                           className={`min-w-0 truncate text-[12.5px] text-ink ${c === competition ? 'font-bold' : 'font-medium'}`}
                         >
-                          {competitionLabel(c)}
+                          {copy.competicao(c)}
                         </span>
                       </Link>
                     ))}

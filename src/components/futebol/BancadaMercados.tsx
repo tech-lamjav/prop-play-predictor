@@ -20,10 +20,9 @@ import {
   PORTA_PREMISSAS,
   PREMISSAS_OCULTAS,
   contaQueValem,
-  contextoDoMercado,
   melhorCandidato,
-  outcomeLabel,
   pesoForte,
+  seloDaLeitura,
   premissaDe,
   premissasDaSaida,
   type MercadoInfo,
@@ -36,7 +35,8 @@ import { useFutebolAccess } from '@/hooks/use-futebol-data';
 import { avisoSemDado } from '@/utils/futebol-sem-dado';
 import { valueDoCandidato, resumoDosMercados, mesmaLinha, saidaCortada, passaNaLeitura, leituraDaFolha, saidaQueAbreAFolha, type SaidaPreferida } from '@/utils/futebol-leitura';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { ehDestaque, ehFaixaAlta, rotuloDaFaixa, fronteirasDoScore } from '@/utils/futebol-score';
+import { ehDestaque, ehFaixaAlta, fronteirasDoScore } from '@/utils/futebol-score';
+import { useCopyDoFutebol } from '@/hooks/use-copy-do-futebol';
 import { leituraDaCotacao } from '@/utils/futebol-cotacao';
 import { filtrarCatalogoDeMercados } from '@/utils/futebol-mercados-ocultos';
 import { disponivelDesdeDaSaida, rotuloDisponivelDesde } from '@/utils/futebol-disponibilidade';
@@ -231,6 +231,7 @@ function ReguaLinhas({
 }
 
 function SeloRes({ r }: { r: BetResult }) {
+  const copy = useCopyDoFutebol();
   const b = resultBadge(r);
   const c =
     b.tone === 'won'
@@ -244,7 +245,7 @@ function SeloRes({ r }: { r: BetResult }) {
       style={{ background: c.bg, color: c.fg }}
     >
       <span className="w-1.5 h-1.5 rounded-full" style={{ background: c.dot }} />
-      {b.label}
+      {copy.seloDeResultado(r)}
     </span>
   );
 }
@@ -276,6 +277,8 @@ export function BancadaMercados({
   preferida?: SaidaPreferida | null;
 }) {
   const { t } = useTranslation('futebol');
+  // A copy que vive fora da tela, pedida por IDENTIFICADOR (#544).
+  const copy = useCopyDoFutebol();
   const { data: rows, isLoading } = useFutebolFixturePremissas(jogo.fixtureId);
   const { data: numeros } = useFutebolFixtureNumeros(jogo.fixtureId);
   const { data: historico } = useFutebolFixtureHistorico(jogo.fixtureId);
@@ -449,7 +452,7 @@ export function BancadaMercados({
 
 
   const labelDe = (c: FutebolFixturePremissas | null) =>
-    c ? outcomeLabel(c, jogo.home, jogo.away) : '';
+    c ? copy.saida(c, jogo.home, jogo.away) : '';
 
   // Favor / apagadas do lado principal. Só as premissas DAQUELE lado: as do outro
   // medem o mesmo número ao contrário ("defesas frágeis" × "defesas firmes"), então
@@ -474,7 +477,9 @@ export function BancadaMercados({
     .filter((p): p is Premissa => p != null);
 
   const semCalibragem = mercado.teto == null;
-  const ctx = contextoDoMercado(favor.filter(pesoForte).length, semCalibragem);
+  // O SELO, e não a frase: quem desenha a cor lê o identificador e quem escreve
+  // na tela pede a frase pelo catálogo de idioma (#544).
+  const ctx = seloDaLeitura(favor.filter(pesoForte).length, semCalibragem);
 
   const ladoPrincipal = principal ? ladoDaSaida(mercado.slug, principal.outcome) : null;
   const nPrincipal = principal ? contaQueValem(principal) : 0;
@@ -625,7 +630,12 @@ export function BancadaMercados({
           // CONFIRMADA. Ver futebol-escalacao.ts.
           : t('bancada.semDesfalques');
       }
-      out.push({ t: t('bancada.penalidade', { nome: p.label.toLowerCase() }), sub });
+      out.push({
+        t: t('bancada.penalidade', {
+          nome: copy.premissa(mercado.slug, p, null).toLowerCase(),
+        }),
+        sub,
+      });
     });
     return out;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -646,7 +656,7 @@ export function BancadaMercados({
     if (fim) {
       const r = placar && principal ? settleFutebol(principal, placar.home, placar.away) : null;
       return r
-        ? t('bancada.veredito.encerrado', { pick: lbl, resultado: resultBadge(r).label.toLowerCase() })
+        ? t('bancada.veredito.encerrado', { pick: lbl, resultado: copy.seloDeResultado(r).toLowerCase() })
         : t('bancada.veredito.jogoEncerrado');
     }
     if (valPrincipal) {
@@ -760,7 +770,7 @@ export function BancadaMercados({
    * gols", isso devolve uma linha de 35px que antes ficava vazia.
    */
   const titulosPossiveis = Array.from(
-    new Set([...doMercado.map((o) => outcomeLabel(o, jogo.home, jogo.away)), pickAtual].filter(Boolean)),
+    new Set([...doMercado.map((o) => copy.saida(o, jogo.home, jogo.away)), pickAtual].filter(Boolean)),
   );
   const linhaExibida = linhaDaSaida({
     market: mercado.slug,
@@ -817,7 +827,7 @@ export function BancadaMercados({
         const n = contaQueValem(o);
         return {
           chave: o.outcome,
-          rotulo: outcomeLabel(o, jogo.home, jogo.away),
+          rotulo: copy.saida(o, jogo.home, jogo.away),
           ativa: o.outcome === (saida ?? candidatoInicialDoMercado?.outcome),
           // A MESMA regra do resumo, e por isso a mesma função: o chip é por
           // saída e o resumo é por mercado, mas a pergunta é uma só (#432).
@@ -922,7 +932,7 @@ export function BancadaMercados({
               ? `${fronteirasDoScore(r.value!.score_versao).alta}%`
               : `${(PORTA_PREMISSAS / Math.max(r.totalQueValem, 1)) * 100}%`;
             const cor = on ? '#fbbf24' : r.passa ? (temScore && ehFaixaAlta(r.value!.faixa) ? '#0a3d2e' : '#d4a017') : '#c4bda8';
-            const pick = outcomeLabel(r.candidato, jogo.home, jogo.away);
+            const pick = copy.saida(r.candidato, jogo.home, jogo.away);
             return (
               <button
                 key={r.mercado.slug}
@@ -938,7 +948,7 @@ export function BancadaMercados({
                     className="text-[13px] truncate"
                     style={{ color: on ? '#fff' : r.passa ? '#1a1d1a' : '#6b6350', fontWeight: r.passa ? 600 : 500 }}
                   >
-                    {r.mercado.label}
+                    {copy.mercadoNoCatalogo(r.mercado.slug)}
                   </span>
                   {!semLeituraNoCard && (
                     <span
@@ -1045,12 +1055,12 @@ export function BancadaMercados({
                 <div className={`min-w-0 ${noCelular ? 'flex-1' : ''}`}>
                   <div className="h-6 flex items-center">
                     <span className="text-[10px] uppercase tracking-[0.16em] truncate" style={{ color: 'rgba(255,255,255,.45)' }}>
-                      {noCelular ? t('bancada.mercadoAberto') : t('bancada.mercadoAbertoCom', { mercado: mercado.label })}
+                      {noCelular ? t('bancada.mercadoAberto') : t('bancada.mercadoAbertoCom', { mercado: copy.mercadoNoCatalogo(mercado.slug) })}
                     </span>
                   </div>
                   {noCelular && (
                     <div className="h-4 text-[10px] uppercase tracking-[0.16em] truncate" style={{ color: 'rgba(255,255,255,.7)' }}>
-                      {mercado.label}
+                      {copy.mercadoNoCatalogo(mercado.slug)}
                     </div>
                   )}
                 </div>
@@ -1176,7 +1186,7 @@ export function BancadaMercados({
                   </div>
                   <div className="mt-1.5 text-[9.5px] uppercase tracking-[0.12em] h-3 leading-[12px]" style={{ color: 'rgba(255,255,255,.5)' }}>
                     {valPrincipal
-                      ? rotuloDaFaixa(valPrincipal.faixa)
+                      ? copy.rotuloDaFaixa(valPrincipal.faixa)
                       : leituraPrincipal === 'premissas' ? t('premissas.aFavorCurto')
                       : locked ? t('gate.deAssinante') : t('leitura.semLeitura')}
                   </div>
@@ -1228,7 +1238,7 @@ export function BancadaMercados({
                 </div>
                 <div className="mt-1.5 text-[9.5px] uppercase tracking-[0.12em]" style={{ color: 'rgba(255,255,255,.5)' }}>
                   {valPrincipal
-                    ? t('numeros.scoreFaixa', { faixa: rotuloDaFaixa(valPrincipal.faixa) })
+                    ? t('numeros.scoreFaixa', { faixa: copy.rotuloDaFaixa(valPrincipal.faixa) })
                     : leituraPrincipal === 'premissas' ? t('premissas.aFavorRotulo') : t('leitura.semLeitura')}
                 </div>
               </div>
@@ -1432,7 +1442,7 @@ export function BancadaMercados({
             );
           })}
           <span className="ml-auto pb-2 text-[11.5px] hidden md:block" style={{ color: '#8d8672' }}>
-            {ctx.label}
+            {copy.leitura(ctx)}
           </span>
         </div>
 

@@ -19,8 +19,7 @@ import { createClient } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/use-auth';
 import { useFutebolAccess } from '@/hooks/use-futebol-data';
 import { useUserUnit } from '@/hooks/use-user-unit';
-import { pickLabel, marketLabel } from '@/utils/futebol-score';
-import { competitionLabel } from '@/utils/futebol-competitions';
+import { useCopyDoFutebol } from '@/hooks/use-copy-do-futebol';
 import { atalhosDaUnidade, type FutebolBetDraft } from './registrar-aposta-utils';
 import {
   apostaRegistrada,
@@ -73,6 +72,7 @@ export function RegistrarApostaModal({
   origem?: OrigemDoJogo;
 }) {
   const { t } = useTranslation('futebol');
+  const copy = useCopyDoFutebol();
   const { user } = useAuth();
   const { data: acesso } = useFutebolAccess();
   const { config: unidade } = useUserUnit();
@@ -117,11 +117,11 @@ export function RegistrarApostaModal({
   // O draft veio do formulario com `lineValue` em camelCase, entao a saida se monta
   // aqui. E o unico lugar em que ela nao chega pronta da RPC.
   const pick = draft
-    ? pickLabel({ market: draft.market, outcome: draft.outcome, line_value: draft.lineValue }, draft.homeName, draft.awayName)
+    ? copy.pick({ market: draft.market, outcome: draft.outcome, line_value: draft.lineValue }, draft.homeName, draft.awayName)
     : '';
   const match = draft ? `${draft.homeName} x ${draft.awayName}` : '';
-  const mkt = draft ? marketLabel(draft.market) : '';
-  const league = draft ? competitionLabel(draft.competition) : '';
+  const mkt = draft ? copy.mercadoLongo(draft.market) : '';
+  const league = draft ? copy.competicao(draft.competition) : '';
 
   const stakeN = parseFloat(stake.replace(',', '.'));
   const oddN = parseFloat(odd.replace(',', '.'));
