@@ -20,6 +20,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { nbaDataService, type Game } from '@/services/nba-data.service';
 import { useAnalise360Data } from '@/hooks/use-analise360';
 import { getPlayerPhotoUrl, getTeamLogoUrl, teamAbbrToName, tryNextPlayerPhotoUrl } from '@/utils/team-logos';
+import { fmtDecimal, fmtLinhaAnalisada, fmtPct } from '@/utils/formato';
 
 // ─── Constants ───────────────────────────────────────────────────────────
 
@@ -340,12 +341,12 @@ function OpportunityOfDayCard() {
             <Trans
               t={t}
               i18nKey="jogos.oportunidadeComparacao"
-              values={{ gatilho: triggerLast, com: top.avg_com.toFixed(1), sem: top.avg_sem.toFixed(1) }}
+              values={{ gatilho: triggerLast, com: fmtDecimal(top.avg_com, 1), sem: fmtDecimal(top.avg_sem, 1) }}
               components={[<span className="text-ink font-semibold" key="sem" />]}
             />
           </span>
           <span className={`font-semibold tabular-nums ${isPos ? 'text-forest' : 'text-status-danger'}`}>
-            ({isPos ? '+' : ''}{top.gap_pct.toFixed(1)}%)
+            ({isPos ? '+' : ''}{fmtPct(top.gap_pct / 100, 1)})
           </span>
         </div>
         {top.line_value != null && (
@@ -353,7 +354,7 @@ function OpportunityOfDayCard() {
             <Trans
               t={t}
               i18nKey="jogos.oportunidadeLinha"
-              values={{ valor: top.line_value.toFixed(1) }}
+              values={{ valor: fmtLinhaAnalisada(top.line_value) }}
               components={[<span className="text-ink font-semibold tabular-nums" key="valor" />]}
             />
           </div>

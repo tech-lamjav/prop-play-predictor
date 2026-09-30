@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { fmtNumero } from '@/utils/formato';
+import { fmtDecimal, fmtDecimalAte, fmtLinhaAnalisada, fmtNumero } from '@/utils/formato';
 import { usePostHog } from '@posthog/react';
 import { Helmet } from 'react-helmet-async';
 import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -84,7 +84,7 @@ function formatPct(val: number | null): string {
   if (val == null) return '—';
   // RPC pode devolver 0–1 (fração) ou 0–100 (já em pct). Detectamos por magnitude.
   const pct = val <= 1 ? val * 100 : val;
-  return pct % 1 === 0 ? `${Math.round(pct)}%` : `${pct.toFixed(1)}%`;
+  return `${fmtDecimalAte(pct, 1)}%`;
 }
 
 function ordinalRank(n: number | null | undefined): string {
@@ -1033,11 +1033,11 @@ function GameOpportunitiesTable({
                   </div>
                 </td>
                 <td className="px-2 py-2 text-ink-2">{t(`estatisticas.nome.${o.stat_type}`, { defaultValue: o.stat_type })}</td>
-                <td className="px-2 py-2 text-right tabular-nums">{o.avg_com.toFixed(1)}</td>
-                <td className="px-2 py-2 text-right tabular-nums font-semibold text-ink">{o.avg_sem.toFixed(1)}</td>
-                <td className="px-2 py-2 text-right tabular-nums">{o.line_value != null ? o.line_value.toFixed(1) : '—'}</td>
+                <td className="px-2 py-2 text-right tabular-nums">{fmtDecimal(o.avg_com, 1)}</td>
+                <td className="px-2 py-2 text-right tabular-nums font-semibold text-ink">{fmtDecimal(o.avg_sem, 1)}</td>
+                <td className="px-2 py-2 text-right tabular-nums">{fmtLinhaAnalisada(o.line_value)}</td>
                 <td className={`px-2 py-2 text-right tabular-nums font-semibold ${isPos ? 'text-forest' : 'text-status-danger'}`}>
-                  {isPos ? '+' : ''}{o.gap_pct.toFixed(0)}%
+                  {isPos ? '+' : ''}{fmtDecimal(o.gap_pct, 0)}%
                 </td>
                 <td className="px-4 py-2 text-right">
                   <span className={`inline-flex items-center px-2 h-5 rounded text-[10px] font-bold tabular-nums ${

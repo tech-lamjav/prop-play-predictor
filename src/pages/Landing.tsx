@@ -8,6 +8,7 @@ import { getTeamLogoUrl, getPlayerPhotoUrl, teamAbbrToName } from "@/utils/team-
 import { Seo } from "@/components/Seo";
 import { faqPageSchema, type FaqItem } from "@/lib/structured-data";
 import { SeletorDeIdiomaCompacto } from '@/components/SeletorDeIdioma';
+import { fmtDecimal, fmtPct } from '@/utils/formato';
 
 const getFreePlayerDashboardPath = () => {
   const name = FREE_PLAYERS[0];
@@ -123,9 +124,9 @@ const Landing = () => {
     const values = baseValues.slice(0, gamesWindow);
     const games = baseGames.slice(0, gamesWindow);
     const over = values.filter((v) => v > statData.line).length;
-    const hitRate = ((over / values.length) * 100).toFixed(1);
+    const hitRate = fmtPct(over / values.length, 1);
     const maxVal = Math.ceil((Math.max(...values) + 3) / 2) * 2;
-    const avg = (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1);
+    const avg = fmtDecimal(values.reduce((a, b) => a + b, 0) / values.length, 1);
     return { values, games, over, total: values.length, hitRate, maxVal, avg };
   }, [statData, gamesWindow, triggerFilter]);
 
@@ -148,7 +149,7 @@ const Landing = () => {
     const vals = WITHOUT_MURRAY_IDX.map((i) => pts.values[i] + boost);
     const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
     const pct = Math.round(((avg - pts.seasonAvg) / pts.seasonAvg) * 100);
-    return { avg: avg.toFixed(1), pct };
+    return { avg: fmtDecimal(avg, 1), pct };
   }, []);
 
   const handleInsightClick = () => {
@@ -560,7 +561,7 @@ const Landing = () => {
                             <td className="py-1.5 pr-3 text-ink-2 tabular-nums">{g.date}</td>
                             <td className="py-1.5 pr-3 font-semibold text-ink">{i % 2 === 0 ? '@' : ''}{g.opp}</td>
                             <td className="py-1.5 pr-3 text-ink-3 hidden sm:table-cell">{i % 2 === 0 ? t('tabelaRecentes.fora') : t('tabelaRecentes.casa')}</td>
-                            <td className="py-1.5 pr-3 text-right font-bold text-ink tabular-nums">{g.value.toFixed(1)}</td>
+                            <td className="py-1.5 pr-3 text-right font-bold text-ink tabular-nums">{fmtDecimal(g.value, 1)}</td>
                             <td className="py-1.5 pr-3 text-right text-ink-2 tabular-nums">{statData.line}</td>
                             <td className={`py-1.5 text-right font-bold tabular-nums ${g.value > statData.line ? 'text-forest' : 'text-status-danger'}`}>
                               {g.diffPct > 0 ? '+' : ''}{g.diffPct}%

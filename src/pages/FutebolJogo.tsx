@@ -34,6 +34,7 @@ import { FUT_JOGO_TOUR_ID, makeFutebolJogoSteps } from '@/components/onboarding/
 import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
 import { demoFixtureDetail, demoTeamSeason, demoAwaySeason } from '@/components/onboarding/demo/futebol';
 import { useDemoFixtureValueRows } from '@/components/onboarding/demo/use-demo-futebol';
+import { fmtDecimal } from '@/utils/formato';
 
 /**
  * A bancada fica lado a lado a partir de 1280px (o breakpoint `xl` do grid). O
@@ -199,7 +200,7 @@ const STAT_ROWS: { key: keyof FutebolTeamStats; chave: string; f: FormatoDaLinha
 
 function RatingBadge({ value }: { value: number }) {
   const cls = value >= 7.5 ? 'bg-forest text-canvas' : value >= 6.5 ? 'bg-canvas-2 text-ink border border-line' : 'bg-status-danger/15 text-status-danger';
-  return <span className={`text-[10px] font-bold tabular-nums rounded px-1 py-0.5 ${cls}`}>{value.toFixed(1)}</span>;
+  return <span className={`text-[10px] font-bold tabular-nums rounded px-1 py-0.5 ${cls}`}>{fmtDecimal(value, 1)}</span>;
 }
 
 const GOAL_SUFFIX: Record<string, string> = { Penalty: ' (pênalti)', 'Own Goal': ' (gol contra)' };
@@ -247,7 +248,7 @@ type LinhaComparada = { l: string; a: number; b: number; f: FormatoDaLinha };
 function BarrasComparadas({ rows, vazio }: { rows: LinhaComparada[]; vazio: string }) {
   if (!rows.length) return <p className="text-sm text-ink-3 text-center py-4">{vazio}</p>;
   const fmt = (v: number, f: FormatoDaLinha) =>
-    f === 'pct' ? `${Math.round(v)}%` : f === 'int' ? String(Math.round(v)) : v.toFixed(1);
+    f === 'pct' ? `${Math.round(v)}%` : f === 'int' ? String(Math.round(v)) : fmtDecimal(v, 1);
   return (
     <div className="flex flex-col gap-3">
       {rows.map((s) => {

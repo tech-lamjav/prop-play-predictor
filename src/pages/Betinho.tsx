@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import { fmtOdd, fmtDinheiro } from '@/utils/formato';
+import { fmtDinheiro, fmtOdd, fmtPct } from '@/utils/formato';
 import { Seo } from "@/components/Seo";
 import { faqPageSchema, type FaqItem } from "@/lib/structured-data";
 import {
@@ -552,7 +552,7 @@ const Betinho = () => {
                     <Trans
                       t={t}
                       i18nKey="demo.narrativa.resumo"
-                      values={{ roi: `${stats.roi >= 0 ? "+" : ""}${stats.roi.toFixed(1)}%` }}
+                      values={{ roi: `${stats.roi >= 0 ? "+" : ""}${fmtPct(stats.roi / 100, 1)}` }}
                       components={[<span className="text-amber" key="roi" />]}
                     />
                   )}
@@ -566,7 +566,7 @@ const Betinho = () => {
                 {
                   chave: "roi",
                   label: t("demo.kpis.roi"),
-                  value: `${stats.roi >= 0 ? "+" : ""}${stats.roi.toFixed(1)}%`,
+                  value: `${stats.roi >= 0 ? "+" : ""}${fmtPct(stats.roi / 100, 1)}`,
                   cls: stats.roi >= 0 ? "text-status-success" : "text-status-danger",
                 },
                 {
@@ -584,7 +584,7 @@ const Betinho = () => {
                 {
                   chave: "taxa",
                   label: t("demo.kpis.taxa"),
-                  value: `${stats.hitRate.toFixed(1)}%`,
+                  value: fmtPct(stats.hitRate / 100, 1),
                   cls: "text-ink",
                 },
                 {

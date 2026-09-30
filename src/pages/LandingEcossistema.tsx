@@ -9,6 +9,7 @@ import { getPlayerPhotoUrl, getTeamLogoUrl } from "@/utils/team-logos";
 import { getFutebolTeamLogoUrl } from "@/utils/futebol-logos";
 import { SHOW_BOLAO_ENTRY_POINTS } from "@/config/bolao";
 import { SeletorDeIdiomaCompacto } from '@/components/SeletorDeIdioma';
+import { fmtDecimal, fmtPct } from '@/utils/formato';
 
 /**
  * Landing geral do ecossistema (rota /). Papel: porta de entrada que ROTEIA —
@@ -63,8 +64,8 @@ const MockNBA = () => {
   const chartH = 132;
   const linePct = (line / maxVal) * 100;
   const over = values.filter((v) => v > line).length;
-  const hitRate = ((over / values.length) * 100).toFixed(1);
-  const avgPts = (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1);
+  const hitRate = fmtPct(over / values.length, 1);
+  const avgPts = fmtDecimal(values.reduce((a, b) => a + b, 0) / values.length, 1);
   return (
     <WindowFrame url="smartbetting.app/nba-dashboard/nikola-jokic">
       {/* Cabeçalho do jogador — dá rosto e contexto ao insight */}

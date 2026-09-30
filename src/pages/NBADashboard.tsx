@@ -23,6 +23,7 @@ import { TeammateFilter } from '@/components/nba/TeammateFilterBar';
 import { useSubscription } from '@/hooks/use-subscription';
 import { useAuth } from '@/hooks/use-auth';
 import { isFreePlayer } from '@/config/freemium';
+import { fmtDecimal, fmtLinhaAnalisada, fmtPct } from '@/utils/formato';
 
 const VALID_STAT_TYPES = ['player_points', 'player_assists', 'player_rebounds', 'player_points_rebounds_assists', 'player_points_assists', 'player_rebounds_assists'];
 
@@ -717,16 +718,16 @@ export default function NBADashboard() {
                             </span>
                           </div>
                           <div className="text-[12px] tabular mt-1.5 text-ink-2 flex items-center gap-1.5 flex-wrap">
-                            <span>{opp.avg_com?.toFixed(1) ?? '—'}</span>
+                            <span>{fmtDecimal(opp.avg_com, 1)}</span>
                             <span className="text-ink-dim">→</span>
-                            <span className="font-semibold text-[14px] text-ink">{opp.avg_sem?.toFixed(1) ?? '—'}</span>
+                            <span className="font-semibold text-[14px] text-ink">{fmtDecimal(opp.avg_sem, 1)}</span>
                             {opp.gap_pct != null && (
-                              <span className="ml-1 font-semibold text-forest">+{opp.gap_pct.toFixed(1)}%</span>
+                              <span className="ml-1 font-semibold text-forest">+{fmtPct(opp.gap_pct / 100, 1)}</span>
                             )}
                           </div>
                           <div className="text-[10px] mt-1.5 text-ink-dim">
                             {opp.line_value != null
-                              ? t('jogador.oportunidadesLinhaEClique', { valor: opp.line_value.toFixed(1) })
+                              ? t('jogador.oportunidadesLinhaEClique', { valor: fmtLinhaAnalisada(opp.line_value) })
                               : t('jogador.oportunidadesClique')}
                           </div>
                         </div>
