@@ -134,10 +134,10 @@ const App = () => (
             aqui com os outros sentinelas, e não pendurada numa página. Ela
             segura os tours enquanto estiver na frente. (#523) */}
         <PesquisaDePerfil />
-        {/* Pergunta ao servidor de onde a pessoa está acessando, uma vez por
-            carregamento. Por ora só registra; quem obedece a resposta é a
-            fatia seguinte. (#550) */}
-        <Porteiro />
+        {/* O porteiro NÃO é vizinho dos sentinelas acima: ele embrulha as
+            rotas porque precisa poder aparecer no lugar delas. Os outros
+            desenham por cima do produto; este substitui o produto. (#551) */}
+        <Porteiro>
         <Suspense fallback={<LazyFallback />}>
           <Routes>
             <Route path="/" element={<LandingEcossistema />} />
@@ -316,6 +316,7 @@ const App = () => (
           </Routes>
           <Footer />
         </Suspense>
+        </Porteiro>
       </BrowserRouter>
       </ReferralProvider>
       </AchievementProvider>
