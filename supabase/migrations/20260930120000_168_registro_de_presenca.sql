@@ -38,6 +38,27 @@
 -- Conferência depois de aplicar:
 --   select count(*) from public.registro_de_presenca;
 --   select value from public.ops_config where key = 'bloqueio_brasil_ligado';  -- espera 'nao'
+--
+-- ── A CONSULTA DO RELATÓRIO ────────────────────────────────────────────────
+-- É a frase que o contador precisa sustentar, em SQL. Fica aqui em vez de numa
+-- view porque quem a roda é gente, uma vez por mês, e uma view a mais é mais
+-- uma coisa para manter sincronizada com a tabela:
+--
+--   select dia,
+--          coalesce(pais, 'nao_resolvido') as pais,
+--          count(*) as pessoas
+--     from public.registro_de_presenca
+--    where dia between :inicio and :fim
+--    group by dia, coalesce(pais, 'nao_resolvido')
+--    order by dia, pessoas desc;
+--
+-- E o total do período, que é o número que vai na frase:
+--
+--   select coalesce(pais, 'nao_resolvido') as pais, count(distinct user_id) as pessoas
+--     from public.registro_de_presenca
+--    where dia between :inicio and :fim
+--    group by coalesce(pais, 'nao_resolvido')
+--    order by pessoas desc;
 
 create table if not exists public.registro_de_presenca (
   user_id uuid not null references public.users(id) on delete cascade,
@@ -46,7 +67,18 @@ create table if not exists public.registro_de_presenca (
   -- O endereço que o NOSSO servidor viu. Não é declarado por ninguém, e é por
   -- isso que ele serve de prova. Veja a origem observada no glossário da
   -- pessoa, em src/components/perfil/CONTEXT.md.
-  ip inet not null,
+  --
+  -- ⚠️ ANULÁVEL DE PROPÓSITO, e a razão é o vigia. A forma mais provável de o
+  -- porteiro parar de saber de onde a pessoa veio é o cabeçalho da borda sumir
+  -- — e é exatamente aí que o alarme precisa tocar. Se a linha só nascesse com
+  -- endereço, esse cenário não geraria linha nenhuma, a contagem de "não sei"
+  -- ficaria em zero e o vigia ficaria calado no único caso que ele existe para
+  -- pegar.
+  --
+  -- A linha sem endereço também é registro melhor: ela diz "esta pessoa esteve
+  -- aqui neste dia e não conseguimos ver de onde", que é verdade. A ausência da
+  -- linha diria "esta pessoa não esteve aqui", que é mentira.
+  ip inet,
 
   -- ── DUAS COLUNAS, DUAS PERGUNTAS ──────────────────────────────────────────
   -- `origem` é uma OBSERVAÇÃO: o que o endereço disse. `veredito` é o que
@@ -146,6 +178,13 @@ on conflict (key) do nothing;
 -- ruído de madrugada.
 insert into public.ops_config (key, value)
 values ('porteiro_nao_sei_minimo', '5')
+on conflict (key) do nothing;
+
+-- A proporção a partir da qual o silêncio acaba, de 0 a 1. Mora aqui pelo mesmo
+-- motivo do piso: é ela que mais segura o aviso, e afrouxá-la não pode depender
+-- de um deploy.
+insert into public.ops_config (key, value)
+values ('porteiro_nao_sei_proporcao', '0.1')
 on conflict (key) do nothing;
 
 -- ── O lote que preenche o país (#553) ───────────────────────────────────────

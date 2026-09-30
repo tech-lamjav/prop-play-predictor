@@ -48,8 +48,12 @@ const CRON_SECRET = Deno.env.get("CRON_SECRET") || "";
 const POR_VEZ = 1000;
 
 interface LinhaPendente {
-  ip: string;
+  /** Pode ser nulo: a linha nasce mesmo quando a borda não disse o endereço. */
+  ip: string | null;
 }
+
+/** O rótulo das linhas sem endereço no resumo devolvido. */
+const SEM_ENDERECO = "sem_endereco";
 
 function json(corpo: unknown, status = 200): Response {
   return new Response(JSON.stringify(corpo), {
@@ -93,16 +97,25 @@ serve(async (req) => {
     // não deu para ler, e endereço de fora da região do LACNIC. As duas viram
     // linha marcada como tentada e sem país.
     const porPais = new Map<string, Set<string>>();
+    let semEndereco = 0;
     for (const { ip } of pendentes) {
+      // Linha sem endereço não entra em nenhum conjunto de IPs: ela é filtrada
+      // por `is null` na escrita, e não por `in (...)`, porque nulo não é um
+      // valor que a lista pegue.
+      if (ip === null) {
+        semEndereco++;
+        continue;
+      }
       const pais = paisDoIp(ip) ?? "sem_pais";
       const conjunto = porPais.get(pais) ?? new Set<string>();
       conjunto.add(ip);
       porPais.set(pais, conjunto);
     }
 
-    const resumo = Object.fromEntries(
+    const resumo: Record<string, number> = Object.fromEntries(
       [...porPais].map(([pais, ips]) => [pais, ips.size]),
     );
+    if (semEndereco > 0) resumo[SEM_ENDERECO] = semEndereco;
 
     if (apenasRelatar) {
       return json({ pendentes: pendentes.length, modo: "report", enderecos_por_pais: resumo });
@@ -131,6 +144,22 @@ serve(async (req) => {
         continue;
       }
       atualizadas += count ?? 0;
+    }
+
+    // As linhas sem endereço fecham à parte: nulo não é um valor que `in (...)`
+    // pegue. Elas ficam marcadas como tentadas e sem país — que é a verdade, e
+    // é o que as tira da fila para sempre.
+    if (semEndereco > 0) {
+      const { error: erroSemEndereco, count } = await supabase
+        .from("registro_de_presenca")
+        .update({ pais: null, pais_resolvido_em: agora }, { count: "exact" })
+        .is("pais_resolvido_em", null)
+        .is("ip", null);
+      if (erroSemEndereco) {
+        console.error("[resolver-pais] linhas sem endereço falharam:", erroSemEndereco.message);
+      } else {
+        atualizadas += count ?? 0;
+      }
     }
 
     console.log(

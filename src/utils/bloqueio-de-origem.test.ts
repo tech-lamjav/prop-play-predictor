@@ -15,7 +15,7 @@ import {
  * não é erro de país, é a tela decidir antes de ter resposta.
  */
 
-const base: EstadoDaPorta = { carregando: false, veredito: 'entrou', pathname: '/futebol' };
+const base: EstadoDaPorta = { veredito: 'entrou', pathname: '/futebol' };
 const com = (mudanca: Partial<EstadoDaPorta>): EstadoDaPorta => ({ ...base, ...mudanca });
 
 describe('rotaSempreAberta', () => {
@@ -51,13 +51,15 @@ describe('queMostrar', () => {
     expect(queMostrar(com({ veredito: 'barrado' }))).toBe('bloqueio');
   });
 
-  it('espera enquanto não há resposta, e nunca bloqueia por antecipação', () => {
-    // É o erro mais provável desta tela: decidir antes de saber. O resultado
-    // seria a tela de bloqueio piscando em cima de todo mundo a cada
+  it('mostra o produto enquanto não há resposta, e nunca bloqueia por antecipação', () => {
+    // É o erro mais provável desta tela: decidir antes de saber. Bloquear por
+    // antecipação poria a tela de bloqueio em cima de todo mundo a cada
     // carregamento, inclusive de quem está no Peru.
-    expect(queMostrar(com({ carregando: true, veredito: null }))).toBe('espera');
-    expect(queMostrar(com({ carregando: false, veredito: null }))).toBe('espera');
-    expect(queMostrar(com({ carregando: true, veredito: 'barrado' }))).toBe('espera');
+    //
+    // E mostrar o produto — em vez de uma espera — é o que faz a chave
+    // desligada não custar nada a ninguém: sem bloqueio ligado ninguém é
+    // barrado nunca, e uma espera cobraria uma ida à rede para comprar nada.
+    expect(queMostrar(com({ veredito: null }))).toBe('produto');
   });
 
   it('deixa Termos e Privacidade abertos mesmo para quem foi barrado', () => {
@@ -67,12 +69,8 @@ describe('queMostrar', () => {
     expect(queMostrar(com({ veredito: 'barrado', pathname: '/privacidade' }))).toBe('produto');
   });
 
-  it('não põe os documentos para esperar o porteiro', () => {
-    // Rota sempre aberta vence até a espera: um carregando na frente de um
-    // documento estático não serve a ninguém.
-    expect(queMostrar(com({ carregando: true, veredito: null, pathname: '/termos' }))).toBe(
-      'produto',
-    );
+  it('abre os documentos mesmo sem resposta do porteiro', () => {
+    expect(queMostrar(com({ veredito: null, pathname: '/termos' }))).toBe('produto');
   });
 
   it('a rota não salva quem está no produto', () => {

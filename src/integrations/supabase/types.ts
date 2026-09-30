@@ -688,7 +688,7 @@ export type Database = {
         Row: {
           criado_em: string
           dia: string
-          ip: string
+          ip: string | null
           origem: string
           pais: string | null
           pais_resolvido_em: string | null
@@ -698,7 +698,7 @@ export type Database = {
         Insert: {
           criado_em?: string
           dia: string
-          ip: string
+          ip?: string | null
           origem: string
           pais?: string | null
           pais_resolvido_em?: string | null
@@ -708,7 +708,7 @@ export type Database = {
         Update: {
           criado_em?: string
           dia?: string
-          ip?: string
+          ip?: string | null
           origem?: string
           pais?: string | null
           pais_resolvido_em?: string | null

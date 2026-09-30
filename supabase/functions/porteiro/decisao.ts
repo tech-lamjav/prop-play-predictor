@@ -12,7 +12,7 @@
 import type { RespostaDeOrigem } from '../shared/faixas-do-brasil.ts';
 
 /** O que o endereço disse. É observação, e é o que vira prova. */
-export type OrigemObservada = 'brasil' | 'fora' | 'nao_sei';
+export type OrigemDoRegistro = 'brasil' | 'fora' | 'nao_sei';
 
 /** O que aconteceu com a pessoa. Não existe meio acesso. */
 export type Veredito = 'entrou' | 'barrado';
@@ -27,7 +27,7 @@ export interface EstadoDoPorteiro {
 }
 
 export interface DecisaoDoPorteiro {
-  readonly origem: OrigemObservada;
+  readonly origem: OrigemDoRegistro;
   readonly veredito: Veredito;
 }
 
@@ -38,7 +38,7 @@ export interface DecisaoDoPorteiro {
  * o registro fala sobre a PESSOA (`brasil`/`fora`). Guardar 'sim' numa coluna
  * chamada origem obrigaria quem lê a lembrar qual era a pergunta.
  */
-function observar(resposta: RespostaDeOrigem): OrigemObservada {
+function observar(resposta: RespostaDeOrigem): OrigemDoRegistro {
   if (resposta === 'sim') return 'brasil';
   if (resposta === 'nao') return 'fora';
   return 'nao_sei';

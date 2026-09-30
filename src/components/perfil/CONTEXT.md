@@ -51,9 +51,11 @@ Dois juízes de país que podem discordar são piores que nenhum.
 _Avoid_: middleware, firewall, bloqueio, geo-block
 
 **Veredito**:
-O que o porteiro decidiu naquele acesso: entrou, foi barrado, ou não deu para
-saber. "Não deu para saber" **deixa entrar** — e é contado, porque um fail-open
-silencioso é como um país bloqueado deixa de ser bloqueado sem ninguém perceber.
+O que o porteiro decidiu naquele acesso: entrou ou foi barrado. **Só dois** — não
+existe meio acesso, e a incerteza não mora aqui: ela mora na **origem**, e origem
+incerta deixa entrar. Separar assim é o que impede um defeito nosso de virar
+"barrado" no registro, que seria afirmar sobre a pessoa uma coisa que a gente não
+sabe.
 _Avoid_: status, permissão, flag
 
 **Perfil declarado**:

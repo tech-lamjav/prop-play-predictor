@@ -13,16 +13,23 @@
  * segundo juiz que a spec existe para não ter.
  */
 
-/** As três coisas que podem estar na tela. */
-export type QueMostrar = 'produto' | 'bloqueio' | 'espera';
+/** As duas coisas que podem estar na tela. */
+export type QueMostrar = 'produto' | 'bloqueio';
 
-/** O que o porteiro devolveu. Espelha o tipo do hook, de propósito. */
+/** O que aconteceu com a pessoa. Não existe meio acesso. */
 export type Veredito = 'entrou' | 'barrado';
 
+/** O que o endereço disse. É observação, e é o que vira prova. */
+export type OrigemDoRegistro = 'brasil' | 'fora' | 'nao_sei';
+
 export interface EstadoDaPorta {
-  /** Verdadeiro enquanto a resposta do porteiro não chegou. */
-  readonly carregando: boolean;
-  /** O veredito devolvido, ou null se ainda não há resposta. */
+  /**
+   * O veredito devolvido, ou null enquanto não há resposta.
+   *
+   * Não existe campo de "carregando" aqui de propósito: sem resposta e com
+   * resposta de que entrou levam ao MESMO lugar, então distingui-los seria
+   * convidar alguém a tratá-los diferente.
+   */
   readonly veredito: Veredito | null;
   /** A rota atual, para as exceções abaixo. */
   readonly pathname: string;
@@ -55,17 +62,22 @@ export function rotaSempreAberta(pathname: string): boolean {
 /**
  * O que colocar na tela.
  *
- * ⚠️ A ordem das três perguntas é a regra, não uma otimização.
+ * ⚠️ **Só o veredito `barrado` tira alguém do produto.** Enquanto a resposta
+ * não chegou, a tela mostra o produto — e não uma espera.
  *
- * 1. Rota sempre aberta vence tudo — inclusive a espera. Fazer Termos esperar
- *    pelo porteiro poria um carregando na frente de um documento estático.
- * 2. Sem resposta é ESPERA, e nunca bloqueio. "Ainda não sei" não é "não": a
- *    tela de bloqueio piscando em cima de todo mundo a cada carregamento seria
- *    pior que não ter bloqueio nenhum.
- * 3. Só então o veredito manda.
+ * A primeira versão disto punha um carregando na frente de todo mundo até o
+ * porteiro responder, e estava errada por dois motivos que só apareceram na
+ * revisão. Com a chave do bloqueio DESLIGADA ninguém nunca é barrado, então
+ * aquela espera não comprava nada e mesmo assim cobrava uma ida à rede de cada
+ * pessoa do mundo, inclusive na página pública. E ela contradizia o resto do
+ * desenho: em todo outro lugar deste sistema, não saber deixa entrar.
+ *
+ * O que a espera existia para evitar continua evitado: a tela de bloqueio nunca
+ * aparece antes de haver resposta. Quem for barrado vê o produto por um
+ * instante e então a explicação — e a sessão dessa pessoa já está sendo
+ * derrubada do outro lado.
  */
 export function queMostrar(estado: EstadoDaPorta): QueMostrar {
   if (rotaSempreAberta(estado.pathname)) return 'produto';
-  if (estado.carregando || estado.veredito === null) return 'espera';
   return estado.veredito === 'barrado' ? 'bloqueio' : 'produto';
 }

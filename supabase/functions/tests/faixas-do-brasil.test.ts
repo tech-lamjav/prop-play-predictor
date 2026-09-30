@@ -54,9 +54,38 @@ Deno.test("os extremos de uma faixa estão dentro, e os vizinhos fora", () => {
   }
 });
 
-Deno.test("o começo de cada bloco IPv6 é reconhecido", () => {
+Deno.test("um bloco IPv6 vale do primeiro ao último endereço", () => {
+  // O começo sozinho não prova nada: um erro na conta do tamanho do prefixo
+  // faria o bloco valer um endereço só, e todo brasileiro em IPv6 — que é a
+  // maioria do celular — passaria como estrangeiro sem ninguém notar.
+  const paraBigInt = (endereco: string) => {
+    const [antes, depois] = endereco.split("::");
+    const esquerda = antes ? antes.split(":") : [];
+    const direita = depois ? depois.split(":") : [];
+    const grupos = [
+      ...esquerda,
+      ...Array(8 - esquerda.length - direita.length).fill("0"),
+      ...direita,
+    ];
+    return grupos.reduce((total, g) => (total << 16n) | BigInt(parseInt(g || "0", 16)), 0n);
+  };
+  const paraTexto = (valor: bigint) => {
+    const grupos: string[] = [];
+    for (let i = 7; i >= 0; i--) {
+      grupos.push(((valor >> BigInt(i * 16)) & 0xffffn).toString(16));
+    }
+    return grupos.join(":");
+  };
+
   for (const cidr of [FAIXAS_V6[0], FAIXAS_V6[FAIXAS_V6.length - 1]]) {
-    assertEquals(ehDoBrasil(cidr.split("/")[0]), "sim", cidr);
+    const [endereco, bits] = cidr.split("/");
+    const inicio = paraBigInt(endereco);
+    const fim = inicio + (1n << BigInt(128 - Number(bits))) - 1n;
+
+    assertEquals(ehDoBrasil(paraTexto(inicio)), "sim", `início de ${cidr}`);
+    assertEquals(ehDoBrasil(paraTexto(fim)), "sim", `fim de ${cidr}`);
+    assertEquals(ehDoBrasil(paraTexto(inicio - 1n)), "nao", `antes de ${cidr}`);
+    assertEquals(ehDoBrasil(paraTexto(fim + 1n)), "nao", `depois de ${cidr}`);
   }
 });
 

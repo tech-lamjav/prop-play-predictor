@@ -25,6 +25,10 @@ const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
 const CRON_SECRET = Deno.env.get("CRON_SECRET") || "";
 const FAIL_THRESHOLD = 3; // de 5 execuções recentes
 const RUNS_WINDOW_H = 48;  // janela de message_runs lida a cada check
+// Janela do registro de presença. Mesmo número por enquanto, constante própria
+// de propósito: as duas respondem perguntas diferentes e vão querer números
+// diferentes no dia em que uma delas fizer barulho demais.
+const PRESENCA_WINDOW_H = 48;
 
 interface JobHealth {
   jobname: string;
@@ -98,8 +102,8 @@ serve(async (req) => {
     // gravado. Efeito colateral aceito: visitante deslogado não gera linha, e
     // portanto não entra nesta conta — o sinal cobre quem tem conta, que é
     // quem a evidência fiscal precisa descrever.
-    const desde = new Date(Date.now() - RUNS_WINDOW_H * 3_600_000).toISOString();
-    const [{ count: totalPresenca }, { count: naoSeiPresenca }, cfgBloqueio, cfgLimite] =
+    const desde = new Date(Date.now() - PRESENCA_WINDOW_H * 3_600_000).toISOString();
+    const [{ count: totalPresenca }, { count: naoSeiPresenca }, cfgBloqueio, cfgLimite, cfgProporcao] =
       await Promise.all([
         supabase
           .from("registro_de_presenca")
@@ -112,9 +116,11 @@ serve(async (req) => {
           .eq("origem", "nao_sei"),
         supabase.from("ops_config").select("value").eq("key", "bloqueio_brasil_ligado").maybeSingle(),
         supabase.from("ops_config").select("value").eq("key", "porteiro_nao_sei_minimo").maybeSingle(),
+        supabase.from("ops_config").select("value").eq("key", "porteiro_nao_sei_proporcao").maybeSingle(),
       ]);
 
     const limite = Number(cfgLimite.data?.value);
+    const proporcao = Number(cfgProporcao.data?.value);
     const avisoPorteiro = avisoDoPorteiro(
       { naoSei: naoSeiPresenca ?? 0, total: totalPresenca ?? 0 },
       {
@@ -122,6 +128,8 @@ serve(async (req) => {
         // Valor inválido na tabela cai no padrão do módulo em vez de virar NaN
         // — um limite NaN nunca dispara, e o aviso morreria calado.
         minimo: Number.isFinite(limite) && limite > 0 ? limite : undefined,
+        proporcaoMaxima:
+          Number.isFinite(proporcao) && proporcao > 0 && proporcao < 1 ? proporcao : undefined,
       },
     );
 
@@ -147,7 +155,7 @@ serve(async (req) => {
       if (avisoPorteiro) {
         const pct = Math.round(avisoPorteiro.proporcao * 100);
         lines.push(
-          `• porteiro: ${avisoPorteiro.naoSei} de ${avisoPorteiro.total} acessos das últimas ${RUNS_WINDOW_H}h sem origem conhecida (${pct}%) — o bloqueio está DEIXANDO ENTRAR quem não consegue identificar`,
+          `• porteiro: ${avisoPorteiro.naoSei} de ${avisoPorteiro.total} acessos das últimas ${PRESENCA_WINDOW_H}h sem origem conhecida (${pct}%) — o bloqueio está DEIXANDO ENTRAR quem não consegue identificar`,
         );
       }
       // Runbook sob medida: a linha fixa de antes mandava caçar secret em

@@ -42,6 +42,18 @@
  * Faixas encostadas ou sobrepostas do MESMO país são fundidas. Isso encolhe o
  * arquivo sem mudar nenhuma resposta, e deixa a busca binária com menos itens.
  */
+// ⚠️ DUPLICAÇÃO CONHECIDA. As contas de endereço abaixo (`v4ParaNumero`,
+// `v6ParaBigInt`, a expansão do `::`) existem também em
+// `supabase/functions/shared/endereco-ip.ts`, que é onde elas moram para valer.
+// A fronteira é de runtime: este script roda em node, aquele módulo é TypeScript
+// para o Deno, e node não importa `.ts`.
+//
+// A duplicação é tolerável aqui por um motivo específico: as duas cópias não
+// respondem a mesma pergunta em produção. Esta converte a publicação do LACNIC
+// UMA VEZ, na geração; aquela lê o endereço de quem chega, a cada acesso. E o
+// teste do arquivo gerado confere o resultado das duas contra os mesmos dados,
+// então uma divergência entre elas aparece como teste vermelho, e não como
+// bloqueio errado em silêncio.
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 

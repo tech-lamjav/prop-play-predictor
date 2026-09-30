@@ -64,6 +64,10 @@ Deno.test("barrar exige as três condições ao mesmo tempo", () => {
 // ── Derrubar a sessão ───────────────────────────────────────────────────────
 
 Deno.test("a sessão cai quando a pessoa logada é barrada", () => {
+  // ⚠️ "Cai" quer dizer que a renovação morre, e não que o acesso para no
+  // mesmo instante: o token que a pessoa já tem na mão vale até expirar,
+  // porque quem o valida confere a assinatura sem consultar o banco. É
+  // restrição real e de boa-fé, não cofre — e está escrito na função.
   const barrado = decidir(com({ origem: "sim" }));
   assertEquals(deveRevogarASessao(barrado, true), true);
 });

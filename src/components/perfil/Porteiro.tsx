@@ -1,53 +1,47 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 import { usePorteiro } from '@/hooks/use-porteiro';
 import { queMostrar } from '@/utils/bloqueio-de-origem';
 import { TelaDeBloqueio } from './TelaDeBloqueio';
 
 /**
- * A porta: mostra o produto, a tela de bloqueio, ou espera.
+ * A porta: mostra o produto ou a tela de bloqueio.
  *
- * Spec na issue #548, tickets #550 e #551.
+ * Spec na issue #548, tickets #550, #551 e #552.
  *
  * Embrulha as rotas porque precisa poder aparecer NO LUGAR delas. Os outros
  * sentinelas do App desenham por cima do produto; este substitui o produto, e
  * por isso é o único que recebe filhos.
  *
  * Ele OBEDECE o veredito do servidor e não decide nada sobre país. A regra de
- * qual das três coisas mostrar mora numa função pura em `@/utils/bloqueio-de-origem`,
- * que é onde o teste está.
+ * qual das duas coisas mostrar mora numa função pura em
+ * `@/utils/bloqueio-de-origem`, que é onde o teste está.
  *
- * ⚠️ CUSTO CONHECIDO: enquanto a resposta não chega, a tela espera — e isso põe
- * uma ida à rede na frente do primeiro desenho, para todo mundo, inclusive
- * quem está no Peru. Foi a escolha combinada, porque a alternativa é mostrar o
- * produto primeiro e trocar depois, o que faria a tela de bloqueio piscar em
- * cima de quem foi barrado e, pior, deixaria o app fazer chamadas de dados
- * nesse intervalo.
- *
- * Duas formas de tirar essa espera existem e não foram feitas aqui, de
- * propósito, porque mudam o combinado: perguntar em paralelo com a sessão em
- * vez de depois dela, e lembrar o último veredito da sessão para pular a espera
- * a partir do segundo carregamento.
+ * ⚠️ Enquanto a resposta não chega, o produto aparece normalmente. Não há
+ * espera, e isso é deliberado: com a chave do bloqueio desligada ninguém nunca
+ * é barrado, então uma espera não compraria nada e cobraria uma ida à rede de
+ * cada pessoa do mundo. O motivo completo está na função pura.
  */
 export const Porteiro: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { carregando, resposta } = usePorteiro();
+  const { resposta } = usePorteiro();
   const { pathname } = useLocation();
 
-  const mostrar = queMostrar({
-    carregando,
-    veredito: resposta?.veredito ?? null,
-    pathname,
-  });
+  const mostrar = queMostrar({ veredito: resposta?.veredito ?? null, pathname });
+
+  // O servidor derruba a sessão de quem foi barrado (#552); aqui o navegador
+  // joga fora o que ainda tem guardado. Não é a trava — a trava é do lado de
+  // lá — mas é o que impede o app de seguir tentando usar um token morto e
+  // encher a tela de erro por trás da explicação.
+  useEffect(() => {
+    if (mostrar !== 'bloqueio') return;
+    void supabase.auth.signOut({ scope: 'local' }).catch(() => {
+      /* sair já falhou do lado do servidor ou não havia sessão: a tela de
+         bloqueio continua valendo de qualquer jeito */
+    });
+  }, [mostrar]);
 
   if (mostrar === 'bloqueio') return <TelaDeBloqueio />;
-
-  if (mostrar === 'espera') {
-    return (
-      <div className="min-h-dvh flex items-center justify-center" aria-busy="true">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-forest" />
-      </div>
-    );
-  }
 
   return <>{children}</>;
 };

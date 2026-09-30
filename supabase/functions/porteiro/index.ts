@@ -61,20 +61,21 @@ function diaDeHoje(): string {
 
 /** O token cru do cabeçalho, sem o "Bearer". */
 function tokenDaRequisicao(req: Request): string | null {
-  const cabecalho = req.headers.get("Authorization") || req.headers.get("authorization");
+  // `Headers.get` já ignora maiúsculas por especificação; ler o mesmo cabeçalho
+  // com dois nomes sugeria que não ignorava.
+  const cabecalho = req.headers.get("authorization");
   if (!cabecalho) return null;
   const token = cabecalho.replace("Bearer ", "").trim();
   return token === "" ? null : token;
 }
 
 /** O `sub` do token, ou null para quem chegou com a chave anônima. */
-function pessoaDoToken(req: Request): string | null {
-  const cabecalho = req.headers.get("Authorization") || req.headers.get("authorization");
-  if (!cabecalho) return null;
+function pessoaDoToken(token: string | null): string | null {
+  if (!token) return null;
   try {
     // A assinatura já foi conferida pelo gateway antes de chegar aqui; o que
     // falta é só ler quem é.
-    const payload = JSON.parse(atob(cabecalho.replace("Bearer ", "").split(".")[1]));
+    const payload = JSON.parse(atob(token.split(".")[1]));
     return typeof payload?.sub === "string" && payload.sub !== "" ? payload.sub : null;
   } catch {
     return null;
@@ -97,7 +98,8 @@ serve(async (req) => {
   );
 
   const ip = ipDaRequisicao(req.headers);
-  const pessoa = pessoaDoToken(req);
+  const token = tokenDaRequisicao(req);
+  const pessoa = pessoaDoToken(token);
 
   try {
     const [chave, quemE] = await Promise.all([
@@ -116,7 +118,11 @@ serve(async (req) => {
 
     const decisao = decidir({ origem: ehDoBrasil(ip), bloqueioLigado, ehSocio });
 
-    if (pessoa && ip) {
+    // ⚠️ A linha nasce mesmo SEM endereço. A forma mais provável de o porteiro
+    // parar de saber de onde a pessoa veio é o cabeçalho da borda sumir — e se
+    // esse caso não gerasse linha, a contagem de "não sei" ficaria em zero e o
+    // vigia (#554) ficaria calado justamente quando deveria gritar.
+    if (pessoa) {
       // `ignoreDuplicates` é o "primeira do dia vence": a linha existente não é
       // tocada. Falhar aqui não pode derrubar a resposta — o registro é prova,
       // e prova que falta é um relatório incompleto, nunca um acesso quebrado.
@@ -137,17 +143,27 @@ serve(async (req) => {
 
     // ── A sessão cai depois da linha ser gravada, e antes da resposta sair ──
     //
-    // Barrar só na tela é um pedido educado: o token continuaria valendo, e
-    // quem falasse direto com a API entraria do mesmo jeito. Aqui o token
-    // morre, e nenhuma regra de acesso precisou ser tocada.
+    // Barrar só na tela é um pedido educado: quem falasse direto com a API
+    // entraria do mesmo jeito. Revogar a sessão mata a renovação, e a conta
+    // para de conseguir voltar.
+    //
+    // ⚠️ MAS NÃO É IMEDIATO, e é importante não acreditar que seja. Revogar
+    // derruba o token de RENOVAÇÃO; o token de acesso que a pessoa já tem na
+    // mão continua válido até expirar, porque quem valida ele confere só a
+    // assinatura e não consulta o banco. Na prática: quem tiver extraído o
+    // token e quiser insistir contra a API tem a janela de vida dele, e depois
+    // acaba. É uma restrição real e de boa-fé, não um cofre — e o mesmo já
+    // valia para VPN, que derruba qualquer geo-bloqueio.
+    //
+    // Fechar essa janela de verdade exigiria verificação nas regras de acesso
+    // de dezenas de tabelas, que foi descartado no #552 por ser muito risco de
+    // quebrar acesso legítimo. Encurtar a vida do token é uma configuração do
+    // projeto, e não código.
     //
     // ⚠️ A ORDEM É A REGRA. A pessoa precisa ver a tela que explica, e não a
-    // de entrar. Isso funciona porque a resposta com `barrado` sai desta
-    // função ANTES de o navegador perceber que perdeu a sessão — e porque a
-    // porta, do outro lado, decide pelo veredito e não pelo estado de login:
-    // mesmo que o app tente empurrar a pessoa para a tela de entrada, a tela
-    // de bloqueio continua por cima.
-    const token = tokenDaRequisicao(req);
+    // de entrar. Isso funciona porque a porta, do outro lado, decide pelo
+    // veredito e não pelo estado de login: mesmo que o app tente empurrar a
+    // pessoa para a tela de entrada, a de bloqueio continua por cima.
     if (deveRevogarASessao(decisao, pessoa !== null) && token) {
       // 'global' derruba todas as sessões da pessoa, e não só esta aba. Quem
       // foi barrado num aparelho está barrado em todos — a regra é sobre de

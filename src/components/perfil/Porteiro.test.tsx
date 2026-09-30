@@ -22,6 +22,13 @@ vi.mock('@/hooks/use-porteiro', () => ({
   usePorteiro: () => estado.atual,
 }));
 
+// A porta joga fora a sessão guardada no navegador quando barra alguém (#552).
+// Não é a trava — a trava é o servidor derrubando a sessão —, então aqui basta
+// que a chamada exista e não exploda.
+vi.mock('@/integrations/supabase/client', () => ({
+  supabase: { auth: { signOut: vi.fn().mockResolvedValue({ error: null }) } },
+}));
+
 function montar(novo: EstadoDoPorteiro, rota = '/futebol') {
   estado.atual = novo;
   render(
@@ -39,25 +46,25 @@ beforeEach(() => {
 
 describe('quem entrou', () => {
   it('vê o produto', () => {
-    montar({ carregando: false, resposta: { origem: 'fora', veredito: 'entrou' } });
+    montar({ resposta: { origem: 'fora', veredito: 'entrou' } });
     expect(screen.getByText('o produto')).toBeInTheDocument();
   });
 
   it('vê o produto mesmo quando a origem não deu para saber', () => {
     // Fail-open: o defeito nosso não tranca ninguém.
-    montar({ carregando: false, resposta: { origem: 'nao_sei', veredito: 'entrou' } });
+    montar({ resposta: { origem: 'nao_sei', veredito: 'entrou' } });
     expect(screen.getByText('o produto')).toBeInTheDocument();
   });
 });
 
 describe('quem foi barrado', () => {
   it('não vê o produto', () => {
-    montar({ carregando: false, resposta: { origem: 'brasil', veredito: 'barrado' } });
+    montar({ resposta: { origem: 'brasil', veredito: 'barrado' } });
     expect(screen.queryByText('o produto')).not.toBeInTheDocument();
   });
 
   it('recebe uma explicação e um caminho de contato', () => {
-    montar({ carregando: false, resposta: { origem: 'brasil', veredito: 'barrado' } });
+    montar({ resposta: { origem: 'brasil', veredito: 'barrado' } });
     expect(screen.getByRole('heading')).toBeInTheDocument();
     // O contato é a saída de emergência de quem foi classificado no país
     // errado. Sem ele, essa pessoa não tem para onde ir.
@@ -65,34 +72,32 @@ describe('quem foi barrado', () => {
   });
 
   it('ainda consegue chegar aos documentos', () => {
-    montar({ carregando: false, resposta: { origem: 'brasil', veredito: 'barrado' } });
+    montar({ resposta: { origem: 'brasil', veredito: 'barrado' } });
     expect(screen.getByRole('link', { name: /termos/i })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /privacidade/i })).toBeInTheDocument();
   });
 });
 
 describe('enquanto ninguém sabe', () => {
-  it('espera, e não mostra o bloqueio', () => {
-    montar({ carregando: true, resposta: null });
-    expect(screen.queryByText('o produto')).not.toBeInTheDocument();
+  it('mostra o produto, e não o bloqueio', () => {
+    // Com a chave do bloqueio desligada ninguém nunca é barrado. Se esta tela
+    // segurasse o produto até o porteiro responder, ela cobraria uma ida à
+    // rede de cada pessoa do mundo para comprar nada — inclusive na página
+    // pública, e inclusive de quem está no Peru.
+    montar({ resposta: null });
+    expect(screen.getByText('o produto')).toBeInTheDocument();
     expect(screen.queryByRole('heading')).not.toBeInTheDocument();
-    expect(document.querySelector('[aria-busy="true"]')).toBeTruthy();
-  });
-
-  it('espera também quando a resposta ainda não chegou sem estar carregando', () => {
-    montar({ carregando: false, resposta: null });
-    expect(document.querySelector('[aria-busy="true"]')).toBeTruthy();
   });
 });
 
 describe('as rotas que sobrevivem ao bloqueio', () => {
   it('mostram o conteúdo para quem foi barrado', () => {
-    montar({ carregando: false, resposta: { origem: 'brasil', veredito: 'barrado' } }, '/termos');
+    montar({ resposta: { origem: 'brasil', veredito: 'barrado' } }, '/termos');
     expect(screen.getByText('o produto')).toBeInTheDocument();
   });
 
-  it('não esperam o porteiro responder', () => {
-    montar({ carregando: true, resposta: null }, '/privacidade');
+  it('abrem mesmo sem resposta do porteiro', () => {
+    montar({ resposta: null }, '/privacidade');
     expect(screen.getByText('o produto')).toBeInTheDocument();
   });
 });

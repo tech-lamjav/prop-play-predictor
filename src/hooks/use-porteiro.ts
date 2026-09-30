@@ -13,17 +13,27 @@ import { useAuth } from '@/hooks/use-auth';
  * bloqueio sai por um critério enquanto a prova sai por outro.
  */
 
-export type OrigemObservada = 'brasil' | 'fora' | 'nao_sei';
-export type Veredito = 'entrou' | 'barrado';
+// Os dois tipos moram em `@/utils/bloqueio-de-origem`, que é folha e é onde a
+// regra está. Repeti-los aqui daria duas definições dentro do mesmo `src/`
+// livres para divergir — a cópia do lado do Deno tem fronteira de runtime para
+// justificá-la, esta não teria.
+export type { OrigemDoRegistro, Veredito } from '@/utils/bloqueio-de-origem';
+import type { OrigemDoRegistro, Veredito } from '@/utils/bloqueio-de-origem';
 
 export interface RespostaDoPorteiro {
-  readonly origem: OrigemObservada;
+  readonly origem: OrigemDoRegistro;
   readonly veredito: Veredito;
 }
 
 export interface EstadoDoPorteiro {
-  /** Enquanto verdadeiro, ainda não se sabe. "Não sei" NUNCA é "não". */
-  carregando: boolean;
+  /**
+   * A resposta do servidor, ou null enquanto ela não chegou.
+   *
+   * Não há um campo de "carregando" separado: quem consome trata "ainda não
+   * sei" e "pode entrar" do mesmo jeito, e oferecer os dois estados convidaria
+   * alguém a segurar a tela esperando — que é exatamente o que este desenho
+   * não faz.
+   */
   resposta: RespostaDoPorteiro | null;
 }
 
@@ -83,5 +93,5 @@ export function usePorteiro(): EstadoDoPorteiro {
     };
   }, [isLoading, user?.id]);
 
-  return { carregando: isLoading || resposta === null, resposta };
+  return { resposta };
 }
