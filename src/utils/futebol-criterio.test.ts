@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { fmtExato } from '@/utils/formato';
 import {
   divergenciaDaPrestacao,
   faltouParaOCorte,
   divergenciasDaSaida,
-  exato,
   fraseDaPrestacao,
   prestacaoDaPremissa,
   temCriterio,
@@ -699,11 +699,11 @@ describe('a média e a contagem podem apontar para lados diferentes', () => {
     // O gráfico continua sendo o do total de gols com a linha tracejada, que é o
     // que deixa contar as barras. O que sai é a linha da MÉDIA: ela não é o
     // insumo, e desenhá-la ali oferece o número errado com destaque.
-    const story = storyDaPremissa('historico_over', comTotais([1, 2, 3, 4, 5], [1, 2, 3, 4, 5]), 'home', 2.5)!;
+    const story = storyDaPremissa('goals_over_under', 'historico_over', comTotais([1, 2, 3, 4, 5], [1, 2, 3, 4, 5]), 'home', 2.5)!;
 
     expect(story.series.every((s) => s.mostraMedia)).toBe(false);
     // Já nas de média ela fica.
-    const daMedia = storyDaPremissa('defesas_firmes', historicoCom(1, 1), 'home', 2.5)!;
+    const daMedia = storyDaPremissa('goals_over_under', 'defesas_firmes', historicoCom(1, 1), 'home', 2.5)!;
     expect(daMedia.series.every((s) => s.mostraMedia)).toBe(true);
   });
 });
@@ -721,7 +721,7 @@ describe('quanto faltou para o corte', () => {
     expect(faltouParaOCorte(p)).toBe(0.05);
     // O formatador exato é quem preserva os 0,05: `toFixed(1)` daria "0,1", o
     // dobro, e justamente no número que existe para mostrar que faltou pouco.
-    expect(exato(faltouParaOCorte(p)!)).toBe('0,05');
+    expect(fmtExato(faltouParaOCorte(p)!)).toBe('0,05');
   });
 
   it('a mesma média acende cinco centésimos adiante', () => {

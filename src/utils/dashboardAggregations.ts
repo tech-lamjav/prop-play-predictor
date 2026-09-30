@@ -1,4 +1,5 @@
 import type { Bet } from '@/hooks/use-bets';
+import { fmtDinheiro, fmtOdd, fmtDecimal } from '@/utils/formato';
 
 export type BetWithTags = Bet & { tags?: { id: string; name: string; color?: string }[] };
 
@@ -535,12 +536,7 @@ interface StatsSummary {
 const MIN_SLICE_N = 3;
 
 /** Formatter padrão pra moeda — strip ",00" final quando inteiro. */
-const defaultMoneyFmt = (v: number): string =>
-  new Intl.NumberFormat('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-    maximumFractionDigits: 0,
-  }).format(v);
+const defaultMoneyFmt = (v: number): string => fmtDinheiro(v, { casas: 0 });
 
 /** Strip trailing ",00" se aparecer (útil quando o formatter da página adiciona centavos). */
 const cleanCents = (s: string): string => s.replace(/[,.]00\b/, '');
@@ -578,7 +574,7 @@ export const compactify = (s: string): string => {
   }
   const absScaled = Math.abs(scaled);
   const formatted = absScaled < 10
-    ? scaled.toFixed(1).replace('.', ',')
+    ? fmtDecimal(scaled, 1)
     : Math.round(scaled).toString();
   return s.replace(numStr, `${formatted}${suffix}`);
 };
@@ -649,7 +645,7 @@ export function deriveInsights(
         icon: 'target',
         label: 'Disciplina',
         title: 'Odd média alta',
-        body: `Odd média ${avgOdd.toFixed(2)} é arriscada. Apostas com odd 1.5–2.1 tendem a ter ROI mais estável.`,
+        body: `Odd média ${fmtOdd(avgOdd)} é arriscada. Apostas com odd 1.5–2.1 tendem a ter ROI mais estável.`,
       });
     } else if (avgOdd < 1.5) {
       insights.push({
@@ -657,7 +653,7 @@ export function deriveInsights(
         icon: 'target',
         label: 'Disciplina',
         title: 'Odd média baixa',
-        body: `Odd média ${avgOdd.toFixed(2)} é conservadora. Pouco upside por aposta — vale revisar critério de seleção.`,
+        body: `Odd média ${fmtOdd(avgOdd)} é conservadora. Pouco upside por aposta — vale revisar critério de seleção.`,
       });
     }
   }
@@ -781,7 +777,7 @@ export function composeNarrative(
       bullets.push({
         icon: 'target',
         text: 'Odd média:',
-        highlight: `${avgOdd.toFixed(2)} · ${avgOdd >= 1.5 && avgOdd <= 2.5 ? 'dentro da faixa estável.' : 'fora da zona estável (1.5–2.5).'}`,
+        highlight: `${fmtOdd(avgOdd)} · ${avgOdd >= 1.5 && avgOdd <= 2.5 ? 'dentro da faixa estável.' : 'fora da zona estável (1.5–2.5).'}`,
         highlightTone: avgOdd >= 1.5 && avgOdd <= 2.5 ? 'positive' : 'negative',
       });
     }
@@ -890,7 +886,7 @@ export function composeSliceNarrative(
     {
       label: 'ROI',
       // Formato BR: vírgula como decimal (compactify assume BR-format ao parsear)
-      value: `${drill.roi >= 0 ? '+' : ''}${drill.roi.toFixed(1).replace('.', ',')}%`,
+      value: `${drill.roi >= 0 ? '+' : ''}${fmtDecimal(drill.roi, 1)}%`,
       tone: drill.roi >= 0 ? 'positive' : 'negative',
     },
     {
@@ -917,7 +913,7 @@ export function composeSliceNarrative(
   );
   if (drill.won + drill.lost > 0) {
     paraParts.push(
-      `Acerto em ${drill.won} de ${drill.won + drill.lost} (${winRate.toFixed(0)}%), com odd média ${avgOdd.toFixed(2)} e stake médio ${formatCurrency(avgStake)}.`
+      `Acerto em ${drill.won} de ${drill.won + drill.lost} (${winRate.toFixed(0)}%), com odd média ${fmtOdd(avgOdd)} e stake médio ${formatCurrency(avgStake)}.`
     );
   }
   const paragraph = paraParts.join(' ');
@@ -939,17 +935,17 @@ export function composeSliceNarrative(
     if (avgOdd >= 1.5 && avgOdd <= 2.1) {
       insights.push({
         icon: 'target',
-        text: `Odd média ${avgOdd.toFixed(2)} está na zona estável (1.5–2.1).`,
+        text: `Odd média ${fmtOdd(avgOdd)} está na zona estável (1.5–2.1).`,
       });
     } else if (avgOdd < 1.5) {
       insights.push({
         icon: 'target',
-        text: `Odd média ${avgOdd.toFixed(2)} é conservadora — pouco upside por aposta.`,
+        text: `Odd média ${fmtOdd(avgOdd)} é conservadora — pouco upside por aposta.`,
       });
     } else {
       insights.push({
         icon: 'target',
-        text: `Odd média ${avgOdd.toFixed(2)} é arriscada — variância alta.`,
+        text: `Odd média ${fmtOdd(avgOdd)} é arriscada — variância alta.`,
       });
     }
   }
@@ -1046,7 +1042,7 @@ export function composeTagNarrative(
   );
   if (won + lost > 0) {
     paraParts.push(
-      `Acerto em ${won} de ${won + lost} (${winRate.toFixed(0)}%), com odd média ${avgOdd.toFixed(2)} e stake médio ${formatCurrency(avgStake)}.`
+      `Acerto em ${won} de ${won + lost} (${winRate.toFixed(0)}%), com odd média ${fmtOdd(avgOdd)} e stake médio ${formatCurrency(avgStake)}.`
     );
   }
   const paragraph = paraParts.join(' ');
@@ -1067,17 +1063,17 @@ export function composeTagNarrative(
     if (avgOdd >= 1.5 && avgOdd <= 2.1) {
       insights.push({
         icon: 'target',
-        text: `Odd média ${avgOdd.toFixed(2)} está na zona estável (1.5–2.1).`,
+        text: `Odd média ${fmtOdd(avgOdd)} está na zona estável (1.5–2.1).`,
       });
     } else if (avgOdd < 1.5) {
       insights.push({
         icon: 'target',
-        text: `Odd média ${avgOdd.toFixed(2)} é conservadora — pouco upside por aposta.`,
+        text: `Odd média ${fmtOdd(avgOdd)} é conservadora — pouco upside por aposta.`,
       });
     } else {
       insights.push({
         icon: 'target',
-        text: `Odd média ${avgOdd.toFixed(2)} é arriscada — variância alta.`,
+        text: `Odd média ${fmtOdd(avgOdd)} é arriscada — variância alta.`,
       });
     }
   }

@@ -2,6 +2,7 @@
 // futebol-score.ts — apresentação do Score (motor é backend)
 // ============================================================
 import { linhaDaSaida, type Saida } from '@/utils/futebol-saida';
+import { fmtLinhaAnalisada } from '@/utils/formato';
 // O estado do jogo se decide com o RELÓGIO e o status juntos — as três funções
 // vêm do mesmo lugar que as telas usam, para não nascer uma segunda definição
 // de 'acabou' aqui dentro.
@@ -84,7 +85,7 @@ export function marketShort(market: string): string {
 /** Linha do handicap com sinal e vírgula decimal (ex.: -1,5 / +1,5). */
 function fmtHandicapLine(line: number): string {
   const sign = line > 0 ? '+' : line < 0 ? '−' : '';
-  return `${sign}${String(Math.abs(line)).replace('.', ',')}`;
+  return `${sign}${fmtLinhaAnalisada(Math.abs(line))}`;
 }
 
 /** Outcome do 1X2 em PT. */
@@ -101,7 +102,7 @@ export function outcomePt(outcome: string, homeName: string, awayName: string): 
 export function pickLabel(s: Saida, homeName: string, awayName: string): string {
   const { market, outcome, line_value: line } = s;
   if (market === 'goals_over_under') {
-    const n = line != null ? String(line).replace('.', ',') : '';
+    const n = line != null ? fmtLinhaAnalisada(line) : '';
     return outcome === 'Over' ? `Mais de ${n} gols` : `Menos de ${n} gols`;
   }
   if (market === 'asian_handicap') {
@@ -129,21 +130,12 @@ export function pickLabel(s: Saida, homeName: string, awayName: string): string 
   return outcomePt(outcome, homeName, awayName);
 }
 
-/** Palavra do veredito a partir do tamanho do edge (não do Score). */
-export function valorVerdict(edge: number): string {
-  const e = edge * 100;
-  if (e >= 4) return 'Valor forte';
-  if (e >= 2) return 'Valor';
-  return 'Valor leve';
-}
-
 /** Frequência mastigada: "se paga em ~X de 10". */
 export function freqEmDez(odd: number): number {
   return Math.max(1, Math.round(10 / odd));
 }
 
 export const fmtPctScore = (p: number) => `${Math.round(p * 100)}%`;
-export const fmtEdgeScore = (e: number) => `${e >= 0 ? '+' : ''}${(e * 100).toFixed(1)}%`;
 
 /** "Chance" (%) a partir da prob justa devigada (0..1). null se ausente. */
 export function chancePct(prob: number | null | undefined): number | null {
@@ -297,44 +289,6 @@ export function passaNoFiltroDeFaixas(
   return selecionadas.includes(faixaTone(faixa));
 }
 
-/**
- * O filtro de VALOR do painel — a diferença para o preço justo, em faixas.
- *
- * Ele existe porque a porta de preço saiu do gate na virada de 03/09: o board
- * publica a linha independente da vantagem, e hoje sete em cada dez pagam
- * ABAIXO do justo. Sem este filtro, quem procura preço bom precisa varrer a
- * lista inteira lendo a última coluna.
- *
- * As fronteiras são as da distribuição medida em produção (mediana −2,7%), e
- * não números redondos escolhidos no olho: 'positivo' isola os ~8% que pagam
- * acima do justo, 'perto' cobre a massa normal e 'abaixo' o resto.
- *
- * Sem vantagem guardada (oportunidade registrada antiga) a linha passa em
- * qualquer faixa, pelo mesmo motivo do filtro de faixas: ela existiu de
- * verdade, e escondê-la por um campo que nunca foi gravado apagaria o registro.
- */
-export type FiltroDeValor = 'todos' | 'positivo' | 'perto' | 'abaixo';
-
-export const FILTRO_DE_VALOR_PADRAO: FiltroDeValor = 'todos';
-
-export function passaNoFiltroDeValor(filtro: FiltroDeValor, edge: number | null | undefined): boolean {
-  if (filtro === 'todos') return true;
-  if (typeof edge !== 'number') return true;
-  switch (filtro) {
-    case 'positivo': return edge > 0;
-    case 'perto': return edge > -0.02 && edge <= 0;
-    default: return edge <= -0.02;
-  }
-}
-
-/**
- * Cor da diferença para o preço justo. Positivo em verde; zero ou negativo em
- * cor neutra, nunca em vermelho: a diferença é informação, e um preço abaixo do
- * justo não é erro da leitura nem desvantagem a ser anunciada.
- */
-export function edgeToneCls(edge: number | null | undefined): string {
-  return typeof edge === 'number' && edge > 0 ? 'text-forest' : 'text-ink-2';
-}
 
 /**
  * A faixa em palavras, para o selo do Score. Existia em três cópias, cada uma

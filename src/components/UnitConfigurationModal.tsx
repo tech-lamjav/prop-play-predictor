@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { fmtDinheiro } from '@/utils/formato';
 import {
   Dialog,
   DialogContent,
@@ -274,10 +275,7 @@ export function UnitConfigurationModal({
           <div className="rounded-md bg-forest-tint border border-forest/20 p-3">
             <p className="text-[10px] uppercase tracking-[0.14em] text-forest font-semibold">Valor calculado de 1 unidade</p>
             <p className="text-[20px] font-semibold text-forest tabular tracking-tight mt-0.5">
-              {new Intl.NumberFormat('pt-BR', {
-                style: 'currency',
-                currency: 'BRL',
-              }).format(calculatedUnitValue)}
+              {fmtDinheiro(calculatedUnitValue)}
             </p>
           </div>
         )}

@@ -1,4 +1,5 @@
 import type { FutebolFixtureHistorico } from '@/services/futebol-data.service';
+import { fmtLinhaAnalisada } from '@/utils/formato';
 import type { Evidencia } from '@/utils/futebol-evidencias';
 import { n1 } from '@/utils/futebol-evidencias';
 
@@ -85,10 +86,55 @@ const JANELA_DE_CONTAGEM = 5;
  * que o modelo compara — `clean_sheet_total / played_total` e
  * `failed_to_score_total / played_total` (#355).
  */
-export type Metrica = 'ga' | 'gf' | 'xg' | 'total' | 'resultado' | 'sem_sofrer' | 'sem_marcar';
+export type Metrica =
+  | 'ga'
+  | 'gf'
+  | 'xg'
+  | 'total'
+  | 'saldo'
+  | 'ambos'
+  | 'resultado'
+  | 'sem_sofrer'
+  | 'sem_marcar';
+
+/**
+ * ⚠️ `saldo` e `ambos` entraram pela aba de Estatísticas, onde o MERCADO manda
+ * na métrica: handicap mede saldo de gols, ambos marcam é binário. Nenhuma
+ * premissa usa as duas — elas aparecem nos mapas abaixo porque o tipo é
+ * exaustivo, e é essa exaustividade que impede alguém de acrescentar métrica e
+ * esquecer o texto dela.
+ */
 
 /** Métrica binária: a média dela é uma fração de jogos, não uma média de gols. */
-export const EH_BINARIA = (m: Metrica) => m === 'sem_sofrer' || m === 'sem_marcar';
+export const EH_BINARIA = (m: Metrica) => m === 'sem_sofrer' || m === 'sem_marcar' || m === 'ambos';
+
+/**
+ * Métrica que se desenha como QUADRO por jogo, e não como barra.
+ *
+ * Barra afirma quantidade: mais alta é mais. Em `resultado` não há quantidade —
+ * vitória não é "mais alto" que empate — e em `ambos` o jogo só aconteceu ou
+ * não. Desenhar as duas como barra é a tela afirmando uma grandeza que o dado
+ * não tem.
+ *
+ * O quadro traz junto o que a barra não tem: o PLACAR de cada jogo. Num "faltou
+ * gol de um dos lados em 3 dos últimos 5", o placar é a evidência — "1 a 0" diz
+ * sozinho que só um marcou.
+ *
+ * ⚠️ AS BINÁRIAS TODAS, e não só `ambos`. Elas desenhavam barra, e a barra
+ * binária falhava de três jeitos ao mesmo tempo, visto na tela do Czechia ×
+ * England em "Os dois costumam marcar":
+ *
+ *   · o rótulo respondia a pergunta INVERTIDA. `sem_marcar` mede passar em
+ *     branco, então o jogo bom recebia "não" — e o card exibia "não, não, não"
+ *     embaixo de um título que diz que os dois marcam.
+ *   · o jogo bom virava barra de altura ZERO, invisível. Três dos quatro jogos
+ *     do Czechia não desenhavam nada, e o único visível era o ruim.
+ *   · a barra alta era a ruim. Altura lê como "mais", e ali mais era pior.
+ *
+ * O quadro não tem nenhum dos três: cada jogo ocupa o mesmo espaço, traz o
+ * placar em vez de um sim/não, e quem diz se foi bom é a COR.
+ */
+export const EH_QUADRO = (m: Metrica) => m === 'resultado' || EH_BINARIA(m);
 
 /** `proprio` = o mando que o time tem NESTE jogo (mandante em casa, visitante fora). */
 export type FiltroMando = 'proprio' | 'todos';
@@ -102,7 +148,7 @@ export type Quem = 'time' | 'adversario' | 'ambos';
  */
 export type Direcao = 'maior' | 'menor';
 
-interface SerieSpec {
+export interface SerieSpec {
   quem: Quem;
   metrica: Metrica;
   mando: FiltroMando;
@@ -142,8 +188,24 @@ interface SerieSpec {
 }
 
 /**
- * Que gráfico prova cada premissa. Slug fora do mapa não ganha gráfico: melhor a aba
+ * Que gráfico prova cada premissa. Par fora do mapa não ganha gráfico: melhor a aba
  * dizer que não tem como conferir do que desenhar um número que não é o da premissa.
+ *
+ * ⚠️ A chave é MERCADO e slug, como a dos critérios — e não o slug sozinho.
+ *
+ * O mesmo slug existe em dois mercados com critérios de famílias DIFERENTES.
+ * `defesas_vazaveis` em Gols é a soma das médias de gols sofridos contra a linha;
+ * em Ambos marcam é o percentual de clean sheet de CADA time contra 35. Com o
+ * slug sozinho a do Ambos marcam recebia o gráfico de Gols calada, e a tela
+ * desenhava média de gols embaixo de um critério que conta jogos sem sofrer gol.
+ *
+ * E o rótulo de seção mentia em duas: `invicto_recente` e `mando_forte` estavam
+ * escritas embaixo de "Resultado", e são da Dupla chance e do Handicap. Não fazia
+ * mal enquanto a chave ignorava o mercado. Agora ela é a chave, então o rótulo
+ * errado vira gráfico que não aparece — e é o teste de chaves que cobra isso.
+ *
+ * A lista de pares está na #361, lida do dbt. Onde o gráfico daqui responde outra
+ * pergunta que o critério de lá, a nota fica na própria entrada.
  */
 export const SPECS: Record<string, SerieSpec[]> = {
   // ── Gols ──
@@ -159,10 +221,21 @@ export const SPECS: Record<string, SerieSpec[]> = {
   // `ga_comb` no modelo); as sete seguintes saem de totais, sem recorte nenhum.
   //
   // As premissas de OUTROS mercados: a #352 levantou os critérios e o resultado
-  // está na #361. Elas seguem em `mesma_competicao` até serem consertadas.
-  defesas_vazaveis: [{ quem: 'ambos', metrica: 'ga', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
-  defesas_firmes: [{ quem: 'ambos', metrica: 'ga', mando: 'proprio', direcao: 'menor', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
-  ataque_combinado: [{ quem: 'ambos', metrica: 'gf', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
+  // está na #361.
+  //
+  // ⚠️ Esta nota dizia "elas seguem em `mesma_competicao` até serem
+  // consertadas", e isso deixou de ser verdade no mesmo dia em que foi escrita:
+  // o commit que declarou `ultimos` e `competicoes` nas doze pôs `qualquer` em
+  // todas. A frase envelheceu ali e ficou vinte dias dizendo o contrário do
+  // código logo abaixo dela. O que continua de pé da #361 é a MÉTRICA e o
+  // recorte de mando — e essa parte está anotada em cada entrada errada.
+  // Morava numa constante compartilhada com `btts:defesas_vazaveis`, que apontava
+  // para cá por engano — mesmo slug, mercados diferentes. A constante existia só
+  // para deixar aquele engano visível; com ele consertado, ela seria um apelido
+  // de um uso só.
+  'goals_over_under:defesas_vazaveis': [{ quem: 'ambos', metrica: 'ga', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
+  'goals_over_under:defesas_firmes': [{ quem: 'ambos', metrica: 'ga', mando: 'proprio', direcao: 'menor', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
+  'goals_over_under:ataque_combinado': [{ quem: 'ambos', metrica: 'gf', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
   // A família de PERCENTUAL (#355). O critério destas três não é média de gol
   // nenhuma: é o percentual de jogos de CADA time em que a coisa aconteceu,
   // contra um corte fixo. Enquanto elas desenhavam `ga`/`gf`, "os dois passam
@@ -171,11 +244,11 @@ export const SPECS: Record<string, SerieSpec[]> = {
   //
   // A métrica binária resolve os dois lados de uma vez: a barra passa a ser o
   // jogo (teve ou não teve) e a média das barras É a fração que vira percentual.
-  ataques_fracos: [{ quem: 'ambos', metrica: 'sem_marcar', mando: 'todos', direcao: 'maior', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
-  clean_sheets_altos: [{ quem: 'ambos', metrica: 'sem_sofrer', mando: 'todos', direcao: 'maior', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
-  ambos_vazam: [{ quem: 'ambos', metrica: 'sem_sofrer', mando: 'todos', direcao: 'menor', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
-  xg_combinado_alto: [{ quem: 'ambos', metrica: 'xg', mando: 'todos', direcao: 'maior', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
-  xg_baixo_combinado: [{ quem: 'ambos', metrica: 'xg', mando: 'todos', direcao: 'menor', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
+  'goals_over_under:ataques_fracos': [{ quem: 'ambos', metrica: 'sem_marcar', mando: 'todos', direcao: 'maior', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
+  'goals_over_under:clean_sheets_altos': [{ quem: 'ambos', metrica: 'sem_sofrer', mando: 'todos', direcao: 'maior', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
+  'goals_over_under:ambos_vazam': [{ quem: 'ambos', metrica: 'sem_sofrer', mando: 'todos', direcao: 'menor', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
+  'goals_over_under:xg_combinado_alto': [{ quem: 'ambos', metrica: 'xg', mando: 'todos', direcao: 'maior', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
+  'goals_over_under:xg_baixo_combinado': [{ quem: 'ambos', metrica: 'xg', mando: 'todos', direcao: 'menor', ultimos: JANELA_DE_GOLS, competicoes: 'qualquer' }],
   // A família de CONTAGEM (#356). O critério conta quantos dos ÚLTIMOS CINCO
   // jogos de cada time ficaram de um lado da linha, e exige um mínimo em cada —
   // `home_over_cnt >= 3 AND away_over_cnt >= 3`, sobre `last5_totals`.
@@ -187,34 +260,106 @@ export const SPECS: Record<string, SerieSpec[]> = {
   // estar de um lado da linha enquanto a contagem diz o contrário. O gráfico
   // continua sendo o do total de gols com a linha tracejada, que é justamente o
   // que deixa contar as barras que passaram.
-  historico_over: [{ quem: 'ambos', metrica: 'total', mando: 'todos', direcao: 'maior', ultimos: JANELA_DE_CONTAGEM, competicoes: 'qualquer', mostraMedia: false }],
-  historico_under: [{ quem: 'ambos', metrica: 'total', mando: 'todos', direcao: 'menor', ultimos: JANELA_DE_CONTAGEM, competicoes: 'qualquer', mostraMedia: false }],
+  'goals_over_under:historico_over': [{ quem: 'ambos', metrica: 'total', mando: 'todos', direcao: 'maior', ultimos: JANELA_DE_CONTAGEM, competicoes: 'qualquer', mostraMedia: false }],
+  'goals_over_under:historico_under': [{ quem: 'ambos', metrica: 'total', mando: 'todos', direcao: 'menor', ultimos: JANELA_DE_CONTAGEM, competicoes: 'qualquer', mostraMedia: false }],
 
   // ── Resultado ──
-  forma: [{ quem: 'time', metrica: 'resultado', mando: 'todos', direcao: 'maior', ultimos: 5, competicoes: 'qualquer' }],
-  invicto_recente: [{ quem: 'time', metrica: 'resultado', mando: 'todos', direcao: 'maior', ultimos: 5, competicoes: 'qualquer' }],
-  mando: [{ quem: 'time', metrica: 'resultado', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
-  mando_forte: [{ quem: 'time', metrica: 'resultado', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
-  superioridade_xg: [{ quem: 'ambos', metrica: 'xg', mando: 'todos', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
-  forca_mismatch: [
+  //
+  // ⚠️ Duas destas quatro estão na lista de MÉTRICA ERRADA da #361, e a regra
+  // deste mapa é a nota ficar na entrada:
+  //
+  // `mando`            compara `pct_pts_home >= 55` (ou `aprov_fora >= 45`) — o
+  //                    APROVEITAMENTO percentual de pontos, e o corte muda com o
+  //                    mando. O gráfico aqui desenha a grade de vitória, empate
+  //                    e derrota, que é de onde o aproveitamento sai mas não é
+  //                    ele.
+  // `superioridade_xg` compara `s_xg_for - o_xg_against >= 0.3` — a DIFERENÇA
+  //                    entre o xG que o time cria e o que o adversário sofre. O
+  //                    gráfico aqui põe lado a lado o xG CRIADO pelos dois, que
+  //                    é outra subtração.
+  'match_winner:forma': [{ quem: 'time', metrica: 'resultado', mando: 'todos', direcao: 'maior', ultimos: 5, competicoes: 'qualquer' }],
+  'match_winner:mando': [{ quem: 'time', metrica: 'resultado', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
+  'match_winner:superioridade_xg': [{ quem: 'ambos', metrica: 'xg', mando: 'todos', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
+  'match_winner:forca_mismatch': [
     { quem: 'time', metrica: 'gf', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' },
     { quem: 'adversario', metrica: 'ga', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' },
   ],
 
   // ── Handicap ──
-  tende_golear: [
+  //
+  // ⚠️ Duas na lista de métrica errada da #361:
+  //
+  // `mando_forte`           compara `pct_pts_home >= 60`, aproveitamento
+  //                         percentual — mesma confusão do `mando` acima, com
+  //                         outro corte.
+  // `raramente_perde_por_2` compara `s_lost2 / s_n_games < 0.30` sobre os
+  //                         últimos 10, com PISO de 5 jogos. A frase daqui conta
+  //                         derrotas por dois ou mais sobre tudo que foi
+  //                         buscado, sem virar percentual e sem o piso — e o
+  //                         piso não é detalhe: abaixo dele a premissa não
+  //                         acende nem com o número do lado certo do corte.
+  'asian_handicap:mando_forte': [{ quem: 'time', metrica: 'resultado', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
+  'asian_handicap:tende_golear': [
     { quem: 'time', metrica: 'gf', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' },
     { quem: 'adversario', metrica: 'ga', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' },
   ],
-  adversario_fragil_fora: [{ quem: 'adversario', metrica: 'ga', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
-  defesa_fora_solida: [{ quem: 'time', metrica: 'ga', mando: 'proprio', direcao: 'menor', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
-  raramente_perde_por_2: [{ quem: 'time', metrica: 'resultado', mando: 'todos', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
+  'asian_handicap:adversario_fragil_fora': [{ quem: 'adversario', metrica: 'ga', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
+  'asian_handicap:defesa_fora_solida': [{ quem: 'time', metrica: 'ga', mando: 'proprio', direcao: 'menor', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
+  'asian_handicap:raramente_perde_por_2': [{ quem: 'time', metrica: 'resultado', mando: 'todos', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
 
-  // ── Ambos marcam / dupla chance ──
-  ambos_marcam: [{ quem: 'ambos', metrica: 'gf', mando: 'todos', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
-  ataque_dos_dois: [{ quem: 'ambos', metrica: 'gf', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
-  defesa_forte: [{ quem: 'ambos', metrica: 'ga', mando: 'proprio', direcao: 'menor', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
-  adversario_limitado: [{ quem: 'adversario', metrica: 'gf', mando: 'todos', direcao: 'menor', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
+  // ── Ambos marcam ──
+  //
+  // AS SETE, e as sete FIÉIS. Estavam quatro aqui, três delas com a grandeza
+  // errada, sob a nota "ficam assim de propósito, o conserto vem depois". Este é
+  // o depois: os critérios foram lidos do `int_futebol_premissas_btts` e as
+  // entradas passaram a desenhá-los.
+  //
+  // ⚠️ O conserto não precisou de métrica nova. `sem_sofrer`, `sem_marcar` e
+  // `ambos` já existiam, vindas do mercado de Gols; o que havia era este mapa
+  // apontando para as erradas. Foi por isso que a França apareceu com dois jogos
+  // de oito na tela de 25/09: a `defesa_forte` desenhava gols sofridos
+  // RECORTADOS POR MANDO, e o critério dela é percentual de jogos sem sofrer,
+  // sobre TODOS os jogos da janela.
+  //
+  // ⚠️ `mando: 'todos'` em seis das sete. No dbt os percentuais saem de
+  // `clean_sheet_total / played_total` e as contagens saem do `last5` — nenhum
+  // dos dois recorta por mando. A única que recorta é a `ataque_dos_dois`, que
+  // lê `goals_for_avg_home` do mandante e `goals_for_avg_away` do visitante, e
+  // ela já estava certa.
+  //
+  // ⚠️ A janela é 10 porque o default de produção do `team_form_pit` é
+  // `ultimos_10` + `todas` desde a AE#91 — e não a temporada, que é o que a
+  // descrição do modelo ainda narra como se fosse o padrão. As duas de histórico
+  // são 5, que é o tamanho do `last5` delas.
+  //
+  // Os cortes, do dbt, para quem for conferir a direção de cada uma:
+  //   ambos_marcam      home_fts_pct < 30 AND away_fts_pct < 30
+  //   ataque_trava      home_fts_pct >= 35 OR  away_fts_pct >= 35
+  //   defesas_vazaveis  home_cs_pct  < 35 AND away_cs_pct  < 35
+  //   defesa_forte      home_cs_pct  >= 45 OR  away_cs_pct  >= 45
+  //   ataque_dos_dois   home_gf >= 1.2 AND away_gf >= 1.2
+  //   historico_btts    home_btts_cnt    >= 3 AND away_btts_cnt    >= 3
+  //   historico_seco    home_no_btts_cnt >= 3 OR  away_no_btts_cnt >= 3
+  'btts:ambos_marcam': [{ quem: 'ambos', metrica: 'sem_marcar', mando: 'todos', direcao: 'menor', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
+  'btts:ataque_trava': [{ quem: 'ambos', metrica: 'sem_marcar', mando: 'todos', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
+  'btts:defesas_vazaveis': [{ quem: 'ambos', metrica: 'sem_sofrer', mando: 'todos', direcao: 'menor', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
+  'btts:defesa_forte': [{ quem: 'ambos', metrica: 'sem_sofrer', mando: 'todos', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
+  'btts:ataque_dos_dois': [{ quem: 'ambos', metrica: 'gf', mando: 'proprio', direcao: 'maior', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
+  // `mostraMedia: false` nas duas de contagem, como nas `historico_over`/`under`
+  // de Gols: o insumo é QUANTOS dos cinco, não a média deles, e a média pode
+  // estar de um lado do corte enquanto a contagem diz o contrário.
+  'btts:historico_btts': [{ quem: 'ambos', metrica: 'ambos', mando: 'todos', direcao: 'maior', ultimos: JANELA_DE_CONTAGEM, competicoes: 'qualquer', mostraMedia: false }],
+  'btts:historico_seco': [{ quem: 'ambos', metrica: 'ambos', mando: 'todos', direcao: 'menor', ultimos: JANELA_DE_CONTAGEM, competicoes: 'qualquer', mostraMedia: false }],
+
+  // ── Dupla chance ──
+  //
+  // ⚠️ `adversario_limitado` também está na lista da #361: compara
+  // `o_aproveitamento < 45` OU o veredito do h2h, e o gráfico aqui desenha
+  // média de gols marcados do adversário. Nem a grandeza nem a estrutura batem
+  // — é uma premissa COMPOSTA, com um braço que é outra premissa, e a #361
+  // trata essa família como desenho novo.
+  'double_chance:invicto_recente': [{ quem: 'time', metrica: 'resultado', mando: 'todos', direcao: 'maior', ultimos: 5, competicoes: 'qualquer' }],
+  'double_chance:adversario_limitado': [{ quem: 'adversario', metrica: 'gf', mando: 'todos', direcao: 'menor', ultimos: JANELA_DO_MODELO, competicoes: 'qualquer' }],
 };
 
 export interface JogoBarra {
@@ -317,6 +462,9 @@ function valorDe(r: FutebolFixtureHistorico, m: Metrica): number | null {
   if (m === 'xg') return r.xg;
   if (m === 'sem_sofrer') return r.sem_sofrer ? 1 : 0;
   if (m === 'sem_marcar') return r.sem_marcar ? 1 : 0;
+  if (m === 'ambos') return r.ambos_marcaram ? 1 : 0;
+  // `saldo` é a diferença na ótica do time, e é NEGATIVA na derrota — quem
+  // desenhar isso precisa de linha de base no zero, não de barra que só cresce.
   return r.gols_pro - r.gols_contra;
 }
 
@@ -335,24 +483,42 @@ const COMO_LER: Record<Metrica, string> = {
   gf: 'Cada barra é um jogo: quanto mais alta, mais gols o time marcou. A linha é a média, que é o número que a premissa usa.',
   xg: 'Cada barra é o gol esperado do time no jogo, ou seja, o tanto de chance que ele criou. A linha é a média.',
   total: 'Cada barra é o total de gols do jogo, somando os dois times. A linha tracejada é a linha que você escolheu.',
+  saldo: 'Cada barra é o saldo de gols do time naquele jogo: positivo na vitória, negativo na derrota.',
+  // ⚠️ As três binárias NÃO dizem o que é verde, e é de propósito: a mesma
+  // métrica serve premissas de direções OPOSTAS. `sem_marcar` é lida pela
+  // `ambos_marcam`, que quer poucos jogos em branco, e pela `ataque_trava`,
+  // que quer muitos. "Verde quando marcou" acertaria uma e mentiria na outra.
+  // Quem sabe qual é o lado bom é a premissa, e é ela que a cor segue.
+  ambos: 'Cada quadrado é um jogo, com o placar e o adversário. Verde é jogo do lado que a premissa quer, vermelho é o contrário. O que ela usa é em quantos dos jogos os dois marcaram.',
   resultado: 'Cada quadrado é um jogo, com o placar e o adversário. Verde é vitória, cinza empate, vermelho derrota.',
-  sem_sofrer: 'Cada barra é um jogo: cheia quando o time não sofreu gol, vazia quando sofreu. O que a premissa usa é o percentual de jogos cheios.',
-  sem_marcar: 'Cada barra é um jogo: cheia quando o time não marcou, vazia quando marcou. O que a premissa usa é o percentual de jogos cheios.',
+  sem_sofrer: 'Cada quadrado é um jogo, com o placar e o adversário. Verde é jogo do lado que a premissa quer, vermelho é o contrário. O que ela usa é o percentual de jogos sem sofrer gol.',
+  sem_marcar: 'Cada quadrado é um jogo, com o placar e o adversário. Verde é jogo do lado que a premissa quer, vermelho é o contrário. O que ela usa é o percentual de jogos sem marcar.',
 };
 
 /**
- * O gráfico que prova (ou derruba) a premissa, com o mesmo recorte da média.
- * Devolve null quando não existe jogo suficiente ou quando a premissa não tem como
- * ser auditada com o que o mart entrega.
+ * As séries de barras de uma especificação EXPLÍCITA.
+ *
+ * O recorte mora aqui e em lugar nenhum mais. Quem monta barra a partir das
+ * linhas do jogo a jogo chama esta função, e a especificação diz o que medir:
+ * a premissa traz a dela do mapa `SPECS`, a aba de Estatísticas monta a sua a
+ * partir do que a pessoa escolheu.
+ *
+ * ⚠️ Existe como função à parte por um motivo com histórico neste arquivo: duas
+ * funções que calculam a mesma coisa por caminhos diferentes acabam divergindo,
+ * e ninguém vê por leitura de código. Foi assim na #350 (o gráfico e o número
+ * do xG em janelas diferentes) e de novo na `evidenciaDoHistorico`, que varria o
+ * histórico inteiro enquanto o gráfico logo abaixo recortava — a tela dizia 1,2
+ * e desenhava 1,3. Um segundo montador de série para a aba nova recriaria a
+ * mesma armadilha, agora entre duas abas que ninguém compara lado a lado.
  */
-export function storyDaPremissa(
-  slug: string,
+export function seriesDaEspecificacao(
+  specs: SerieSpec[],
   hist: FutebolFixtureHistorico[] | undefined,
   lado: 'home' | 'away' | null,
   linha: number | null,
-): Story | null {
-  const specs = SPECS[slug];
-  if (!specs?.length || !hist?.length) return null;
+  chavePrefixo: string,
+): SerieHistorico[] {
+  if (!specs?.length || !hist?.length) return [];
   const p = papeis(lado);
 
   // Duas premissas comparam métricas diferentes, e só nelas o título precisa
@@ -400,16 +566,31 @@ export function storyDaPremissa(
       const regua = spec.metrica === 'total' && linha != null ? linha : media;
       const jogos: JogoBarra[] = brutos.map((j) => ({
         ...j,
+        // ⚠️ Numa métrica BINÁRIA o jogo favorece pelo FATO, e não por estar de
+        // um lado da média. O fato é o próprio valor: 1 aconteceu, 0 não.
+        //
+        // Comparar com a média quebra quando o time inteiro está do mesmo lado:
+        // nove jogos sem passar em branco dão média zero, a comparação fica zero
+        // contra zero e sai falsa em todos — nenhum jogo a favor de uma premissa
+        // que eles sustentam por unanimidade. Fora desse caso as duas contas
+        // dão o mesmo, porque numa binária 1 está sempre acima da média e 0
+        // sempre abaixo.
         favorece:
-          j.valor == null || regua == null
+          j.valor == null
             ? false
-            : spec.direcao === 'maior'
-              ? j.valor > regua
-              : j.valor < regua,
+            : EH_BINARIA(spec.metrica)
+              ? spec.direcao === 'maior'
+                ? j.valor === 1
+                : j.valor === 0
+              : regua == null
+                ? false
+                : spec.direcao === 'maior'
+                  ? j.valor > regua
+                  : j.valor < regua,
         resultado: j.resultado as 'V' | 'E' | 'D',
       }));
       series.push({
-        chave: `${slug}-${side}-${spec.metrica}-${spec.mando}`,
+        chave: `${chavePrefixo}-${side}-${spec.metrica}-${spec.mando}`,
         teamId: filtrados[0].team_id,
         teamName: filtrados[0].team_name,
         // O título nomeia o RECORTE, e o sub declara a BASE. Juntos eles dizem o
@@ -447,6 +628,33 @@ export function storyDaPremissa(
       });
     }
   }
+  return series;
+}
+
+/**
+ * O gráfico que prova (ou derruba) a premissa, com o mesmo recorte da média.
+ * Devolve null quando não existe jogo suficiente ou quando a premissa não tem como
+ * ser auditada com o que o mart entrega.
+ *
+ * A montagem das barras é a de `seriesDaEspecificacao`; o que esta função
+ * acrescenta é o que só a PREMISSA tem: qual especificação vale (o mapa
+ * `SPECS`), a linha tracejada de referência e o consolidado contra a linha.
+ */
+export function storyDaPremissa(
+  mercado: string,
+  slug: string,
+  hist: FutebolFixtureHistorico[] | undefined,
+  lado: 'home' | 'away' | null,
+  linha: number | null,
+): Story | null {
+  // ⚠️ Chave COMPOSTA, `mercado:slug`. O catálogo deixou de ser indexado só pelo
+  // slug porque a mesma premissa tem critério diferente em mercados diferentes —
+  // `defesas_vazaveis` é média contra a linha em Gols e percentual de clean
+  // sheet em Ambos marcam. Com a chave antiga isto devolvia `undefined` para
+  // TODA premissa, e sem quebrar nada: a tela só ficaria sem gráfico nenhum.
+  const specs = SPECS[`${mercado}:${slug}`];
+  if (!specs?.length) return null;
+  const series = seriesDaEspecificacao(specs, hist, lado, linha, slug);
   if (!series.length) return null;
 
   const metrica = series[0].metrica;
@@ -454,7 +662,7 @@ export function storyDaPremissa(
   return {
     series,
     comoLer: series.every((x) => x.metrica === metrica) ? COMO_LER[metrica] : '',
-    referencia: metrica === 'total' && linha != null ? { valor: linha, label: `linha ${String(linha).replace('.', ',')}` } : undefined,
+    referencia: metrica === 'total' && linha != null ? { valor: linha, label: `linha ${fmtLinhaAnalisada(linha)}` } : undefined,
     consolidado: consolidadoDe(series, spec0, linha),
   };
 }
@@ -465,6 +673,8 @@ const NOME_DA_METRICA: Record<Metrica, string> = {
   gf: 'gols marcados',
   xg: 'gols esperados',
   total: 'gols no jogo',
+  saldo: 'saldo de gols',
+  ambos: 'jogos com os dois marcando',
   resultado: 'resultado',
   sem_sofrer: 'jogos sem sofrer',
   sem_marcar: 'jogos sem marcar',
@@ -507,6 +717,7 @@ function consolidadoDe(series: SerieHistorico[], spec: SerieSpec, linha: number 
  * chance de gol (xG), histórico de muitos/poucos gols e derrota por dois ou mais.
  */
 export function evidenciaDoHistorico(
+  mercado: string,
   slug: string,
   hist: FutebolFixtureHistorico[] | undefined,
   lado: 'home' | 'away' | null,
@@ -526,7 +737,7 @@ export function evidenciaDoHistorico(
    * a mesma coisa por caminhos diferentes. Agora as duas leem a especificação,
    * então divergir de novo exige mexer nela — que é onde a decisão mora.
    */
-  const spec = SPECS[slug]?.[0];
+  const spec = SPECS[`${mercado}:${slug}`]?.[0];
   const recortar = (rows: FutebolFixtureHistorico[]) => {
     const naCompeticao =
       spec?.competicoes === 'qualquer' ? rows : rows.filter((r) => r.mesma_competicao !== false);
@@ -601,7 +812,7 @@ export function evidenciaDoHistorico(
     const alvo = slug === 'historico_over' ? acima : todos.length - acima;
     const comp = slug === 'historico_over' ? 'passaram de' : 'ficaram abaixo de';
     return {
-      texto: `${alvo} dos ${todos.length} jogos dos dois times ${comp} ${String(linha).replace('.', ',')} gols`,
+      texto: `${alvo} dos ${todos.length} jogos dos dois times ${comp} ${fmtLinhaAnalisada(linha)} gols`,
     };
   }
 
@@ -614,7 +825,7 @@ export function evidenciaDoHistorico(
     };
   }
 
-  return fraseDoGrafico(slug, hist, lado, linha);
+  return fraseDoGrafico(mercado, slug, hist, lado, linha);
 }
 
 /**
@@ -643,12 +854,13 @@ export function evidenciaDoHistorico(
  * contradizer entre a frase e o gráfico logo abaixo dela.
  */
 function fraseDoGrafico(
+  mercado: string,
   slug: string,
   hist: FutebolFixtureHistorico[] | undefined,
   lado: 'home' | 'away' | null,
   linha: number | null,
 ): Evidencia | null {
-  const story = storyDaPremissa(slug, hist, lado, linha);
+  const story = storyDaPremissa(mercado, slug, hist, lado, linha);
   if (!story) return null;
 
   // Premissa de RESULTADO não tem média: a barra é vitória, empate ou derrota.
@@ -699,6 +911,8 @@ const FRASE_DA_METRICA: Record<Metrica, (time: string, valor: string) => string>
   ga: (t, v) => `${t} sofre ${v}`,
   xg: (t, v) => `${t} cria ${v}`,
   total: (t, v) => `${t}: ${v} gols`,
+  saldo: (t, v) => `${t}: saldo de ${v}`,
+  ambos: (t, v) => `${t}: os dois marcaram em ${v} dos jogos`,
   resultado: (t, v) => `${t}: ${v}`,
   sem_sofrer: (t, v) => `${t} não sofreu gol em ${v} dos jogos`,
   sem_marcar: (t, v) => `${t} não marcou em ${v} dos jogos`,
@@ -744,9 +958,9 @@ export interface PerfilDaJanela {
 }
 
 export function perfilDaJanela(hist: FutebolFixtureHistorico[] | undefined): PerfilDaJanela | null {
-  const gf = storyDaPremissa('ataque_combinado', hist, null, null);
-  const ga = storyDaPremissa('defesas_firmes', hist, null, null);
-  const cs = storyDaPremissa('clean_sheets_altos', hist, null, null);
+  const gf = storyDaPremissa('goals_over_under', 'ataque_combinado', hist, null, null);
+  const ga = storyDaPremissa('goals_over_under', 'defesas_firmes', hist, null, null);
+  const cs = storyDaPremissa('goals_over_under', 'clean_sheets_altos', hist, null, null);
   if (!gf || !ga || !cs) return null;
 
   // A série carrega o lado na própria chave, então o lado sai dela e não da

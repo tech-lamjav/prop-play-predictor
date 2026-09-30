@@ -1,34 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { cn } from '@/lib/utils';
-import type { EstadoDoJogo, Faixa, FiltroDeValor } from '@/utils/futebol-score';
+import { ChevronRight } from 'lucide-react';
+import { DropdownMenuCheckboxItem } from '@/components/ui/dropdown-menu';
+import { Chip } from './Chip';
+import { ITEM_SELETOR as ITEM_CLS, SeletorDeMenu } from './SeletorDeMenu';
+import type { EstadoDoJogo, Faixa } from '@/utils/futebol-score';
 
 export type MarketFilter = 'all' | 'match_winner' | 'goals_over_under' | 'asian_handicap' | 'btts' | 'double_chance';
 
 type SelectOption = { value: string; label: string };
 
 const LABEL = 'text-[10px] uppercase tracking-[0.14em] font-bold text-ink-3';
-
-/**
- * O item do menu, com alvo de toque de gente.
- *
- * `min-h-11` no celular são os 44px que o dedo pede; no desktop o item volta ao
- * tamanho de mouse. Antes eram 13px de texto num item de ~28px, e escolher
- * faixa no telefone virava uma mira.
- */
-const ITEM_CLS =
-  'cursor-pointer text-[13px] text-ink min-h-11 sm:min-h-0 focus:bg-forest-tint focus:text-forest data-[highlighted]:bg-forest-tint data-[highlighted]:text-forest data-[state=checked]:bg-forest-tint data-[state=checked]:text-forest data-[state=checked]:font-semibold';
-
-const GATILHO_CLS =
-  'inline-flex w-full items-center gap-1.5 h-9 px-3 rounded-rebrand-sm border border-line bg-white text-[12px] font-semibold text-ink hover:bg-canvas-2 transition';
 
 const MARKET_ITEMS: { value: MarketFilter; label: string }[] = [
   { value: 'all', label: 'Todos' },
@@ -38,21 +19,6 @@ const MARKET_ITEMS: { value: MarketFilter; label: string }[] = [
   { value: 'asian_handicap', label: 'Handicap' },
   { value: 'double_chance', label: 'Dupla chance' },
 ];
-
-function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button onClick={onClick}
-      className={cn(
-        // 44px no celular, como os itens dos menus ao lado. A fileira segue
-        // rolando na horizontal — aqui isso não atrapalha, porque chip não abre
-        // menu: o arrasto não dispara nada, ele só rola.
-        'h-11 sm:h-8 px-3 rounded-rebrand-sm text-[12px] font-semibold border transition-colors shrink-0',
-        active ? 'bg-forest text-canvas border-forest' : 'bg-white text-ink border-line hover:bg-canvas-2',
-      )}>
-      {children}
-    </button>
-  );
-}
 
 function MarketChips({ value, onChange }: { value: MarketFilter; onChange: (m: MarketFilter) => void }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -72,7 +38,7 @@ function MarketChips({ value, onChange }: { value: MarketFilter; onChange: (m: M
       <div className="relative min-w-0 flex-1">
         <div ref={ref} className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide -my-1 py-1 pr-7">
           {MARKET_ITEMS.map((m) => (
-            <Chip key={m.value} active={value === m.value} onClick={() => onChange(m.value)}>{m.label}</Chip>
+            <Chip key={m.value} ativo={value === m.value} onClick={() => onChange(m.value)}>{m.label}</Chip>
           ))}
         </div>
         {more && (
@@ -90,61 +56,6 @@ function MarketChips({ value, onChange }: { value: MarketFilter; onChange: (m: M
   );
 }
 
-/**
- * A caixa de um seletor: o botão, o menu, e o jeito de abrir e de fechar.
- *
- * ⚠️ ABRE NO CLIQUE, e não no `pointerdown` que o Radix usa por padrão. No
- * telefone o dedo encosta no filtro para ROLAR A PÁGINA, e o menu abria antes
- * de o dedo levantar — era a "sensibilidade" que fazia os filtros parecerem
- * disparar sozinhos. O `preventDefault` no pointerdown desliga a abertura do
- * Radix e o `onClick` assume: clique só nasce quando o toque começa e termina
- * no mesmo lugar, que é exatamente a diferença entre tocar e arrastar.
- *
- * O "Pronto" existe pelo outro lado da mesma queixa. Num seletor de marcar
- * vários o menu precisa ficar aberto entre os cliques, então a única saída era
- * acertar um toque FORA dele — e fora, no celular, costuma ser outro filtro. Só
- * aparece no celular: no desktop, clicar fora é gesto de todo mundo.
- */
-function SeletorDeMenu({
-  rotulo, resumo, largura, align = 'start', children,
-}: {
-  rotulo: string; resumo: string; largura: string;
-  align?: 'start' | 'end'; children: React.ReactNode;
-}) {
-  const [aberto, setAberto] = useState(false);
-  return (
-    <DropdownMenu open={aberto} onOpenChange={setAberto}>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          aria-label={`${rotulo} ${resumo}`}
-          onPointerDown={(event) => event.preventDefault()}
-          onClick={() => setAberto((estava) => !estava)}
-          className={cn(GATILHO_CLS, largura)}
-        >
-          <span className="text-ink-3 font-medium uppercase tracking-[0.1em] text-[10px] shrink-0">{rotulo}</span>
-          <span className="truncate">{resumo}</span>
-          <ChevronDown className="ml-auto w-3.5 h-3.5 shrink-0 text-ink-3" />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align={align}
-        sideOffset={6}
-        collisionPadding={12}
-        className="theme-bolao bg-white border-line min-w-[184px]"
-      >
-        {children}
-        <DropdownMenuSeparator className="sm:hidden" />
-        <DropdownMenuItem
-          onSelect={() => setAberto(false)}
-          className="sm:hidden justify-center min-h-11 text-[13px] font-semibold text-forest focus:bg-forest-tint focus:text-forest"
-        >
-          Pronto
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
 
 /**
  * O seletor de marcar vários, um só para faixa, estado e competição.
@@ -236,41 +147,6 @@ const ESTADOS: { value: EstadoDoJogo; label: string }[] = [
   { value: 'encerrado', label: 'Encerrado' },
 ];
 
-const VALORES: { value: FiltroDeValor; label: string }[] = [
-  { value: 'todos', label: 'Todos' },
-  { value: 'positivo', label: 'Acima do justo' },
-  { value: 'perto', label: 'Até 2% abaixo' },
-  { value: 'abaixo', label: 'Mais de 2% abaixo' },
-];
-
-/**
- * Seleção ÚNICA, ao contrário de faixa, estado e competição: as três opções são
- * um intervalo contínuo, e marcar "acima do justo" junto com "mais de 2%
- * abaixo" descreveria um recorte que ninguém procura. Quem quer os dois
- * extremos quer, na prática, todos.
- *
- * E por ser única, ela FECHA ao escolher. O menu de marcar vários fica aberto
- * porque o próximo clique é esperado; aqui não há próximo clique, e continuar
- * aberto era o motivo de o seletor de Valor parecer travado.
- */
-function ValorSelect({ valor, onChange }: { valor: FiltroDeValor; onChange: (value: FiltroDeValor) => void }) {
-  const label = VALORES.find((item) => item.value === valor)?.label ?? 'Todos';
-  return (
-    <SeletorDeMenu rotulo="Valor" resumo={label} largura="sm:w-[196px]">
-      {VALORES.map((item) => (
-        <DropdownMenuCheckboxItem
-          key={item.value}
-          checked={valor === item.value}
-          onSelect={() => onChange(item.value)}
-          className={ITEM_CLS}
-        >
-          {item.label}
-        </DropdownMenuCheckboxItem>
-      ))}
-    </SeletorDeMenu>
-  );
-}
-
 /**
  * A competição fala `null` com a tela, e lista com o seletor.
  *
@@ -310,13 +186,11 @@ export function OportunidadesFiltros({
   mercado, onMercadoChange,
   estadosSelecionados, onEstadosChange,
   faixasSelecionadas, onFaixasChange,
-  valor, onValorChange,
   competicoesSelecionadas, onCompeticoesChange, competicaoOptions,
 }: {
   mercado: MarketFilter; onMercadoChange: (value: MarketFilter) => void;
   estadosSelecionados: readonly EstadoDoJogo[]; onEstadosChange: (value: EstadoDoJogo[]) => void;
   faixasSelecionadas: readonly Faixa[]; onFaixasChange: (value: Faixa[]) => void;
-  valor: FiltroDeValor; onValorChange: (value: FiltroDeValor) => void;
   competicoesSelecionadas: readonly string[] | null; onCompeticoesChange: (value: string[] | null) => void; competicaoOptions: SelectOption[];
 }) {
   return (
@@ -325,12 +199,15 @@ export function OportunidadesFiltros({
         <MarketChips value={mercado} onChange={onMercadoChange} />
       </div>
       <div className="h-px bg-line/70 sm:hidden" />
-      {/* Grade de dois no celular, fileira no desktop.
-          A fileira rolava na horizontal, e com quatro controles de largura fixa
-          era preciso arrastar para chegar ao último — arrastando justamente por
-          cima de botões que abrem menu ao toque. Empilhados numa grade, os
-          quatro aparecem de uma vez e não há arrasto disputando o gesto. */}
-      <div data-testid="filtros-visualizacao" className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-2 sm:shrink-0">
+      {/* Uma FILEIRA, no celular e no desktop.
+          Já foi grade de dois no celular, e isso resolvia um problema que não
+          existe mais: eram QUATRO controles de largura fixa, a fileira rolava, e
+          chegar ao último exigia arrastar por cima de botões que abrem menu ao
+          toque. Com a saída do filtro de valor (#520) sobraram três, e a grade
+          passou a deixar um órfão sozinho na segunda linha — mais feio do que o
+          arrasto que ela evitava. Três lado a lado cabem, e o `overflow-x-auto`
+          segura o caso extremo sem obrigar ninguém a arrastar no caso normal. */}
+      <div data-testid="filtros-visualizacao" className="flex items-center gap-2 overflow-x-auto scrollbar-hide -my-1 py-1 sm:overflow-visible sm:shrink-0">
         <MultiSelect
           rotulo="Estado"
           opcoes={ESTADOS}
@@ -351,7 +228,6 @@ export function OportunidadesFiltros({
           plural="faixas"
           largura="sm:w-[168px]"
         />
-        <ValorSelect valor={valor} onChange={onValorChange} />
         <CompeticaoMultiSelect options={competicaoOptions} selecionadas={competicoesSelecionadas} onChange={onCompeticoesChange} />
       </div>
     </div>

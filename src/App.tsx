@@ -18,6 +18,8 @@ import { PostHogPageView } from "./components/PostHogPageView";
 import { ChegadaDoTelegram } from "./components/ChegadaDoTelegram";
 import { IdentidadeAnalytics } from "./components/IdentidadeAnalytics";
 import { CrossSellManager } from "./components/crosssell/CrossSellManager";
+import { PesquisaDePerfil } from "./components/perfil/PesquisaDePerfil";
+import { Porteiro } from "./components/perfil/Porteiro";
 import { EnvironmentBanner } from "./components/EnvironmentBanner";
 import Footer from "./components/Footer";
 import { lazyWithRetry } from "./lib/lazy-with-retry";
@@ -128,6 +130,14 @@ const App = () => (
         <IdentidadeAnalytics />
         <ChegadaDoTelegram />
         <CrossSellManager />
+        {/* A pesquisa de perfil é da PESSOA, não de uma tela: por isso mora
+            aqui com os outros sentinelas, e não pendurada numa página. Ela
+            segura os tours enquanto estiver na frente. (#523) */}
+        <PesquisaDePerfil />
+        {/* O porteiro NÃO é vizinho dos sentinelas acima: ele embrulha as
+            rotas porque precisa poder aparecer no lugar delas. Os outros
+            desenham por cima do produto; este substitui o produto. (#551) */}
+        <Porteiro>
         <Suspense fallback={<LazyFallback />}>
           <Routes>
             <Route path="/" element={<LandingEcossistema />} />
@@ -306,6 +316,7 @@ const App = () => (
           </Routes>
           <Footer />
         </Suspense>
+        </Porteiro>
       </BrowserRouter>
       </ReferralProvider>
       </AchievementProvider>

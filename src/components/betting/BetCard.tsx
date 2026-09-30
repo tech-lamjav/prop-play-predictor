@@ -1,4 +1,5 @@
 import React from 'react';
+import { fmtDinheiro, fmtOdd } from '@/utils/formato';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -96,12 +97,6 @@ export default function BetCard({ bet, onEdit, onDelete, onStatusChange }: BetCa
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(amount);
-  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('pt-BR', {
@@ -202,7 +197,7 @@ export default function BetCard({ bet, onEdit, onDelete, onStatusChange }: BetCa
             <Target className="w-4 h-4 text-gray-500" />
             <div>
               <p className="text-xs text-gray-500">Odds</p>
-              <p className="text-sm font-medium">{bet.odds.toFixed(2)}</p>
+              <p className="text-sm font-medium">{fmtOdd(bet.odds)}</p>
             </div>
           </div>
           
@@ -210,7 +205,7 @@ export default function BetCard({ bet, onEdit, onDelete, onStatusChange }: BetCa
             <DollarSign className="w-4 h-4 text-gray-500" />
             <div>
               <p className="text-xs text-gray-500">Valor</p>
-              <p className="text-sm font-medium">{formatCurrency(bet.stake_amount)}</p>
+              <p className="text-sm font-medium">{fmtDinheiro(bet.stake_amount)}</p>
             </div>
           </div>
         </div>
@@ -220,7 +215,7 @@ export default function BetCard({ bet, onEdit, onDelete, onStatusChange }: BetCa
           <div className="flex justify-between items-center">
             <span className="text-sm font-medium text-gray-700">Retorno Potencial:</span>
             <span className="text-lg font-bold text-green-600">
-              {formatCurrency(bet.potential_return)}
+              {fmtDinheiro(bet.potential_return)}
             </span>
           </div>
         </div>

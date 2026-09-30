@@ -3,7 +3,6 @@ import {
   FAIXA_ALTA_MIN,
   FAIXA_MEDIA_MIN,
   FAIXAS_FILTRO_PADRAO,
-  edgeToneCls,
   ehDestaque,
   ehFaixaAlta,
   faixaTone,
@@ -189,20 +188,11 @@ describe('rótulo e testes de faixa saem da classificação do backend', () => {
   });
 });
 
-describe('cor da diferença para o preço justo', () => {
-  it('positivo usa verde da marca', () => {
-    expect(edgeToneCls(0.12)).toBe('text-forest');
-  });
-
-  it('zero e negativo usam cor neutra, nunca vermelho de erro', () => {
-    // A diferença é informativa. Pintar de vermelho leria como defeito da
-    // leitura, e um preço abaixo do justo não invalida o contexto.
-    expect(edgeToneCls(0)).toBe('text-ink-2');
-    expect(edgeToneCls(-0.03)).toBe('text-ink-2');
-  });
-
-  it('ausência de preço cai no neutro em vez de inventar sinal', () => {
-    expect(edgeToneCls(null)).toBe('text-ink-2');
-    expect(edgeToneCls(undefined)).toBe('text-ink-2');
-  });
-});
+// A cor da diferença para o preço justo tinha três testes aqui: verde no
+// positivo, neutro no zero e no negativo, neutro na ausência. Eles caíram com a
+// função (#519) — o valor não é mais desenhado, então não há o que pintar.
+//
+// A regra que eles guardavam — "nunca vermelho, porque preço abaixo do justo é
+// informação e não defeito da leitura" — fica registrada aqui, porque ela é
+// sobre o produto e não sobre a função: se o valor voltar à tela algum dia, ela
+// volta com ele.

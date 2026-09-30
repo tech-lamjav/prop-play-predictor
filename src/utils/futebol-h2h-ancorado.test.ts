@@ -58,6 +58,7 @@ const evidenciaDoH2h = (over: Partial<FutebolFixtureNumeros> = {}) =>
     slug: 'h2h_favoravel',
     numeros: numeros(over),
     historico: undefined,
+    saida: null,
     lado: 'home',
     linha: null,
     acesa: true,

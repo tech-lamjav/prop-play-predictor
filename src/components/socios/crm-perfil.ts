@@ -1,3 +1,5 @@
+import { fmtNumero } from '@/utils/formato';
+
 // ============================================================================
 // Como uma pessoa aposta
 // ============================================================================
@@ -178,10 +180,7 @@ export function ehPerfil(recorte: Recorte | null): boolean {
 /** `12.345` → `+12,3%`. O sinal é explícito: menos e mais mudam a conversa. */
 export function emPorcento(roi: number): string {
   const sinal = roi > 0 ? '+' : '';
-  return `${sinal}${roi.toLocaleString('pt-BR', {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  })}%`;
+  return `${sinal}${fmtNumero(roi, { casas: 1 })}%`;
 }
 
 /** `2 de 3`, e nunca `2` sozinho. */

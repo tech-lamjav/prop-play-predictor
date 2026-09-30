@@ -9,6 +9,7 @@
 // Só aparece quando o pick está visível (não bloqueado) — i.e. trial/assinante.
 // ============================================================
 import { useEffect, useState } from 'react';
+import { fmtDinheiro, fmtOdd } from '@/utils/formato';
 import { Link } from 'react-router-dom';
 import { Receipt, Check, Loader2, ArrowRight } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
@@ -60,8 +61,6 @@ function kickoffDate(raw: string | null): string | null {
   return isNaN(d.getTime()) ? null : d.toISOString().split('T')[0];
 }
 
-const fmtBRL = (n: number) =>
-  n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 export function RegistrarApostaModal({
   open, onOpenChange, draft, origem = 'other',
@@ -106,7 +105,7 @@ export function RegistrarApostaModal({
   useEffect(() => {
     if (!open || !draft) return;
     setStake('');
-    setOdd(draft.bestOdd ? draft.bestOdd.toFixed(2) : '');
+    setOdd(draft.bestOdd ? fmtOdd(draft.bestOdd) : '');
     setDone(false); setError(null); setSaving(false);
     // `draft` fica fora das dependências de propósito: quem identifica a aposta
     // é a chave acima, e não a referência do objeto. Ver o comentário dela.
@@ -196,7 +195,7 @@ export function RegistrarApostaModal({
             <span className="w-12 h-12 rounded-full bg-forest/10 text-forest grid place-items-center"><Check className="w-6 h-6" /></span>
             <div className="text-[16px] font-bold text-ink">Aposta registrada</div>
             <p className="text-[13px] text-ink-2 leading-snug">
-              <b className="text-ink">{pick}</b> · {fmtBRL(stakeN)} @ {oddN.toFixed(2)} já está no seu Betinho como pendente.
+              <b className="text-ink">{pick}</b> · {fmtDinheiro(stakeN)} @ {fmtOdd(oddN)} já está no seu Betinho como pendente.
             </p>
             <div className="flex items-center gap-2 mt-1 w-full">
               <button onClick={() => onOpenChange(false)} className="flex-1 h-10 rounded-rebrand-sm border border-line text-[13px] font-semibold text-ink hover:bg-canvas-2 transition">Fechar</button>
@@ -247,24 +246,24 @@ export function RegistrarApostaModal({
                     onClick={() => setStake(atalho.valor.toFixed(2))}
                     className="h-8 shrink-0 whitespace-nowrap px-2.5 rounded-rebrand-sm border border-forest/20 bg-forest/5 text-[11.5px] font-semibold text-forest hover:bg-forest/10 transition"
                   >
-                    <span className="sm:hidden">{atalho.unidades === 1 ? '1 un.' : '½ un.'} · {fmtBRL(atalho.valor)}</span>
-                    <span className="hidden sm:inline">{atalho.unidades === 1 ? '1 unidade' : '½ unidade'} · {fmtBRL(atalho.valor)}</span>
+                    <span className="sm:hidden">{atalho.unidades === 1 ? '1 un.' : '½ un.'} · {fmtDinheiro(atalho.valor)}</span>
+                    <span className="hidden sm:inline">{atalho.unidades === 1 ? '1 unidade' : '½ unidade'} · {fmtDinheiro(atalho.valor)}</span>
                   </button>
                 ))}
               </div>
             )}
             <p className="text-[11px] text-ink-3 -mt-2">
               {draft?.oddKind === 'referencia'
-                ? `Confirme a cotação na sua casa antes de registrar. A referência coletada foi ${draft.bestOdd?.toFixed(2)}.`
+                ? `Confirme a cotação na sua casa antes de registrar. A referência coletada foi ${fmtOdd(draft.bestOdd)}.`
                 : draft?.oddKind === 'sem_cotacao'
                   ? 'Informe a odd que você encontrou para registrar a aposta.'
-                  : `Pegou outra odd? Ajuste acima — preenchemos com a melhor que encontramos (${draft?.bestOdd?.toFixed(2)}).`}
+                  : `Pegou outra odd? Ajuste acima — preenchemos com a melhor que encontramos (${fmtOdd(draft?.bestOdd)}).`}
             </p>
 
             {/* Retorno potencial */}
             <div className="flex items-center justify-between rounded-rebrand-sm bg-forest/5 border border-forest/15 px-3.5 py-2.5">
               <span className="text-[12px] text-ink-2">Retorno potencial</span>
-              <span className="text-[16px] font-bold tabular-nums text-forest">{retorno != null ? fmtBRL(retorno) : '—'}</span>
+              <span className="text-[16px] font-bold tabular-nums text-forest">{retorno != null ? fmtDinheiro(retorno) : '—'}</span>
             </div>
 
             {error && <p className="text-[12px] text-status-danger">{error}</p>}

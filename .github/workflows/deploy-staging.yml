@@ -65,5 +65,11 @@ jobs:
           supabase functions deploy ops-healthcheck --no-verify-jwt
           supabase functions deploy notify-futebol-oferta --no-verify-jwt
           supabase functions deploy crm-comportamento
+          # O porteiro decide de onde a pessoa acessa. COM verificação de JWT:
+          # a chave anônima já é um JWT válido do projeto, então visitante
+          # deslogado também chega aqui. (#550)
+          supabase functions deploy porteiro
+          # O lote que preenche o país das linhas do registro (#553).
+          supabase functions deploy resolver-pais --no-verify-jwt
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}

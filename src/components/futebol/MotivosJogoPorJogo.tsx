@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { fmtExato, fmtLinhaAnalisada } from '@/utils/formato';
 import { ChevronRight } from 'lucide-react';
 import type { FutebolFixtureHistorico, FutebolFixtureNumeros } from '@/services/futebol-data.service';
 import { pesoPalavra, pesoForte, rotuloPremissa, type Premissa } from '@/utils/futebol-premissas';
 import { evidenciaDe, type Evidencia } from '@/utils/futebol-evidencias';
 import { alinharAbaixoDoCabecalho } from '@/utils/rolagem';
-import { EH_BINARIA, evidenciaDoHistorico, storyDaPremissa, type SerieHistorico, type Story } from '@/utils/futebol-historico';
+import { EH_QUADRO, evidenciaDoHistorico, storyDaPremissa, type SerieHistorico, type Story } from '@/utils/futebol-historico';
 import {
   corteEmPalavras,
-  exato,
   faltouParaOCorte,
   fraseDaPrestacao,
   numeroDaPrestacao,
@@ -17,6 +17,8 @@ import {
 import { evidenciaDaPremissa } from '@/utils/futebol-evidencia-da-premissa';
 import type { InsumoMedido } from '@/utils/futebol-insumo-medido';
 import { Crest } from './Crest';
+import { BlocoSerie, COR_CONTRA, COR_FAVOR, SerieResultados } from './GraficoDeBarras';
+import { cabeRotulo, d1, dia, tetoDaEscala } from '@/utils/futebol-grafico-de-barras';
 
 /**
  * As abas "A favor" e "Contra": cada premissa com os jogos que produziram a média.
@@ -32,87 +34,12 @@ import { Crest } from './Crest';
  *   rótulo na ponta da linha → qual é essa média, sem precisar medir no olho
  */
 
-const d1 = (v: number) => v.toFixed(1).replace('.', ',');
-/**
- * A linha sai como está cotada: 1,75 é 1,75, não 1,8. Arredondar para uma casa
- * dizia "linha 1,8" numa aposta que é de 1,75.
- *
- * É o `exato` do módulo do critério, com o nome que esta tela usa: eram a mesma
- * função escrita duas vezes.
- */
-const fmtLinhaExata = exato;
-const dia = (iso: string) => {
-  const [, m, d] = iso.split('-');
-  return `${d}/${m}`;
-};
-
-/** Gol é inteiro, gol esperado é decimal, e métrica binária é sim ou não. */
-const rotuloValor = (v: number | null, metrica: SerieHistorico['metrica']) => {
-  if (v == null) return '';
-  if (EH_BINARIA(metrica)) return v ? 'sim' : 'não';
-  return metrica === 'xg' ? d1(v) : String(Math.round(v));
-};
-
-/**
- * A média das barras, no rótulo do gráfico.
- *
- * Numa métrica binária a média é a FRAÇÃO de jogos, e escrevê-la como "média 0,4"
- * embaixo de uma premissa que compara 40% contra 40% seria o gráfico falando outra
- * língua que o card (#355).
- */
-const rotuloMedia = (v: number, metrica: SerieHistorico['metrica']) =>
-  EH_BINARIA(metrica) ? `${Math.round(v * 100)}% dos jogos` : `média ${d1(v)}`;
-
-/**
- * A cor da barra diz o que o jogo significa PARA A SAÍDA ESCOLHIDA, não só "acima ou
- * abaixo da média": num "mais de 2,5" o jogo de 4 gols joga a favor, num "menos de
- * 2,5" o mesmo jogo joga contra. Quem separa os times é a posição (bloco da esquerda
- * e da direita, com o nome em cima), então a cor fica livre para o significado.
- */
 /**
  * O sentido em palavra. Os valores do enum são as próprias palavras hoje, e o
  * ternário que os repetia era um no-op — mas renomear o enum mudaria a copy em
  * silêncio, e um mapa é o que separa o tipo do texto.
  */
 const LADO_DO_CORTE: Record<Prestacao['sentido'], string> = { acima: 'acima', abaixo: 'abaixo' };
-
-const COR_FAVOR = '#0a3d2e';
-const COR_CONTRA = '#c9cec6';
-
-const COR_RES: Record<'V' | 'E' | 'D', { bg: string; fg: string }> = {
-  V: { bg: '#dcefe2', fg: '#0a3d2e' },
-  E: { bg: '#eef0eb', fg: '#5a625a' },
-  D: { bg: '#fbeeec', fg: '#b8341c' },
-};
-
-/** Sequência de resultados: um quadro por jogo, com placar, escudo e adversário. */
-function SerieResultados({ s }: { s: SerieHistorico }) {
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {s.jogos.map((j) => {
-        const c = COR_RES[j.resultado];
-        return (
-          <div
-            key={`${j.ordem}-${j.data}`}
-            className="rounded-lg px-2 py-1.5"
-            style={{ background: c.bg }}
-            title={`${dia(j.data)} · ${j.emCasa ? 'em casa' : 'fora'} contra ${j.adversario}`}
-          >
-            <div className="tabular-nums text-[12.5px] font-bold leading-none text-center" style={{ color: c.fg }}>
-              {j.placar}
-            </div>
-            <div className="flex items-center gap-1 mt-1.5">
-              <Crest name={j.adversario} id={j.adversarioId} size={13} />
-              <span className="text-[9.5px] truncate max-w-[58px]" style={{ color: c.fg, opacity: 0.8 }}>
-                {j.adversario}
-              </span>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 
 /**
  * Amostra de 1 ou 2 jogos não vira gráfico: barra sozinha ocupando a largura toda
@@ -146,126 +73,11 @@ function SerieMiuda({ s }: { s: SerieHistorico }) {
   );
 }
 
-const PLOT = 96;
-const TOPO_ROTULO = 16;
-
-/** Um bloco do gráfico unificado: as barras de um time, na escala comum. */
-function BlocoSerie({
-  s,
-  teto,
-  comRotulo,
-  mostraComoLer,
-  referencia,
-}: {
-  s: SerieHistorico;
-  teto: number;
-  comRotulo: boolean;
-  /** As séries do card medem coisas diferentes, então cada uma se explica. */
-  mostraComoLer: boolean;
-  referencia?: Story['referencia'];
-}) {
-  const y = (v: number) => (v / teto) * (PLOT - TOPO_ROTULO);
-  return (
-    <div className="min-w-0" style={{ flexGrow: s.jogos.length, flexBasis: 0 }}>
-      {/* O escudo e o nome ficam em cima do PRÓPRIO gráfico: na legenda longe dele
-          não dava para saber qual metade era de quem. */}
-      <div className="flex items-center gap-1.5 mb-2 min-w-0">
-        <Crest name={s.teamName} id={s.teamId} size={16} />
-        <span className="text-[11.5px] font-semibold text-ink truncate">{s.titulo}</span>
-        {s.sub && <span className="text-[10.5px] text-ink-3 shrink-0">{s.sub}</span>}
-      </div>
-      {/* A barra se ajusta à largura, sem rolagem — e isso passou a caber
-          porque o RECORTE mudou.
-          
-          Enquanto a tela desenhava o histórico inteiro, 25 barras em ~290px
-          davam menos de 12px cada: nesse tamanho não se compara altura nenhuma,
-          o escudo fica ilegível e o rótulo de valor não aparece. A saída da vez
-          foi barra fixa de 28px com rolagem lateral.
-          
-          Com a janela alinhada ao modelo — dez jogos — são ~25px por barra numa
-          fileira só. Rolagem para dezessete pixels de sobra seria complexidade
-          sem troco, e o panorama de ver tudo de uma vez volta de graça. */}
-      <div className="relative" style={{ height: PLOT }}>
-        <div className="absolute inset-0 flex items-end gap-[3px]">
-          {s.jogos.map((j) => (
-            <div
-              key={`${j.ordem}-${j.data}`}
-              className="flex-1 min-w-[6px] max-w-[44px] flex flex-col items-center justify-end"
-              title={`${dia(j.data)} · ${j.emCasa ? 'em casa' : 'fora'} contra ${j.adversario} · ${j.placar}${
-                j.valor != null ? ` · ${rotuloValor(j.valor, s.metrica)}` : ' · sem dado'
-              }`}
-            >
-              {comRotulo && (
-                <span className="tabular-nums text-[9.5px] font-semibold leading-none mb-1" style={{ color: 'var(--ink-2)' }}>
-                  {j.valor == null ? '·' : rotuloValor(j.valor, s.metrica)}
-                </span>
-              )}
-              <div
-                className="w-full rounded-t-[3px]"
-                style={{
-                  height: j.valor == null ? 3 : Math.max(3, y(j.valor)),
-                  background: j.valor == null ? '#e3e6e0' : j.favorece ? COR_FAVOR : COR_CONTRA,
-                }}
-              />
-            </div>
-          ))}
-        </div>
-        {referencia && (
-          <div
-            className="absolute left-0 right-0 border-t border-dashed pointer-events-none"
-            style={{ borderColor: 'var(--ink-3)', bottom: y(referencia.valor) }}
-          />
-        )}
-        {s.media != null && s.mostraMedia && (
-          <>
-            <div
-              className="absolute left-0 right-0 border-t-2 border-dashed pointer-events-none"
-              style={{ borderColor: '#d4a017', bottom: y(s.media) }}
-            />
-            <span
-              className="absolute right-0 tabular-nums text-[9.5px] font-bold px-1 rounded bg-white/90 pointer-events-none"
-              style={{ color: '#b8870f', bottom: y(s.media) + 2 }}
-            >
-              {rotuloMedia(s.media, s.metrica)}
-            </span>
-          </>
-        )}
-      </div>
-      {/* Contra quem foi cada jogo. Encostado nas barras, sempre: o escudo é a
-          legenda do eixo, e qualquer coisa entre os dois quebra a leitura de
-          "esta barra foi contra este time". */}
-      <div className="flex items-start gap-[3px] mt-1.5">
-        {s.jogos.map((j) => (
-          <div key={`c-${j.ordem}-${j.data}`} className="flex-1 min-w-[6px] max-w-[44px] flex justify-center">
-            <Crest name={j.adversario} id={j.adversarioId} size={comRotulo ? 15 : 11} />
-          </div>
-        ))}
-      </div>
-      {/* A explicação DESTE gráfico, quando as séries do card medem coisas
-          diferentes. Onde medem a mesma, a story traz uma só, embaixo dos dois
-          — repeti-la em cada um seria dizer duas vezes. */}
-      {mostraComoLer && (
-        <div className="text-[11px] leading-relaxed mt-2" style={{ color: '#8d8672' }}>
-          {s.comoLer}
-        </div>
-      )}
-    </div>
-  );
-}
-
 /** O gráfico dos dois times em uma caixa, escala compartilhada. */
 function GraficoUnificado({ story }: { story: Story }) {
   const numericas = story.series.filter((s) => s.metrica !== 'resultado');
-  const todosValores = numericas.flatMap((s) => s.jogos.map((j) => j.valor)).filter((v): v is number => v != null);
-  const teto = Math.max(...todosValores, story.referencia?.valor ?? 0, 1);
-  const total = numericas.reduce((n, s) => n + s.jogos.length, 0);
-  // Rótulo de dados em cima de cada barra. Gol é 1 caractere e cabe quase sempre; o
-  // gol esperado tem decimal e só cabe até a temporada inteira dos dois times.
-  // Rótulo de dados em cima de cada barra. Cabe sempre desde que a janela
-  // encolheu para dez jogos: são ~25px por barra e o rótulo mede ~17. A conta
-  // fica porque a régua ainda vale — gol é um caractere, gol esperado tem
-  // decimal, e é o segundo que aperta.
-  const comRotulo = total <= 24 || numericas.every((s) => s.metrica !== 'xg');
+  const teto = tetoDaEscala(numericas, story.referencia?.valor);
+  const comRotulo = cabeRotulo(numericas);
 
   // A barra por jogo compara com a MÉDIA (é o que a barra tem para comparar), e o
   // consolidado compara com a LINHA. Dizer "joga a favor" nas duas fazia as duas se
@@ -335,7 +147,7 @@ function Consolidado({ c, saidaLabel, modo }: { c: NonNullable<Story['consolidad
         </div>
         <div className="text-right">
           <div className="text-[10px] uppercase tracking-[0.14em] font-semibold text-ink-3">Linha escolhida</div>
-          <div className="tabular-nums text-[20px] font-semibold leading-none mt-1.5 text-ink">{fmtLinhaExata(c.linha)}</div>
+          <div className="tabular-nums text-[20px] font-semibold leading-none mt-1.5 text-ink">{fmtLinhaAnalisada(c.linha)}</div>
         </div>
       </div>
       {/* A marca da linha fica POR CIMA do preenchimento, com contorno branco: dentro
@@ -345,7 +157,7 @@ function Consolidado({ c, saidaLabel, modo }: { c: NonNullable<Story['consolidad
           className="absolute top-0 -translate-x-1/2 text-[9.5px] font-bold tabular-nums whitespace-nowrap"
           style={{ left: pct(c.linha), color: '#b8870f' }}
         >
-          linha {fmtLinhaExata(c.linha)}
+          linha {fmtLinhaAnalisada(c.linha)}
         </span>
         <div className="relative h-3.5 rounded-full bg-white">
           <div className="absolute left-0 top-0 bottom-0 rounded-full" style={{ width: pct(c.valor), background: cor }} />
@@ -361,11 +173,11 @@ function Consolidado({ c, saidaLabel, modo }: { c: NonNullable<Story['consolidad
       <div className="text-[11.5px] leading-relaxed text-ink-2 mt-2.5">
         {modo === 'favor'
           ? c.favorece
-            ? `Fica ${c.direcao === 'maior' ? 'acima' : 'abaixo'} da linha de ${fmtLinhaExata(c.linha)}, e é por isso que esta premissa joga a favor de ${saidaLabel}.`
-            : `Fica ${c.direcao === 'maior' ? 'abaixo' : 'acima'} da linha de ${fmtLinhaExata(c.linha)}: por este número, a premissa não sustenta ${saidaLabel}.`
+            ? `Fica ${c.direcao === 'maior' ? 'acima' : 'abaixo'} da linha de ${fmtLinhaAnalisada(c.linha)}, e é por isso que esta premissa joga a favor de ${saidaLabel}.`
+            : `Fica ${c.direcao === 'maior' ? 'abaixo' : 'acima'} da linha de ${fmtLinhaAnalisada(c.linha)}: por este número, a premissa não sustenta ${saidaLabel}.`
           : c.favorece
-            ? `Fica ${c.direcao === 'maior' ? 'acima' : 'abaixo'} da linha de ${fmtLinhaExata(c.linha)}, mas a premissa não acendeu: o critério do modelo é mais exigente do que a linha.`
-            : `Fica ${c.direcao === 'maior' ? 'abaixo' : 'acima'} da linha de ${fmtLinhaExata(c.linha)}, e é por isso que esta premissa não atingiu o corte.`}
+            ? `Fica ${c.direcao === 'maior' ? 'acima' : 'abaixo'} da linha de ${fmtLinhaAnalisada(c.linha)}, mas a premissa não acendeu: o critério do modelo é mais exigente do que a linha.`
+            : `Fica ${c.direcao === 'maior' ? 'abaixo' : 'acima'} da linha de ${fmtLinhaAnalisada(c.linha)}, e é por isso que esta premissa não atingiu o corte.`}
       </div>
     </div>
   );
@@ -410,7 +222,7 @@ function PrestacaoPorTime({ p, saidaLabel }: { p: Prestacao; saidaLabel: string 
   // arrasta a régua. Sem dizer isso, ver o número mudar parece defeito.
   const contraALinha =
     p.escala === 'contagem' && p.linha != null
-      ? ` A conta é contra a linha de ${fmtLinhaExata(p.linha)}, e muda com ela.`
+      ? ` A conta é contra a linha de ${fmtLinhaAnalisada(p.linha)}, e muda com ela.`
       : '';
   return (
     <div className="rounded-xl bg-canvas-2 p-4">
@@ -487,7 +299,7 @@ function PrestacaoDeContas({ p, saidaLabel }: { p: Prestacao; saidaLabel: string
   // A frase da distância mora na tela, e o número vem do critério: uma função que
   // devolvesse ", por 0,05" só serviria colada nesta frase.
   const falta = faltouParaOCorte(p);
-  const porQuanto = falta == null ? '' : `, por ${exato(falta)}`;
+  const porQuanto = falta == null ? '' : `, por ${fmtExato(falta)}`;
   return (
     <div className="rounded-xl bg-canvas-2 p-4">
       <div className="flex items-end justify-between gap-4 flex-wrap">
@@ -539,14 +351,14 @@ function PrestacaoDeContas({ p, saidaLabel }: { p: Prestacao; saidaLabel: string
           <span className="inline-flex items-center gap-1.5">
             <span className="w-[3px] h-3 rounded-full" style={{ background: '#b8870f' }} />
             <span className="tabular-nums" style={{ color: '#8d8672' }}>
-              corte {fmtLinhaExata(p.corte)}
+              corte {fmtExato(p.corte)}
             </span>
           </span>
           {!semMargem && (
             <span className="inline-flex items-center gap-1.5">
               <span className="w-[2px] h-3 rounded-full" style={{ background: '#c0b79f' }} />
               <span className="tabular-nums" style={{ color: '#8d8672' }}>
-                linha {fmtLinhaExata(linha ?? 0)}
+                linha {fmtLinhaAnalisada(linha ?? 0)}
               </span>
             </span>
           )}
@@ -555,13 +367,13 @@ function PrestacaoDeContas({ p, saidaLabel }: { p: Prestacao; saidaLabel: string
 
       <div className="text-[11.5px] leading-relaxed text-ink-2 mt-2.5">
         {p.cruzou
-          ? `${d1(insumo)} fica ${LADO_DO_CORTE[p.sentido]} do corte de ${fmtLinhaExata(p.corte)}, e é por isso que esta premissa sustenta ${saidaLabel}.`
-          : `${d1(insumo)} não atingiu o corte de ${fmtLinhaExata(p.corte)}${porQuanto}.`}
+          ? `${d1(insumo)} fica ${LADO_DO_CORTE[p.sentido]} do corte de ${fmtExato(p.corte)}, e é por isso que esta premissa sustenta ${saidaLabel}.`
+          : `${d1(insumo)} não atingiu o corte de ${fmtExato(p.corte)}${porQuanto}.`}
         {!semMargem && (
           <>
             {' '}
-            O corte é a linha de {fmtLinhaExata(linha ?? 0)} com uma margem de{' '}
-            {fmtLinhaExata(Math.abs(p.margem ?? 0))}: o modelo é mais exigente do que a linha.
+            O corte é a linha de {fmtLinhaAnalisada(linha ?? 0)} com uma margem de{' '}
+            {fmtExato(Math.abs(p.margem ?? 0))}: o modelo é mais exigente do que a linha.
           </>
         )}
       </div>
@@ -583,7 +395,7 @@ function PainelPremissa({
   saidaLabel: string;
   modo: 'favor' | 'contra';
 }) {
-  const soMiudas = story.series.every((s) => s.metrica !== 'resultado' && s.jogos.length <= 2);
+  const soMiudas = story.series.every((s) => !EH_QUADRO(s.metrica) && s.jogos.length <= 2);
   return (
     <div className="px-4 pb-4 pt-3.5" style={{ borderTop: '1px solid #f1e9d6' }}>
       {/* A prestação tem precedência: onde o critério foi transcrito, o número que
@@ -601,7 +413,7 @@ function PainelPremissa({
         )
       )}
 
-      {story.series[0].metrica === 'resultado' ? (
+      {EH_QUADRO(story.series[0].metrica) ? (
         <div className="flex flex-col gap-4">
           {story.series.map((s) => (
             <div key={s.chave}>
@@ -610,7 +422,12 @@ function PainelPremissa({
                 <span className="text-[12px] font-semibold text-ink">{s.titulo}</span>
                 <span className="text-[10.5px] ml-auto" style={{ color: '#8d8672' }}>{s.sub}</span>
               </div>
-              <SerieResultados s={s} />
+              {/* Nas binárias a cor segue o que a PREMISSA quer, e não o
+                  resultado nem o fato cru: a mesma métrica atende premissas de
+                  direções opostas, e o fato cru pintaria de verde, na
+                  `ambos_marcam`, justamente o jogo em que o time passou em
+                  branco. */}
+              <SerieResultados s={s} corPor={s.metrica === 'resultado' ? 'resultado' : 'favorece'} />
             </div>
           ))}
         </div>
@@ -796,6 +613,7 @@ export function MotivosJogoPorJogo({
   historico,
   numeros,
   insumos,
+  saida,
   lado,
   linha,
   saidaLabel,
@@ -815,6 +633,14 @@ export function MotivosJogoPorJogo({
   numeros: FutebolFixtureNumeros[] | undefined;
   /** O valor medido pelo mart (#464). Ausência é normal, não erro. */
   insumos?: InsumoMedido[] | undefined;
+  /**
+   * A saída do mart (`Home`, `1X`, `Yes`…), que acha a linha do valor medido.
+   *
+   * ⚠️ NÃO é o `saidaLabel` abaixo. Aquele é o texto da tela ("Ambos marcam:
+   * Sim") e este é a chave do mart: derivar um do outro amarraria a busca no
+   * banco à copy, e trocar uma palavra da tela zeraria a evidência em silêncio.
+   */
+  saida: string | null;
   lado: 'home' | 'away' | null;
   linha: number | null;
   /** A saída analisada, para o fechamento dizer a favor de quê. */
@@ -850,11 +676,11 @@ export function MotivosJogoPorJogo({
           // A frase e o card saem da MESMA prestação. Enquanto a frase lia o
           // histórico jogo a jogo e o card lia o perfil de temporada, a tela
           // mostrava 2,3 e 2,4 para a mesma afirmação, um embaixo do outro.
-          ev: evidenciaDaPremissa({ mercado, slug: p.slug, numeros, historico, insumos, lado, linha, acesa }),
-          story: storyDaPremissa(p.slug, historico, lado, linha),
+          ev: evidenciaDaPremissa({ mercado, slug: p.slug, numeros, historico, insumos, saida, lado, linha, acesa }),
+          story: storyDaPremissa(mercado, p.slug, historico, lado, linha),
         };
       }),
-    [mercado, premissas, numeros, historico, insumos, lado, linha, acesa],
+    [mercado, premissas, numeros, historico, insumos, saida, lado, linha, acesa],
   );
 
   const total = itens.length + (extras?.length ?? 0);

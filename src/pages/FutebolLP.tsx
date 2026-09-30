@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { fmtOdd } from '@/utils/formato';
 import { useNavigate } from "react-router-dom";
 import { Seo } from "@/components/Seo";
 import { faqPageSchema, type FaqItem } from "@/lib/structured-data";
@@ -274,7 +275,7 @@ const FutebolLP = () => {
                         <div className="text-[13px] font-semibold tracking-tight text-ink truncate">{o.pick}</div>
                         <div className="text-[10px] text-ink-3 truncate">{o.home} × {o.away} · {o.hora}</div>
                       </div>
-                      <span className="text-[12px] font-semibold tabular-nums text-ink shrink-0">{o.odd.toFixed(2)}</span>
+                      <span className="text-[12px] font-semibold tabular-nums text-ink shrink-0">{fmtOdd(o.odd)}</span>
                       <ChevronRight className={`w-4 h-4 shrink-0 ${active ? "text-forest" : "text-ink-3"}`} />
                     </button>
                   );
@@ -303,7 +304,7 @@ const FutebolLP = () => {
                         <div className="text-[13px] font-semibold tracking-tight text-ink truncate">{o.pick}</div>
                         <div className="text-[10px] text-ink-3 truncate">{o.home} × {o.away} · {o.hora}</div>
                       </div>
-                      <span className="text-[12px] font-semibold tabular-nums text-ink shrink-0">{o.odd.toFixed(2)}</span>
+                      <span className="text-[12px] font-semibold tabular-nums text-ink shrink-0">{fmtOdd(o.odd)}</span>
                       <ChevronRight className="w-4 h-4 shrink-0 text-ink-3" />
                     </button>
                   );
@@ -368,7 +369,7 @@ const FutebolLP = () => {
                         </div>
                         <div>
                           <div className="text-[9px] uppercase tracking-[0.14em] font-semibold text-white/50">Odd</div>
-                          <div className="text-[18px] font-semibold tabular-nums leading-none mt-1">{selected.odd.toFixed(2)}</div>
+                          <div className="text-[18px] font-semibold tabular-nums leading-none mt-1">{fmtOdd(selected.odd)}</div>
                         </div>
                       </div>
                     </div>

@@ -1,4 +1,5 @@
 import { SlidersHorizontal } from 'lucide-react';
+import { fmtExato } from '@/utils/formato';
 import { CampoNumerico } from './CampoNumerico';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ehSimulacao, type PesoPorFaixa } from './placar-agregacao';
@@ -168,7 +169,7 @@ export function RecorteESimulacao({
                             : 'border-line-2 text-ink-dim hover:text-ink'
                         }`}
                       >
-                        {String(peso).replace('.', ',')}
+                        {fmtExato(peso)}
                       </button>
                     ))}
                     <CampoNumerico

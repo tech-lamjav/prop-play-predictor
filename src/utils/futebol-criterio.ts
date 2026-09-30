@@ -1,4 +1,5 @@
 import type { FutebolFixtureHistorico } from '@/services/futebol-data.service';
+import { fmtDecimal, fmtExato } from '@/utils/formato';
 import { storyDaPremissa, type Story } from '@/utils/futebol-historico';
 
 // A premissa prestando contas do modelo (spec #349, issues #353, #354, #355).
@@ -340,7 +341,7 @@ export function prestacaoDaPremissa(
   if (!criterio) return null;
   if (criterio.corte.de === 'linha' && linha == null) return null;
 
-  const story = storyDaPremissa(slug, hist, lado, linha);
+  const story = storyDaPremissa(mercado, slug, hist, lado, linha);
   if (!story) return null;
 
   return prestacaoDoStory(mercado, slug, criterio, story, linha);
@@ -441,19 +442,7 @@ export function temCriterio(mercado: string, slug: string): boolean {
 export function numeroDaPrestacao(p: Prestacao, valor: number): string {
   if (p.escala === 'percentual') return `${Math.round(valor)}%`;
   if (p.escala === 'contagem') return String(valor);
-  return valor.toFixed(1).replace('.', ',');
-}
-
-/**
- * O decimal como ele é, em pt-BR: 2,95 é 2,95 e 0,05 é 0,05.
- *
- * Existe uma vez porque `String(v).replace('.', ',')` estava copiado em três
- * lugares, e a diferença entre ele e o `toFixed(1)` de `numeroDaPrestacao` é o
- * que decide se a tela mostra "faltou 0,05" ou "faltou 0,1" — o dobro. Duas
- * regras de arredondamento no mesmo módulo pedem um nome cada uma.
- */
-export function exato(v: number): string {
-  return String(v).replace('.', ',');
+  return fmtDecimal(valor, 1);
 }
 
 /**
@@ -505,7 +494,7 @@ export function faltouParaOCorte(p: Prestacao): number | null {
 export function corteDaPrestacao(p: Prestacao): string {
   if (p.escala === 'percentual') return `${p.corte}%`;
   if (p.escala === 'contagem') return `${p.corte} jogos`;
-  return exato(p.corte);
+  return fmtExato(p.corte);
 }
 
 /**

@@ -44,6 +44,7 @@ const LADO = 96; // a tela usa 26px; 96 cobre retina com folga
 // Se um dia subirem o brasão de verdade, é só voltar `copa_mundo: 1` aqui.
 const LIGAS: Record<string, number> = {
   nations_league: 5,
+  amistosos: 10,
   champions_league: 2,
   sudamericana: 11,
   libertadores: 13,

@@ -51,6 +51,7 @@ export function evidenciaDaPremissa({
   numeros,
   historico,
   insumos,
+  saida,
   lado,
   linha,
   acesa = true,
@@ -61,6 +62,21 @@ export function evidenciaDaPremissa({
   historico: FutebolFixtureHistorico[] | undefined;
   /** O valor medido pelo mart (#464). Ausência é normal: o funil é append-only. */
   insumos?: InsumoMedido[] | undefined;
+  /**
+   * A saída do mart a que esta leitura se refere (`Home`, `1X`, `Yes`…).
+   *
+   * Vem separada do `lado` porque as duas coisas deixaram de coincidir: em dois
+   * dos cinco mercados a saída não se chama pelo lado do confronto, e no Ambos
+   * marcam não existe lado nenhum. Quem acha a linha do mart é ela; quem monta a
+   * frase é o `lado`.
+   *
+   * ⚠️ OBRIGATÓRIA, embora aceite nulo. Opcional ela compilava em qualquer
+   * chamador, e quem esquecesse de passá-la saía da rota do valor medido sem
+   * erro de tipo e sem teste reprovando — a premissa voltaria calada a mostrar o
+   * número do histórico. Nula é uma resposta ("esta leitura não tem saída"); a
+   * ausência era um descuido indistinguível dela.
+   */
+  saida: string | null;
   lado: 'home' | 'away' | null;
   linha: number | null;
   /**
@@ -76,13 +92,18 @@ export function evidenciaDaPremissa({
   if (p) return { texto: fraseDaPrestacao(p) };
   // O nome do time sai da 094 e o VALOR do mart: nome não é medição, não muda
   // com a janela, e é o que a barra precisa para dizer de quem é cada lado.
-  const medido = evidenciaDoInsumoMedido(mercado, slug, lado, insumos, {
-    time: numeros?.find((n) => n.side === lado)?.team_name,
-    adversario: numeros?.find((n) => n.side !== lado)?.team_name,
+  // Os quatro nomes, e não dois. `time`/`adversario` só existem onde a aposta
+  // tem lado, e `mandante`/`visitante` existem sempre — é deles que o Ambos
+  // marcam precisa, onde nenhum dos dois é o lado apostado.
+  const medido = evidenciaDoInsumoMedido(mercado, slug, saida, insumos, {
+    time: lado ? numeros?.find((n) => n.side === lado)?.team_name : undefined,
+    adversario: lado ? numeros?.find((n) => n.side !== lado)?.team_name : undefined,
+    mandante: numeros?.find((n) => n.side === 'home')?.team_name,
+    visitante: numeros?.find((n) => n.side === 'away')?.team_name,
   });
   if (medido) return medido;
   return (
-    evidenciaDoHistorico(slug, historico, lado, linha) ??
-    evidenciaDe(slug, numeros, lado, acesa, linha)
+    evidenciaDoHistorico(mercado, slug, historico, lado, linha) ??
+    evidenciaDe(mercado, slug, numeros, lado, acesa, linha)
   );
 }

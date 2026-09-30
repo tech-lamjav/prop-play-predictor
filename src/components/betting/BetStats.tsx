@@ -1,4 +1,5 @@
 import React from 'react';
+import { fmtDinheiro } from '@/utils/formato';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { 
@@ -18,12 +19,6 @@ interface BetStatsProps {
 }
 
 export default function BetStats({ stats, isLoading }: BetStatsProps) {
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(amount);
-  };
 
   const formatPercentage = (value: number) => {
     return `${value.toFixed(1)}%`;
@@ -102,7 +97,7 @@ export default function BetStats({ stats, isLoading }: BetStatsProps) {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">
-            {formatCurrency(stats.totalStaked)}
+            {fmtDinheiro(stats.totalStaked)}
           </div>
           <p className="text-xs text-muted-foreground">
             Total investido
@@ -138,7 +133,7 @@ export default function BetStats({ stats, isLoading }: BetStatsProps) {
         </CardHeader>
         <CardContent>
           <div className={`text-2xl font-bold ${getProfitColor(stats.profit)}`}>
-            {formatCurrency(stats.profit)}
+            {fmtDinheiro(stats.profit)}
           </div>
           <div className="flex items-center space-x-2">
             <Badge variant={stats.profit >= 0 ? "default" : "destructive"}>
@@ -160,14 +155,14 @@ export default function BetStats({ stats, isLoading }: BetStatsProps) {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="text-center p-4 bg-green-50 rounded-lg">
               <div className="text-2xl font-bold text-green-600">
-                {formatCurrency(stats.totalReturn)}
+                {fmtDinheiro(stats.totalReturn)}
               </div>
               <p className="text-sm text-green-700">Total Retornado</p>
             </div>
             
             <div className="text-center p-4 bg-blue-50 rounded-lg">
               <div className="text-2xl font-bold text-blue-600">
-                {formatCurrency(stats.totalStaked)}
+                {fmtDinheiro(stats.totalStaked)}
               </div>
               <p className="text-sm text-blue-700">Total Investido</p>
             </div>
@@ -178,7 +173,7 @@ export default function BetStats({ stats, isLoading }: BetStatsProps) {
               <div className={`text-2xl font-bold ${
                 stats.profit >= 0 ? 'text-green-600' : 'text-red-600'
               }`}>
-                {formatCurrency(stats.profit)}
+                {fmtDinheiro(stats.profit)}
               </div>
               <p className={`text-sm ${
                 stats.profit >= 0 ? 'text-green-700' : 'text-red-700'

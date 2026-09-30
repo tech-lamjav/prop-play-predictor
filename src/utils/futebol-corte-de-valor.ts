@@ -56,10 +56,14 @@ export const CORTE_FALLBACK: readonly { market: string; limiar: number }[] = [
  * Mercado sem limiar sempre passa. Mercado com limiar exige vantagem gravada E
  * acima dele — o limiar em si já corta.
  *
- * ⚠️ Linha SEM vantagem gravada NÃO passa, e isso é o contrário do
- * `passaNoFiltroDeValor` do painel. Lá é um filtro de conveniência, e esconder
- * por um campo nunca gravado apagaria registro. Aqui é porta de publicação: não
- * saber o preço de um mercado onde o preço decide não é motivo para mostrar.
+ * ⚠️ Linha SEM vantagem gravada NÃO passa. Aqui é porta de PUBLICAÇÃO: não saber
+ * o preço de um mercado onde o preço decide não é motivo para mostrar.
+ *
+ * O painel já teve um filtro de valor que fazia o contrário — deixava passar a
+ * linha sem vantagem gravada, porque lá era conveniência e esconder por um campo
+ * nunca gravado apagaria registro. Esse filtro saiu com o valor da tela (#520).
+ * Este corte não: ele é invisível, decide o que nasce, e é o que separou ROI
+ * +7,9 de ROI −17,4 na medição de setembro.
  */
 export function passaNoCorteDeValor(
   market: string,

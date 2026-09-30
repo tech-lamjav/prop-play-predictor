@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { fmtExato } from '@/utils/formato';
 import { parseNumero } from './placar-formato';
 
 /**
@@ -34,7 +35,7 @@ export function CampoNumerico({
   maximo?: number;
   className?: string;
 }) {
-  const comoTexto = (n: number | null) => (n == null ? '' : String(n).replace('.', ','));
+  const comoTexto = (n: number | null) => (n == null ? '' : fmtExato(n));
   const [texto, setTexto] = useState(() => comoTexto(valor));
   const [digitando, setDigitando] = useState(false);
 

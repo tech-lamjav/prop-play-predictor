@@ -610,6 +610,41 @@ export type Database = {
           },
         ]
       }
+      perfil_declarado: {
+        Row: {
+          adiamentos: number
+          atualizado_em: string
+          frequencia: string | null
+          objetivo: string | null
+          respondido_em: string | null
+          user_id: string
+        }
+        Insert: {
+          adiamentos?: number
+          atualizado_em?: string
+          frequencia?: string | null
+          objetivo?: string | null
+          respondido_em?: string | null
+          user_id: string
+        }
+        Update: {
+          adiamentos?: number
+          atualizado_em?: string
+          frequencia?: string | null
+          objetivo?: string | null
+          respondido_em?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "perfil_declarado_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       referrals: {
         Row: {
           created_at: string | null
@@ -643,6 +678,47 @@ export type Database = {
           {
             foreignKeyName: "referrals_referrer_id_fkey"
             columns: ["referrer_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      registro_de_presenca: {
+        Row: {
+          criado_em: string
+          dia: string
+          ip: string | null
+          origem: string
+          pais: string | null
+          pais_resolvido_em: string | null
+          user_id: string
+          veredito: string
+        }
+        Insert: {
+          criado_em?: string
+          dia: string
+          ip?: string | null
+          origem: string
+          pais?: string | null
+          pais_resolvido_em?: string | null
+          user_id: string
+          veredito: string
+        }
+        Update: {
+          criado_em?: string
+          dia?: string
+          ip?: string | null
+          origem?: string
+          pais?: string | null
+          pais_resolvido_em?: string | null
+          user_id?: string
+          veredito?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "registro_de_presenca_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]

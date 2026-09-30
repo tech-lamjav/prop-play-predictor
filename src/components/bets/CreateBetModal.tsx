@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { fmtDinheiro } from '@/utils/formato';
 import { format, parse, isValid, isBefore } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Calendar as CalendarIcon, ChevronDown, Send } from 'lucide-react';
@@ -273,8 +274,6 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
     };
   }, [formData.odds, formData.stake_amount, formData.is_credit_bet]);
 
-  const formatCurrency = (n: number) =>
-    n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -908,19 +907,19 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
             <div>
               <div className="text-[10px] uppercase tracking-[0.12em] text-forest/70 font-semibold">Stake</div>
               <div className="text-[16px] font-semibold tabular text-ink mt-0.5">
-                {summary ? `R$ ${formatCurrency(summary.stake)}` : '—'}
+                {summary ? fmtDinheiro(summary.stake) : '—'}
               </div>
             </div>
             <div>
               <div className="text-[10px] uppercase tracking-[0.12em] text-forest/70 font-semibold">Retorno potencial</div>
               <div className="text-[16px] font-semibold tabular text-forest mt-0.5">
-                {summary ? `R$ ${formatCurrency(summary.retorno)}` : '—'}
+                {summary ? fmtDinheiro(summary.retorno) : '—'}
               </div>
             </div>
             <div>
               <div className="text-[10px] uppercase tracking-[0.12em] text-forest/70 font-semibold">Lucro potencial</div>
               <div className="text-[16px] font-semibold tabular text-status-success mt-0.5">
-                {summary ? `+ R$ ${formatCurrency(summary.lucro)}` : '—'}
+                {summary ? `+ ${fmtDinheiro(summary.lucro)}` : '—'}
               </div>
             </div>
           </div>

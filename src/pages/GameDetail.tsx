@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { fmtNumero } from '@/utils/formato';
 import { usePostHog } from '@posthog/react';
 import { Helmet } from 'react-helmet-async';
 import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -570,7 +571,7 @@ function B2BAlertCard({
             <div className="text-[11px] text-ink-2 mt-1.5">
               {restHours != null && <>Descanso: <span className="text-ink font-medium">{restHours}h</span></>}
               {restHours != null && travelKm != null && ' · '}
-              {travelKm != null && <>Viagem: <span className="text-ink font-medium">{travelKm.toLocaleString('pt-BR')} km</span></>}
+              {travelKm != null && <>Viagem: <span className="text-ink font-medium">{fmtNumero(travelKm)} km</span></>}
             </div>
           )}
         </div>

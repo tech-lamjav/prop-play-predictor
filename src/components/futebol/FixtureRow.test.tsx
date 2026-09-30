@@ -95,8 +95,11 @@ describe('FixtureRow · a altura da coluna de leitura', () => {
     // do tamanho do mais alto, em vez de empilhar um sobre o outro.
     expect(temClasse(fantasma!, 'col-start-1')).toBe(true);
     expect(temClasse(fantasma!, 'row-start-1')).toBe(true);
-    // Três linhas possíveis: rótulo do mercado (só no desktop), aposta e odd.
-    expect(fantasma!.children).toHaveLength(3);
+    // QUATRO fantasmas para duas telas diferentes: o rótulo do mercado e a odd
+    // são só do desktop, a segunda linha da aposta é só do celular, e a primeira
+    // linha da aposta é das duas. Cada tela acende os seus e apaga os outros por
+    // CSS — reservar sempre os quatro daria altura de uma tela que não existe.
+    expect(fantasma!.children).toHaveLength(4);
   });
 
   it('o conteúdo real divide a célula com os fantasmas', () => {

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { fmtDinheiro } from '@/utils/formato';
 import {
   XAxis,
   YAxis,
@@ -151,7 +152,7 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
   // Sem prop: fallback BRL com prefixo R$.
   const formatV = (value: number): string => {
     if (formatValueProp) return formatValueProp(value);
-    return `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return fmtDinheiro(value);
   };
   // Versão short pra eixos/labels do chart — sem centavos quando inteiro.
   const formatVShort = (value: number): string => {
@@ -160,7 +161,7 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
       const f = formatValueProp(value);
       return f.replace(/[,.]00\b/, '');
     }
-    return `R$${value.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+    return fmtDinheiro(value, { casas: 0 });
   };
 
   const lineColor = totalProfit >= 0 ? '#0a3d2e' : '#be123c';
