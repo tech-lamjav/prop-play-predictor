@@ -11,6 +11,8 @@
 // regra em `public.futebol_dia_brt` (migration 092) e a RPC da agenda já devolve
 // `day_brt` pronto; estas funções são pro que o front calcula por conta.
 
+import { localeAtivo } from '@/utils/idioma-ativo';
+
 export const SAO_PAULO_TZ = 'America/Sao_Paulo';
 
 /**
@@ -130,7 +132,7 @@ export function diasEntre(de: string, ate: string): number {
 export function fmtTime(raw: string | null | undefined): string {
   const d = parseUtc(raw);
   if (!d) return '';
-  return formatadorDeData('pt-BR', {
+  return formatadorDeData(localeAtivo(), {
     timeZone: SAO_PAULO_TZ,
     hour: '2-digit',
     minute: '2-digit',
@@ -147,7 +149,7 @@ export function fmtDayHeader(dayKey: string | null | undefined): string {
   // BRT (UTC−3), então o rótulo não escorrega pro dia vizinho.
   const d = new Date(`${dayKey}T12:00:00Z`);
   if (isNaN(d.getTime())) return '—';
-  const s = formatadorDeData('pt-BR', {
+  const s = formatadorDeData(localeAtivo(), {
     timeZone: SAO_PAULO_TZ,
     weekday: 'long',
     day: '2-digit',
@@ -167,7 +169,7 @@ export function fmtDayShort(dayKey: string | null | undefined, comAno = false): 
   if (!dayKey) return '—';
   const d = new Date(`${dayKey}T12:00:00Z`);
   if (isNaN(d.getTime())) return '—';
-  return formatadorDeData('pt-BR', {
+  return formatadorDeData(localeAtivo(), {
     timeZone: SAO_PAULO_TZ,
     day: '2-digit',
     month: 'short',
@@ -185,10 +187,10 @@ export function yearOf(dayKey: string | null | undefined): string | null {
 /** Rótulo curto pra régua de datas: `{ weekday: 'qua', day: '29/07' }`. */
 export function fmtDayChip(dayKey: string): { weekday: string; day: string } {
   const d = new Date(`${dayKey}T12:00:00Z`);
-  const weekday = formatadorDeData('pt-BR', { timeZone: SAO_PAULO_TZ, weekday: 'short' })
+  const weekday = formatadorDeData(localeAtivo(), { timeZone: SAO_PAULO_TZ, weekday: 'short' })
     .format(d)
     .replace('.', '');
-  const day = formatadorDeData('pt-BR', {
+  const day = formatadorDeData(localeAtivo(), {
     timeZone: SAO_PAULO_TZ,
     day: '2-digit',
     month: '2-digit',

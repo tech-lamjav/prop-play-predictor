@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { ChevronDown } from 'lucide-react';
 import { GamePlayerStats } from '@/services/nba-data.service';
 import { fmtDecimal, fmtLinhaAnalisada } from '@/utils/formato';
+import { localeAtivo } from '@/utils/idioma-ativo';
 
 interface ComparisonTableProps {
   gameStats: GamePlayerStats[];
@@ -67,7 +68,7 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({ gameStats }) =
                   || game.home_away?.toLowerCase() === 'h'
                   || game.home_away?.toLowerCase() === 'casa';
                 const d = new Date(game.game_date);
-                const dateLong = d.toLocaleDateString('pt-BR', { month: 'short', day: 'numeric' });
+                const dateLong = d.toLocaleDateString(localeAtivo(), { month: 'short', day: 'numeric' });
                 const dateShort = `${d.getDate()}/${d.getMonth() + 1}`;
 
                 return (

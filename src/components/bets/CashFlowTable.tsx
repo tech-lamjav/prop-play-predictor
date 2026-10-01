@@ -5,6 +5,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar as CalendarComponent } from '../ui/calendar';
 import { format, parse, isValid } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { localeAtivo } from '@/utils/idioma-ativo';
 
 const PAGE_SIZE = 25;
 
@@ -101,7 +102,7 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
         }
         return {
           id: bet.id,
-          date: new Date(bet.bet_date).toLocaleDateString('pt-BR'),
+          date: new Date(bet.bet_date).toLocaleDateString(localeAtivo()),
           dateSort: new Date(bet.bet_date).getTime(),
           description: bet.bet_description,
           type,
@@ -111,7 +112,7 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
 
     const movementEntries: (Omit<CashFlowEntry, 'balance'> & { affectsBalance: boolean })[] = capitalMovements.map((m) => ({
       id: m.id,
-      date: new Date(m.movement_date).toLocaleDateString('pt-BR'),
+      date: new Date(m.movement_date).toLocaleDateString(localeAtivo()),
       dateSort: new Date(m.movement_date).getTime(),
       description:
         m.source === 'bankroll_edit'

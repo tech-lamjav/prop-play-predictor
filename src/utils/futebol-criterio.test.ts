@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { fmtExato } from '@/utils/formato';
+import { fraseEmPortugues } from '@/test/copy-em-portugues';
 import {
   divergenciaDaPrestacao,
   faltouParaOCorte,
   divergenciasDaSaida,
-  fraseDaPrestacao,
+  copyDaPrestacao,
   prestacaoDaPremissa,
   temCriterio,
 } from './futebol-criterio';
@@ -574,7 +575,7 @@ describe('as premissas de percentual param de mostrar média de gols', () => {
       'home',
       2.5,
     )!;
-    const frase = fraseDaPrestacao(p);
+    const frase = fraseEmPortugues(copyDaPrestacao(p));
 
     expect(frase).toContain('Casa 50%');
     expect(frase).toContain('Fora 30%');
@@ -592,7 +593,7 @@ describe('as premissas de percentual param de mostrar média de gols', () => {
       2.5,
     )!;
 
-    expect(fraseDaPrestacao(p)).toContain('basta um com');
+    expect(fraseEmPortugues(copyDaPrestacao(p))).toContain('basta um com');
   });
 });
 

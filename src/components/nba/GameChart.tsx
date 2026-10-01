@@ -9,6 +9,7 @@ import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { getPlayerPhotoUrl, tryNextPlayerPhotoUrl, getTeamLogoUrl, teamAbbrToName } from '@/utils/team-logos';
 import { TeammateFilter } from '@/components/nba/TeammateFilterBar';
 import { STAT_TYPES_BASIC, STAT_TYPES_COMBOS, STAT_TYPES_PERIOD } from '@/components/nba/StatTypeSelector';
+import { localeAtivo } from '@/utils/idioma-ativo';
 
 const gameOptions: Array<{ value: number | 'all' }> = [
   { value: 5 },
@@ -247,7 +248,7 @@ export const GameChart: React.FC<GameChartProps> = ({
       game: `G${index + 1}`,
       value: game.stat_value ?? 0,
       opponent: game.played_against,
-      date: new Date(game.game_date).toLocaleDateString('pt-BR', { month: 'numeric', day: 'numeric' }),
+      date: new Date(game.game_date).toLocaleDateString(localeAtivo(), { month: 'numeric', day: 'numeric' }),
       isOver: game.stat_vs_line === 'Over',
       line: game.line ?? 0,
       statVsLine: game.stat_vs_line || '',

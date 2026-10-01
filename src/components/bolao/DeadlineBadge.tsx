@@ -6,6 +6,7 @@ import {
   isDeadlineUrgent,
 } from '@/hooks/use-bolao';
 import type { WcMatch } from '@/services/bolao.service';
+import { localeAtivo } from '@/utils/idioma-ativo';
 
 interface DeadlineBadgeProps {
   matches: WcMatch[] | undefined;
@@ -42,7 +43,7 @@ export const DeadlineBadge: React.FC<DeadlineBadgeProps> = ({ matches, mode, isC
         className={`inline-flex items-center gap-1 text-[11px] font-medium tabular-nums ${
           urgent ? 'text-terminal-red animate-pulse' : 'text-terminal-yellow/80'
         }`}
-        title={`Próximo prazo: ${next.deadline.toLocaleString('pt-BR')}`}
+        title={`Próximo prazo: ${next.deadline.toLocaleString(localeAtivo())}`}
       >
         <Clock className="w-3 h-3" />
         Fecha {label}
@@ -57,7 +58,7 @@ export const DeadlineBadge: React.FC<DeadlineBadgeProps> = ({ matches, mode, isC
           ? 'border-terminal-red/40 bg-terminal-red/10 text-terminal-red animate-pulse'
           : 'border-terminal-yellow/30 bg-terminal-yellow/5 text-terminal-yellow/90'
       }`}
-      title={`Próximo prazo: ${next.deadline.toLocaleString('pt-BR')}`}
+      title={`Próximo prazo: ${next.deadline.toLocaleString(localeAtivo())}`}
       aria-live="polite"
     >
       {urgent ? <AlertCircle className="w-3.5 h-3.5" /> : <Clock className="w-3.5 h-3.5" />}

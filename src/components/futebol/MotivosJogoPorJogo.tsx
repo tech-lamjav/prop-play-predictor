@@ -9,9 +9,8 @@ import { evidenciaDe, type Evidencia } from '@/utils/futebol-evidencias';
 import { alinharAbaixoDoCabecalho } from '@/utils/rolagem';
 import { EH_QUADRO, evidenciaDoHistorico, storyDaPremissa, type SerieHistorico, type Story } from '@/utils/futebol-historico';
 import {
-  corteEmPalavras,
+  copyDoCorte,
   faltouParaOCorte,
-  fraseDaPrestacao,
   numeroDaPrestacao,
   prestacaoDaPremissa,
   type Prestacao,
@@ -89,6 +88,7 @@ function SerieMiuda({ s }: { s: SerieHistorico }) {
 /** O gráfico dos dois times em uma caixa, escala compartilhada. */
 function GraficoUnificado({ story }: { story: Story }) {
   const { t } = useTranslation('futebol');
+  const copy = useCopyDoFutebol();
   const numericas = story.series.filter((s) => s.metrica !== 'resultado');
   const teto = tetoDaEscala(numericas, story.referencia?.valor);
   const comRotulo = cabeRotulo(numericas);
@@ -132,7 +132,9 @@ function GraficoUnificado({ story }: { story: Story }) {
         ))}
       </div>
       {story.referencia && (
-        <div className="text-[10px] text-ink-3 mt-2">{t('grafico.linhaCinza', { rotulo: story.referencia.label })}</div>
+        <div className="text-[10px] text-ink-3 mt-2">
+          {t('grafico.linhaCinza', { rotulo: copy.frase(story.referencia.label) })}
+        </div>
       )}
     </div>
   );
@@ -145,6 +147,7 @@ function GraficoUnificado({ story }: { story: Story }) {
  */
 function Consolidado({ c, saidaLabel, modo }: { c: NonNullable<Story['consolidado']>; saidaLabel: string; modo: 'favor' | 'contra' }) {
   const { t } = useTranslation('futebol');
+  const copy = useCopyDoFutebol();
   const teto = Math.max(c.valor, c.linha) * 1.25;
   const pct = (v: number) => `${Math.min(100, (v / teto) * 100)}%`;
   const cor = c.favorece ? 'var(--forest)' : 'var(--ink-3)';
@@ -157,7 +160,7 @@ function Consolidado({ c, saidaLabel, modo }: { c: NonNullable<Story['consolidad
             <span className="tabular-nums text-[30px] font-semibold leading-none" style={{ color: cor }}>
               {d1(c.valor)}
             </span>
-            <span className="text-[12px] text-ink-2">{c.unidade}</span>
+            <span className="text-[12px] text-ink-2">{copy.textoDaChave(c.unidade)}</span>
           </div>
         </div>
         <div className="text-right">
@@ -240,12 +243,15 @@ function baseDeJogos(p: Prestacao, t: Traduzir): string {
  */
 function PrestacaoPorTime({ p, saidaLabel }: { p: Prestacao; saidaLabel: string }) {
   const { t } = useTranslation('futebol');
+  const copy = useCopyDoFutebol();
+  const corte = copy.frase(copyDoCorte(p));
+  const unidade = copy.textoDaChave(p.unidade);
   const teto = Math.max(...p.parcelas.map((x) => x.valor), p.corte) * 1.2 || 1;
   const pct = (v: number) => `${Math.min(100, (v / teto) * 100)}%`;
   const exigencia =
     p.combinacao === 'e'
-      ? t('prestacao.exigenciaE', { corte: corteEmPalavras(p) })
-      : t('prestacao.exigenciaOu', { corte: corteEmPalavras(p) });
+      ? t('prestacao.exigenciaE', { corte })
+      : t('prestacao.exigenciaOu', { corte });
   // A contagem é medida contra a LINHA escolhida, e muda quando o assinante
   // arrasta a régua. Sem dizer isso, ver o número mudar parece defeito.
   const contraALinha =
@@ -256,8 +262,8 @@ function PrestacaoPorTime({ p, saidaLabel }: { p: Prestacao; saidaLabel: string 
     <div className="rounded-xl bg-canvas-2 p-4">
       <div className="text-[10px] uppercase tracking-[0.14em] font-semibold text-ink-3">
         {p.escala === 'contagem'
-          ? t('prestacao.jogosUnidade', { unidade: p.unidade })
-          : t('prestacao.unidadePorTime', { unidade: p.unidade })}
+          ? t('prestacao.jogosUnidade', { unidade })
+          : t('prestacao.unidadePorTime', { unidade })}
       </div>
 
       <div className="flex flex-col gap-3 mt-3">
@@ -325,6 +331,7 @@ function PrestacaoPorTime({ p, saidaLabel }: { p: Prestacao; saidaLabel: string 
  */
 function PrestacaoDeContas({ p, saidaLabel }: { p: Prestacao; saidaLabel: string }) {
   const { t } = useTranslation('futebol');
+  const copy = useCopyDoFutebol();
   if (p.insumo == null) return <PrestacaoPorTime p={p} saidaLabel={saidaLabel} />;
   const insumo = p.insumo;
   const linha = p.linha;
@@ -347,7 +354,7 @@ function PrestacaoDeContas({ p, saidaLabel }: { p: Prestacao; saidaLabel: string
             <span className="tabular-nums text-[30px] font-semibold leading-none" style={{ color: cor }}>
               {d1(insumo)}
             </span>
-            <span className="text-[12px] text-ink-2">{p.unidade}</span>
+            <span className="text-[12px] text-ink-2">{copy.textoDaChave(p.unidade)}</span>
           </div>
           <div className="text-[11px] text-ink-3 mt-1 tabular-nums">
             {p.parcelas.map((x) => `${x.teamName} ${d1(x.valor)}`).join(' · ')}
@@ -358,7 +365,7 @@ function PrestacaoDeContas({ p, saidaLabel }: { p: Prestacao; saidaLabel: string
             {t('prestacao.corteDaPremissa')}
           </div>
           <div className="tabular-nums text-[20px] font-semibold leading-none mt-1.5 text-ink">
-            {corteEmPalavras(p)}
+            {copy.frase(copyDoCorte(p))}
           </div>
         </div>
       </div>
@@ -439,6 +446,7 @@ function PainelPremissa({
   modo: 'favor' | 'contra';
 }) {
   const { t } = useTranslation('futebol');
+  const copy = useCopyDoFutebol();
   const soMiudas = story.series.every((s) => !EH_QUADRO(s.metrica) && s.jogos.length <= 2);
   return (
     <div className="px-4 pb-4 pt-3.5" style={{ borderTop: '1px solid #f1e9d6' }}>
@@ -463,8 +471,10 @@ function PainelPremissa({
             <div key={s.chave}>
               <div className="flex items-center gap-1.5 mb-2">
                 <Crest name={s.teamName} id={s.teamId} size={16} />
-                <span className="text-[12px] font-semibold text-ink">{s.titulo}</span>
-                <span className="text-[10.5px] ml-auto" style={{ color: '#8d8672' }}>{s.sub}</span>
+                <span className="text-[12px] font-semibold text-ink">{copy.frase(s.titulo)}</span>
+                <span className="text-[10.5px] ml-auto" style={{ color: '#8d8672' }}>
+                  {copy.fraseOuVazio(s.sub)}
+                </span>
               </div>
               {/* Nas binárias a cor segue o que a PREMISSA quer, e não o
                   resultado nem o fato cru: a mesma métrica atende premissas de
@@ -481,8 +491,10 @@ function PainelPremissa({
             <div key={s.chave}>
               <div className="flex items-center gap-1.5 mb-2">
                 <Crest name={s.teamName} id={s.teamId} size={16} />
-                <span className="text-[12px] font-semibold text-ink">{s.titulo}</span>
-                <span className="text-[10.5px] ml-auto" style={{ color: '#8d8672' }}>{s.sub}</span>
+                <span className="text-[12px] font-semibold text-ink">{copy.frase(s.titulo)}</span>
+                <span className="text-[10.5px] ml-auto" style={{ color: '#8d8672' }}>
+                  {copy.fraseOuVazio(s.sub)}
+                </span>
               </div>
               <SerieMiuda s={s} />
             </div>
@@ -494,7 +506,7 @@ function PainelPremissa({
 
       {(soMiudas || story.comoLer) && (
         <div className="text-[11px] leading-relaxed mt-3" style={{ color: '#8d8672' }}>
-          {soMiudas ? t('painelPremissa.amostraCurta') : story.comoLer}
+          {soMiudas ? t('painelPremissa.amostraCurta') : copy.textoDaChave(story.comoLer)}
         </div>
       )}
     </div>
@@ -642,7 +654,7 @@ function LinhaPremissa({
 
       {temExplicacao && (
         <div className="px-4 py-3 text-[12.5px] leading-relaxed" style={{ color: '#5a625a' }}>
-          {ev?.texto}
+          {copy.fraseOuVazio(ev?.texto)}
           {/* O motivo do peso zero fica VISÍVEL, e não num `title`: no celular
               ninguém passa o mouse, e é ele que responde "por que uma premissa
               que não ajuda está na lista a favor". */}

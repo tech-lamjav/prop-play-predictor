@@ -1,7 +1,8 @@
 import type { FutebolFixtureHistorico } from '@/services/futebol-data.service';
 import { fmtLinhaAnalisada } from '@/utils/formato';
+import type { CopyComParametros } from '@/utils/futebol-copy';
 import type { Evidencia } from '@/utils/futebol-evidencias';
-import { n1 } from '@/utils/futebol-evidencias';
+import { CHAVE_DO_MANDO, n1 } from '@/utils/futebol-evidencias';
 
 // Os jogos que produzem a média de cada premissa (RPC 095).
 //
@@ -385,10 +386,16 @@ export interface SerieHistorico {
   /** Para o escudo em cima do próprio gráfico, e não só na legenda longe dele. */
   teamId: number;
   teamName: string;
-  /** "Fortaleza, últimos jogos" ou, onde o mando é parte do critério, "Fortaleza em casa". */
-  titulo: string;
-  /** "4 jogos" ou "4 jogos, 1 sem dado de gol esperado". */
-  sub: string;
+  /**
+   * O cabeçalho da série, como PEDIDO de frase: "Fortaleza, últimos 10 jogos" ou,
+   * onde o mando é parte do critério, "Fortaleza em casa, 4 jogos".
+   *
+   * Pedido e não frase (#544 estendido às evidências): era daqui que saía o
+   * "Israel em casa, 1 jogo" que o usuário fotografou com o site em espanhol.
+   */
+  titulo: CopyComParametros;
+  /** "1 sem o dado", ou `null` quando nenhum jogo ficou sem o dado. */
+  sub: CopyComParametros | null;
   metrica: Metrica;
   direcao: Direcao;
   /** A média das barras, que é o número que a premissa usa — onde ela É o insumo. */
@@ -416,6 +423,8 @@ export interface SerieHistorico {
    * A explicação saía da primeira série e valia para o card inteiro, então o
    * segundo gráfico dizia "quanto mais alta, mais gols o time MARCOU" embaixo
    * de barras de gols SOFRIDOS.
+   *
+   * É a CHAVE da frase, não a frase.
    */
   comoLer: string;
 }
@@ -430,20 +439,20 @@ export interface Consolidado {
   linha: number;
   direcao: Direcao;
   favorece: boolean;
-  /** "gols sofridos por jogo, somados" */
+  /** A CHAVE da unidade — `serie.unidade.ga`, e não a frase. */
   unidade: string;
 }
 
 export interface Story {
   series: SerieHistorico[];
   /**
-   * Como ler os gráficos, quando TODAS as séries medem a mesma coisa. Vazio
-   * quando não medem: aí cada gráfico carrega a sua, e uma frase só embaixo dos
-   * dois estaria errada para um deles.
+   * A CHAVE de como ler os gráficos, quando TODAS as séries medem a mesma coisa.
+   * Vazia quando não medem: aí cada gráfico carrega a sua, e uma frase só embaixo
+   * dos dois estaria errada para um deles.
    */
   comoLer: string;
   /** Referência tracejada, quando a métrica é o total de gols da partida. */
-  referencia?: { valor: number; label: string };
+  referencia?: { valor: number; label: CopyComParametros };
   consolidado?: Consolidado;
 }
 
@@ -476,9 +485,30 @@ function valorDe(r: FutebolFixtureHistorico, m: Metrica): number | null {
  * caso, "todos os jogos", e ele mentia duas vezes — sugeria a temporada de uma
  * competição só, quando o gráfico mistura campeonatos de propósito (#350).
  */
-const SUFIXO_MANDO = (emCasa: boolean) => (emCasa ? ' em casa' : ' fora');
+/**
+ * As frases do cabeçalho e do rodapé de uma série.
+ *
+ * `titulo` nomeia o RECORTE e declara a BASE na mesma linha: "Flamengo em casa, 4
+ * jogos" é a frase inteira do critério de `ga_comb`. `comMetrica` só entra nas
+ * duas premissas que comparam métricas DIFERENTES, e `time` é o caso sem janela
+ * nem mando, em que o título é só o nome.
+ */
+export const COPY_DA_SERIE = {
+  'titulo.mando_zero': '{{time}} {{mando}}, {{count}} jogos',
+  'titulo.mando_one': '{{time}} {{mando}}, {{count}} jogo',
+  'titulo.mando_other': '{{time}} {{mando}}, {{count}} jogos',
+  'titulo.janela_zero': '{{time}}, últimos {{count}} jogos',
+  'titulo.janela_one': '{{time}}, últimos {{count}} jogos',
+  'titulo.janela_other': '{{time}}, últimos {{count}} jogos',
+  'titulo.time': '{{time}}',
+  'titulo.comMetrica': '{{base}} · {{metrica}}',
+  // "sem o dado" e não "sem dado de gol esperado": o rodapé diz que a média não é
+  // sobre todos os jogos, e qual dado falta já está no gráfico.
+  subSemDado: '{{semDado}} sem o dado',
+  referencia: 'linha {{linha}}',
+} as const;
 
-const COMO_LER: Record<Metrica, string> = {
+export const COPY_DO_COMO_LER: Record<Metrica, string> = {
   ga: 'Cada barra é um jogo: quanto mais alta, mais gols o time sofreu naquele jogo. A linha é a média, que é o número que a premissa usa.',
   gf: 'Cada barra é um jogo: quanto mais alta, mais gols o time marcou. A linha é a média, que é o número que a premissa usa.',
   xg: 'Cada barra é o gol esperado do time no jogo, ou seja, o tanto de chance que ele criou. A linha é a média.',
@@ -511,6 +541,39 @@ const COMO_LER: Record<Metrica, string> = {
  * e desenhava 1,3. Um segundo montador de série para a aba nova recriaria a
  * mesma armadilha, agora entre duas abas que ninguém compara lado a lado.
  */
+/**
+ * O cabeçalho de uma série, como pedido de frase.
+ *
+ * Numa função à parte porque são três formas e um sufixo opcional, e a expressão
+ * ternária encadeada que fazia isso dentro do laço já era o trecho mais difícil
+ * de ler do arquivo — agora com uma camada de pedido a mais, seria pior.
+ */
+function tituloDaSerie(
+  time: string,
+  spec: SerieSpec,
+  emCasa: boolean,
+  jogos: number,
+  metricasDiferentes: boolean,
+): CopyComParametros {
+  const base: CopyComParametros =
+    spec.mando === 'proprio'
+      ? {
+          chave: 'serie.titulo.mando',
+          params: { time, mando: { chave: CHAVE_DO_MANDO(emCasa) }, count: jogos },
+        }
+      : spec.ultimos
+        ? { chave: 'serie.titulo.janela', params: { time, count: jogos } }
+        : { chave: 'serie.titulo.time', params: { time } };
+  // O nome da métrica só entra nas duas premissas que comparam métricas
+  // diferentes; nas demais seria repetição do rodapé.
+  return metricasDiferentes
+    ? {
+        chave: 'serie.titulo.comMetrica',
+        params: { base, metrica: { chave: `serie.metrica.${spec.metrica}` } },
+      }
+    : base;
+}
+
 export function seriesDaEspecificacao(
   specs: SerieSpec[],
   hist: FutebolFixtureHistorico[] | undefined,
@@ -602,12 +665,7 @@ export function seriesDaEspecificacao(
         // Antes a premissa de mando dizia "Fortaleza EC fora" em cima e "5 dos
         // últimos 10 jogos" ao lado — duas linhas para o que a outra resolve em
         // uma, e o "de 10" repetia a janela que já é a mesma em toda a tela.
-        titulo:
-          (spec.mando === 'proprio'
-            ? `${filtrados[0].team_name}${SUFIXO_MANDO(emCasa)}, ${filtrados.length} ${filtrados.length === 1 ? 'jogo' : 'jogos'}`
-            : spec.ultimos
-              ? `${filtrados[0].team_name}, últimos ${filtrados.length} jogos`
-              : filtrados[0].team_name) + (metricasDiferentes ? ` · ${NOME_DA_METRICA[spec.metrica]}` : ''),
+        titulo: tituloDaSerie(filtrados[0].team_name, spec, emCasa, filtrados.length, metricasDiferentes),
         // O subtítulo sobrou para UMA coisa: dizer que faltou dado em alguns
         // jogos, porque aí a média não é sobre todos e quem lê divide errado.
         //
@@ -617,9 +675,9 @@ export function seriesDaEspecificacao(
         // que já é a mesma em toda a tela e não precisa ser repetida em cada
         // gráfico. Os dois levantavam a mesma pergunta errada — "por que só
         // cinco?" — quando a contagem no título já responde.
-        sub: semDado > 0 ? `${semDado} sem o dado` : '',
+        sub: semDado > 0 ? { chave: 'serie.subSemDado', params: { semDado } } : null,
         metrica: spec.metrica,
-        comoLer: COMO_LER[spec.metrica],
+        comoLer: `serie.comoLer.${spec.metrica}`,
         direcao: spec.direcao,
         media,
         mostraMedia: spec.mostraMedia !== false,
@@ -661,14 +719,20 @@ export function storyDaPremissa(
   const spec0 = specs[0];
   return {
     series,
-    comoLer: series.every((x) => x.metrica === metrica) ? COMO_LER[metrica] : '',
-    referencia: metrica === 'total' && linha != null ? { valor: linha, label: `linha ${fmtLinhaAnalisada(linha)}` } : undefined,
+    comoLer: series.every((x) => x.metrica === metrica) ? `serie.comoLer.${metrica}` : '',
+    referencia:
+      metrica === 'total' && linha != null
+        ? {
+            valor: linha,
+            label: { chave: 'serie.referencia', params: { linha: fmtLinhaAnalisada(linha) } },
+          }
+        : undefined,
     consolidado: consolidadoDe(series, spec0, linha),
   };
 }
 
 /** O nome da métrica no título do gráfico, onde as séries divergem. */
-const NOME_DA_METRICA: Record<Metrica, string> = {
+export const COPY_DO_NOME_DA_METRICA: Record<Metrica, string> = {
   ga: 'gols sofridos',
   gf: 'gols marcados',
   xg: 'gols esperados',
@@ -680,7 +744,8 @@ const NOME_DA_METRICA: Record<Metrica, string> = {
   sem_marcar: 'jogos sem marcar',
 };
 
-const UNIDADE: Partial<Record<Metrica, string>> = {
+/** O que o número somado É, em palavras, por métrica. */
+export const COPY_DA_UNIDADE_SOMADA: Partial<Record<Metrica, string>> = {
   ga: 'gols sofridos por jogo, somando os dois',
   gf: 'gols marcados por jogo, somando os dois',
   xg: 'gols esperados por jogo, somando os dois',
@@ -694,8 +759,9 @@ const UNIDADE: Partial<Record<Metrica, string>> = {
  */
 function consolidadoDe(series: SerieHistorico[], spec: SerieSpec, linha: number | null): Consolidado | null {
   if (linha == null || spec.quem !== 'ambos') return null;
-  const unidade = UNIDADE[spec.metrica];
-  if (!unidade) return null;
+  // A presença da unidade é que diz se a comparação é honesta: handicap e 1X2 não
+  // têm uma, porque ali a linha não é total de gol.
+  if (!COPY_DA_UNIDADE_SOMADA[spec.metrica]) return null;
   const medias = series.map((s) => s.media).filter((v): v is number => v != null);
   if (medias.length !== series.length || !medias.length) return null;
   // No total de gols cada jogo já soma os dois times, então o consolidado é a média
@@ -707,7 +773,7 @@ function consolidadoDe(series: SerieHistorico[], spec: SerieSpec, linha: number 
     linha,
     direcao: spec.direcao,
     favorece: spec.direcao === 'maior' ? valor > linha : valor < linha,
-    unidade,
+    unidade: `serie.unidade.${spec.metrica}`,
   };
 }
 
@@ -775,7 +841,7 @@ export function evidenciaDoHistorico(
       if (slug === 'xg_combinado_alto' && soma < linha) return null;
     }
     return {
-      texto: `Somados, criam ${n1(a + b)} gols esperados por jogo`,
+      texto: { chave: 'historico.xgSomado', params: { valor: n1(a + b) } },
       comparacao: {
         esqLabel: `${nome('home')} em casa`,
         esqValor: a,
@@ -791,7 +857,10 @@ export function evidenciaDoHistorico(
     const b = media(doLado(p.adversario, false), (r) => r.xg);
     if (a == null || b == null) return null;
     return {
-      texto: `${nome(p.time)} cria ${n1(a)} gols esperados por jogo contra ${n1(b)} do adversário`,
+      texto: {
+        chave: 'historico.xgSuperior',
+        params: { time: nome(p.time), valor: n1(a), doAdversario: n1(b) },
+      },
       comparacao: {
         esqLabel: nome(p.time),
         esqValor: a,
@@ -810,9 +879,18 @@ export function evidenciaDoHistorico(
     const todos = [...recortar(hist.filter((r) => r.side === 'home')), ...recortar(hist.filter((r) => r.side === 'away'))];
     const acima = todos.filter((r) => r.total_gols > linha).length;
     const alvo = slug === 'historico_over' ? acima : todos.length - acima;
-    const comp = slug === 'historico_over' ? 'passaram de' : 'ficaram abaixo de';
     return {
-      texto: `${alvo} dos ${todos.length} jogos dos dois times ${comp} ${fmtLinhaAnalisada(linha)} gols`,
+      texto: {
+        chave: 'historico.contagemContraALinha',
+        params: {
+          alvo,
+          total: todos.length,
+          comp: {
+            chave: slug === 'historico_over' ? 'historico.passaramDe' : 'historico.ficaramAbaixoDe',
+          },
+          linha: fmtLinhaAnalisada(linha),
+        },
+      },
     };
   }
 
@@ -821,7 +899,10 @@ export function evidenciaDoHistorico(
     if (!rows.length) return null;
     const k = rows.filter((r) => r.gols_contra - r.gols_pro >= 2).length;
     return {
-      texto: `${nome(p.time)} perdeu por dois ou mais em ${k} dos ${rows.length} jogos`,
+      texto: {
+        chave: 'historico.perdeuPorDoisOuMais',
+        params: { time: nome(p.time), alvo: k, total: rows.length },
+      },
     };
   }
 
@@ -871,11 +952,20 @@ function fraseDoGrafico(
   if (deResultado.length) {
     const partes = deResultado.map((x) => {
       const conta = (r: 'V' | 'E' | 'D') => x.jogos.filter((j) => j.resultado === r).length;
-      const [v, e, d] = [conta('V'), conta('E'), conta('D')];
-      const plural = (n: number, um: string, muitos: string) => `${n} ${n === 1 ? um : muitos}`;
-      return `${x.teamName}: ${plural(v, 'vitória', 'vitórias')}, ${plural(e, 'empate', 'empates')} e ${plural(d, 'derrota', 'derrotas')} em ${x.jogos.length}`;
+      return {
+        chave: 'historico.campanha',
+        params: {
+          time: x.teamName,
+          vitorias: { chave: 'contagem.vitorias', params: { count: conta('V') } },
+          empates: { chave: 'contagem.empates', params: { count: conta('E') } },
+          derrotas: { chave: 'contagem.derrotas', params: { count: conta('D') } },
+          jogos: x.jogos.length,
+        },
+      };
     });
-    return { texto: partes.join(' · ') };
+    // Uma campanha por série, e a lista é o dado: um mercado com lado tem uma,
+    // um que olha os dois times tem duas.
+    return { texto: { chave: 'historico.campanhaDasSeries', params: { partes } } };
   }
 
   const series = story.series.filter((x) => x.media != null);
@@ -896,9 +986,17 @@ function fraseDoGrafico(
   // perfil de temporada, já dizia certo: "Fortaleza EC marca 0,8 e Goias sofre
   // 0,6". O texto estava certo e a amostra errada; trocar a amostra não era
   // motivo para perder o texto.
-  const partes = series.map((x) => FRASE_DA_METRICA[x.metrica](x.teamName, comoEscrever(x.media!, x.metrica)));
+  const partes = series.map((x) => ({
+    chave: `historico.frase.${x.metrica}`,
+    params: { time: x.teamName, valor: comoEscrever(x.media!, x.metrica) },
+  }));
   const porJogo = series.every((x) => !EH_BINARIA(x.metrica) && x.metrica !== 'resultado');
-  return { texto: `${partes.join(' · ')}${porJogo ? ' por jogo' : ''}` };
+  return {
+    texto: {
+      chave: porJogo ? 'historico.fraseComPorJogo' : 'historico.frasePura',
+      params: { partes },
+    },
+  };
 }
 
 /**
@@ -906,17 +1004,38 @@ function fraseDoGrafico(
  * para o card inteiro, e as duas premissas que comparam ataque com defesa não
  * têm uma.
  */
-const FRASE_DA_METRICA: Record<Metrica, (time: string, valor: string) => string> = {
-  gf: (t, v) => `${t} marca ${v}`,
-  ga: (t, v) => `${t} sofre ${v}`,
-  xg: (t, v) => `${t} cria ${v}`,
-  total: (t, v) => `${t}: ${v} gols`,
-  saldo: (t, v) => `${t}: saldo de ${v}`,
-  ambos: (t, v) => `${t}: os dois marcaram em ${v} dos jogos`,
-  resultado: (t, v) => `${t}: ${v}`,
-  sem_sofrer: (t, v) => `${t} não sofreu gol em ${v} dos jogos`,
-  sem_marcar: (t, v) => `${t} não marcou em ${v} dos jogos`,
+export const COPY_DA_FRASE_DA_METRICA: Record<Metrica, string> = {
+  gf: '{{time}} marca {{valor}}',
+  ga: '{{time}} sofre {{valor}}',
+  xg: '{{time}} cria {{valor}}',
+  total: '{{time}}: {{valor}} gols',
+  saldo: '{{time}}: saldo de {{valor}}',
+  ambos: '{{time}}: os dois marcaram em {{valor}} dos jogos',
+  resultado: '{{time}}: {{valor}}',
+  sem_sofrer: '{{time}} não sofreu gol em {{valor}} dos jogos',
+  sem_marcar: '{{time}} não marcou em {{valor}} dos jogos',
 };
+
+/**
+ * As frases que a rota do HISTÓRICO monta — a terceira porta da evidência, que
+ * mede a mesma amostra do modelo por conta própria.
+ *
+ * `campanhaDasSeries` e `fraseComPorJogo` são as duas únicas que juntam uma
+ * lista; `frasePura` é a mesma sem a unidade, que é o caso das binárias (ali
+ * "por jogo" seria falso: o número é percentual de jogos, não valor por jogo).
+ */
+export const COPY_DA_EVIDENCIA_DO_HISTORICO = {
+  xgSomado: 'Somados, criam {{valor}} gols esperados por jogo',
+  xgSuperior: '{{time}} cria {{valor}} gols esperados por jogo contra {{doAdversario}} do adversário',
+  contagemContraALinha: '{{alvo}} dos {{total}} jogos dos dois times {{comp}} {{linha}} gols',
+  passaramDe: 'passaram de',
+  ficaramAbaixoDe: 'ficaram abaixo de',
+  perdeuPorDoisOuMais: '{{time}} perdeu por dois ou mais em {{alvo}} dos {{total}} jogos',
+  campanha: '{{time}}: {{vitorias}}, {{empates}} e {{derrotas}} em {{jogos}}',
+  campanhaDasSeries: '{{partes}}',
+  fraseComPorJogo: '{{partes}} por jogo',
+  frasePura: '{{partes}}',
+} as const;
 
 /**
  * O "Como chegam" na JANELA DA PREMISSA.

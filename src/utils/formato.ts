@@ -32,30 +32,18 @@
 // ANALISADA — o modelo calcula premissas para ela tendo ou não cotação.
 // ============================================================================
 
-/** O padrão da casa, e o ponto de partida de tudo aqui. */
-export const LOCALE_PADRAO = 'pt-BR';
-export const MOEDA_PADRAO = 'BRL';
-
 /**
- * O idioma ativo, que a camada de tradução empurra para cá quando a pessoa
- * troca (`src/i18n/init.ts`).
+ * O idioma ativo vive em `idioma-ativo.ts`, e não aqui.
  *
- * Fica como estado de módulo, e não como parâmetro nas 86 chamadas que o
- * seguem, porque a régua é do PRODUTO e não de cada tela. E a seta aponta para
- * cá: é o i18n que conhece a formatação, não o contrário, e assim este arquivo
- * continua puro, testável sem navegador e sem tradução carregada.
+ * Saiu deste arquivo quando a costura de DATA (#530) precisou do mesmo valor:
+ * manter o estado no módulo de número obrigaria o de data a importar o de
+ * número para saber em que língua escrever "quinta-feira". Reexportado para
+ * quem já importava daqui — é o mesmo vínculo, não uma cópia.
  */
-let localeAtivoAgora: string = LOCALE_PADRAO;
+export { LOCALE_PADRAO, definirLocaleAtivo, localeAtivo } from './idioma-ativo';
+import { LOCALE_PADRAO, localeAtivo } from './idioma-ativo';
 
-/** Chamada pela camada de tradução. Ninguém mais precisa chamar. */
-export function definirLocaleAtivo(locale: string): void {
-  localeAtivoAgora = locale;
-}
-
-/** O idioma que as réguas de número seguem agora. */
-export function localeAtivo(): string {
-  return localeAtivoAgora;
-}
+export const MOEDA_PADRAO = 'BRL';
 
 /** Ausência. Nunca "0", que afirmaria um valor, nem "NaN", que vaza defeito. */
 const TRACO = '—';

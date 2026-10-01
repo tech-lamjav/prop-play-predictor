@@ -484,5 +484,170 @@
   "explicacao": {
     "porque": "Por quê",
     "oQueOJogoMostra": "O que o jogo mostra"
+  },
+  "criterio": {
+    "unidade": {
+      "golsSofridosSomados": "gols sofridos por jogo, somados",
+      "golsMarcadosSomados": "gols marcados por jogo, somados",
+      "golsEsperadosSomados": "gols esperados por jogo, somados",
+      "jogosSemSofrer": "dos jogos sem sofrer gol",
+      "jogosSemMarcar": "dos jogos sem marcar",
+      "acimaDaLinhaEmCinco": "acima da linha, nos últimos 5 de cada",
+      "abaixoDaLinhaEmCinco": "abaixo da linha, nos últimos 5 de cada"
+    },
+    "corte": {
+      "acima": "pelo menos {{corte}}",
+      "acimaEstrito": "mais de {{corte}}",
+      "abaixo": "no máximo {{corte}}",
+      "abaixoEstrito": "menos de {{corte}}"
+    },
+    "corteEmJogos": "{{corte}} jogos",
+    "frase": {
+      "soma": "{{insumo}} {{unidade}} · o corte é {{corte}}",
+      "porTime": "{{partes}} {{unidade}} · {{quem}} {{corte}}",
+      "parcela": "{{time}} {{valor}}",
+      "quemE": "os dois precisam de",
+      "quemOu": "basta um com"
+    }
+  },
+  "mando": {
+    "casa": "em casa",
+    "fora": "fora",
+    "foraDeCasa": "fora de casa"
+  },
+  "contagem": {
+    "vitorias_zero": "{{count}} vitórias",
+    "vitorias_one": "{{count}} vitória",
+    "vitorias_other": "{{count}} vitórias",
+    "empates_zero": "{{count}} empates",
+    "empates_one": "{{count}} empate",
+    "empates_other": "{{count}} empates",
+    "derrotas_zero": "{{count}} derrotas",
+    "derrotas_one": "{{count}} derrota",
+    "derrotas_other": "{{count}} derrotas",
+    "confrontos_zero": "{{count}} confrontos",
+    "confrontos_one": "{{count}} confronto",
+    "confrontos_other": "{{count}} confrontos",
+    "desfalques_zero": "{{count}} desfalques",
+    "desfalques_one": "{{count}} desfalque",
+    "desfalques_other": "{{count}} desfalques",
+    "times_zero": "{{count}} times",
+    "times_one": "{{count}} time",
+    "times_other": "{{count}} times"
+  },
+  "nome": {
+    "time": "O time",
+    "timeSemArtigo": "time",
+    "adversario": "Adversário",
+    "adversarioComArtigo": "o adversário",
+    "adversarioSemArtigo": "adversário",
+    "mandante": "O mandante",
+    "mandanteSemArtigo": "mandante",
+    "visitanteComArtigo": "o visitante",
+    "visitanteSemArtigo": "visitante"
+  },
+  "perfil": {
+    "forma": "{{time}} nos últimos 5: {{vitorias}}, {{empates}} e {{derrotas}}",
+    "mando": "{{vitorias}}, {{empates}} e {{derrotas}} em {{jogos}} jogos {{onde}}",
+    "tabela": "{{time}} em {{posicao}}º com {{pontos}} pontos contra {{adversario}} em {{posicaoAdv}}º com {{pontosAdv}}. {{dif}} pontos de diferença",
+    "forcaMismatch": "{{time}} marca {{ataque}} {{onde}} e {{adversario}} sofre {{defesa}} {{ondeAdv}}",
+    "h2h": "Nos últimos {{jogos}} confrontos: {{vitorias}} do {{time}}, {{empates}} e {{vitoriasAdv}} do {{adversario}}",
+    "somadosMarcam": "Somados, marcam {{valor}} gols por jogo",
+    "somadosSofrem": "Somados, sofrem {{valor}} gols por jogo",
+    "cleanSheets": "Jogos sem sofrer gol: {{casa}} de {{jogosCasa}} e {{fora}} de {{jogosFora}}",
+    "sofrePorJogo": "{{time}} sofre {{valor}} gol por jogo {{onde}}, em {{jogos}} jogos",
+    "tendeGolear": "Marca {{ataque}} por jogo contra quem sofre {{defesa}}",
+    "passaramEmBranco": "Passaram em branco em {{casa}} e {{fora}} jogos de {{jogos}}",
+    "marcaPorJogo": "{{time}} marca {{valor}} gol por jogo{{classificacao}}",
+    "eEstaEm": " e está em {{posicao}}º"
+  },
+  "serie": {
+    "titulo": {
+      "mando_zero": "{{time}} {{mando}}, {{count}} jogos",
+      "mando_one": "{{time}} {{mando}}, {{count}} jogo",
+      "mando_other": "{{time}} {{mando}}, {{count}} jogos",
+      "janela_zero": "{{time}}, últimos {{count}} jogos",
+      "janela_one": "{{time}}, últimos {{count}} jogos",
+      "janela_other": "{{time}}, últimos {{count}} jogos",
+      "time": "{{time}}",
+      "comMetrica": "{{base}} · {{metrica}}"
+    },
+    "subSemDado": "{{semDado}} sem o dado",
+    "referencia": "linha {{linha}}",
+    "comoLer": {
+      "ga": "Cada barra é um jogo: quanto mais alta, mais gols o time sofreu naquele jogo. A linha é a média, que é o número que a premissa usa.",
+      "gf": "Cada barra é um jogo: quanto mais alta, mais gols o time marcou. A linha é a média, que é o número que a premissa usa.",
+      "xg": "Cada barra é o gol esperado do time no jogo, ou seja, o tanto de chance que ele criou. A linha é a média.",
+      "total": "Cada barra é o total de gols do jogo, somando os dois times. A linha tracejada é a linha que você escolheu.",
+      "saldo": "Cada barra é o saldo de gols do time naquele jogo: positivo na vitória, negativo na derrota.",
+      "ambos": "Cada quadrado é um jogo, com o placar e o adversário. Verde é jogo do lado que a premissa quer, vermelho é o contrário. O que ela usa é em quantos dos jogos os dois marcaram.",
+      "resultado": "Cada quadrado é um jogo, com o placar e o adversário. Verde é vitória, cinza empate, vermelho derrota.",
+      "sem_sofrer": "Cada quadrado é um jogo, com o placar e o adversário. Verde é jogo do lado que a premissa quer, vermelho é o contrário. O que ela usa é o percentual de jogos sem sofrer gol.",
+      "sem_marcar": "Cada quadrado é um jogo, com o placar e o adversário. Verde é jogo do lado que a premissa quer, vermelho é o contrário. O que ela usa é o percentual de jogos sem marcar."
+    },
+    "metrica": {
+      "ga": "gols sofridos",
+      "gf": "gols marcados",
+      "xg": "gols esperados",
+      "total": "gols no jogo",
+      "saldo": "saldo de gols",
+      "ambos": "jogos com os dois marcando",
+      "resultado": "resultado",
+      "sem_sofrer": "jogos sem sofrer",
+      "sem_marcar": "jogos sem marcar"
+    },
+    "unidade": {
+      "ga": "gols sofridos por jogo, somando os dois",
+      "gf": "gols marcados por jogo, somando os dois",
+      "xg": "gols esperados por jogo, somando os dois",
+      "total": "gols por jogo na média dos dois"
+    }
+  },
+  "historico": {
+    "frase": {
+      "gf": "{{time}} marca {{valor}}",
+      "ga": "{{time}} sofre {{valor}}",
+      "xg": "{{time}} cria {{valor}}",
+      "total": "{{time}}: {{valor}} gols",
+      "saldo": "{{time}}: saldo de {{valor}}",
+      "ambos": "{{time}}: os dois marcaram em {{valor}} dos jogos",
+      "resultado": "{{time}}: {{valor}}",
+      "sem_sofrer": "{{time}} não sofreu gol em {{valor}} dos jogos",
+      "sem_marcar": "{{time}} não marcou em {{valor}} dos jogos"
+    },
+    "xgSomado": "Somados, criam {{valor}} gols esperados por jogo",
+    "xgSuperior": "{{time}} cria {{valor}} gols esperados por jogo contra {{doAdversario}} do adversário",
+    "contagemContraALinha": "{{alvo}} dos {{total}} jogos dos dois times {{comp}} {{linha}} gols",
+    "passaramDe": "passaram de",
+    "ficaramAbaixoDe": "ficaram abaixo de",
+    "perdeuPorDoisOuMais": "{{time}} perdeu por dois ou mais em {{alvo}} dos {{total}} jogos",
+    "campanha": "{{time}}: {{vitorias}}, {{empates}} e {{derrotas}} em {{jogos}}",
+    "campanhaDasSeries": "{{partes}}",
+    "fraseComPorJogo": "{{partes}} por jogo",
+    "frasePura": "{{partes}}"
+  },
+  "medido": {
+    "tabela": "{{posicao}}º com {{pontos}} pontos por jogo, contra {{posicaoAdv}}º e {{pontosAdv}} do adversário",
+    "percentualDosDois": "{{mandante}} {{oQueAconteceu}} em {{casa}} dos jogos e {{visitante}} em {{fora}}",
+    "contagemDeCinco": "Nos últimos 5 de cada um, {{oQueAconteceu}} em {{casa}} do {{mandante}} e {{fora}} do {{visitante}}",
+    "h2h": "{{vitorias}} em {{confrontos}}",
+    "vitoriasNosUltimosCinco": "{{vitorias}} nos últimos 5 jogos",
+    "forcaMismatch": "{{time}} marca {{ataque}} {{onde}} e {{adversario}} sofre {{defesa}} {{ondeAdv}}",
+    "desfalques": "{{adversario}} com {{doAdversario}} de titular, contra {{doTimeApostado}} do {{time}}",
+    "nenhumDesfalque": "nenhum",
+    "posicaoNaLiga": "{{posicao}}º entre {{times}}",
+    "sofreNoMando": "{{time}} sofre {{valor}} {{onde}}",
+    "ataqueDosDois": "{{mandante}} marca {{casa}} em casa e {{visitante}} {{fora}} fora"
+  },
+  "queAconteceu": {
+    "passaEmBranco": "passa em branco",
+    "naoSofreGol": "não sofre gol",
+    "osDoisMarcaram": "os dois marcaram",
+    "faltouGol": "faltou gol de um dos lados"
+  },
+  "semDado": {
+    "aviso_zero": "Faltou informação para conferir {{count}} premissas deste jogo. A leitura saiu com menos informação do que o normal, e não com informação contra.",
+    "aviso_one": "Faltou informação para conferir {{count}} premissa deste jogo. A leitura saiu com menos informação do que o normal, e não com informação contra.",
+    "aviso_other": "Faltou informação para conferir {{count}} premissas deste jogo. A leitura saiu com menos informação do que o normal, e não com informação contra."
   }
 }

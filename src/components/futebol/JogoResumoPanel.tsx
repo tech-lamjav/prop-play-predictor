@@ -482,7 +482,7 @@ export function JogoResumoPanel({
                   </span>
                   <span className="flex-1 min-w-0 text-[12.5px] leading-relaxed" style={{ color: '#3f463d' }}>
                     <b className="font-semibold">{copy.premissa(mercadoLeitura ?? '', p, lado)}.</b>
-                    {ev ? ` ${ev.texto}.` : ''}
+                    {ev ? ` ${copy.frase(ev.texto)}.` : ''}
                   </span>
                 </div>
               ))}

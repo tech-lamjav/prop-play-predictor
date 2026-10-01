@@ -19,7 +19,40 @@
  */
 
 import { fmtDecimal } from '@/utils/formato';
-import { ladoDaSaida, plural, type Evidencia } from '@/utils/futebol-evidencias';
+import type { CopyComParametros } from '@/utils/futebol-copy';
+import { CHAVE_DO_MANDO, ladoDaSaida, type Evidencia } from '@/utils/futebol-evidencias';
+
+/**
+ * As frases do VALOR MEDIDO pelo mart — a segunda porta da evidência.
+ *
+ * ⚠️ Isto é APRESENTAÇÃO, não critério, e o cabeçalho deste arquivo explica por
+ * quê: o vocabulário de insumo (`s_rank`, `h2h_total`, …) vive no catálogo do
+ * dbt. Aqui só mora como o número medido vira frase — e agora como ela vira
+ * frase em DOIS idiomas, pela mesma chave.
+ */
+export const COPY_DO_MEDIDO = {
+  tabela: '{{posicao}}º com {{pontos}} pontos por jogo, contra {{posicaoAdv}}º e {{pontosAdv}} do adversário',
+  percentualDosDois: '{{mandante}} {{oQueAconteceu}} em {{casa}} dos jogos e {{visitante}} em {{fora}}',
+  contagemDeCinco: 'Nos últimos 5 de cada um, {{oQueAconteceu}} em {{casa}} do {{mandante}} e {{fora}} do {{visitante}}',
+  h2h: '{{vitorias}} em {{confrontos}}',
+  vitoriasNosUltimosCinco: '{{vitorias}} nos últimos 5 jogos',
+  forcaMismatch: '{{time}} marca {{ataque}} {{onde}} e {{adversario}} sofre {{defesa}} {{ondeAdv}}',
+  desfalques: '{{adversario}} com {{doAdversario}} de titular, contra {{doTimeApostado}} do {{time}}',
+  // "nenhum" e não "0": a premissa exige ZERO desfalques do próprio time, e o
+  // número cru ao lado de uma contagem do outro lado lê como empate.
+  nenhumDesfalque: 'nenhum',
+  posicaoNaLiga: '{{posicao}}º entre {{times}}',
+  sofreNoMando: '{{time}} sofre {{valor}} {{onde}}',
+  ataqueDosDois: '{{mandante}} marca {{casa}} em casa e {{visitante}} {{fora}} fora',
+} as const;
+
+/** O que aconteceu, nas duas leituras espelhadas do Ambos marcam. */
+export const COPY_DO_QUE_ACONTECEU = {
+  passaEmBranco: 'passa em branco',
+  naoSofreGol: 'não sofre gol',
+  osDoisMarcaram: 'os dois marcaram',
+  faltouGol: 'faltou gol de um dos lados',
+} as const;
 
 /** Uma linha de `futebol.fact_insumos_medidos`, só com o que esta escolha usa. */
 export interface InsumoMedido {
@@ -130,9 +163,8 @@ export interface NomesDoConfronto {
  * desmentindo o número que ele deveria explicar.
  */
 function ondeCadaUmJoga(lado: 'home' | 'away'): { doTime: string; doAdversario: string } {
-  return lado === 'home'
-    ? { doTime: 'em casa', doAdversario: 'fora' }
-    : { doTime: 'fora', doAdversario: 'em casa' };
+  const emCasa = lado === 'home';
+  return { doTime: CHAVE_DO_MANDO(emCasa), doAdversario: CHAVE_DO_MANDO(!emCasa) };
 }
 
 /**
@@ -171,9 +203,15 @@ function ondeCadaUmJoga(lado: 'home' | 'away'): { doTime: string; doAdversario: 
 function formaDaTabela(v: Record<string, number>, n: NomesDoConfronto): Evidencia | null {
   if (v.s_rank == null || v.o_rank == null || v.s_ppg == null || v.o_ppg == null) return null;
   return {
-    texto:
-      `${numero(v.s_rank)}º com ${numero(v.s_ppg)} pontos por jogo, contra ` +
-      `${numero(v.o_rank)}º e ${numero(v.o_ppg)} do adversário`,
+    texto: {
+      chave: 'medido.tabela',
+      params: {
+        posicao: numero(v.s_rank),
+        pontos: numero(v.s_ppg),
+        posicaoAdv: numero(v.o_rank),
+        pontosAdv: numero(v.o_ppg),
+      },
+    },
     comparacao: {
       esqLabel: `${n.time ?? 'O time'}, ${numero(v.s_rank)}º`,
       esqValor: v.s_ppg,
@@ -206,13 +244,20 @@ function formaDoPercentualDosDois(
   casa: number | undefined,
   fora: number | undefined,
   n: NomesDoConfronto,
-  oQueAconteceu: string,
+  oQueAconteceu: keyof typeof COPY_DO_QUE_ACONTECEU,
 ): Evidencia | null {
   if (casa == null || fora == null) return null;
-  const mandante = n.mandante ?? 'O mandante';
-  const visitante = n.visitante ?? 'o visitante';
   return {
-    texto: `${mandante} ${oQueAconteceu} em ${percentual(casa)} dos jogos e ${visitante} em ${percentual(fora)}`,
+    texto: {
+      chave: 'medido.percentualDosDois',
+      params: {
+        mandante: n.mandante ?? { chave: 'nome.mandante' },
+        oQueAconteceu: { chave: `queAconteceu.${oQueAconteceu}` },
+        casa: percentual(casa),
+        visitante: n.visitante ?? { chave: 'nome.visitanteComArtigo' },
+        fora: percentual(fora),
+      },
+    },
     comparacao: {
       esqLabel: n.mandante ?? 'Mandante',
       esqValor: casa,
@@ -241,13 +286,20 @@ function formaDaContagemDeCinco(
   casa: number | undefined,
   fora: number | undefined,
   n: NomesDoConfronto,
-  oQueAconteceu: string,
+  oQueAconteceu: keyof typeof COPY_DO_QUE_ACONTECEU,
 ): Evidencia | null {
   if (casa == null || fora == null) return null;
   return {
-    texto:
-      `Nos últimos 5 de cada um, ${oQueAconteceu} em ${numero(casa)} do ` +
-      `${n.mandante ?? 'mandante'} e ${numero(fora)} do ${n.visitante ?? 'visitante'}`,
+    texto: {
+      chave: 'medido.contagemDeCinco',
+      params: {
+        oQueAconteceu: { chave: `queAconteceu.${oQueAconteceu}` },
+        casa: numero(casa),
+        mandante: n.mandante ?? { chave: 'nome.mandanteSemArtigo' },
+        fora: numero(fora),
+        visitante: n.visitante ?? { chave: 'nome.visitanteSemArtigo' },
+      },
+    },
   };
 }
 
@@ -270,9 +322,13 @@ const FORMAS: Record<
   'match_winner:h2h_favoravel': (v) => {
     if (v.s_wins == null || v.h2h_total == null) return null;
     return {
-      texto:
-        `${numero(v.s_wins)} ${v.s_wins === 1 ? 'vitória' : 'vitórias'} em ` +
-        `${numero(v.h2h_total)} ${v.h2h_total === 1 ? 'confronto' : 'confrontos'}`,
+      texto: {
+        chave: 'medido.h2h',
+        params: {
+          vitorias: { chave: 'contagem.vitorias', params: { count: v.s_wins } },
+          confrontos: { chave: 'contagem.confrontos', params: { count: v.h2h_total } },
+        },
+      },
     };
   },
 
@@ -285,7 +341,12 @@ const FORMAS: Record<
   // conta as vitórias DESSES jogos: mesma grandeza, uma resumindo a outra.
   'match_winner:forma': (v) => {
     if (v.n_wins_last5 == null) return null;
-    return { texto: `${plural(v.n_wins_last5, 'vitória', 'vitórias')} nos últimos 5 jogos` };
+    return {
+      texto: {
+        chave: 'medido.vitoriasNosUltimosCinco',
+        params: { vitorias: { chave: 'contagem.vitorias', params: { count: v.n_wins_last5 } } },
+      },
+    };
   },
 
   // Duas grandezas diferentes: gol MARCADO pelo time e gol SOFRIDO pelo
@@ -303,14 +364,31 @@ const FORMAS: Record<
   'match_winner:forca_mismatch': (v, n, lado) => {
     if (v.s_gf_venue == null || v.o_ga_venue == null || lado == null) return null;
     const { doTime: ondeTime, doAdversario: ondeAdv } = ondeCadaUmJoga(lado);
+    // ⚠️ A BARRA não entrou na tradução, e é decisão medida: nenhuma tela lê
+    // `comparacao` — `esqLabel`/`dirLabel` não aparecem em componente nenhum
+    // (conferido em 30/09). Traduzir rótulo que ninguém pinta encheria os dois
+    // catálogos de frase que nenhum falante revisaria contra tela. Quem for
+    // devolver a barra à tela traduz estes dois na mesma passada, pelo mesmo
+    // mecanismo do `texto` logo acima.
+    const emCasa = lado === 'home';
+    const labelTime = emCasa ? 'em casa' : 'fora';
+    const labelAdv = emCasa ? 'fora' : 'em casa';
     return {
-      texto:
-        `${n.time ?? 'O time'} marca ${numero(v.s_gf_venue)} ${ondeTime} e ` +
-        `${n.adversario ?? 'o adversário'} sofre ${numero(v.o_ga_venue)} ${ondeAdv}`,
+      texto: {
+        chave: 'medido.forcaMismatch',
+        params: {
+          time: n.time ?? { chave: 'nome.time' },
+          ataque: numero(v.s_gf_venue),
+          onde: { chave: ondeTime },
+          adversario: n.adversario ?? { chave: 'nome.adversarioComArtigo' },
+          defesa: numero(v.o_ga_venue),
+          ondeAdv: { chave: ondeAdv },
+        },
+      },
       comparacao: {
-        esqLabel: `${n.time ?? 'O time'} marca ${ondeTime}`,
+        esqLabel: `${n.time ?? 'O time'} marca ${labelTime}`,
         esqValor: v.s_gf_venue,
-        dirLabel: `${n.adversario ?? 'Adversário'} sofre ${ondeAdv}`,
+        dirLabel: `${n.adversario ?? 'Adversário'} sofre ${labelAdv}`,
         dirValor: v.o_ga_venue,
         destaque: 'nenhum',
       },
@@ -326,10 +404,17 @@ const FORMAS: Record<
   // MENOS. Não existe "maior é melhor" que sirva para os dois.
   'match_winner:desfalque_adversario': (v, n) => {
     if (v.o_missing == null || v.s_missing == null) return null;
-    const doAdv = plural(v.o_missing, 'desfalque', 'desfalques');
-    const doTime = v.s_missing === 0 ? 'nenhum' : numero(v.s_missing);
     return {
-      texto: `${n.adversario ?? 'Adversário'} com ${doAdv} de titular, contra ${doTime} do ${n.time ?? 'time'}`,
+      texto: {
+        chave: 'medido.desfalques',
+        params: {
+          adversario: n.adversario ?? { chave: 'nome.adversario' },
+          doAdversario: { chave: 'contagem.desfalques', params: { count: v.o_missing } },
+          doTimeApostado:
+            v.s_missing === 0 ? { chave: 'medido.nenhumDesfalque' } : numero(v.s_missing),
+          time: n.time ?? { chave: 'nome.timeSemArtigo' },
+        },
+      },
       comparacao: {
         esqLabel: `${n.time ?? 'O time'}`,
         esqValor: v.s_missing,
@@ -370,8 +455,15 @@ const FORMAS: Record<
   // da liga não é comparação, é categoria contra contagem.
   'asian_handicap:sem_rodizio': (v) => {
     if (v.s_rank == null || v.n_teams == null) return null;
-    const times = v.n_teams === 1 ? 'time' : 'times';
-    return { texto: `${numero(v.s_rank)}º entre ${numero(v.n_teams)} ${times}` };
+    return {
+      texto: {
+        chave: 'medido.posicaoNaLiga',
+        params: {
+          posicao: numero(v.s_rank),
+          times: { chave: 'contagem.times', params: { count: v.n_teams } },
+        },
+      },
+    };
   },
 
   // `o_ga_venue >= 1.6`, e o `venue` é do ADVERSÁRIO: apostando no mandante, o
@@ -380,7 +472,14 @@ const FORMAS: Record<
   'asian_handicap:adversario_fragil_fora': (v, n, lado) => {
     if (v.o_ga_venue == null || lado == null) return null;
     return {
-      texto: `${n.adversario ?? 'Adversário'} sofre ${numero(v.o_ga_venue)} ${ondeCadaUmJoga(lado).doAdversario}`,
+      texto: {
+        chave: 'medido.sofreNoMando',
+        params: {
+          time: n.adversario ?? { chave: 'nome.adversario' },
+          valor: numero(v.o_ga_venue),
+          onde: { chave: ondeCadaUmJoga(lado).doAdversario },
+        },
+      },
     };
   },
 
@@ -389,7 +488,14 @@ const FORMAS: Record<
   'asian_handicap:defesa_fora_solida': (v, n, lado) => {
     if (v.s_ga_venue == null || lado == null) return null;
     return {
-      texto: `${n.time ?? 'O time'} sofre ${numero(v.s_ga_venue)} ${ondeCadaUmJoga(lado).doTime}`,
+      texto: {
+        chave: 'medido.sofreNoMando',
+        params: {
+          time: n.time ?? { chave: 'nome.time' },
+          valor: numero(v.s_ga_venue),
+          onde: { chave: ondeCadaUmJoga(lado).doTime },
+        },
+      },
     };
   },
 
@@ -412,29 +518,29 @@ const FORMAS: Record<
 
   // `home_fts_pct < 30 AND away_fts_pct < 30` — os dois passam em branco pouco.
   'btts:ambos_marcam': (v, n) =>
-    formaDoPercentualDosDois(v.home_fts_pct, v.away_fts_pct, n, 'passa em branco'),
+    formaDoPercentualDosDois(v.home_fts_pct, v.away_fts_pct, n, 'passaEmBranco'),
 
   // `home_fts_pct >= 35 OR away_fts_pct >= 35` — basta UM travar. O espelho da
   // de cima, e é por isso que as duas dizem a mesma frase: o número é o mesmo, e
   // quem separa as duas é o corte, que a frase não afirma.
   'btts:ataque_trava': (v, n) =>
-    formaDoPercentualDosDois(v.home_fts_pct, v.away_fts_pct, n, 'passa em branco'),
+    formaDoPercentualDosDois(v.home_fts_pct, v.away_fts_pct, n, 'passaEmBranco'),
 
   // `home_cs_pct < 35 AND away_cs_pct < 35` — os dois seguram o zero pouco.
   'btts:defesas_vazaveis': (v, n) =>
-    formaDoPercentualDosDois(v.home_cs_pct, v.away_cs_pct, n, 'não sofre gol'),
+    formaDoPercentualDosDois(v.home_cs_pct, v.away_cs_pct, n, 'naoSofreGol'),
 
   // `home_cs_pct >= 45 OR away_cs_pct >= 45` — basta UMA defesa segurar.
   'btts:defesa_forte': (v, n) =>
-    formaDoPercentualDosDois(v.home_cs_pct, v.away_cs_pct, n, 'não sofre gol'),
+    formaDoPercentualDosDois(v.home_cs_pct, v.away_cs_pct, n, 'naoSofreGol'),
 
   // `home_btts_cnt >= 3 AND away_btts_cnt >= 3`, sobre os últimos 5 de cada.
   'btts:historico_btts': (v, n) =>
-    formaDaContagemDeCinco(v.home_btts_cnt, v.away_btts_cnt, n, 'os dois marcaram'),
+    formaDaContagemDeCinco(v.home_btts_cnt, v.away_btts_cnt, n, 'osDoisMarcaram'),
 
   // `home_no_btts_cnt >= 3 OR away_no_btts_cnt >= 3`, o complemento da de cima.
   'btts:historico_seco': (v, n) =>
-    formaDaContagemDeCinco(v.home_no_btts_cnt, v.away_no_btts_cnt, n, 'faltou gol de um dos lados'),
+    formaDaContagemDeCinco(v.home_no_btts_cnt, v.away_no_btts_cnt, n, 'faltouGol'),
 
   // `home_gf >= 1.2 AND away_gf >= 1.2`, e é a ÚNICA das sete recortada por
   // mando — `goals_for_avg_home` do mandante e `goals_for_avg_away` do
@@ -445,10 +551,16 @@ const FORMAS: Record<
   // e o mandante joga em casa por definição.
   'btts:ataque_dos_dois': (v, n) => {
     if (v.home_gf == null || v.away_gf == null) return null;
-    const mandante = n.mandante ?? 'O mandante';
-    const visitante = n.visitante ?? 'o visitante';
     return {
-      texto: `${mandante} marca ${numero(v.home_gf)} em casa e ${visitante} ${numero(v.away_gf)} fora`,
+      texto: {
+        chave: 'medido.ataqueDosDois',
+        params: {
+          mandante: n.mandante ?? { chave: 'nome.mandante' },
+          casa: numero(v.home_gf),
+          visitante: n.visitante ?? { chave: 'nome.visitanteComArtigo' },
+          fora: numero(v.away_gf),
+        },
+      },
       comparacao: {
         esqLabel: `${n.mandante ?? 'Mandante'} em casa`,
         esqValor: v.home_gf,

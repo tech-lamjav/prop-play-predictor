@@ -1,5 +1,28 @@
 import { COMPETITION_LABELS, SEM_COMPETICAO } from '@/utils/futebol-competitions';
 import { COPY_DA_AJUDA } from '@/utils/futebol-ajuda-copy';
+import {
+  COPY_DA_PRESTACAO,
+  COPY_DA_UNIDADE,
+  COPY_DO_CORTE,
+  COPY_DO_CORTE_EM_JOGOS,
+  CHAVE_DO_CORTE_EM_JOGOS,
+} from '@/utils/futebol-criterio';
+import {
+  COPY_DA_CONTAGEM,
+  COPY_DO_MANDO,
+  COPY_DO_NOME_DO_LADO,
+  COPY_DO_PERFIL,
+} from '@/utils/futebol-evidencias';
+import {
+  COPY_DA_EVIDENCIA_DO_HISTORICO,
+  COPY_DA_FRASE_DA_METRICA,
+  COPY_DA_SERIE,
+  COPY_DA_UNIDADE_SOMADA,
+  COPY_DO_COMO_LER,
+  COPY_DO_NOME_DA_METRICA,
+} from '@/utils/futebol-historico';
+import { COPY_DO_MEDIDO, COPY_DO_QUE_ACONTECEU } from '@/utils/futebol-insumo-medido';
+import { COPY_DO_SEM_DADO } from '@/utils/futebol-sem-dado';
 import { COPY_DO_SUFIXO_DE_LEITURA, CHAVE_DO_SUFIXO_DE_LEITURA } from '@/utils/futebol-leitura';
 import { COPY_DO_ROTULO_DA_EXPLICACAO } from '@/utils/futebol-motivos';
 import {
@@ -117,6 +140,60 @@ export function catalogoDaCopyEmPortugues(): Record<string, string> {
   }
   for (const [id, texto] of Object.entries(COPY_DO_ROTULO_DA_EXPLICACAO)) {
     fora.push([`explicacao.${id}`, texto]);
+  }
+
+  // ── A evidência da premissa, nas quatro portas (#544, segunda rodada) ──────
+  // O critério, a série do gráfico, o valor medido pelo mart e o perfil de
+  // temporada. Entram aqui pela mesma razão que as premissas: o valor em
+  // português tem de ser o que a função devolvia, e copiar à mão divergiria.
+  for (const [id, texto] of Object.entries(COPY_DA_UNIDADE)) {
+    fora.push([`criterio.unidade.${id}`, texto]);
+  }
+  for (const [id, texto] of Object.entries(COPY_DO_CORTE)) {
+    fora.push([`criterio.corte.${id}`, texto]);
+  }
+  fora.push([CHAVE_DO_CORTE_EM_JOGOS, COPY_DO_CORTE_EM_JOGOS]);
+  for (const [id, texto] of Object.entries(COPY_DA_PRESTACAO)) {
+    fora.push([`criterio.frase.${id}`, texto]);
+  }
+  for (const [id, texto] of Object.entries(COPY_DO_MANDO)) {
+    fora.push([`mando.${id}`, texto]);
+  }
+  for (const [id, texto] of Object.entries(COPY_DA_CONTAGEM)) {
+    fora.push([`contagem.${id}`, texto]);
+  }
+  for (const [id, texto] of Object.entries(COPY_DO_NOME_DO_LADO)) {
+    fora.push([`nome.${id}`, texto]);
+  }
+  for (const [id, texto] of Object.entries(COPY_DO_PERFIL)) {
+    fora.push([`perfil.${id}`, texto]);
+  }
+  for (const [id, texto] of Object.entries(COPY_DA_SERIE)) {
+    fora.push([`serie.${id}`, texto]);
+  }
+  for (const [id, texto] of Object.entries(COPY_DO_COMO_LER)) {
+    fora.push([`serie.comoLer.${id}`, texto]);
+  }
+  for (const [id, texto] of Object.entries(COPY_DO_NOME_DA_METRICA)) {
+    fora.push([`serie.metrica.${id}`, texto]);
+  }
+  for (const [id, texto] of Object.entries(COPY_DA_UNIDADE_SOMADA)) {
+    fora.push([`serie.unidade.${id}`, texto as string]);
+  }
+  for (const [id, texto] of Object.entries(COPY_DA_FRASE_DA_METRICA)) {
+    fora.push([`historico.frase.${id}`, texto]);
+  }
+  for (const [id, texto] of Object.entries(COPY_DA_EVIDENCIA_DO_HISTORICO)) {
+    fora.push([`historico.${id}`, texto]);
+  }
+  for (const [id, texto] of Object.entries(COPY_DO_MEDIDO)) {
+    fora.push([`medido.${id}`, texto]);
+  }
+  for (const [id, texto] of Object.entries(COPY_DO_QUE_ACONTECEU)) {
+    fora.push([`queAconteceu.${id}`, texto]);
+  }
+  for (const [id, texto] of Object.entries(COPY_DO_SEM_DADO)) {
+    fora.push([`semDado.${id}`, texto]);
   }
 
   const duplicadas = fora.map(([k]) => k).filter((k, i, todas) => todas.indexOf(k) !== i);

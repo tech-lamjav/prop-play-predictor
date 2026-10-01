@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AREA_DA_COPY, type CopyComParametros } from '@/utils/futebol-copy';
+import { AREA_DA_COPY, resolverCopy, type CopyComParametros } from '@/utils/futebol-copy';
 import { chaveDoTextoDoScore, CHAVE_TEXTO_CHANCE, CHAVE_TEXTO_ODD } from '@/utils/futebol-ajuda-copy';
 import { chaveDaCompeticao, competitionLabel } from '@/utils/futebol-competitions';
 import { copyDoSufixoDeLeitura } from '@/utils/futebol-leitura';
@@ -100,13 +100,40 @@ export type CopyDoFutebol = {
   textoDaChance: () => string;
   /** A explicação da odd. */
   textoDaOdd: () => string;
+  /**
+   * Um pedido de frase, montado — a frase da evidência, o corte, o título da
+   * série, o aviso de premissa sem dado.
+   *
+   * Genérico, e é decisão: ao contrário das de cima, estas frases não nascem de
+   * uma chave que a TELA deriva de um objeto de domínio. Elas chegam prontas
+   * como pedido, de `src/utils`, e cada uma já carrega a sua chave. Um método
+   * por frase aqui seria uma lista de dez linhas idênticas, e a próxima
+   * evidência nasceria tendo de passar por aqui sem precisar.
+   */
+  frase: (pedido: CopyComParametros) => string;
+  /** O mesmo, aceitando ausência: devolve vazio em vez de obrigar o `&&` na tela. */
+  fraseOuVazio: (pedido: CopyComParametros | null | undefined) => string;
+  /**
+   * A frase de uma chave que vem no DADO — a unidade do critério, o "como ler"
+   * de uma métrica.
+   *
+   * Não espalha o nome da área, que é o que este hook protege: a chave vem de
+   * `src/utils`, e quem a monta com o prefixo da área continua sendo este
+   * arquivo. Chave vazia devolve vazio, que é como `comoLer` diz "séries
+   * medem coisas diferentes, cada gráfico carrega a sua".
+   */
+  textoDaChave: (chave: string) => string;
 };
 
 export function useCopyDoFutebol(): CopyDoFutebol {
   const { t } = useTranslation(AREA_DA_COPY);
 
   return useMemo(() => {
-    const montar = ({ chave, params }: CopyComParametros) => t(chave, params ?? {});
+    // Uma montagem só, e recursiva: "o corte é pelo menos 3 jogos" são três
+    // chaves encaixadas, e quem resolve a de dentro é a mesma função que resolve
+    // a de fora. Ver `resolverCopy`.
+    const montar = (pedido: CopyComParametros) =>
+      resolverCopy((chave, params) => t(chave, params ?? {}), pedido);
 
     return {
       premissa: (market, p, lado, negativo = false) =>
@@ -150,6 +177,9 @@ export function useCopyDoFutebol(): CopyDoFutebol {
       textoDoScore: (versao) => t(chaveDoTextoDoScore(versao)),
       textoDaChance: () => t(CHAVE_TEXTO_CHANCE),
       textoDaOdd: () => t(CHAVE_TEXTO_ODD),
+      frase: (pedido) => montar(pedido),
+      fraseOuVazio: (pedido) => (pedido == null ? '' : montar(pedido)),
+      textoDaChave: (chave) => (chave ? t(chave) : ''),
     };
   }, [t]);
 }

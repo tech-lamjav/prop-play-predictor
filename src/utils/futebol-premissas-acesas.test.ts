@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { fraseEmPortugues } from '@/test/copy-em-portugues';
 import { premissasAcesasDaLeitura } from './futebol-motivos';
 
 // ============================================================================
@@ -143,7 +144,7 @@ describe('premissasAcesasDaLeitura', () => {
       );
 
       expect(item.evidencia).not.toBeNull();
-      expect(item.evidencia?.texto).toContain('gols esperados');
+      expect(fraseEmPortugues(item.evidencia!.texto)).toContain('gols esperados');
     });
 
     it('com histórico vazio, a evidência segue nula', () => {

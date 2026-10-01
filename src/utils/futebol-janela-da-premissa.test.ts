@@ -1,5 +1,39 @@
 import { describe, expect, it } from 'vitest';
-import { storyDaPremissa, evidenciaDoHistorico, SPECS, EH_BINARIA } from './futebol-historico';
+import { fraseEmPortugues, textoEmPortugues } from '@/test/copy-em-portugues';
+import {
+  storyDaPremissa as storyCrua,
+  evidenciaDoHistorico,
+  SPECS,
+  EH_BINARIA,
+} from './futebol-historico';
+
+/**
+ * A story com título, rodapé e "como ler" já em PORTUGUÊS.
+ *
+ * Desde o #544 estendido às evidências, a série devolve CHAVE e pedido — era
+ * daqui que saía o "Israel em casa, 1 jogo" que apareceu no site em espanhol. As
+ * asserções deste arquivo são sobre a frase, porque o que elas protegem é o
+ * título declarar o recorte e a base, e o rodapé declarar o dado que faltou.
+ *
+ * Em volta da função, e não em cada asserção, porque são sete — e porque assim a
+ * próxima nasce já lendo a frase, pelo mesmo catálogo que a tela lê.
+ */
+function storyDaPremissa(...args: Parameters<typeof storyCrua>) {
+  const s = storyCrua(...args);
+  if (s == null) return null;
+  return {
+    ...s,
+    comoLer: s.comoLer ? textoEmPortugues(s.comoLer) : '',
+    series: s.series.map((x) => ({
+      ...x,
+      titulo: fraseEmPortugues(x.titulo),
+      // Vazio e não nulo: é o que o rodapé desenha quando nenhum jogo ficou sem
+      // o dado, e é o que estas asserções sempre afirmaram.
+      sub: x.sub ? fraseEmPortugues(x.sub) : '',
+      comoLer: x.comoLer ? textoEmPortugues(x.comoLer) : '',
+    })),
+  };
+}
 import { CRITERIOS } from './futebol-criterio';
 import type { FutebolFixtureHistorico } from '@/services/futebol-data.service';
 
@@ -172,7 +206,7 @@ describe('o número da evidência usa a mesma janela do gráfico', () => {
     // Os dois times somam 1,0 + 1,0 = 2,0 na janela inteira. Com o recorte de
     // mando o card diria 2,0 + 1,0 = 3,0, e o gráfico continuaria em 2,0.
     expect(somaDoGrafico).toBe(2);
-    expect(ev?.texto).toContain('2,0');
+    expect(fraseEmPortugues(ev!.texto)).toContain('2,0');
   });
 });
 
@@ -240,7 +274,7 @@ describe('toda premissa declara a janela do modelo', () => {
     expect(ev?.texto).toBeTruthy();
     // A média do gráfico é o número que a frase repete.
     const media = story!.series[0].media!;
-    expect(ev!.texto).toContain(media.toFixed(1).replace('.', ','));
+    expect(fraseEmPortugues(ev!.texto)).toContain(media.toFixed(1).replace('.', ','));
   });
 });
 
@@ -308,17 +342,19 @@ describe('a frase nunca sai de um recorte diferente do gráfico', () => {
       // Se há gráfico, há frase — e é da mesma amostra.
       if (!story) return;
       expect(ev?.texto, `${slug} ficou sem frase e cairia no perfil de temporada`).toBeTruthy();
+      // A frase montada pelo catálogo, que é a que a tela mostra.
+      const frase = fraseEmPortugues(ev!.texto);
       // Premissa de resultado não tem média — a barra é V/E/D. Nela a frase
       // repete a CONTAGEM de jogos; nas demais, a média.
       const alguma = story.series.some((s) => {
-        if (s.metrica === 'resultado') return ev!.texto.includes(String(s.jogos.length));
+        if (s.metrica === 'resultado') return frase.includes(String(s.jogos.length));
         if (s.media == null) return false;
         const n = EH_BINARIA(s.metrica)
           ? `${Math.round(s.media * 100)}%`
           : s.media.toFixed(1).replace('.', ',');
-        return ev!.texto.includes(n);
+        return frase.includes(n);
       });
-      expect(alguma, `${slug}: "${ev?.texto}" não repete nenhum número do gráfico`).toBe(true);
+      expect(alguma, `${slug}: "${frase}" não repete nenhum número do gráfico`).toBe(true);
     });
   }
 });
@@ -363,8 +399,9 @@ describe('a premissa que compara ataque com defesa se explica', () => {
 
   it('a frase usa o verbo de cada métrica', () => {
     const ev = evidenciaDoHistorico('match_winner', 'forca_mismatch', duelo, 'home', null);
-    expect(ev?.texto).toMatch(/marca/);
-    expect(ev?.texto).toMatch(/sofre/);
+    const frase = fraseEmPortugues(ev!.texto);
+    expect(frase).toMatch(/marca/);
+    expect(frase).toMatch(/sofre/);
   });
 
   it('onde as séries medem a mesma coisa, a explicação continua sendo uma só', () => {

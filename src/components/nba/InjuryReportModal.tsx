@@ -7,6 +7,7 @@ import { getTeamLogoUrl } from '@/utils/team-logos';
 import { Loader2, Star, ArrowRight, Check } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useNavigate } from 'react-router-dom';
+import { localeAtivo } from '@/utils/idioma-ativo';
 
 const STATUSES = ['probable', 'questionable', 'doubtful', 'out'] as const;
 type Status = typeof STATUSES[number];
@@ -41,7 +42,7 @@ function normalizeStatus(status: string): Status | null {
 function formatPtDate(iso: string): string {
   if (!iso) return '';
   const d = new Date(`${iso}T12:00:00-03:00`);
-  return d.toLocaleDateString('pt-BR', {
+  return d.toLocaleDateString(localeAtivo(), {
     timeZone: 'America/Sao_Paulo',
     weekday: 'long',
     day: '2-digit',
@@ -133,7 +134,7 @@ export function InjuryReportModal({ open, onClose, games, opportunities }: Props
         gameId: g.game_id,
         label: `${g.visitor_team_abbreviation} vs ${g.home_team_abbreviation}`,
         time: g.game_datetime_brasilia
-          ? new Date(g.game_datetime_brasilia).toLocaleTimeString('pt-BR', {
+          ? new Date(g.game_datetime_brasilia).toLocaleTimeString(localeAtivo(), {
               timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit',
             })
           : '',

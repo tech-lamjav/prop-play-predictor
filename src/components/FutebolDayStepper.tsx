@@ -2,6 +2,7 @@ import { useRef, useLayoutEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { formatadorDeData } from '@/utils/futebol-datas';
+import { localeAtivo } from '@/utils/idioma-ativo';
 
 const TZ = 'America/Sao_Paulo';
 
@@ -38,16 +39,16 @@ function dayLabel(s: string, t: (chave: string) => string): string {
   if (s === hoje) return t('dias.hoje');
   if (s === tomorrow) return t('dias.amanha');
   const d = new Date(`${s}T12:00:00Z`);
-  const str = formatadorDeData('pt-BR', { timeZone: TZ, weekday: 'short', day: '2-digit', month: '2-digit' }).format(d).replace('.', '');
+  const str = formatadorDeData(localeAtivo(), { timeZone: TZ, weekday: 'short', day: '2-digit', month: '2-digit' }).format(d).replace('.', '');
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
 /** Dia da semana curto (ter, qua…), número e mês curto, a partir de YYYY-MM-DD (BRT). */
 function dayParts(s: string): { wd: string; d: string; mon: string } {
   const date = new Date(`${s}T12:00:00Z`);
-  const wd = formatadorDeData('pt-BR', { timeZone: TZ, weekday: 'short' }).format(date).replace('.', '');
-  const d = formatadorDeData('pt-BR', { timeZone: TZ, day: '2-digit' }).format(date);
-  const mon = formatadorDeData('pt-BR', { timeZone: TZ, month: 'short' }).format(date).replace('.', '');
+  const wd = formatadorDeData(localeAtivo(), { timeZone: TZ, weekday: 'short' }).format(date).replace('.', '');
+  const d = formatadorDeData(localeAtivo(), { timeZone: TZ, day: '2-digit' }).format(date);
+  const mon = formatadorDeData(localeAtivo(), { timeZone: TZ, month: 'short' }).format(date).replace('.', '');
   return { wd, d, mon };
 }
 

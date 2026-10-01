@@ -12,6 +12,7 @@ import { abrirDestino } from '@/lib/abrir-destino';
 import { useSettingsData } from '@/hooks/use-settings-data';
 import { getInitials } from '@/lib/user-display';
 import { useSocio } from '@/hooks/use-socio';
+import { localeAtivo } from '@/utils/idioma-ativo';
 
 /**
  * Menu de conta do desktop — pill "Perfil" na faixa 1 do header + dropdown.
@@ -60,7 +61,7 @@ export default function UserNav({ className }: UserNavProps) {
         ? subscription.analytics
         : null;
   const renovaEm = activeSub?.periodEnd
-    ? new Date(activeSub.periodEnd).toLocaleDateString('pt-BR', {
+    ? new Date(activeSub.periodEnd).toLocaleDateString(localeAtivo(), {
         day: '2-digit',
         month: '2-digit',
       })

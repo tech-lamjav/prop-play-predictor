@@ -32,7 +32,7 @@ import { ladoDaSaida } from '@/utils/futebol-evidencias';
 import { MotivosJogoPorJogo } from './MotivosJogoPorJogo';
 import { motivosExpandidos, propsDaOportunidade } from '@/lib/analytics';
 import { useFutebolAccess } from '@/hooks/use-futebol-data';
-import { avisoSemDado } from '@/utils/futebol-sem-dado';
+import { copyDoSemDado } from '@/utils/futebol-sem-dado';
 import { valueDoCandidato, resumoDosMercados, mesmaLinha, saidaCortada, passaNaLeitura, leituraDaFolha, saidaQueAbreAFolha, type SaidaPreferida } from '@/utils/futebol-leitura';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ehDestaque, ehFaixaAlta, fronteirasDoScore } from '@/utils/futebol-score';
@@ -1528,7 +1528,7 @@ export function BancadaMercados({
             tela dizer que a aposta é pior, quando o que existe para dizer é que
             sabemos menos sobre ela. Ver futebol-sem-dado.ts e a ADR 0003. */}
         {(() => {
-          const semDado = avisoSemDado(valPrincipal?.premissas_sem_dado);
+          const semDado = copy.fraseOuVazio(copyDoSemDado(valPrincipal?.premissas_sem_dado));
           return semDado ? (
             <div className="px-6 md:px-8 py-3.5 text-[11.5px] leading-relaxed" style={{ borderTop: '1px solid #f1e9d6', background: '#fdfbf6', color: '#5a625a' }}>
               {semDado}

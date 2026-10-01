@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { useReportAccess } from '@/hooks/use-report-access';
+import { localeAtivo } from '@/utils/idioma-ativo';
 
 const BUCKET = 'reports';
 const SIGNED_URL_EXPIRY = 3600;
@@ -29,7 +30,7 @@ function toReportFilename(date: Date): string {
 
 /** Format Date to a short display label  */
 function formatDateLabel(date: Date): string {
-  const weekday = date.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
+  const weekday = date.toLocaleDateString(localeAtivo(), { weekday: 'short' }).replace('.', '');
   const day = String(date.getDate()).padStart(2, '0');
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const year = date.getFullYear();

@@ -12,6 +12,7 @@ import { FUTEBOL_TIME_TOUR_ID, makeFutebolTimeSteps } from '@/components/onboard
 import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
 import { demoTeamProfile, demoTeamSeason, demoFutebolStandings, demoTeamFixtures } from '@/components/onboarding/demo/futebol';
 import type { Competition, FutebolScopeResult, FutebolScopeStats } from '@/services/futebol-data.service';
+import { localeAtivo } from '@/utils/idioma-ativo';
 
 // Paleta do mockup (espelha theme-bolao)
 const C = {
@@ -88,7 +89,7 @@ function fmtDay(iso: string | null): string {
   if (!iso) return '';
   const d = new Date(iso);
   if (isNaN(d.getTime())) return '';
-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', timeZone: 'America/Sao_Paulo' }).replace('.', '');
+  return d.toLocaleDateString(localeAtivo(), { day: '2-digit', month: 'short', timeZone: 'America/Sao_Paulo' }).replace('.', '');
 }
 
 // Sequência corrente a partir do fim da string de forma (mais recente = último char)

@@ -15,6 +15,7 @@ import { Save, Edit2, Plus, ArrowDownCircle, ArrowUpCircle, ArrowRight } from 'l
 import { useNavigate } from 'react-router-dom';
 import { Bet } from '@/hooks/use-bets';
 import type { CapitalMovement } from '@/hooks/use-capital-movements';
+import { localeAtivo } from '@/utils/idioma-ativo';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -102,10 +103,10 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
 
     allEvents.forEach((ev) => {
       currentBankroll += ev.profit;
-      const formattedDate = ev.date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+      const formattedDate = ev.date.toLocaleDateString(localeAtivo(), { day: '2-digit', month: '2-digit' });
       data.push({
         date: formattedDate,
-        fullDate: ev.date.toLocaleDateString('pt-BR'),
+        fullDate: ev.date.toLocaleDateString(localeAtivo()),
         bankroll: Number(currentBankroll.toFixed(2)),
         profit: ev.profit,
         ts: ev.date.getTime(),

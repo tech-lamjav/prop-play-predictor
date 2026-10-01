@@ -13,6 +13,7 @@ import { ANALISE360_LIST_TOUR_ID, makeAnalise360ListSteps } from '@/components/o
 import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
 import { demoNbaOpportunities, demoPlayerStarsMap, isNbaOffSeason } from '@/components/onboarding/demo/nba';
 import type { DailyOpportunity } from '@/services/nba-data.service';
+import { localeAtivo } from '@/utils/idioma-ativo';
 import {
   Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetTrigger,
 } from '@/components/ui/sheet';
@@ -94,7 +95,7 @@ function normalizeStatusGroup(status: string): string {
 // ─── Helpers ─────────────────────────────────────────────────────────────
 
 function getSaoPauloTodayLabel(): string {
-  const parts = new Intl.DateTimeFormat('pt-BR', {
+  const parts = new Intl.DateTimeFormat(localeAtivo(), {
     timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit',
   }).formatToParts(new Date());
   const d = parts.find(p => p.type === 'day')?.value ?? '00';

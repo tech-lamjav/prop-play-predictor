@@ -14,6 +14,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { Bet } from '../../hooks/use-bets';
+import { localeAtivo } from '@/utils/idioma-ativo';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -99,7 +100,7 @@ export default function BetCard({ bet, onEdit, onDelete, onStatusChange }: BetCa
 
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR', {
+    return new Date(dateString).toLocaleDateString(localeAtivo(), {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',

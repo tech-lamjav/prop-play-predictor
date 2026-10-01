@@ -174,8 +174,15 @@ function OppRow({ o, to, muted, locked, result, homeGoals, awayGoals, aoClicar, 
         </div>
       </div>
       <div className="min-w-0">
+        {/* ⚠️ O selo abaixo NÃO tem altura fixa, e é de propósito. Era `h-5`,
+            de uma linha: em português "Ambos marcam" cabia, e em espanhol
+            "Ambos equipos marcan" quebrava em duas linhas DENTRO de uma caixa
+            de 20px e vazava por baixo.
+            Encurtar o termo não resolve — a forma curta em espanhol é a mesma
+            frase, e o próximo idioma volta a ser mais longo que o português.
+            Quem cede é a caixa. */}
         {!bloqueada && (
-          <span className="px-1.5 h-5 inline-flex items-center rounded text-[10px] font-semibold uppercase tracking-[0.08em] bg-canvas-2 text-ink-2">{copy.mercadoLongo(o.market)}</span>
+          <span className="px-1.5 py-0.5 inline-flex items-center rounded text-[10px] font-semibold uppercase tracking-[0.08em] leading-[1.25] bg-canvas-2 text-ink-2">{copy.mercadoLongo(o.market)}</span>
         )}
         <div className="text-[10px] mt-1 tabular-nums text-ink-3 truncate">{copy.competicao(o.competition)} · {fmtHour(o.kickoff_utc)}</div>
       </div>

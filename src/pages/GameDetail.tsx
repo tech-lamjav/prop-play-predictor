@@ -23,6 +23,7 @@ import {
 import { gamesCache } from '@/pages/Games';
 import { useAnalise360Data } from '@/hooks/use-analise360';
 import { getPlayerPhotoUrl, getTeamLogoUrl, tryNextPlayerPhotoUrl } from '@/utils/team-logos';
+import { localeAtivo } from '@/utils/idioma-ativo';
 
 const SAO_PAULO_TZ = 'America/Sao_Paulo';
 
@@ -47,7 +48,7 @@ function parseGameDate(d: string): Date {
 
 function formatGameDateLong(d: string): string {
   const date = parseGameDate(d);
-  return date.toLocaleDateString('pt-BR', {
+  return date.toLocaleDateString(localeAtivo(), {
     timeZone: SAO_PAULO_TZ,
     weekday: 'short', day: '2-digit', month: 'short', year: 'numeric',
   });
@@ -56,7 +57,7 @@ function formatGameDateLong(d: string): string {
 function formatGameDateShort(d: string): string {
   // "ter., 12 de mai. de 2026"
   const date = parseGameDate(d);
-  return date.toLocaleDateString('pt-BR', {
+  return date.toLocaleDateString(localeAtivo(), {
     timeZone: SAO_PAULO_TZ,
     weekday: 'short', day: '2-digit', month: 'short', year: 'numeric',
   });
@@ -64,7 +65,7 @@ function formatGameDateShort(d: string): string {
 
 function formatTimeBR(iso: string | null): string | null {
   if (!iso) return null;
-  return new Date(iso).toLocaleTimeString('pt-BR', {
+  return new Date(iso).toLocaleTimeString(localeAtivo(), {
     timeZone: SAO_PAULO_TZ, hour: '2-digit', minute: '2-digit',
   });
 }
@@ -546,7 +547,7 @@ function B2BAlertCard({
   const weekday = prevDate ? weekdayLabels[prevDate.getDay()] : null;
   const dayMonth = summary.gameDateISO ? summary.gameDateISO.split('-').reverse().slice(0, 2).join('/') : null;
   const prevTime = summary.gameDatetimeBrasilia
-    ? new Date(summary.gameDatetimeBrasilia).toLocaleTimeString('pt-BR', { timeZone: SAO_PAULO_TZ, hour: '2-digit', minute: '2-digit' })
+    ? new Date(summary.gameDatetimeBrasilia).toLocaleTimeString(localeAtivo(), { timeZone: SAO_PAULO_TZ, hour: '2-digit', minute: '2-digit' })
     : null;
 
   // Descanso: diferença em dias × 24

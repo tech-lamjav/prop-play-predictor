@@ -21,6 +21,7 @@ import { nbaDataService, type Game } from '@/services/nba-data.service';
 import { useAnalise360Data } from '@/hooks/use-analise360';
 import { getPlayerPhotoUrl, getTeamLogoUrl, teamAbbrToName, tryNextPlayerPhotoUrl } from '@/utils/team-logos';
 import { fmtDecimal, fmtLinhaAnalisada, fmtPct } from '@/utils/formato';
+import { localeAtivo } from '@/utils/idioma-ativo';
 
 // ─── Constants ───────────────────────────────────────────────────────────
 
@@ -65,18 +66,18 @@ const addDaysToISO = (isoDate: string, days: number): string => {
 
 function formatHeaderDateBR(iso: string): { weekday: string; dayMonth: string; full: string } {
   const d = parseGameDate(iso);
-  const weekday = d.toLocaleDateString('pt-BR', { timeZone: SAO_PAULO_TIMEZONE, weekday: 'long' });
-  const dayMonth = d.toLocaleDateString('pt-BR', { timeZone: SAO_PAULO_TIMEZONE, day: '2-digit', month: 'long' });
-  const full = d.toLocaleDateString('pt-BR', { timeZone: SAO_PAULO_TIMEZONE, day: '2-digit', month: '2-digit', year: 'numeric' });
+  const weekday = d.toLocaleDateString(localeAtivo(), { timeZone: SAO_PAULO_TIMEZONE, weekday: 'long' });
+  const dayMonth = d.toLocaleDateString(localeAtivo(), { timeZone: SAO_PAULO_TIMEZONE, day: '2-digit', month: 'long' });
+  const full = d.toLocaleDateString(localeAtivo(), { timeZone: SAO_PAULO_TIMEZONE, day: '2-digit', month: '2-digit', year: 'numeric' });
   return { weekday: weekday.charAt(0).toUpperCase() + weekday.slice(1), dayMonth, full };
 }
 
 function formatShortDateBR(iso: string): string {
   // "SEG., 30 DE MAR."
   const d = parseGameDate(iso);
-  const weekday = d.toLocaleDateString('pt-BR', { timeZone: SAO_PAULO_TIMEZONE, weekday: 'short' }).replace('.', '');
-  const day = d.toLocaleDateString('pt-BR', { timeZone: SAO_PAULO_TIMEZONE, day: '2-digit' });
-  const month = d.toLocaleDateString('pt-BR', { timeZone: SAO_PAULO_TIMEZONE, month: 'short' }).replace('.', '');
+  const weekday = d.toLocaleDateString(localeAtivo(), { timeZone: SAO_PAULO_TIMEZONE, weekday: 'short' }).replace('.', '');
+  const day = d.toLocaleDateString(localeAtivo(), { timeZone: SAO_PAULO_TIMEZONE, day: '2-digit' });
+  const month = d.toLocaleDateString(localeAtivo(), { timeZone: SAO_PAULO_TIMEZONE, month: 'short' }).replace('.', '');
   return `${weekday.toUpperCase()}., ${day} DE ${month.toUpperCase()}.`;
 }
 
@@ -140,7 +141,7 @@ function GameCard({ game, onClick }: { game: Game; onClick: () => void }) {
 
   const shortDate = formatShortDateBR(game.game_date);
   const time = game.game_datetime_brasilia
-    ? new Date(game.game_datetime_brasilia).toLocaleTimeString('pt-BR', {
+    ? new Date(game.game_datetime_brasilia).toLocaleTimeString(localeAtivo(), {
         timeZone: SAO_PAULO_TIMEZONE, hour: '2-digit', minute: '2-digit',
       })
     : null;

@@ -1,6 +1,6 @@
 import i18next from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import { definirLocaleAtivo } from '@/utils/formato';
+import { definirLocaleAtivo } from '@/utils/idioma-ativo';
 import { carregarArea } from './carregar';
 import { idiomaInicial } from './idioma-inicial';
 import {

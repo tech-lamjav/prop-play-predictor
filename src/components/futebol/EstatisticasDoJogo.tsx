@@ -201,7 +201,7 @@ export function EstatisticasDoJogo({
           <div className="flex flex-col gap-4">
             {series.map((s) => (
               <div key={s.chave}>
-                <div className="text-[11.5px] font-semibold text-ink truncate mb-2">{s.titulo}</div>
+                <div className="text-[11.5px] font-semibold text-ink truncate mb-2">{copy.frase(s.titulo)}</div>
                 <SerieResultados
                   s={s}
                   // A cascata acompanha o `EH_QUADRO` logo acima: tudo que
@@ -219,7 +219,9 @@ export function EstatisticasDoJogo({
                 />
               </div>
             ))}
-            <div className="text-[11px] leading-relaxed" style={{ color: '#8d8672' }}>{series[0].comoLer}</div>
+            <div className="text-[11px] leading-relaxed" style={{ color: '#8d8672' }}>
+              {copy.textoDaChave(series[0].comoLer)}
+            </div>
           </div>
         ) : (
           <>
@@ -281,7 +283,9 @@ export function EstatisticasDoJogo({
               </div>
             )}
 
-            <div className="text-[11px] leading-relaxed mt-3" style={{ color: '#8d8672' }}>{series[0].comoLer}</div>
+            <div className="text-[11px] leading-relaxed mt-3" style={{ color: '#8d8672' }}>
+              {copy.textoDaChave(series[0].comoLer)}
+            </div>
           </>
         )}
       </div>

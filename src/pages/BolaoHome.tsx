@@ -23,6 +23,7 @@ import { useOnboardingTour } from '@/components/onboarding/useOnboardingTour';
 import { BOLAO_TOUR_ID, bolaoSteps } from '@/components/onboarding/tours';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { supabase } from '@/integrations/supabase/client';
+import { localeAtivo } from '@/utils/idioma-ativo';
 
 const COPA_START = new Date('2026-06-11T12:00:00-03:00');
 
@@ -59,7 +60,7 @@ function formatDeadline(matches: any[] | undefined, bolao: any) {
     )[0];
   if (!next) return null;
   const d = new Date(next.match_date + 'T00:00:00');
-  const day = d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' });
+  const day = d.toLocaleDateString(localeAtivo(), { weekday: 'short', day: '2-digit', month: '2-digit' });
   return `${day} ${next.match_time_brasilia.slice(0, 5)}`;
 }
 

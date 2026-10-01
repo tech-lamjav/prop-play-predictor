@@ -47,8 +47,6 @@ const LEGITIMAS = new Set([
   'especiales', 'modelo', 'niveles', 'oficiales', 'oscila', 'paneles',
   'potenciales', 'principales', 'promete', 'promocionales', 'totales',
   'señala', 'señalan',
-  // Nome de variável de interpolação que aparece dentro do texto.
-  'janela',
   // ⚠️ FUTUROS IRREGULARES. O futuro regular é pego por `FUTURO` abaixo, mas
   // estes encurtam o radical e terminam em `-drás`, `-brás` ou `-rrás`, que o
   // padrão não alcança. E não dá para alcançar: "querrás" (futuro legítimo)
@@ -101,6 +99,25 @@ function ehVoseo(palavra: string): boolean {
   return COM_PRONOME_COLADO.test(b) && !TEM_ACENTO.test(b) && silabas(b) >= 3;
 }
 
+/**
+ * Tira os marcadores de interpolação antes de olhar o texto.
+ *
+ * ⚠️ NASCEU DE A GUARDA TER FORÇADO UM RENAME EM PRODUÇÃO. O nome da variável
+ * dentro de `{{...}}` não é texto que alguém lê — é identificador, e quase
+ * sempre em português, porque o código deste produto é em português. Nomes
+ * como `{{tabela}}`, `{{janela}}` e `{{doTime}}` caem no padrão de pronome
+ * colado e eram acusados como voseo.
+ *
+ * Alguém chegou a RENOMEAR duas variáveis para calar o teste, e isso é o
+ * avesso: a guarda existe para proteger a copy, não para ditar nome de
+ * parâmetro. Antes disto a saída foi pior ainda — acrescentei `janela` à lista
+ * de exceções, tratando o sintoma e deixando a armadilha armada para o
+ * próximo nome.
+ */
+function semInterpolacao(texto: string): string {
+  return texto.replace(/\{\{[^}]*\}\}/g, ' ');
+}
+
 function textos(obj: unknown, prefixo = ''): Array<[string, string]> {
   if (typeof obj === 'string') return [[prefixo, obj]];
   if (obj === null || typeof obj !== 'object') return [];
@@ -115,7 +132,7 @@ describe('o espanhol do produto é pan-hispânico', () => {
       const achados: string[] = [];
 
       for (const [chave, texto] of textos(await carregarArea('es', area))) {
-        for (const palavra of texto.match(/[A-Za-zÁÉÍÓÚÑÜáéíóúñü]+/g) ?? []) {
+        for (const palavra of semInterpolacao(texto).match(/[A-Za-zÁÉÍÓÚÑÜáéíóúñü]+/g) ?? []) {
           if (ehVoseo(palavra)) {
             achados.push(`${chave}: "${palavra}" em — ${texto.slice(0, 80)}`);
           }
@@ -139,6 +156,18 @@ describe('o espanhol do produto é pan-hispânico', () => {
     ]) {
       expect(ehVoseo(escapou), `deveria acusar: ${escapou}`).toBe(true);
     }
+  });
+
+  it('não acusa NOME DE VARIÁVEL de interpolação', () => {
+    // Regressão do caso que fez alguém renomear código de produção para calar
+    // este teste. O que está dentro de `{{...}}` é identificador, não texto —
+    // e os identificadores deste produto são em português, então caem no
+    // padrão de pronome colado com facilidade.
+    const comVariaveis = 'Últimos {{janela}} de {{tabela}}, {{doTime}} y {{resultadoDaRodada}}';
+    const acusadas = (semInterpolacao(comVariaveis).match(/[A-Za-zÁÉÍÓÚÑÜáéíóúñü]+/g) ?? []).filter(
+      ehVoseo,
+    );
+    expect(acusadas, `acusou nome de variável: ${acusadas.join(', ')}`).toEqual([]);
   });
 
   it('não acusa espanhol legítimo', () => {

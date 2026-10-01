@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
+import { useCopyDoFutebol } from '@/hooks/use-copy-do-futebol';
 import { fmtExato } from '@/utils/formato';
 import { type SerieHistorico, type Story } from '@/utils/futebol-historico';
 import { dia, rotuloMedia, rotuloValor } from '@/utils/futebol-grafico-de-barras';
@@ -212,6 +213,7 @@ export function BarrasEmSequencia({
   referencia?: number | null;
 }) {
   const { t } = useTranslation('futebol');
+  const copy = useCopyDoFutebol();
   const util = altura - TOPO_ROTULO;
   const amplitude = teto - piso || 1;
   const zero = ((0 - piso) / amplitude) * util;
@@ -235,8 +237,8 @@ export function BarrasEmSequencia({
         {series.map((s, i) => (
           <div key={`h-${s.chave}`} style={fatia(s)} className={cn('flex items-center gap-1.5 min-w-0', divisor(i))}>
             <Crest name={s.teamName} id={s.teamId} size={16} />
-            <span className="text-[11.5px] font-semibold text-ink truncate">{s.titulo}</span>
-            {s.sub && <span className="text-[10.5px] text-ink-3 shrink-0">{s.sub}</span>}
+            <span className="text-[11.5px] font-semibold text-ink truncate">{copy.frase(s.titulo)}</span>
+            {s.sub && <span className="text-[10.5px] text-ink-3 shrink-0">{copy.frase(s.sub)}</span>}
           </div>
         ))}
       </div>
@@ -379,6 +381,7 @@ export function BlocoSerie({
   referencia?: Story['referencia'];
 }) {
   const { t } = useTranslation('futebol');
+  const copy = useCopyDoFutebol();
   const util = PLOT - TOPO_ROTULO;
   const amplitude = teto - piso || 1;
   /** Onde o zero cai, medido do fundo do gráfico. É 0 quando não há negativo. */
@@ -392,8 +395,8 @@ export function BlocoSerie({
           não dava para saber qual metade era de quem. */}
       <div className="flex items-center gap-1.5 mb-2 min-w-0">
         <Crest name={s.teamName} id={s.teamId} size={16} />
-        <span className="text-[11.5px] font-semibold text-ink truncate">{s.titulo}</span>
-        {s.sub && <span className="text-[10.5px] text-ink-3 shrink-0">{s.sub}</span>}
+        <span className="text-[11.5px] font-semibold text-ink truncate">{copy.frase(s.titulo)}</span>
+        {s.sub && <span className="text-[10.5px] text-ink-3 shrink-0">{copy.frase(s.sub)}</span>}
       </div>
       {/* A barra se ajusta à largura, sem rolagem — e isso passou a caber
           porque o RECORTE mudou.
@@ -570,7 +573,7 @@ export function BlocoSerie({
           — repeti-la em cada um seria dizer duas vezes. */}
       {mostraComoLer && (
         <div className="text-[11px] leading-relaxed mt-2" style={{ color: '#8d8672' }}>
-          {s.comoLer}
+          {copy.textoDaChave(s.comoLer)}
         </div>
       )}
     </div>
