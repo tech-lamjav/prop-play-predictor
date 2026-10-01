@@ -198,7 +198,7 @@ export default function PaywallDashboard() {
             <Button
               variant="outline"
               onClick={() => navigate("/bets")}
-              className="text-sm sm:text-base px-3 sm:px-4 py-2 bg-muted text-foreground border-border hover:bg-muted/80"
+              className="text-sm sm:text-base px-3 sm:px-4 py-2 bg-muted text-foreground border-border hover:bg-muted/80 hover:text-foreground"
             >
               <ArrowLeft className="h-4 w-4 mr-1" />
               {t('paywallDashboard.voltar')}
@@ -206,7 +206,7 @@ export default function PaywallDashboard() {
             <Button
               variant="outline"
               onClick={() => navigate("/auth")}
-              className="text-sm sm:text-base px-3 sm:px-4 py-2 bg-muted text-foreground border-border hover:bg-muted/80"
+              className="text-sm sm:text-base px-3 sm:px-4 py-2 bg-muted text-foreground border-border hover:bg-muted/80 hover:text-foreground"
             >
               {t('comum:acoes.entrar')}
             </Button>

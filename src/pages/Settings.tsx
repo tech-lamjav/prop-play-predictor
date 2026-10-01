@@ -319,7 +319,7 @@ export default function Settings() {
                   onClick={() =>
                     window.open(`${telegramBotUrl}?start=force_contact`, '_blank')
                   }
-                  className="bg-white border-line text-ink hover:bg-canvas-2"
+                  className="bg-white border-line text-ink hover:bg-canvas-2 hover:text-ink"
                 >
                   <Send className="w-4 h-4 mr-2" />
                   Ressincronizar Telegram
@@ -378,7 +378,7 @@ export default function Settings() {
                   variant="outline"
                   onClick={handlePublicationAlerts}
                   disabled={isSavingPublicationAlerts}
-                  className="bg-white border-line text-ink hover:bg-canvas-2"
+                  className="bg-white border-line text-ink hover:bg-canvas-2 hover:text-ink"
                 >
                   {publicationAlerts.enabled ? 'Pausar para quando voltar' : 'Retomar para quando voltar'}
                 </Button>
@@ -394,7 +394,7 @@ export default function Settings() {
                   type="button"
                   variant="outline"
                   onClick={() => navigate(onboardingHref(ONBOARDING_SRC_ALERTAS_FUTEBOL, '/settings'))}
-                  className="bg-white border-line text-ink hover:bg-canvas-2"
+                  className="bg-white border-line text-ink hover:bg-canvas-2 hover:text-ink"
                 >
                   <Send className="w-4 h-4 mr-2" />
                   Conectar Telegram
@@ -417,7 +417,7 @@ export default function Settings() {
                   variant={publicationAlerts.enabled ? 'outline' : 'default'}
                   onClick={handlePublicationAlerts}
                   disabled={isSavingPublicationAlerts}
-                  className={publicationAlerts.enabled ? 'bg-white border-line text-ink hover:bg-canvas-2' : 'bg-forest hover:bg-forest-soft text-white'}
+                  className={publicationAlerts.enabled ? 'bg-white border-line text-ink hover:bg-canvas-2 hover:text-ink' : 'bg-forest hover:bg-forest-soft text-white'}
                 >
                   {isSavingPublicationAlerts ? 'Salvando...' : publicationAlerts.enabled ? 'Pausar alertas' : 'Retomar alertas'}
                 </Button>
@@ -533,7 +533,7 @@ export default function Settings() {
                 resetAllOnboarding();
                 navigate('/inicio');
               }}
-              className="bg-white border-line text-ink hover:bg-canvas-2"
+              className="bg-white border-line text-ink hover:bg-canvas-2 hover:text-ink"
             >
               <Compass className="w-4 h-4 mr-2" />
               Rever tour guiado

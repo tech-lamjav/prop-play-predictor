@@ -208,7 +208,7 @@ export default function FutebolAssinar() {
               onClick={falarNoWhatsApp}
               variant="outline"
               size="lg"
-              className="w-full py-6 mt-3 gap-2 bg-white border-line text-ink hover:bg-canvas-2"
+              className="w-full py-6 mt-3 gap-2 bg-white border-line text-ink hover:bg-canvas-2 hover:text-ink"
             >
               <MessageCircle className="h-5 w-5" />
               <span className="text-sm sm:text-base text-center">{t('assinar.whatsapp')}</span>

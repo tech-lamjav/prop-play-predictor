@@ -278,7 +278,7 @@ export default function Paywall() {
                   <Button
                       onClick={handleUpgrade}
                       variant="outline"
-                      className="w-full py-6 gap-2 bg-white border-line text-ink hover:bg-canvas-2"
+                      className="w-full py-6 gap-2 bg-white border-line text-ink hover:bg-canvas-2 hover:text-ink"
                       size="lg"
                     >
                       <MessageCircle className="h-5 w-5" />

@@ -12,6 +12,10 @@ import { Trophy, Users, Sparkles, Check, BarChart3, Send, ShieldCheck } from "lu
 import { toast } from "@/hooks/use-toast";
 import { OAUTH_REDIRECT_KEY, OAUTH_REFERRAL_KEY } from "@/lib/oauth-state";
 import { getRedirectTarget, resolveHomePath } from "@/lib/post-login";
+import { CampoDeSenha } from "@/components/CampoDeSenha";
+import { DDIS, PAIS_PADRAO, ddiDoPais } from "@/config/paises";
+import { SeletorDePais } from "@/components/SeletorDePais";
+import { BandeiraDoPais } from "@/components/BandeiraDoPais";
 import { SeletorDeIdiomaCompacto } from '@/components/SeletorDeIdioma';
 
 // lucide não tem ícones de marca; SVG oficial multicolor do Google inline.
@@ -36,7 +40,15 @@ const Auth = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
   const [referralCode, setReferralCode] = useState("");
-  const [phoneCountryCode, setPhoneCountryCode] = useState("+55");
+  /**
+   * O país de quem está criando a conta.
+   *
+   * Ele SUGERE o código de discagem, e não o impõe: gente mora num país e tem
+   * telefone de outro — brasileiro em Lima costuma manter o número de casa.
+   * Por isso os dois estados são separados.
+   */
+  const [pais, setPais] = useState(PAIS_PADRAO);
+  const [phoneCountryCode, setPhoneCountryCode] = useState(ddiDoPais(PAIS_PADRAO));
   const [phoneNumber, setPhoneNumber] = useState("");
   const [googleLoading, setGoogleLoading] = useState(false);
 
@@ -167,7 +179,15 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signUp({ email, password });
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        // O país vai para os metadados da conta, e não para uma coluna: a
+        // tabela `users` não tem `country`, e criar uma é migration — que
+        // nesta casa aplica sozinha no merge e tem regra própria. Quando a
+        // coluna existir, é daqui que o valor sai.
+        options: { data: { country: pais } },
+      });
 
       if (error) {
         toast({ title: t('avisos.erro'), description: error.message, variant: "destructive" });
@@ -387,7 +407,7 @@ const Auth = () => {
                     size="lg"
                     disabled={googleLoading}
                     onClick={handleGoogleSignIn}
-                    className="w-full rounded-rebrand-md h-11 bg-white border-line text-ink hover:bg-canvas gap-2 font-semibold"
+                    className="w-full rounded-rebrand-md h-11 bg-white border-line text-ink hover:bg-canvas hover:text-ink gap-2 font-semibold"
                   >
                     <GoogleIcon />
                     {googleLoading ? t('google.carregando') : t('google.acao')}
@@ -416,12 +436,12 @@ const Auth = () => {
                       <Label htmlFor="password" className="text-[12px] font-semibold text-ink-2 uppercase tracking-wide">
                         {t('campos.senha')}
                       </Label>
-                      <Input
+                      <CampoDeSenha
                         id="password"
-                        type="password"
                         value={password}
-                        onChange={(e) => setPassword(e.target.value)}
+                        onChange={setPassword}
                         required
+                        autoComplete="current-password"
                         className="bg-canvas border-line text-ink h-11 rounded-rebrand-md focus-visible:border-forest focus-visible:ring-forest/20"
                       />
                     </div>
@@ -453,7 +473,7 @@ const Auth = () => {
                     size="lg"
                     disabled={googleLoading}
                     onClick={handleGoogleSignIn}
-                    className="w-full rounded-rebrand-md h-11 bg-white border-line text-ink hover:bg-canvas gap-2 font-semibold"
+                    className="w-full rounded-rebrand-md h-11 bg-white border-line text-ink hover:bg-canvas hover:text-ink gap-2 font-semibold"
                   >
                     <GoogleIcon />
                     {googleLoading ? t('google.carregando') : t('google.acao')}
@@ -497,12 +517,12 @@ const Auth = () => {
                         <Label htmlFor="signup-password" className="text-[12px] font-semibold text-ink-2 uppercase tracking-wide">
                           {t('campos.senha')}
                         </Label>
-                        <Input
+                        <CampoDeSenha
                           id="signup-password"
-                          type="password"
                           value={password}
-                          onChange={(e) => setPassword(e.target.value)}
+                          onChange={setPassword}
                           required
+                          autoComplete="new-password"
                           className="bg-canvas border-line text-ink h-11 rounded-rebrand-md focus-visible:border-forest focus-visible:ring-forest/20"
                         />
                       </div>
@@ -510,15 +530,29 @@ const Auth = () => {
                         <Label htmlFor="confirm-password" className="text-[12px] font-semibold text-ink-2 uppercase tracking-wide">
                           {t('campos.confirmar')}
                         </Label>
-                        <Input
+                        <CampoDeSenha
                           id="confirm-password"
-                          type="password"
                           value={confirmPassword}
-                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          onChange={setConfirmPassword}
                           required
+                          autoComplete="new-password"
                           className="bg-canvas border-line text-ink h-11 rounded-rebrand-md focus-visible:border-forest focus-visible:ring-forest/20"
                         />
                       </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="signup-pais" className="text-[12px] font-semibold text-ink-2 uppercase tracking-wide">
+                        {t('campos.pais')}
+                      </Label>
+                      <SeletorDePais
+                        id="signup-pais"
+                        valor={pais}
+                        aoEscolher={(novo) => {
+                          setPais(novo);
+                          // O país SUGERE o código; quem quiser outro troca ao lado.
+                          setPhoneCountryCode(ddiDoPais(novo));
+                        }}
+                      />
                     </div>
                     <div className="space-y-1.5">
                       <Label htmlFor="signup-phone" className="text-[12px] font-semibold text-ink-2 uppercase tracking-wide">
@@ -530,14 +564,22 @@ const Auth = () => {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent className="theme-bolao bg-white border-line text-ink">
-                            <SelectItem value="+55">🇧🇷 +55</SelectItem>
-                            <SelectItem value="+1">🇺🇸 +1</SelectItem>
-                            <SelectItem value="+54">🇦🇷 +54</SelectItem>
-                            <SelectItem value="+56">🇨🇱 +56</SelectItem>
-                            <SelectItem value="+57">🇨🇴 +57</SelectItem>
-                            <SelectItem value="+351">🇵🇹 +351</SelectItem>
-                            <SelectItem value="+34">🇪🇸 +34</SelectItem>
-                            <SelectItem value="+39">🇮🇹 +39</SelectItem>
+                            {/* ⚠️ A lista vinha escrita à mão aqui, com OITO países —
+                                e sem Peru nem México, dois dos quatro do lançamento:
+                                quem mora lá não conseguia cadastrar telefone. Agora
+                                vem do catálogo, e país novo entra num lugar só. */}
+                            {DDIS.map((p) => (
+                              <SelectItem
+                                key={p.ddi}
+                                value={p.ddi}
+                                className="gap-2 focus:bg-sand-100 focus:text-forest"
+                              >
+                                <span className="flex items-center gap-2">
+                                  <BandeiraDoPais codigo={p.codigo} nome={p.nome} />
+                                  {p.ddi}
+                                </span>
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                         <Input
