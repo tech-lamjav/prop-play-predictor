@@ -13,7 +13,8 @@ import { toast } from "@/hooks/use-toast";
 import { OAUTH_REDIRECT_KEY, OAUTH_REFERRAL_KEY } from "@/lib/oauth-state";
 import { getRedirectTarget, resolveHomePath } from "@/lib/post-login";
 import { CampoDeSenha } from "@/components/CampoDeSenha";
-import { DDIS, PAIS_PADRAO, ddiDoPais } from "@/config/paises";
+import { DDIS, ddiDoPais } from "@/config/paises";
+import { paisDoFuso } from "@/config/pais-do-fuso";
 import { SeletorDePais } from "@/components/SeletorDePais";
 import { BandeiraDoPais } from "@/components/BandeiraDoPais";
 import { SeletorDeIdiomaCompacto } from '@/components/SeletorDeIdioma';
@@ -46,9 +47,17 @@ const Auth = () => {
    * Ele SUGERE o código de discagem, e não o impõe: gente mora num país e tem
    * telefone de outro — brasileiro em Lima costuma manter o número de casa.
    * Por isso os dois estados são separados.
+   *
+   * O valor inicial é um PALPITE pelo fuso do navegador, não o Brasil fixo: o
+   * lançamento é no Peru, na Argentina, no México e no Chile, e o campo é
+   * obrigatório — abrir sempre no Brasil cobrava um clique de cada pessoa que o
+   * lançamento quer alcançar. Por que o fuso e não a lógica de IP que já está
+   * em produção: ver `pais-do-fuso.ts`.
    */
-  const [pais, setPais] = useState(PAIS_PADRAO);
-  const [phoneCountryCode, setPhoneCountryCode] = useState(ddiDoPais(PAIS_PADRAO));
+  // Inicializador preguiçoso: lê o fuso uma vez, na montagem, e não a cada
+  // repintura.
+  const [pais, setPais] = useState(paisDoFuso);
+  const [phoneCountryCode, setPhoneCountryCode] = useState(() => ddiDoPais(paisDoFuso()));
   const [phoneNumber, setPhoneNumber] = useState("");
   const [googleLoading, setGoogleLoading] = useState(false);
 

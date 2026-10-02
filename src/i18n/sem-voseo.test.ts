@@ -43,10 +43,10 @@ const LEGITIMAS = new Set([
   'país', 'parís',
   // Terminam em pronome por coincidência, sem acento, com três sílabas ou mais.
   // Todas medidas nos catálogos deste produto; a lista cresce por medição.
-  'adicionales', 'cancela', 'cancelas', 'cancelo', 'empate', 'escala',
-  'especiales', 'modelo', 'niveles', 'oficiales', 'oscila', 'paneles',
-  'potenciales', 'principales', 'promete', 'promocionales', 'totales',
-  'señala', 'señalan',
+  'cancela', 'cancelas', 'cancelo', 'empate', 'escala', 'modelo',
+  'oscila', 'promete', 'señala', 'señalan',
+  // Nome próprio terminado em vogal acentuada.
+  'canadá',
   // ⚠️ PRETÉRITO DE PRIMEIRA PESSOA, e a razão de ele morar numa lista.
   // "leí" e "registré" são o passado de quem fala — a voz do Betinho, que
   // em português diz "Li o print e registrei!". E o pretérito de primeira
@@ -130,9 +130,44 @@ const COM_PRONOME_COLADO = /^[a-zñü]+[aei](lo|la|los|las|le|les|me|te|se|nos)$
 const MARCAS = new Set(['sos', 'vos']);
 
 
+/**
+ * Plural de palavra já aceita.
+ *
+ * ⚠️ ENTROU PARA A LISTA PARAR DE CRESCER. "modelo" estava em `LEGITIMAS` e
+ * "Modelos" era acusado — a mesma palavra, no plural, batendo no padrão de
+ * pronome colado (`mode` + `los`). Acrescentar cada plural à mão é como a lista
+ * virou gaveta antes: o conserto é a regra, não mais uma linha.
+ *
+ * Não abre buraco: "probalos" continua acusado, porque "probalo" também é.
+ */
+function ehPluralDeLegitima(palavra: string): boolean {
+  return palavra.endsWith('s') && LEGITIMAS.has(palavra.slice(0, -1));
+}
+
+/**
+ * Plural de palavra terminada em "-l", que é morfologia e não pronome.
+ *
+ * ⚠️ ESTA REGRA EXISTE PARA ENCURTAR A LISTA, e encurtou em nove palavras.
+ * O espanhol forma o plural de "nivel", "actual", "total", "panel",
+ * "especial", "principal", "adicional", "oficial" e "potencial"
+ * acrescentando "-es" — e todas caem no padrão de pronome colado, porque
+ * terminam em vogal seguida de "les". As nove estavam escritas uma a uma em
+ * `LEGITIMAS`, e "actuales" foi a décima a aparecer. Palavra terminada em
+ * "-les" depois de vogal é plural, não imperativo com pronome.
+ *
+ * ⚠️ O BURACO, DITO POR EXTENSO: o imperativo rio-platense com "-les" colado
+ * passa a escapar — "deciles", "dales". O singular continua pego ("decile"), e
+ * as marcas sem ambiguidade ("vos", "sos") e as formas acentuadas também. Foi
+ * escolha medida: o plural em "-les" é uma classe grande e viva na copy, e o
+ * imperativo com "-les" nunca apareceu nenhuma vez nas três gerações desta
+ * guarda.
+ */
+const PLURAL_EM_L = /[aeiou]les$/;
+
 function ehVoseo(palavra: string): boolean {
   const b = palavra.toLowerCase();
   if (LEGITIMAS.has(b)) return false;
+  if (ehPluralDeLegitima(b) || PLURAL_EM_L.test(b)) return false;
   if (MARCAS.has(b)) return true;
   if (FUTURO.has(b)) return false;
   if (SUFIXO_ACENTUADO.test(b)) return true;
@@ -209,6 +244,9 @@ describe('o espanhol do produto é pan-hispânico', () => {
       'sos', 'vos',
       // Presente do voseo cujo radical acaba em r: parece futuro e não é.
       'cerrás',
+      // O imperativo com pronome colado no SINGULAR continua pego: é o plural
+      // em -les que a regra de morfologia deixa passar, e isso está dito lá.
+      'decile',
     ]) {
       expect(ehVoseo(escapou), `deveria acusar: ${escapou}`).toBe(true);
     }
@@ -233,6 +271,9 @@ describe('o espanhol do produto é pan-hispânico', () => {
       'suscríbete', 'míralo', 'puedes', 'prueba', 'haz',
       // Futuro do indicativo: igual em tú e em vos, e portanto legítimo.
       'recibirás', 'hablarás', 'podrás', 'tendrás', 'vivirás',
+      // Plural de palavra terminada em -l: morfologia, não pronome colado.
+      // As três primeiras apareceram nos catálogos e fizeram a regra existir.
+      'actuales', 'Modelos', 'Canadá', 'niveles', 'totales', 'principales',
       // Futuro de TERCEIRA pessoa, que fez alguém reescrever a copy.
       'será', 'podrá', 'tendrá', 'hablará', 'vendrá', 'dirá', 'hará',
     ]) {
