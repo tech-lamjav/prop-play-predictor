@@ -26,10 +26,13 @@ junto do código de que falam:
 │   ├── 0001-o-crm-desce-um-andar.md
 │   ├── 0002-liquidacao-continua-conta-de-tela.md
 │   ├── 0003-o-placar-mede-a-foto-de-nascimento.md
-│   └── 0004-o-crm-registra-o-dinheiro-do-stripe.md
+│   ├── 0004-o-crm-registra-o-dinheiro-do-stripe.md
+│   ├── 0005-a-pesquisa-de-perfil-pergunta-a-todos-e-insiste.md
+│   └── 0006-um-juiz-so-decide-de-onde-a-pessoa-acessa.md
 └── src/
-    └── components/socios/
-        └── CONTEXT.md                      ← glossário: CRM dos sócios
+    └── components/
+        ├── socios/CONTEXT.md               ← glossário: CRM dos sócios
+        └── perfil/CONTEXT.md               ← glossário: a pessoa, declarado e observado
 ```
 
 ⚠️ As ADRs são todas em `docs/adr/`, e não há `docs/adr/` por contexto. Uma ADR

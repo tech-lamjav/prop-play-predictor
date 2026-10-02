@@ -28,6 +28,18 @@ import { PAIS_PADRAO, paisPorCodigo } from '@/config/paises';
  * Expor `paisDoIp` numa função pública continua possível, e seria mais preciso
  * na América Latina — mas é endpoint novo, entrada na lista de deploy e uma
  * decisão de privacidade. Não é o que um valor inicial de campo pede.
+ *
+ * ⚠️ ISTO NÃO É ORIGEM OBSERVADA NEM ORIGEM DECLARADA. O glossário da pessoa
+ * (`src/components/perfil/CONTEXT.md`) separa as duas de propósito: observada é
+ * o país que o IP disse ao NOSSO SERVIDOR, e serve de prova; declarada é o país
+ * que a pessoa informou no endereço de cobrança, e vem do Stripe, o que a torna
+ * evidência de terceiro. As duas discordam com frequência e com razão, e é por
+ * isso que ficam guardadas separadas.
+ *
+ * O que esta função devolve é um PALPITE DE FORMULÁRIO, e não entra nessa
+ * conversa: ninguém prova nada com ele, e a pessoa troca com um clique. Também
+ * não é segundo juiz de nada — quem decide acesso é o porteiro, uma vez por
+ * sessão e do lado do servidor, e a tela só obedece.
  */
 
 /**

@@ -199,6 +199,33 @@ function ondeCadaUmJoga(lado: 'home' | 'away'): { doTime: string; doAdversario: 
  * repositório tem a sua própria em `docs/adr/`), classificação é sempre
  * COMPETIÇÃO-SCOPED: a posição sai da tabela daquele campeonato, nunca de um
  * ranking juntado.
+ *
+ * ⚠️ COMPETIÇÃO-SCOPED NÃO É TORNEIO-SCOPED, e a diferença vai aparecer na tela.
+ *
+ * Se você chegou aqui investigando um número que parece errado — "2º entre 30"
+ * num campeonato de 15 times, ou uma posição que não bate com a tabela que o
+ * site da liga mostra — é provavelmente isto, e é conhecido:
+ *
+ * Argentina, Colômbia, Peru e México rodam DOIS torneios curtos por ano
+ * (Apertura e Clausura). A `season` é uma só, e o rank e o ppg que chegam aqui
+ * ACUMULAM OS DOIS. A posição que esta frase mostra é de um campeonato que
+ * ninguém jogou. Na Argentina o `n_teams` dá 30, contra zonas de 15.
+ *
+ * Três premissas leem isso e não filtram por torneio: `superioridade_tabela`
+ * (Resultado), `supremacia` (Handicap) e o braço `x_superioridade_tabela` da
+ * `lado_coberto_forte` (Dupla chance). A `sem_rodizio` não entra: ela exige
+ * liga de pontos corridos, e as quatro ficam fora dessa lista.
+ *
+ * Foi decisão de PARIDADE do analytics-engineering, em 01/10/2026, não
+ * descuido: é o que já acontece em Libertadores, Sudamericana, Champions e
+ * Nations League, onde o rank é de grupo ou de fase. A diferença — e é a parte
+ * que vale guardar — é que LÁ são fases de um campeonato só, e AQUI são dois
+ * campeonatos inteiros empilhados. Mesmo erro, tamanho maior.
+ *
+ * O que fecha: derivar o torneio a partir do `round`, proposta na ADR 0018 do
+ * dbt. Enquanto ela não existir, não há conserto possível deste lado — o
+ * número chega somado, e inventar a separação aqui seria o front discordando do
+ * modelo por conta própria.
  */
 function formaDaTabela(v: Record<string, number>, n: NomesDoConfronto): Evidencia | null {
   if (v.s_rank == null || v.o_rank == null || v.s_ppg == null || v.o_ppg == null) return null;

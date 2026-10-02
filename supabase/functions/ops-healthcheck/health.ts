@@ -101,3 +101,60 @@ export function flakyFns(
     .filter((f) => f.failures >= minFailures)
     .sort((a, b) => a.fn.localeCompare(b.fn));
 }
+
+// ── O porteiro que parou de saber (#554) ─────────────────────
+//
+// O porteiro deixa entrar quando não consegue decidir de onde a pessoa veio.
+// Isso foi escolhido: com a lista de faixas local não existe serviço de
+// terceiro para cair, então um "não sei" é defeito nosso, e trancar todo mundo
+// por causa de um defeito é pior do que deixar passar quem será verificado na
+// sessão seguinte.
+//
+// O que torna essa escolha segura é ESTE aviso. Fail-open contado é uma
+// decisão; fail-open silencioso é um bloqueio que morreu sem ninguém ver — a
+// operação continuaria funcionando normalmente para quem deveria estar barrado,
+// e o primeiro a perceber seria um fiscal.
+
+export interface PresencaRecente {
+  /** Linhas do registro de presença na janela, com origem desconhecida. */
+  naoSei: number;
+  /** Total de linhas na janela. */
+  total: number;
+}
+
+export interface AvisoDoPorteiro {
+  naoSei: number;
+  total: number;
+  proporcao: number;
+}
+
+/**
+ * O porteiro está deixando de saber com frequência demais?
+ *
+ * Duas condições, e as duas existem por um motivo:
+ *
+ *   • um piso absoluto, porque 1 em 2 é 50% e não é notícia nenhuma num dia de
+ *     movimento fraco;
+ *   • uma proporção, porque 20 "não sei" em 20 mil acessos é ruído, e 20 em 30
+ *     é o bloqueio quebrado.
+ *
+ * ⚠️ Fica calado com o bloqueio desligado, por decisão do ticket. Vale saber o
+ * efeito: enquanto a chave estiver desligada, o registro de presença já está
+ * juntando prova, e um porteiro cego nesse período estraga essa prova em
+ * silêncio. Se isso incomodar, é aqui que se muda.
+ */
+export function avisoDoPorteiro(
+  presenca: PresencaRecente,
+  opts: { bloqueioLigado: boolean; minimo?: number; proporcaoMaxima?: number },
+): AvisoDoPorteiro | null {
+  if (!opts.bloqueioLigado) return null;
+  if (presenca.total <= 0) return null;
+
+  const minimo = opts.minimo ?? 5;
+  const proporcaoMaxima = opts.proporcaoMaxima ?? 0.1;
+
+  const proporcao = presenca.naoSei / presenca.total;
+  if (presenca.naoSei < minimo || proporcao <= proporcaoMaxima) return null;
+
+  return { naoSei: presenca.naoSei, total: presenca.total, proporcao };
+}
