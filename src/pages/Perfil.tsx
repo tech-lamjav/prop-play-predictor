@@ -72,9 +72,9 @@ export default function Perfil() {
   const pct = (n: number) => `${fmtDecimal(n, 1)}%`;
   const kpis = stats
     ? [
-        { label: 'Apostas', value: String(stats.totalBets) },
-        { label: 'Acerto', value: pct(stats.winRate) },
-        { label: 'ROI', value: `${stats.roi >= 0 ? '+' : ''}${pct(stats.roi)}`, forest: true },
+        { label: t('perfil.kpis.apostas'), value: String(stats.totalBets) },
+        { label: t('perfil.kpis.acerto'), value: pct(stats.winRate) },
+        { label: t('perfil.kpis.roi'), value: `${stats.roi >= 0 ? '+' : ''}${pct(stats.roi)}`, forest: true },
       ]
     : null;
 

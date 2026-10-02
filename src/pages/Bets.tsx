@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { fmtOdd } from '@/utils/formato';
+import { Trans, useTranslation } from 'react-i18next';
+import { fmtDecimal, fmtOdd, fmtPct } from '@/utils/formato';
 import { useAuth } from '../hooks/use-auth';
 import { createClient } from '../integrations/supabase/client';
 import AnalyticsNav from '@/components/AnalyticsNav';
@@ -100,7 +101,7 @@ import { Skeleton } from '../components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipTrigger } from '../components/ui/tooltip';
 import { useToast } from '../hooks/use-toast';
 import { format, parse, isValid, isBefore } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { localeDoDateFns } from '@/utils/locale-do-date-fns';
 
 interface Tag {
   id: string;
@@ -143,6 +144,24 @@ function truncateDescription(text: string | undefined, maxLength: number = 50): 
   return text.slice(0, maxLength) + '…';
 }
 
+// ⚠️ AS TRÊS LISTAS ABAIXO NÃO ENTRAM NO CATÁLOGO DE IDIOMA (#558), e isso é
+// decisão medida e não esquecimento.
+//
+// Elas não são rótulo de interface: são o VALOR que vai gravado nas colunas
+// `sport`, `league` e `betting_market` da aposta, e o mesmo valor volta do banco
+// para ser comparado aqui — `SPORTS_LIST.indexOf(bet.sport)` ordena o filtro,
+// `mergeVocab` junta a base curada com o que o usuário já usou, e
+// `canonicalizeVocab` encaixa o que ele digita no valor existente.
+//
+// Traduzir a lista quebraria as três coisas de uma vez: o espanhol gravaria
+// "Fútbol" ao lado do "Futebol" que já está no banco, o filtro passaria a ver
+// dois esportes onde há um, e a ordenação cairia no alfabético. É o caso
+// clássico de decidir desenho comparando TEXTO — só que aqui o texto é dado do
+// usuário, então a correção é NÃO traduzir, e não trocar por identificador.
+//
+// O custo conhecido: num produto em espanhol esses valores aparecem em
+// português. Resolver isso é migração de dados com chave canônica no banco, e
+// é trabalho de backend — fora do escopo desta migração de interface.
 const SPORTS_LIST = [
   'Futebol',
   'Basquete',
@@ -267,6 +286,7 @@ const BetRow = React.memo(function BetRow({
   isSelected,
   onToggleSelect,
 }: BetRowProps) {
+  const { t } = useTranslation('apostas');
   const handleTagsChange = useCallback((newTags: Tag[]) => {
     onBetTagsChange(bet.id, newTags, (bet.tags || []).map(t => t.id));
   }, [bet.id, bet.tags, onBetTagsChange]);
@@ -381,30 +401,30 @@ const BetRow = React.memo(function BetRow({
                     className="h-7 px-2 inline-flex items-center gap-1 text-[10px] font-semibold text-ink-2 border border-line bg-white hover:bg-forest-tint hover:text-forest hover:border-forest/30 rounded transition-colors uppercase tracking-[0.04em] shrink-0"
                   >
                     <Target className="w-3.5 h-3.5 shrink-0" />
-                    Result.
+                    {t('lista.linha.resultadoAbreviado')}
                     <ChevronDown className="w-3 h-3 shrink-0" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="theme-rebrand bg-white border border-line text-ink shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)]">
                   <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'won')} className="flex items-center gap-2 cursor-pointer focus:bg-status-success/10 focus:text-status-success">
                     <TrendingUp className="w-4 h-4 text-status-success" />
-                    <span>Ganhou</span>
+                    <span>{t('status.ganhou')}</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'lost')} className="flex items-center gap-2 cursor-pointer focus:bg-status-danger/10 focus:text-status-danger">
                     <TrendingDown className="w-4 h-4 text-status-danger" />
-                    <span>Perdeu</span>
+                    <span>{t('status.perdeu')}</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'half_won')} className="flex items-center gap-2 cursor-pointer focus:bg-status-success/10 focus:text-status-success">
                     <TrendingUp className="w-4 h-4 text-status-success opacity-70" />
-                    <span>1/2 Green</span>
+                    <span>{t('status.meioGreen')}</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'half_lost')} className="flex items-center gap-2 cursor-pointer focus:bg-status-danger/10 focus:text-status-danger">
                     <TrendingDown className="w-4 h-4 text-status-danger opacity-70" />
-                    <span>1/2 Red</span>
+                    <span>{t('status.meioRed')}</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'void')} className="flex items-center gap-2 cursor-pointer focus:bg-canvas-2">
                     <X className="w-4 h-4 text-ink-2" />
-                    <span>Anulada</span>
+                    <span>{t('status.anulada')}</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -412,7 +432,7 @@ const BetRow = React.memo(function BetRow({
                 type="button"
                 onClick={() => openCashoutModal(bet)}
                 className="h-7 w-7 inline-flex items-center justify-center text-forest border border-line bg-white hover:bg-forest-tint hover:border-forest/30 rounded transition-colors shrink-0"
-                title="Cashout"
+                title={t('lista.linha.cashout')}
               >
                 <DollarSign className="w-3.5 h-3.5 shrink-0" />
               </button>
@@ -422,7 +442,7 @@ const BetRow = React.memo(function BetRow({
             type="button"
             onClick={() => openEditModal(bet)}
             className="h-7 w-7 inline-flex items-center justify-center text-ink-2 hover:text-ink hover:bg-canvas-2 rounded transition-colors shrink-0"
-            title="Editar"
+            title={t('lista.acoes.editar')}
           >
             <Edit className="w-4 h-4" />
           </button>
@@ -430,7 +450,7 @@ const BetRow = React.memo(function BetRow({
             type="button"
             onClick={() => deleteBet(bet.id)}
             className="h-7 w-7 inline-flex items-center justify-center text-ink-2 hover:text-status-danger hover:bg-status-danger/10 rounded transition-colors shrink-0"
-            title="Excluir"
+            title={t('lista.acoes.excluir')}
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -457,6 +477,7 @@ const BetCard = React.memo(function BetCard({
   isSelected,
   onToggleSelect,
 }: BetCardProps) {
+  const { t } = useTranslation('apostas');
   const handleTagsChange = useCallback((newTags: Tag[]) => {
     onBetTagsChange(bet.id, newTags, (bet.tags || []).map(t => t.id));
   }, [bet.id, bet.tags, onBetTagsChange]);
@@ -535,21 +556,21 @@ const BetCard = React.memo(function BetCard({
       </div>
       <div className="grid grid-cols-3 gap-2 py-3 border-t border-b border-line -mx-4 px-4">
         <div>
-          <div className="text-[9px] text-ink-2 uppercase tracking-[0.1em] font-semibold mb-0.5">Stake</div>
+          <div className="text-[9px] text-ink-2 uppercase tracking-[0.1em] font-semibold mb-0.5">{t('lista.linha.stake')}</div>
           <div className="text-sm tabular text-ink">{formatValue(bet.stake_amount)}</div>
         </div>
         <div className="text-center">
-          <div className="text-[9px] text-ink-2 uppercase tracking-[0.1em] font-semibold mb-0.5">Odds</div>
+          <div className="text-[9px] text-ink-2 uppercase tracking-[0.1em] font-semibold mb-0.5">{t('lista.linha.odds')}</div>
           <div className="text-sm tabular text-forest font-semibold">{fmtOdd(bet.odds)}</div>
         </div>
         {bet.status === 'pending' ? (
           <div className="text-right">
-            <div className="text-[9px] text-ink-2 uppercase tracking-[0.1em] font-semibold mb-0.5">Retorno</div>
+            <div className="text-[9px] text-ink-2 uppercase tracking-[0.1em] font-semibold mb-0.5">{t('lista.linha.retorno')}</div>
             <div className="text-sm tabular text-ink-2">{formatValue(bet.potential_return)}</div>
           </div>
         ) : (
           <div className="text-right">
-            <div className="text-[9px] text-ink-2 uppercase tracking-[0.1em] font-semibold mb-0.5">Lucro</div>
+            <div className="text-[9px] text-ink-2 uppercase tracking-[0.1em] font-semibold mb-0.5">{t('lista.linha.lucro')}</div>
             <div className={`text-sm font-semibold tabular ${profitTone}`}>
               {bet.is_cashout && bet.cashout_amount
                 ? formatValue(bet.cashout_amount - bet.stake_amount)
@@ -576,30 +597,30 @@ const BetCard = React.memo(function BetCard({
                   className="h-9 px-3 rounded-md bg-white border border-line hover:bg-forest-tint hover:text-forest hover:border-forest/30 transition-colors flex items-center gap-2 text-ink-2 w-full sm:w-auto justify-center"
                 >
                   <Target className="w-4 h-4" />
-                  <span className="text-xs font-semibold uppercase tracking-[0.04em]">Resultado</span>
+                  <span className="text-xs font-semibold uppercase tracking-[0.04em]">{t('lista.linha.resultado')}</span>
                   <ChevronDown className="w-3 h-3" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="theme-rebrand bg-white border border-line text-ink min-w-[180px] shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)]">
                 <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'won')} className="flex items-center gap-2 cursor-pointer focus:bg-status-success/10 focus:text-status-success">
                   <TrendingUp className="w-4 h-4 text-status-success" />
-                  <span>Ganhou</span>
+                  <span>{t('status.ganhou')}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'lost')} className="flex items-center gap-2 cursor-pointer focus:bg-status-danger/10 focus:text-status-danger">
                   <TrendingDown className="w-4 h-4 text-status-danger" />
-                  <span>Perdeu</span>
+                  <span>{t('status.perdeu')}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'half_won')} className="flex items-center gap-2 cursor-pointer focus:bg-status-success/10 focus:text-status-success">
                   <TrendingUp className="w-4 h-4 text-status-success opacity-70" />
-                  <span>1/2 Green</span>
+                  <span>{t('status.meioGreen')}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'half_lost')} className="flex items-center gap-2 cursor-pointer focus:bg-status-danger/10 focus:text-status-danger">
                   <TrendingDown className="w-4 h-4 text-status-danger opacity-70" />
-                  <span>1/2 Red</span>
+                  <span>{t('status.meioRed')}</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => updateBetStatus(bet.id, 'void')} className="flex items-center gap-2 cursor-pointer focus:bg-canvas-2">
                   <X className="w-4 h-4 text-ink-2" />
-                  <span>Anulada</span>
+                  <span>{t('status.anulada')}</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -607,15 +628,15 @@ const BetCard = React.memo(function BetCard({
               type="button"
               onClick={() => openCashoutModal(bet)}
               className="h-9 px-3 rounded-md bg-white border border-line hover:bg-forest-tint hover:border-forest/30 transition-colors flex items-center justify-center gap-2 flex-1 sm:flex-initial min-w-0"
-              title="Cashout"
+              title={t('lista.linha.cashout')}
             >
               <DollarSign className="w-4 h-4 text-forest shrink-0" />
-              <span className="text-xs font-semibold text-forest uppercase tracking-[0.04em]">Cashout</span>
+              <span className="text-xs font-semibold text-forest uppercase tracking-[0.04em]">{t('lista.linha.cashout')}</span>
             </button>
-            <button type="button" onClick={() => openEditModal(bet)} className="h-9 w-9 rounded-md bg-white border border-line text-ink-2 hover:text-ink hover:bg-canvas-2 transition-colors flex items-center justify-center" title="Editar">
+            <button type="button" onClick={() => openEditModal(bet)} className="h-9 w-9 rounded-md bg-white border border-line text-ink-2 hover:text-ink hover:bg-canvas-2 transition-colors flex items-center justify-center" title={t('lista.acoes.editar')}>
               <Edit className="w-4 h-4" />
             </button>
-            <button type="button" onClick={() => deleteBet(bet.id)} className="h-9 w-9 rounded-md bg-white border border-line text-ink-2 hover:text-status-danger hover:bg-status-danger/10 hover:border-status-danger/30 transition-colors flex items-center justify-center" title="Excluir">
+            <button type="button" onClick={() => deleteBet(bet.id)} className="h-9 w-9 rounded-md bg-white border border-line text-ink-2 hover:text-status-danger hover:bg-status-danger/10 hover:border-status-danger/30 transition-colors flex items-center justify-center" title={t('lista.acoes.excluir')}>
               <Trash2 className="w-4 h-4" />
             </button>
           </div>
@@ -625,17 +646,17 @@ const BetCard = React.memo(function BetCard({
               type="button"
               onClick={() => openEditModal(bet)}
               className="flex-1 h-10 rounded-md bg-white border border-line text-ink-2 hover:text-ink hover:bg-canvas-2 transition-colors flex items-center justify-center gap-2"
-              title="Editar"
+              title={t('lista.acoes.editar')}
             >
               <Edit className="w-4 h-4" />
-              <span className="text-xs font-semibold uppercase tracking-[0.04em]">Editar</span>
+              <span className="text-xs font-semibold uppercase tracking-[0.04em]">{t('lista.acoes.editar')}</span>
             </button>
             <button
               type="button"
               onClick={() => deleteBet(bet.id)}
               className="h-10 w-10 shrink-0 rounded-md bg-white border border-line text-ink-2 hover:text-status-danger hover:bg-status-danger/10 hover:border-status-danger/30 transition-colors flex items-center justify-center"
-              title="Excluir"
-              aria-label="Excluir aposta"
+              title={t('lista.acoes.excluir')}
+              aria-label={t('lista.linha.excluirAposta')}
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -674,6 +695,7 @@ function captureBetSettled(
 }
 
 export default function Bets() {
+  const { t } = useTranslation('apostas');
   const { user, isLoading: authLoading } = useAuth();
   const { isPremium: isBetinhoPremium, isFree: isBetinhoFree } = useBetinhoPremium();
   const { isConfigured, toUnits, formatUnits, config, updateConfig, formatCurrency, refetchConfig } = useUserUnit();
@@ -884,8 +906,8 @@ export default function Bets() {
       if (!isMountedRef.current) return;
       console.error('Error fetching bets:', err);
       toast({
-        title: 'Deu erro',
-        description: 'Não foi possível carregar as apostas',
+        title: t('lista.aviso.deuErro'),
+        description: t('lista.aviso.naoCarregou'),
         variant: 'destructive',
       });
     } finally {
@@ -1017,12 +1039,12 @@ export default function Bets() {
         captureBetSettled(posthog, prevBet, newStatus);
       }
       if (isMountedRef.current) {
-        toast({ title: 'Tudo certo', description: 'Aposta atualizada' });
+        toast({ title: t('lista.aviso.tudoCerto'), description: t('lista.aviso.apostaAtualizada') });
       }
     } catch (err) {
       if (isMountedRef.current) {
         setBets(prev => prev.map(b => b.id === betId ? { ...b, status: 'pending' } : b));
-        toast({ title: 'Deu erro', description: 'Não foi possível atualizar a aposta', variant: 'destructive' });
+        toast({ title: t('lista.aviso.deuErro'), description: t('lista.aviso.naoAtualizou'), variant: 'destructive' });
       }
     }
   }, [posthog, supabase, toast]);
@@ -1052,11 +1074,11 @@ export default function Bets() {
 
       if (error) throw error;
       if (isMountedRef.current) {
-        toast({ title: 'Aposta excluída', description: 'Removida com sucesso.' });
+        toast({ title: t('lista.aviso.apostaExcluida'), description: t('lista.aviso.removidaComSucesso') });
       }
     } catch (err) {
       if (isMountedRef.current) {
-        toast({ title: 'Erro', description: 'Falha ao excluir a aposta.', variant: 'destructive' });
+        toast({ title: t('lista.aviso.erro'), description: t('lista.aviso.falhaExcluir'), variant: 'destructive' });
       }
     }
   }, [supabase, toast]);
@@ -1066,7 +1088,7 @@ export default function Bets() {
 
     const cashoutAmount = parseFloat(cashoutModal.cashoutAmount);
     if (isNaN(cashoutAmount)) {
-      toast({ title: 'Deu erro', description: 'Valor inválido', variant: 'destructive' });
+      toast({ title: t('lista.aviso.deuErro'), description: t('lista.aviso.valorInvalido'), variant: 'destructive' });
       return;
     }
 
@@ -1100,12 +1122,12 @@ export default function Bets() {
       captureBetSettled(posthog, cashoutModal.bet, 'cashout');
 
       if (isMountedRef.current) {
-        toast({ title: 'Tudo certo', description: 'Cashout registrado' });
+        toast({ title: t('lista.aviso.tudoCerto'), description: t('lista.aviso.cashoutRegistrado') });
       }
     } catch (err) {
       if (isMountedRef.current) {
         setBets(prev => prev.map(b => b.id === betId ? { ...b, status: 'pending', cashout_amount: undefined, cashout_date: undefined, is_cashout: false } : b));
-        toast({ title: 'Deu erro', description: 'Não foi possível registrar o cashout', variant: 'destructive' });
+        toast({ title: t('lista.aviso.deuErro'), description: t('lista.aviso.naoRegistrouCashout'), variant: 'destructive' });
       }
     }
   };
@@ -1186,12 +1208,12 @@ export default function Bets() {
       }
 
       if (isMountedRef.current) {
-        toast({ title: 'Tudo certo', description: 'Aposta atualizada' });
+        toast({ title: t('lista.aviso.tudoCerto'), description: t('lista.aviso.apostaAtualizada') });
       }
     } catch (err) {
       if (isMountedRef.current) {
         setBets(prev => prev.map(b => b.id === betId ? { ...b, ...editModal.bet } : b));
-        toast({ title: 'Deu erro', description: 'Não foi possível atualizar a aposta', variant: 'destructive' });
+        toast({ title: t('lista.aviso.deuErro'), description: t('lista.aviso.naoAtualizou'), variant: 'destructive' });
       }
     }
   };
@@ -1269,12 +1291,12 @@ export default function Bets() {
       if (isMountedRef.current) {
         setBets(prev => [betWithTags, ...prev]);
         setDailyBetCount(prev => (prev ?? 0) + 1);
-        toast({ title: 'Sucesso', description: 'Aposta cadastrada com sucesso' });
+        toast({ title: t('lista.aviso.sucesso'), description: t('lista.aviso.apostaCadastrada') });
       }
       return true;
     } catch (err) {
       if (isMountedRef.current) {
-        toast({ title: 'Erro', description: 'Falha ao cadastrar aposta', variant: 'destructive' });
+        toast({ title: t('lista.aviso.erro'), description: t('lista.aviso.falhaCadastrar'), variant: 'destructive' });
       }
       return false;
     }
@@ -1719,10 +1741,10 @@ export default function Bets() {
       if (error) throw error;
       // count = quantas realmente transicionaram pending→final nesta ação (não o tamanho da seleção).
       nowSettled.forEach(b => captureBetSettled(posthog, b, status, { batch: true, count: nowSettled.length }));
-      toast({ title: 'Sucesso', description: `${ids.length} apostas atualizadas` });
+      toast({ title: t('lista.aviso.sucesso'), description: t('lista.aviso.atualizadasEmLote', { count: ids.length }) });
       clearSelection();
     } catch {
-      toast({ title: 'Erro', description: 'Falha ao atualizar apostas', variant: 'destructive' });
+      toast({ title: t('lista.aviso.erro'), description: t('lista.aviso.falhaAtualizarLote'), variant: 'destructive' });
       fetchBets();
     }
   }, [selectedBetIds, posthog, supabase, toast, clearSelection, fetchBets]);
@@ -1736,9 +1758,9 @@ export default function Bets() {
     ));
     try {
       await Promise.all(ids.map(betId => supabase.rpc('add_tag_to_bet', { p_bet_id: betId, p_tag_id: tag.id })));
-      toast({ title: 'Sucesso', description: `Etiqueta "${tag.name}" adicionada a ${ids.length} apostas` });
+      toast({ title: t('lista.aviso.sucesso'), description: t('lista.aviso.etiquetaAdicionada', { etiqueta: tag.name, count: ids.length }) });
     } catch {
-      toast({ title: 'Erro', description: 'Falha ao adicionar tag', variant: 'destructive' });
+      toast({ title: t('lista.aviso.erro'), description: t('lista.aviso.falhaAdicionarEtiqueta'), variant: 'destructive' });
       fetchBets();
     }
   }, [selectedBetIds, supabase, toast, fetchBets]);
@@ -1755,10 +1777,10 @@ export default function Bets() {
     try {
       const { error } = await supabase.from('bets').delete().in('id', ids);
       if (error) throw error;
-      toast({ title: 'Sucesso', description: `${ids.length} apostas excluídas` });
+      toast({ title: t('lista.aviso.sucesso'), description: t('lista.aviso.excluidasEmLote', { count: ids.length }) });
       clearSelection();
     } catch {
-      toast({ title: 'Erro', description: 'Falha ao excluir apostas', variant: 'destructive' });
+      toast({ title: t('lista.aviso.erro'), description: t('lista.aviso.falhaExcluirLote'), variant: 'destructive' });
       fetchBets();
     }
   }, [selectedBetIds, supabase, toast, clearSelection, fetchBets]);
@@ -1914,14 +1936,18 @@ export default function Bets() {
   const handleExportCsv = useCallback(() => {
     const rows = filteredBets;
     if (rows.length === 0) {
-      toast({ title: 'Nada para exportar', description: 'Ajuste os filtros e tente novamente.' });
+      toast({ title: t('lista.aviso.nadaParaExportar'), description: t('lista.aviso.ajusteOsFiltros') });
       return;
     }
     const escape = (v: unknown) => {
       const s = v == null ? '' : String(v);
       return /[",\n;]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
     };
-    const header = ['Data', 'Descrição', 'Partida', 'Esporte', 'Liga', 'Mercado', 'Stake', 'Odds', 'Retorno potencial', 'Status', 'Etiquetas'];
+    const header = [
+      t('lista.csv.data'), t('lista.csv.descricao'), t('lista.csv.partida'), t('lista.csv.esporte'),
+      t('lista.csv.liga'), t('lista.csv.mercado'), t('lista.csv.stake'), t('lista.csv.odds'),
+      t('lista.csv.retornoPotencial'), t('lista.csv.status'), t('lista.csv.etiquetas'),
+    ];
     const lines = rows.map(b => [
       b.bet_date?.split('T')[0] ?? '',
       b.bet_description ?? '',
@@ -1945,19 +1971,19 @@ export default function Bets() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast({ title: 'Exportado', description: `${rows.length} aposta${rows.length !== 1 ? 's' : ''} no CSV.` });
+    toast({ title: t('lista.aviso.exportado'), description: t('lista.aviso.noCsv', { count: rows.length }) });
   }, [filteredBets, toast]);
 
-  // Helper to translate status
+  // O rótulo do status da aposta, em caixa alta como a pílula desenha.
   const translateStatus = (status: string) => {
     const map: Record<string, string> = {
-      'pending': 'PENDENTE',
-      'won': 'GANHOU',
-      'lost': 'PERDEU',
-      'void': 'ANULADA',
-      'cashout': 'CASHOUT',
-      'half_won': '1/2 GREEN',
-      'half_lost': '1/2 RED'
+      'pending': t('statusMaiusculo.pendente'),
+      'won': t('statusMaiusculo.ganhou'),
+      'lost': t('statusMaiusculo.perdeu'),
+      'void': t('statusMaiusculo.anulada'),
+      'cashout': t('statusMaiusculo.cashout'),
+      'half_won': t('statusMaiusculo.meioGreen'),
+      'half_lost': t('statusMaiusculo.meioRed')
     };
     return map[status] || status.toUpperCase();
   };
@@ -1979,7 +2005,7 @@ export default function Bets() {
     if (!dateStr) return '';
     const datePart = String(dateStr).split('T')[0];
     const date = parse(datePart, 'yyyy-MM-dd', new Date());
-    return isValid(date) ? format(date, 'dd/MM/yyyy', { locale: ptBR }) : '';
+    return isValid(date) ? format(date, 'dd/MM/yyyy', { locale: localeDoDateFns() }) : '';
   };
 
   // Stats derivados de filteredBets — refletem os mesmos dados que stake médio / odd média.
@@ -2128,21 +2154,21 @@ export default function Bets() {
     <>
       {/* Header */}
       <div className="px-5 py-4 border-b border-line -mx-6 -mt-6 mb-0">
-        <div className="text-[11px] uppercase tracking-[0.16em] text-forest font-semibold">Filtros avançados</div>
-        <DialogTitle className="text-[16px] font-semibold tracking-tight text-ink mt-0.5">Refinar minhas apostas</DialogTitle>
+        <div className="text-[11px] uppercase tracking-[0.16em] text-forest font-semibold">{t('lista.filtros.avancadosEtiqueta')}</div>
+        <DialogTitle className="text-[16px] font-semibold tracking-tight text-ink mt-0.5">{t('lista.filtros.avancadosTitulo')}</DialogTitle>
       </div>
 
       {/* Body — 2-col grid */}
       <div className="py-5 grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-6 text-[12px]">
         {/* Período — segmented control + popover de calendário em "Personalizado" */}
         <div>
-          <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Período</label>
+          <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('lista.filtros.periodo')}</label>
           <div className="mt-2 grid grid-cols-3 gap-1 p-1 bg-canvas-2 rounded-md text-[11px] font-medium">
             {([
               { k: '7d', l: '7d' },
               { k: '30d', l: '30d' },
               { k: '90d', l: '90d' },
-              { k: 'all', l: 'Tudo' },
+              { k: 'all', l: t('lista.filtros.tudo') },
             ] as const).map(p => {
               const active = activePeriodPreset === p.k;
               return (
@@ -2184,8 +2210,8 @@ export default function Bets() {
                   }`}
                 >
                   {activePeriodPreset === 'custom' && filters.dateFrom && filters.dateTo
-                    ? `${format(parseDateString(filters.dateFrom)!, 'dd MMM', { locale: ptBR })} – ${format(parseDateString(filters.dateTo)!, 'dd MMM', { locale: ptBR })}`
-                    : 'Personalizado'}
+                    ? `${format(parseDateString(filters.dateFrom)!, 'dd MMM', { locale: localeDoDateFns() })} – ${format(parseDateString(filters.dateTo)!, 'dd MMM', { locale: localeDoDateFns() })}`
+                    : t('lista.filtros.personalizado')}
                 </button>
               </PopoverTrigger>
               <PopoverContent
@@ -2228,16 +2254,16 @@ export default function Bets() {
 
         {/* Status */}
         <div>
-          <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Status</label>
+          <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('lista.filtros.status')}</label>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {[
-              { value: 'won', label: 'Ganhou' },
-              { value: 'lost', label: 'Perdeu' },
-              { value: 'pending', label: 'Pendente' },
-              { value: 'half_won', label: '½ Green' },
-              { value: 'half_lost', label: '½ Red' },
-              { value: 'cashout', label: 'Cashout' },
-              { value: 'void', label: 'Anulada' },
+              { value: 'won', label: t('status.ganhou') },
+              { value: 'lost', label: t('status.perdeu') },
+              { value: 'pending', label: t('status.pendente') },
+              { value: 'half_won', label: t('status.meioGreenSimbolo') },
+              { value: 'half_lost', label: t('status.meioRedSimbolo') },
+              { value: 'cashout', label: t('status.cashout') },
+              { value: 'void', label: t('status.anulada') },
             ].map(s => {
               const active = filters.status.includes(s.value);
               return (
@@ -2261,11 +2287,11 @@ export default function Bets() {
 
         {/* Esporte (full row) */}
         <div className="sm:col-span-2">
-          <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Esporte</label>
+          <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('lista.filtros.esporte')}</label>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {[
               ...uniqueSports.map(s => ({ value: s, label: s })),
-              { value: '__empty__', label: 'Sem classificação' },
+              { value: '__empty__', label: t('lista.filtros.semClassificacao') },
             ].map(s => {
               const active = filters.sport.includes(s.value);
               return (
@@ -2290,11 +2316,11 @@ export default function Bets() {
 
         {/* Liga */}
         <div>
-          <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Liga</label>
+          <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('lista.filtros.liga')}</label>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {[
               ...uniqueLeagues.map(l => ({ value: l, label: l })),
-              { value: '__empty__', label: 'Sem classificação' },
+              { value: '__empty__', label: t('lista.filtros.semClassificacao') },
             ].map(opt => {
               const active = filters.league.includes(opt.value);
               return (
@@ -2318,11 +2344,11 @@ export default function Bets() {
 
         {/* Mercado */}
         <div>
-          <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Mercado</label>
+          <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('lista.filtros.mercado')}</label>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {[
               ...uniqueBettingMarkets.map(m => ({ value: m, label: m })),
-              { value: '__empty__', label: 'Sem classificação' },
+              { value: '__empty__', label: t('lista.filtros.semClassificacao') },
             ].map(opt => {
               const active = filters.betting_market.includes(opt.value);
               return (
@@ -2346,7 +2372,7 @@ export default function Bets() {
 
         {/* Stake mínimo */}
         <div>
-          <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Stake mínimo</label>
+          <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('lista.filtros.stakeMinimo')}</label>
           <div className="mt-2 flex items-center h-10 bg-white border border-line rounded-md focus-within:border-forest/40">
             <span className="pl-3 text-[12px] text-ink-2">R$</span>
             <input
@@ -2362,7 +2388,7 @@ export default function Bets() {
 
         {/* Odd mínima / máxima */}
         <div>
-          <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Odd mínima / máxima</label>
+          <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('lista.filtros.oddMinimaMaxima')}</label>
           <div className="mt-2 flex items-center gap-2">
             <input
               type="number"
@@ -2388,10 +2414,10 @@ export default function Bets() {
 
         {/* Tags (full row) */}
         <div className="sm:col-span-2">
-          <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Etiquetas</label>
+          <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('lista.filtros.etiquetas')}</label>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {userTags.length === 0 ? (
-              <p className="text-[12px] text-ink-2">Nenhuma etiqueta criada ainda.</p>
+              <p className="text-[12px] text-ink-2">{t('lista.filtros.nenhumaEtiquetaAinda')}</p>
             ) : (
               userTags.map(tag => {
                 const active = filters.selectedTags.includes(tag.id);
@@ -2429,14 +2455,14 @@ export default function Bets() {
           onClick={clearAllFilters}
           className="text-[12px] font-semibold text-ink-2 hover:text-ink"
         >
-          Limpar tudo
+          {t('lista.filtros.limparTudo')}
         </button>
         <DialogClose asChild>
           <button
             type="button"
             className="h-9 px-4 text-[12px] font-semibold text-white bg-forest hover:bg-forest-soft rounded-md transition-colors"
           >
-            {advancedFiltersTotal > 0 ? `Aplicar ${advancedFiltersTotal} filtro${advancedFiltersTotal > 1 ? 's' : ''}` : 'Fechar'}
+            {advancedFiltersTotal > 0 ? t('lista.filtros.aplicar', { count: advancedFiltersTotal }) : t('lista.filtros.fechar')}
           </button>
         </DialogClose>
       </div>
@@ -2456,7 +2482,7 @@ export default function Bets() {
       <div className="theme-bolao min-h-screen bg-canvas flex items-center justify-center text-ink">
         <div className="text-center">
           <AlertCircle className="h-12 w-12 mx-auto mb-4 text-status-danger" />
-          <p>Por favor, faça login para ver suas apostas.</p>
+          <p>{t('lista.login')}</p>
         </div>
       </div>
     );
@@ -2471,10 +2497,10 @@ export default function Bets() {
       <div className="bg-white border-b border-line">
         <div className="max-w-7xl mx-auto px-4 py-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
-            <div className="text-[11px] font-semibold tracking-[0.2em] text-ink-2 uppercase flex items-center gap-2">Apostas{isDemo && <DemoBadge />}</div>
-            <h1 data-tour="betinho-hero" className="text-[28px] font-semibold tracking-tight text-ink mt-1">Minhas apostas</h1>
+            <div className="text-[11px] font-semibold tracking-[0.2em] text-ink-2 uppercase flex items-center gap-2">{t('lista.cabecalho.etiqueta')}{isDemo && <DemoBadge />}</div>
+            <h1 data-tour="betinho-hero" className="text-[28px] font-semibold tracking-tight text-ink mt-1">{t('lista.cabecalho.titulo')}</h1>
             <p className="text-[13px] text-ink-2 mt-1 tabular">
-              {stats.totalBets} {stats.totalBets === 1 ? 'aposta registrada' : 'apostas registradas'}
+              {t('lista.cabecalho.registradas', { count: stats.totalBets })}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -2498,7 +2524,7 @@ export default function Bets() {
                   }
                   setShowUnitsView(true);
                 }}
-                title={!isConfigured() ? 'Configure sua unidade pra ver apostas em u' : undefined}
+                title={!isConfigured() ? t('lista.unidade.configurePara') : undefined}
                 className={`h-7 px-3 text-[12px] font-semibold rounded transition-colors ${
                   showUnitsView ? 'bg-white text-ink shadow-sm border border-line' : 'text-ink-2 hover:text-ink'
                 }`}
@@ -2512,7 +2538,7 @@ export default function Bets() {
               type="button"
               onClick={() => setUnitConfigOpen(true)}
               className="h-9 px-2 md:px-2.5 inline-flex items-center gap-1.5 text-[11px] text-ink-2 hover:text-ink border border-line bg-white hover:bg-canvas-2 rounded-md transition-colors"
-              title={isConfigured() && config.unit_value ? `1u = ${formatCurrency(config.unit_value)}` : 'Configurar unidade'}
+              title={isConfigured() && config.unit_value ? `1u = ${formatCurrency(config.unit_value)}` : t('lista.unidade.configurar')}
             >
               {isConfigured() && config.unit_value ? (
                 <>
@@ -2523,7 +2549,7 @@ export default function Bets() {
               ) : (
                 <>
                   <Settings className="w-3.5 h-3.5 text-forest" />
-                  <span className="hidden md:inline text-forest font-semibold">Configurar unidade</span>
+                  <span className="hidden md:inline text-forest font-semibold">{t('lista.unidade.configurar')}</span>
                 </>
               )}
             </button>
@@ -2533,11 +2559,11 @@ export default function Bets() {
               type="button"
               onClick={handleExportCsv}
               className="h-9 px-2 md:px-3 inline-flex items-center gap-2 text-[13px] font-medium text-ink-2 hover:text-ink border border-line bg-white hover:bg-canvas-2 rounded-md transition-colors"
-              title="Exportar CSV"
-              aria-label="Exportar CSV"
+              title={t('lista.acoes.exportarCsv')}
+              aria-label={t('lista.acoes.exportarCsv')}
             >
               <Download className="w-4 h-4" />
-              <span className="hidden md:inline">Exportar</span>
+              <span className="hidden md:inline">{t('lista.acoes.exportar')}</span>
             </button>
 
             {/* Compartilhar — ícone-only no mobile */}
@@ -2545,10 +2571,10 @@ export default function Bets() {
               type="button"
               onClick={() => setIsShareModalOpen(true)}
               className="h-9 px-2 md:px-3 inline-flex items-center gap-2 text-[13px] font-medium text-ink-2 hover:text-ink border border-line bg-white hover:bg-canvas-2 rounded-md transition-colors"
-              title="Compartilhar"
+              title={t('lista.acoes.compartilhar')}
             >
               <Share2 className="w-4 h-4" />
-              <span className="hidden md:inline">Compartilhar</span>
+              <span className="hidden md:inline">{t('lista.acoes.compartilhar')}</span>
             </button>
 
             {/* Nova aposta — só desktop. Mobile usa o FAB. */}
@@ -2564,7 +2590,7 @@ export default function Bets() {
               className="hidden md:inline-flex h-9 px-4 items-center gap-2 text-[13px] font-semibold text-white bg-forest hover:bg-forest-soft rounded-md transition-colors"
             >
               <Plus className="w-4 h-4" />
-              <span>Nova aposta</span>
+              <span>{t('lista.acoes.novaAposta')}</span>
             </button>
           </div>
         </div>
@@ -2578,36 +2604,36 @@ export default function Bets() {
             {/* Primary CTA — Telegram */}
             <div className="bg-forest text-white rounded-xl p-6 md:p-8 relative overflow-hidden">
               <div className="absolute top-4 right-4 text-[10px] uppercase tracking-[0.16em] font-semibold text-amber-400 bg-white/5 border border-amber-400/20 px-2 py-1 rounded">
-                Recomendado
+                {t('lista.vazio.recomendado')}
               </div>
               <div className="w-12 h-12 rounded-md bg-amber-400 text-forest grid place-items-center mb-5">
                 <Send className="w-6 h-6" />
               </div>
-              <h2 className="text-[22px] md:text-[24px] font-semibold tracking-tight">Comece pelo Telegram.</h2>
+              <h2 className="text-[22px] md:text-[24px] font-semibold tracking-tight">{t('lista.vazio.telegramTitulo')}</h2>
               <p className="text-[13px] md:text-[14px] text-white/70 mt-2 leading-relaxed">
-                Abra o Betinho, mande seu primeiro bilhete por texto ou print, e essa tela enche sozinha.
+                {t('lista.vazio.telegramTexto')}
               </p>
               <div className="mt-6 flex flex-wrap gap-2">
                 <a href={telegramBotUrl} target="_blank" rel="noopener noreferrer"
                   className="h-10 px-4 inline-flex items-center gap-2 text-[13px] font-semibold text-forest bg-amber-400 hover:bg-amber-500 rounded-md transition-colors">
                   <Send className="w-4 h-4" />
-                  <span>Abrir bot</span>
+                  <span>{t('lista.vazio.abrirBot')}</span>
                 </a>
               </div>
               <div className="mt-6 pt-6 border-t border-white/10">
-                <div className="text-[10px] uppercase tracking-[0.14em] text-amber-400 font-semibold mb-3">3 formatos aceitos</div>
+                <div className="text-[10px] uppercase tracking-[0.14em] text-amber-400 font-semibold mb-3">{t('lista.vazio.formatos')}</div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-[11px] text-white/80">
-                  <div className="border-l-2 border-amber-400 pl-2.5">Texto livre: "apostei R$ 150 LeBron 25+"</div>
-                  <div className="border-l-2 border-amber-400 pl-2.5">Áudio: fale o bilhete</div>
-                  <div className="border-l-2 border-amber-400 pl-2.5">Print: foto do cupom</div>
+                  <div className="border-l-2 border-amber-400 pl-2.5">{t('lista.vazio.formatoTexto')}</div>
+                  <div className="border-l-2 border-amber-400 pl-2.5">{t('lista.vazio.formatoAudio')}</div>
+                  <div className="border-l-2 border-amber-400 pl-2.5">{t('lista.vazio.formatoPrint')}</div>
                 </div>
               </div>
             </div>
             {/* Secondary — manual */}
             <div className="bg-white border border-line rounded-xl p-6 md:p-8">
-              <h2 className="text-[18px] md:text-[20px] font-semibold tracking-tight text-ink">Ou cadastre manualmente.</h2>
+              <h2 className="text-[18px] md:text-[20px] font-semibold tracking-tight text-ink">{t('lista.vazio.manualTitulo')}</h2>
               <p className="text-[13px] text-ink-2 mt-2 leading-relaxed">
-                Se preferir tela e formulário, dá pra cadastrar pelo painel, leva uns 30 segundos.
+                {t('lista.vazio.manualTexto')}
               </p>
               <button
                 type="button"
@@ -2621,7 +2647,7 @@ export default function Bets() {
                 className="mt-5 h-10 px-4 inline-flex items-center gap-2 text-[13px] font-semibold text-white bg-ink hover:bg-ink/90 rounded-md transition-colors"
               >
                 <Plus className="w-4 h-4" />
-                <span>Cadastrar primeira aposta</span>
+                <span>{t('lista.vazio.cadastrarPrimeira')}</span>
               </button>
             </div>
           </div>
@@ -2632,17 +2658,17 @@ export default function Bets() {
         <div data-tour="betinho-stats" className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
           {/* ROI - HeroKPI */}
           <div className="bg-white border border-line rounded-lg p-5">
-            <div className="text-[10px] font-semibold tracking-[0.16em] text-ink-2 uppercase">ROI</div>
+            <div className="text-[10px] font-semibold tracking-[0.16em] text-ink-2 uppercase">{t('lista.kpi.roi')}</div>
             <div className={`text-[28px] md:text-[34px] font-semibold tabular leading-none mt-2 tracking-tight ${
               stats.roi >= 0 ? 'text-status-success' : 'text-status-danger'
             }`}>
-              {stats.roi.toFixed(1)}%
+              {fmtPct(stats.roi / 100, 1)}
             </div>
           </div>
 
           {/* Lucro Líquido - HeroKPI */}
           <div className="bg-white border border-line rounded-lg p-5">
-            <div className="text-[10px] font-semibold tracking-[0.16em] text-ink-2 uppercase">Lucro líquido</div>
+            <div className="text-[10px] font-semibold tracking-[0.16em] text-ink-2 uppercase">{t('lista.kpi.lucroLiquido')}</div>
             <div className={`text-[28px] md:text-[34px] font-semibold tabular leading-none mt-2 tracking-tight ${
               stats.profit >= 0 ? 'text-status-success' : 'text-status-danger'
             }`}>
@@ -2653,11 +2679,11 @@ export default function Bets() {
           {/* Total Apostado + Retorno Bruto - PairKPI */}
           <div className="bg-white border border-line rounded-lg overflow-hidden divide-y divide-line">
             <div className="px-4 py-3 flex items-center justify-between">
-              <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">Total apostado</div>
+              <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">{t('lista.kpi.totalApostado')}</div>
               <div className="text-[15px] tabular font-semibold text-ink">{formatValue(stats.totalStaked)}</div>
             </div>
             <div className="px-4 py-3 flex items-center justify-between">
-              <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">Retorno bruto</div>
+              <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">{t('lista.kpi.retornoBruto')}</div>
               <div className="text-[15px] tabular font-semibold text-ink">{formatValue(stats.totalReturn)}</div>
             </div>
           </div>
@@ -2665,15 +2691,15 @@ export default function Bets() {
           {/* Total Apostas + Taxa de Acerto - PairKPI */}
           <div className="bg-white border border-line rounded-lg overflow-hidden divide-y divide-line">
             <div className="px-4 py-3 flex items-center justify-between">
-              <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">Total apostas</div>
+              <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">{t('lista.kpi.totalApostas')}</div>
               <div className="text-[15px] tabular font-semibold text-ink">{stats.totalBets}</div>
             </div>
             <div className="px-4 py-3 flex items-center justify-between">
-              <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">Taxa de acerto</div>
+              <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">{t('lista.kpi.taxaDeAcerto')}</div>
               <div className={`text-[15px] tabular font-semibold ${
                 stats.winRate >= 50 ? 'text-status-success' : 'text-ink'
               }`}>
-                {stats.winRate.toFixed(1)}%
+                {fmtPct(stats.winRate / 100, 1)}
               </div>
             </div>
           </div>
@@ -2720,12 +2746,12 @@ export default function Bets() {
                 <Send className="w-5 h-5" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-[11px] font-semibold tracking-[0.14em] uppercase text-amber-400">Betinho · Telegram</div>
-                <div className="text-[14px] font-semibold mt-1 leading-tight">Cadastre apostas em segundos pelo Telegram.</div>
-                <div className="text-[12px] text-white/70 mt-1 leading-snug">Texto ou print do bilhete, a IA registra e este painel atualiza sozinho.</div>
+                <div className="text-[11px] font-semibold tracking-[0.14em] uppercase text-amber-400">{t('lista.telegram.etiqueta')}</div>
+                <div className="text-[14px] font-semibold mt-1 leading-tight">{t('lista.telegram.titulo')}</div>
+                <div className="text-[12px] text-white/70 mt-1 leading-snug">{t('lista.telegram.texto')}</div>
                 <div className="mt-3 inline-flex items-center gap-1.5 h-8 px-3 text-[12px] font-semibold text-forest bg-amber-400 hover:bg-amber-500 rounded-md transition-colors">
                   <Send className="w-3.5 h-3.5" />
-                  <span>Abrir bot</span>
+                  <span>{t('lista.telegram.abrirBot')}</span>
                 </div>
               </div>
             </a>
@@ -2742,10 +2768,10 @@ export default function Bets() {
                 </div>
                 <ChevronRight className="w-4 h-4 text-ink-2 group-hover:text-forest transition-colors" />
               </div>
-              <div className="text-[10px] uppercase tracking-[0.14em] text-ink-2 font-semibold mt-3">Análise</div>
-              <div className="text-[15px] font-semibold text-ink mt-1">Painel</div>
+              <div className="text-[10px] uppercase tracking-[0.14em] text-ink-2 font-semibold mt-3">{t('lista.analise.etiqueta')}</div>
+              <div className="text-[15px] font-semibold text-ink mt-1">{t('lista.analise.painel')}</div>
               <div className="text-[12px] text-ink-2 mt-1 leading-snug">
-                Onde você ganha e onde perde. Desempenho por liga, mercado e etiqueta.
+                {t('lista.analise.texto')}
               </div>
             </button>
           </div>
@@ -2761,12 +2787,15 @@ export default function Bets() {
             const currentBankroll = (config.bank_amount ?? 0) + stats.profit + movementsNet;
             return (
           <div className="bg-forest text-white rounded-xl p-4">
-            <div className="text-[10px] uppercase tracking-[0.14em] font-semibold text-amber-400">Banca atual</div>
+            <div className="text-[10px] uppercase tracking-[0.14em] font-semibold text-amber-400">{t('lista.mobile.bancaAtual')}</div>
             <div className="text-[28px] font-semibold tabular tracking-tight mt-1">
               {formatValue(currentBankroll)}
             </div>
             <div className={`text-[11px] tabular font-semibold mt-0.5 ${stats.profit >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
-              {stats.profit >= 0 ? '+' : ''}{formatValue(stats.profit)} · {stats.profit >= 0 ? '+' : ''}{stats.roi.toFixed(1)}% no período
+              {t('lista.mobile.noPeriodo', {
+                lucro: `${stats.profit >= 0 ? '+' : ''}${formatValue(stats.profit)}`,
+                roi: `${stats.profit >= 0 ? '+' : ''}${fmtPct(stats.roi / 100, 1)}`,
+              })}
             </div>
             {/* mini sparkline em amber — 8 pontos derivados do profit acumulado */}
             <svg viewBox="0 0 300 50" className="w-full h-[40px] mt-3" preserveAspectRatio="none">
@@ -2809,15 +2838,15 @@ export default function Bets() {
             </svg>
             <div className="grid grid-cols-3 gap-2 mt-2 pt-3 border-t border-white/15">
               <div>
-                <div className="text-[9px] uppercase tracking-[0.1em] text-white/50 font-semibold">Taxa de acerto</div>
-                <div className="text-[14px] font-semibold tabular mt-0.5">{stats.winRate.toFixed(1)}%</div>
+                <div className="text-[9px] uppercase tracking-[0.1em] text-white/50 font-semibold">{t('lista.mobile.taxaDeAcerto')}</div>
+                <div className="text-[14px] font-semibold tabular mt-0.5">{fmtPct(stats.winRate / 100, 1)}</div>
               </div>
               <div>
-                <div className="text-[9px] uppercase tracking-[0.1em] text-white/50 font-semibold">ROI</div>
-                <div className="text-[14px] font-semibold tabular mt-0.5">{stats.roi.toFixed(1)}%</div>
+                <div className="text-[9px] uppercase tracking-[0.1em] text-white/50 font-semibold">{t('lista.mobile.roi')}</div>
+                <div className="text-[14px] font-semibold tabular mt-0.5">{fmtPct(stats.roi / 100, 1)}</div>
               </div>
               <div>
-                <div className="text-[9px] uppercase tracking-[0.1em] text-white/50 font-semibold">Apostas</div>
+                <div className="text-[9px] uppercase tracking-[0.1em] text-white/50 font-semibold">{t('lista.mobile.apostas')}</div>
                 <div className="text-[14px] font-semibold tabular mt-0.5">{stats.totalBets}</div>
               </div>
             </div>
@@ -2838,8 +2867,8 @@ export default function Bets() {
               <Send className="w-4 h-4" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-[10px] font-semibold tracking-[0.14em] uppercase text-amber-400">Betinho · Telegram</div>
-              <div className="text-[13px] font-semibold mt-0.5 leading-tight">Cadastre apostas pelo bot</div>
+              <div className="text-[10px] font-semibold tracking-[0.14em] uppercase text-amber-400">{t('lista.telegram.etiqueta')}</div>
+              <div className="text-[13px] font-semibold mt-0.5 leading-tight">{t('lista.telegram.tituloMobile')}</div>
             </div>
             <ChevronRight className="w-4 h-4 text-white/50 shrink-0" />
           </a>
@@ -2852,8 +2881,8 @@ export default function Bets() {
               <BarChart3 className="w-4 h-4" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-[10px] font-semibold tracking-[0.14em] uppercase text-ink-2">Análise</div>
-              <div className="text-[13px] font-semibold text-ink mt-0.5 leading-tight">Painel de números</div>
+              <div className="text-[10px] font-semibold tracking-[0.14em] uppercase text-ink-2">{t('lista.analise.etiqueta')}</div>
+              <div className="text-[13px] font-semibold text-ink mt-0.5 leading-tight">{t('lista.analise.painelDeNumeros')}</div>
             </div>
             <ChevronRight className="w-4 h-4 text-ink-2 shrink-0" />
           </button>
@@ -2870,15 +2899,15 @@ export default function Bets() {
             }}
           >
           {[
-            { l: 'Todas', value: null },
-            { l: 'Pendentes', value: 'pending' },
-            { l: 'Ganhas', value: 'won' },
-            { l: 'Perdidas', value: 'lost' },
+            { k: 'todas', l: t('lista.chips.todas'), value: null },
+            { k: 'pendentes', l: t('lista.chips.pendentes'), value: 'pending' },
+            { k: 'ganhas', l: t('lista.chips.ganhas'), value: 'won' },
+            { k: 'perdidas', l: t('lista.chips.perdidas'), value: 'lost' },
           ].map((c) => {
             const active = c.value === null ? filters.status.length === 0 : filters.status.length === 1 && filters.status[0] === c.value;
             return (
               <button
-                key={c.l}
+                key={c.k}
                 type="button"
                 onClick={() => {
                   if (c.value === null) {
@@ -2911,8 +2940,8 @@ export default function Bets() {
                 {(() => {
                   const from = parseDateString(filters.dateFrom);
                   const to = parseDateString(filters.dateTo);
-                  if (from && to) return `${format(from, 'dd MMM', { locale: ptBR })} – ${format(to, 'dd MMM', { locale: ptBR })}`;
-                  return 'Período';
+                  if (from && to) return `${format(from, 'dd MMM', { locale: localeDoDateFns() })} – ${format(to, 'dd MMM', { locale: localeDoDateFns() })}`;
+                  return t('lista.filtros.periodo');
                 })()}
               </button>
             </PopoverTrigger>
@@ -2942,7 +2971,7 @@ export default function Bets() {
                     }}
                     className="h-7 px-3 text-[11px] font-semibold border border-line text-ink-2 hover:bg-forest-tint hover:text-forest hover:border-forest/30 rounded-md transition-colors"
                   >
-                    Últimos {p.l}
+                    {t('lista.filtros.ultimos', { periodo: p.l })}
                   </button>
                 ))}
               </div>
@@ -2982,7 +3011,7 @@ export default function Bets() {
                     onClick={() => setFilters(prev => ({ ...prev, dateFrom: '', dateTo: '' }))}
                     className="text-[11px] font-semibold text-ink-2 hover:text-status-danger transition-colors"
                   >
-                    Limpar período
+                    {t('lista.filtros.limparPeriodo')}
                   </button>
                 </div>
               )}
@@ -2999,10 +3028,10 @@ export default function Bets() {
                     ? 'bg-forest-tint text-forest border-forest/30'
                     : 'bg-white text-ink-2 border-line'
                 }`}
-                aria-label="Abrir filtros"
+                aria-label={t('lista.filtros.abrir')}
               >
                 <Filter className="w-3.5 h-3.5" />
-                Filtros
+                {t('lista.filtros.botao')}
                 {advancedFiltersTotal > 0 && (
                   <span className="px-1 text-[9px] font-bold bg-forest text-white rounded-full leading-tight">
                     {advancedFiltersTotal}
@@ -3024,7 +3053,7 @@ export default function Bets() {
                 <Search className="w-4 h-4 text-ink-2 shrink-0" />
                 <input
                   type="text"
-                  placeholder="Buscar aposta…"
+                  placeholder={t('lista.filtros.buscarAposta')}
                   className="bg-transparent text-[13px] text-ink placeholder:text-ink-2 flex-1 outline-none min-w-0"
                   value={filters.searchQuery}
                   onChange={(e) => setFilters(prev => ({ ...prev, searchQuery: e.target.value }))}
@@ -3033,16 +3062,16 @@ export default function Bets() {
 
               <MultiSelectFilter
                 variant="rebrand"
-                label="STATUS"
-                placeholder="Todos"
+                label={t('lista.filtros.statusMaiusculo')}
+                placeholder={t('lista.filtros.todos')}
                 options={[
-                  { value: 'pending', label: 'PENDENTE' },
-                  { value: 'won', label: 'GANHOU' },
-                  { value: 'lost', label: 'PERDEU' },
-                  { value: 'half_won', label: '1/2 GREEN' },
-                  { value: 'half_lost', label: '1/2 RED' },
-                  { value: 'cashout', label: 'CASHOUT' },
-                  { value: 'void', label: 'ANULADA' },
+                  { value: 'pending', label: t('statusMaiusculo.pendente') },
+                  { value: 'won', label: t('statusMaiusculo.ganhou') },
+                  { value: 'lost', label: t('statusMaiusculo.perdeu') },
+                  { value: 'half_won', label: t('statusMaiusculo.meioGreen') },
+                  { value: 'half_lost', label: t('statusMaiusculo.meioRed') },
+                  { value: 'cashout', label: t('statusMaiusculo.cashout') },
+                  { value: 'void', label: t('statusMaiusculo.anulada') },
                 ]}
                 selected={filters.status}
                 onChange={(values) => setFilters(prev => ({ ...prev, status: values }))}
@@ -3050,14 +3079,14 @@ export default function Bets() {
 
               <MultiSelectFilter
                 variant="rebrand"
-                label="ESPORTE"
-                placeholder="Todos"
+                label={t('lista.filtros.esporteMaiusculo')}
+                placeholder={t('lista.filtros.todos')}
                 options={[
                   ...uniqueSports.map(sport => ({
                     value: sport,
                     label: sport.toUpperCase()
                   })),
-                  { value: '__empty__', label: 'SEM CLASSIFICAÇÃO' }
+                  { value: '__empty__', label: t('lista.filtros.semClassificacaoMaiusculo') }
                 ]}
                 selected={filters.sport}
                 onChange={(values) => setFilters(prev => ({ ...prev, sport: values }))}
@@ -3065,14 +3094,14 @@ export default function Bets() {
 
               <MultiSelectFilter
                 variant="rebrand"
-                label="LIGA"
-                placeholder="Todas"
+                label={t('lista.filtros.ligaMaiusculo')}
+                placeholder={t('lista.filtros.todasFem')}
                 options={[
                   ...uniqueLeagues.map(league => ({
                     value: league,
                     label: league.toUpperCase()
                   })),
-                  { value: '__empty__', label: 'SEM CLASSIFICAÇÃO' }
+                  { value: '__empty__', label: t('lista.filtros.semClassificacaoMaiusculo') }
                 ]}
                 selected={filters.league}
                 onChange={(values) => setFilters(prev => ({ ...prev, league: values }))}
@@ -3080,14 +3109,14 @@ export default function Bets() {
 
               <MultiSelectFilter
                 variant="rebrand"
-                label="MERCADO"
-                placeholder="Todos"
+                label={t('lista.filtros.mercadoMaiusculo')}
+                placeholder={t('lista.filtros.todos')}
                 options={[
                   ...uniqueBettingMarkets.map(market => ({
                     value: market,
                     label: market.toUpperCase()
                   })),
-                  { value: '__empty__', label: 'SEM CLASSIFICAÇÃO' }
+                  { value: '__empty__', label: t('lista.filtros.semClassificacaoMaiusculo') }
                 ]}
                 selected={filters.betting_market}
                 onChange={(values) => setFilters(prev => ({ ...prev, betting_market: values }))}
@@ -3100,20 +3129,20 @@ export default function Bets() {
                     type="button"
                     className="h-9 px-3 inline-flex items-center gap-2 text-[12px] text-ink-2 border border-line bg-white hover:bg-canvas-2 rounded-md transition-colors font-medium"
                   >
-                    <span className="font-semibold uppercase tracking-[0.08em] text-[10px] text-ink-2">PERÍODO</span>
+                    <span className="font-semibold uppercase tracking-[0.08em] text-[10px] text-ink-2">{t('lista.filtros.periodoMaiusculo')}</span>
                     {(() => {
                       const from = parseDateString(filters.dateFrom);
                       const to = parseDateString(filters.dateTo);
                       if (from && to) {
                         return (
                           <span className="text-ink font-medium tabular">
-                            {format(from, 'dd MMM', { locale: ptBR })} – {format(to, 'dd MMM', { locale: ptBR })}
+                            {format(from, 'dd MMM', { locale: localeDoDateFns() })} – {format(to, 'dd MMM', { locale: localeDoDateFns() })}
                           </span>
                         );
                       }
-                      if (from) return <span className="text-ink font-medium tabular">Desde {format(from, 'dd MMM', { locale: ptBR })}</span>;
-                      if (to) return <span className="text-ink font-medium tabular">Até {format(to, 'dd MMM', { locale: ptBR })}</span>;
-                      return <span className="text-ink font-medium">Todo</span>;
+                      if (from) return <span className="text-ink font-medium tabular">{t('lista.filtros.desde', { data: format(from, 'dd MMM', { locale: localeDoDateFns() }) })}</span>;
+                      if (to) return <span className="text-ink font-medium tabular">{t('lista.filtros.ate', { data: format(to, 'dd MMM', { locale: localeDoDateFns() }) })}</span>;
+                      return <span className="text-ink font-medium">{t('lista.filtros.todo')}</span>;
                     })()}
                     <ChevronDown className="ml-auto w-3 h-3 opacity-50" />
                   </button>
@@ -3141,7 +3170,7 @@ export default function Bets() {
                         }}
                         className="h-7 px-3 text-[11px] font-semibold border border-line text-ink-2 hover:bg-forest-tint hover:text-forest hover:border-forest/30 rounded-md transition-colors"
                       >
-                        Últimos {p.l}
+                        {t('lista.filtros.ultimos', { periodo: p.l })}
                       </button>
                     ))}
                   </div>
@@ -3187,7 +3216,7 @@ export default function Bets() {
                         }}
                         className="text-[11px] font-semibold text-ink-2 hover:text-status-danger transition-colors"
                       >
-                        Limpar período
+                        {t('lista.filtros.limparPeriodo')}
                       </button>
                     </div>
                   )}
@@ -3206,7 +3235,7 @@ export default function Bets() {
                     }`}
                   >
                     <Filter className="w-3.5 h-3.5" />
-                    <span>Mais filtros</span>
+                    <span>{t('lista.filtros.maisFiltros')}</span>
                     {advancedFiltersTotal > 0 && (
                       <span className="ml-0.5 px-1.5 py-0.5 text-[9px] font-bold bg-forest text-white rounded-full">
                         {advancedFiltersTotal}
@@ -3225,7 +3254,7 @@ export default function Bets() {
                 className="h-9 px-3 text-[12px] flex items-center justify-center gap-1.5 text-ink-2 hover:bg-status-danger/10 hover:text-status-danger transition-colors rounded-md whitespace-nowrap font-medium"
               >
                 <X className="w-3.5 h-3.5 shrink-0" />
-                <span>Limpar filtros</span>
+                <span>{t('lista.filtros.limparFiltros')}</span>
               </button>
           </div>
         </div>
@@ -3234,17 +3263,17 @@ export default function Bets() {
         <div data-tour="betinho-lista" className="md:bg-white md:border md:border-line md:rounded-lg md:overflow-hidden">
           <div className="flex justify-between items-center px-1 md:px-5 py-3 md:border-b md:border-line">
             <div className="flex items-baseline gap-3">
-              <h3 className="text-[11px] md:text-[13px] uppercase md:normal-case tracking-[0.12em] md:tracking-normal font-semibold text-ink-2 md:text-ink">Apostas</h3>
+              <h3 className="text-[11px] md:text-[13px] uppercase md:normal-case tracking-[0.12em] md:tracking-normal font-semibold text-ink-2 md:text-ink">{t('lista.tabela.apostas')}</h3>
               <span className="text-[11px] text-ink-2 tabular">
-                Mostrando {paginatedBets.length} de {sortedBets.length}
-                {sortedBets.length !== bets.length && ` · ${bets.length} total`}
+                {t('lista.tabela.mostrando', { mostrados: paginatedBets.length, total: sortedBets.length })}
+                {sortedBets.length !== bets.length && ` · ${t('lista.tabela.total', { total: bets.length })}`}
               </span>
             </div>
             <button
               type="button"
               onClick={fetchBets}
               className="h-8 w-8 inline-flex items-center justify-center text-ink-2 hover:text-ink hover:bg-canvas-2 rounded-md transition-colors"
-              title="Atualizar"
+              title={t('lista.acoes.atualizar')}
             >
               <RefreshCw className={`w-3.5 h-3.5 shrink-0 ${isLoading ? 'animate-spin' : ''}`} />
             </button>
@@ -3259,8 +3288,8 @@ export default function Bets() {
           ) : filteredBets.length === 0 ? (
             <div className="text-center py-12 text-ink-2">
               <Target className="w-12 h-12 mx-auto mb-2 opacity-50" />
-              <p className="text-[12px] uppercase tracking-[0.14em] font-semibold">Nenhuma aposta encontrada</p>
-              <p className="text-[11px] mt-1">Tente ajustar os filtros</p>
+              <p className="text-[12px] uppercase tracking-[0.14em] font-semibold">{t('lista.tabela.vazioTitulo')}</p>
+              <p className="text-[11px] mt-1">{t('lista.tabela.vazioTexto')}</p>
             </div>
           ) : (
             <>
@@ -3278,17 +3307,17 @@ export default function Bets() {
                           className="w-3.5 h-3.5 accent-forest cursor-pointer"
                         />
                       </th>
-                      <SortableHeader column="bet_date" label="DATA" />
-                      <th className="text-left py-2.5 px-1.5 text-[10px] uppercase tracking-[0.1em] text-ink-2 font-semibold">DESCRIÇÃO</th>
-                      <th className="text-left py-2.5 px-1.5 text-[10px] uppercase tracking-[0.1em] text-ink-2 font-semibold">ETIQUETAS</th>
-                      <SortableHeader column="sport" label="ESPORTE / LIGA" />
-                      <SortableHeader column="betting_market" label="MERCADO" />
-                      <SortableHeader column="stake_amount" label="STAKE" align="right" />
-                      <SortableHeader column="odds" label="ODDS" align="right" />
-                      <SortableHeader column="return" label="RETORNO" align="right" className="min-w-[5.5rem]" />
-                      <SortableHeader column="profit" label="LUCRO" align="right" className="min-w-[5.5rem]" />
-                      <SortableHeader column="status" label="STATUS" align="center" className="min-w-[5rem]" />
-                      <th className="text-right py-2.5 px-1.5 text-[10px] uppercase tracking-[0.1em] text-ink-2 font-semibold min-w-[11rem]">AÇÕES</th>
+                      <SortableHeader column="bet_date" label={t('lista.tabela.data')} />
+                      <th className="text-left py-2.5 px-1.5 text-[10px] uppercase tracking-[0.1em] text-ink-2 font-semibold">{t('lista.tabela.descricao')}</th>
+                      <th className="text-left py-2.5 px-1.5 text-[10px] uppercase tracking-[0.1em] text-ink-2 font-semibold">{t('lista.tabela.etiquetas')}</th>
+                      <SortableHeader column="sport" label={t('lista.tabela.esporteLiga')} />
+                      <SortableHeader column="betting_market" label={t('lista.tabela.mercado')} />
+                      <SortableHeader column="stake_amount" label={t('lista.tabela.stake')} align="right" />
+                      <SortableHeader column="odds" label={t('lista.tabela.odds')} align="right" />
+                      <SortableHeader column="return" label={t('lista.tabela.retorno')} align="right" className="min-w-[5.5rem]" />
+                      <SortableHeader column="profit" label={t('lista.tabela.lucro')} align="right" className="min-w-[5.5rem]" />
+                      <SortableHeader column="status" label={t('lista.tabela.status')} align="center" className="min-w-[5rem]" />
+                      <th className="text-right py-2.5 px-1.5 text-[10px] uppercase tracking-[0.1em] text-ink-2 font-semibold min-w-[11rem]">{t('lista.tabela.acoes')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -3307,14 +3336,14 @@ export default function Bets() {
                   estourava a largura da página em tela estreita. */}
               <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-t border-line text-[12px]">
                 <div className="text-[11px] text-ink-2 tabular">
-                  Página {currentPage} de {totalPages}
+                  {t('lista.paginacao.pagina', { atual: currentPage, total: totalPages })}
                 </div>
                 <div className="flex flex-wrap items-center gap-1">
                   <button
                     type="button"
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage === 1}
-                    aria-label="Página anterior"
+                    aria-label={t('lista.paginacao.anterior')}
                     className="h-8 w-8 inline-flex items-center justify-center text-ink-2 hover:text-ink hover:bg-canvas-2 rounded-md transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     <ChevronLeft className="w-4 h-4" />
@@ -3355,7 +3384,7 @@ export default function Bets() {
                     type="button"
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage === totalPages}
-                    aria-label="Próxima página"
+                    aria-label={t('lista.paginacao.proxima')}
                     className="h-8 w-8 inline-flex items-center justify-center text-ink-2 hover:text-ink hover:bg-canvas-2 rounded-md transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                   >
                     <ChevronRight className="w-4 h-4" />
@@ -3371,21 +3400,21 @@ export default function Bets() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5">
             <div className="bg-white border border-line rounded-lg px-4 py-3 flex items-center justify-between">
               <div className="min-w-0">
-                <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">Stake médio</div>
-                <div className="text-[10px] text-ink-2 mt-1 truncate">por aposta</div>
+                <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">{t('lista.secundario.stakeMedio')}</div>
+                <div className="text-[10px] text-ink-2 mt-1 truncate">{t('lista.secundario.porAposta')}</div>
               </div>
               <div className="text-[15px] tabular font-semibold text-ink shrink-0 ml-2">{formatValue(secondaryStats.avgStake)}</div>
             </div>
             <div className="bg-white border border-line rounded-lg px-4 py-3 flex items-center justify-between">
               <div className="min-w-0">
-                <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">Odd média</div>
-                <div className="text-[10px] text-ink-2 mt-1 truncate tabular">chance {secondaryStats.avgOdds > 0 ? (100 / secondaryStats.avgOdds).toFixed(0) : '0'}%</div>
+                <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">{t('lista.secundario.oddMedia')}</div>
+                <div className="text-[10px] text-ink-2 mt-1 truncate tabular">{t('lista.secundario.chance', { pct: secondaryStats.avgOdds > 0 ? fmtDecimal(100 / secondaryStats.avgOdds, 0) : fmtDecimal(0, 0) })}</div>
               </div>
               <div className="text-[15px] tabular font-semibold text-forest shrink-0 ml-2">{fmtOdd(secondaryStats.avgOdds)}</div>
             </div>
             <div className="bg-white border border-line rounded-lg px-4 py-3 flex items-center justify-between">
               <div className="min-w-0">
-                <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">Maior vitória</div>
+                <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">{t('lista.secundario.maiorVitoria')}</div>
                 <div className="text-[10px] text-ink-2 mt-1 truncate">
                   {secondaryStats.biggestWin
                     ? `${truncateDescription(secondaryStats.biggestWin.description, 28)} · ${secondaryStats.biggestWin.date}`
@@ -3398,7 +3427,7 @@ export default function Bets() {
             </div>
             <div className="bg-white border border-line rounded-lg px-4 py-3 flex items-center justify-between">
               <div className="min-w-0">
-                <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">Maior derrota</div>
+                <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">{t('lista.secundario.maiorDerrota')}</div>
                 <div className="text-[10px] text-ink-2 mt-1 truncate">
                   {secondaryStats.biggestLoss
                     ? `${truncateDescription(secondaryStats.biggestLoss.description, 28)} · ${secondaryStats.biggestLoss.date}`
@@ -3426,7 +3455,7 @@ export default function Bets() {
             setIsCreateModalOpen(true);
           }}
           className="md:hidden theme-rebrand fixed right-5 bottom-6 z-40 w-14 h-14 rounded-full bg-forest text-white grid place-items-center shadow-[0_10px_30px_-5px_rgba(10,61,46,0.5)] hover:bg-forest-soft transition-colors"
-          aria-label="Nova aposta"
+          aria-label={t('lista.acoes.novaAposta')}
         >
           <Plus className="w-6 h-6" />
         </button>
@@ -3438,7 +3467,7 @@ export default function Bets() {
           <div className="max-w-7xl w-full flex items-center gap-2 px-4 py-3 bg-white border border-line rounded-lg shadow-[0_-10px_40px_-10px_rgba(0,0,0,0.15)] pointer-events-auto">
             <div className="flex items-center gap-1.5 border border-forest/20 bg-forest-tint rounded-md px-2 py-1">
               <span className="text-[12px] text-forest font-semibold whitespace-nowrap">
-                {selectedBetIds.size} Aposta{selectedBetIds.size !== 1 ? 's' : ''} selecionada{selectedBetIds.size !== 1 ? 's' : ''}
+                {t('lista.lote.selecionadas', { count: selectedBetIds.size })}
               </span>
               <button type="button" onClick={clearSelection}
                 className="text-sm text-ink-2 hover:text-ink transition-colors leading-none ml-1">
@@ -3453,42 +3482,42 @@ export default function Bets() {
                 <SheetTrigger asChild>
                   <button type="button"
                     className="h-9 px-4 text-[12px] font-semibold border border-forest/30 text-forest bg-white hover:bg-forest-tint rounded-md transition-colors flex items-center gap-1.5">
-                    <ChevronUp className="w-3.5 h-3.5" /> Ações
+                    <ChevronUp className="w-3.5 h-3.5" /> {t('lista.lote.acoes')}
                   </button>
                 </SheetTrigger>
                 <SheetContent side="bottom" className="theme-rebrand bg-white border-t border-line px-4 pb-8 pt-4 rounded-t-xl">
                   <p className="text-[11px] text-ink-2 mb-3 pr-8 uppercase tracking-[0.1em] font-semibold">
-                    {selectedBetIds.size} Aposta{selectedBetIds.size !== 1 ? 's' : ''} selecionada{selectedBetIds.size !== 1 ? 's' : ''}
+                    {t('lista.lote.selecionadas', { count: selectedBetIds.size })}
                   </p>
                   <div className="grid grid-cols-2 gap-2">
                     <button type="button" onClick={() => bulkUpdateStatus('won')}
                       className="h-11 text-[12px] font-semibold border border-status-success/30 text-status-success bg-white hover:bg-status-success/10 rounded-md transition-colors flex items-center justify-center gap-2">
-                      <TrendingUp className="w-4 h-4" /> Ganhou
+                      <TrendingUp className="w-4 h-4" /> {t('status.ganhou')}
                     </button>
                     <button type="button" onClick={() => bulkUpdateStatus('lost')}
                       className="h-11 text-[12px] font-semibold border border-status-danger/30 text-status-danger bg-white hover:bg-status-danger/10 rounded-md transition-colors flex items-center justify-center gap-2">
-                      <TrendingDown className="w-4 h-4" /> Perdeu
+                      <TrendingDown className="w-4 h-4" /> {t('status.perdeu')}
                     </button>
                     <button type="button" onClick={() => bulkUpdateStatus('half_won')}
                       className="h-11 text-[12px] font-semibold border border-status-success/20 text-status-success/80 bg-white hover:bg-status-success/10 rounded-md transition-colors flex items-center justify-center gap-2">
-                      <TrendingUp className="w-4 h-4 opacity-70" /> ½ Green
+                      <TrendingUp className="w-4 h-4 opacity-70" /> {t('status.meioGreenSimbolo')}
                     </button>
                     <button type="button" onClick={() => bulkUpdateStatus('half_lost')}
                       className="h-11 text-[12px] font-semibold border border-status-danger/20 text-status-danger/80 bg-white hover:bg-status-danger/10 rounded-md transition-colors flex items-center justify-center gap-2">
-                      <TrendingDown className="w-4 h-4 opacity-70" /> ½ Red
+                      <TrendingDown className="w-4 h-4 opacity-70" /> {t('status.meioRedSimbolo')}
                     </button>
                     <button type="button" onClick={() => bulkUpdateStatus('void')}
                       className="h-11 text-[12px] font-semibold border border-line text-ink-2 bg-white hover:bg-canvas-2 rounded-md transition-colors flex items-center justify-center gap-2">
-                      <X className="w-4 h-4" /> Anulada
+                      <X className="w-4 h-4" /> {t('status.anulada')}
                     </button>
                     <button type="button" onClick={bulkDelete}
                       className="h-11 text-[12px] font-semibold border border-status-danger/30 text-status-danger bg-white hover:bg-status-danger/10 rounded-md transition-colors flex items-center justify-center gap-2">
-                      <Trash2 className="w-4 h-4" /> Excluir
+                      <Trash2 className="w-4 h-4" /> {t('lista.acoes.excluir')}
                     </button>
                   </div>
                   {userTags.length > 0 && (
                     <div className="mt-3">
-                      <p className="text-[11px] text-ink-2 mb-2 uppercase tracking-[0.1em] font-semibold">Adicionar etiqueta</p>
+                      <p className="text-[11px] text-ink-2 mb-2 uppercase tracking-[0.1em] font-semibold">{t('lista.lote.adicionarEtiqueta')}</p>
                       <div className="flex flex-wrap gap-2">
                         {userTags.map(tag => (
                           <button key={tag.id} type="button"
@@ -3511,12 +3540,12 @@ export default function Bets() {
                 <PopoverTrigger asChild>
                   <button type="button"
                     className="h-8 px-3 text-[11px] font-semibold border border-line text-ink-2 bg-white hover:bg-canvas-2 hover:text-ink rounded-md transition-colors flex items-center gap-1.5">
-                    <Plus className="w-3.5 h-3.5" /> TAG
+                    <Plus className="w-3.5 h-3.5" /> {t('lista.lote.tag')}
                   </button>
                 </PopoverTrigger>
                 <PopoverContent className="theme-rebrand w-48 p-1 bg-white border-line text-ink shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)]" align="start" side="top">
                   {userTags.length === 0 ? (
-                    <p className="text-[11px] text-ink-2 p-2">Nenhuma etiqueta criada</p>
+                    <p className="text-[11px] text-ink-2 p-2">{t('lista.lote.nenhumaEtiquetaCriada')}</p>
                   ) : (
                     userTags.map(tag => (
                       <button key={tag.id} type="button"
@@ -3531,27 +3560,27 @@ export default function Bets() {
               </Popover>
               <button type="button" onClick={() => bulkUpdateStatus('won')}
                 className="h-8 px-3 text-[11px] font-semibold border border-status-success/30 text-status-success bg-white hover:bg-status-success/10 rounded-md transition-colors flex items-center gap-1.5">
-                <TrendingUp className="w-3.5 h-3.5" /> Ganhou
+                <TrendingUp className="w-3.5 h-3.5" /> {t('status.ganhou')}
               </button>
               <button type="button" onClick={() => bulkUpdateStatus('lost')}
                 className="h-8 px-3 text-[11px] font-semibold border border-status-danger/30 text-status-danger bg-white hover:bg-status-danger/10 rounded-md transition-colors flex items-center gap-1.5">
-                <TrendingDown className="w-3.5 h-3.5" /> Perdeu
+                <TrendingDown className="w-3.5 h-3.5" /> {t('status.perdeu')}
               </button>
               <button type="button" onClick={() => bulkUpdateStatus('half_won')}
                 className="h-8 px-3 text-[11px] font-semibold border border-status-success/20 text-status-success/80 bg-white hover:bg-status-success/10 rounded-md transition-colors flex items-center gap-1.5">
-                <TrendingUp className="w-3.5 h-3.5 opacity-70" /> ½ Green
+                <TrendingUp className="w-3.5 h-3.5 opacity-70" /> {t('status.meioGreenSimbolo')}
               </button>
               <button type="button" onClick={() => bulkUpdateStatus('half_lost')}
                 className="h-8 px-3 text-[11px] font-semibold border border-status-danger/20 text-status-danger/80 bg-white hover:bg-status-danger/10 rounded-md transition-colors flex items-center gap-1.5">
-                <TrendingDown className="w-3.5 h-3.5 opacity-70" /> ½ Red
+                <TrendingDown className="w-3.5 h-3.5 opacity-70" /> {t('status.meioRedSimbolo')}
               </button>
               <button type="button" onClick={() => bulkUpdateStatus('void')}
                 className="h-8 px-3 text-[11px] font-semibold border border-line text-ink-2 bg-white hover:bg-canvas-2 hover:text-ink rounded-md transition-colors flex items-center gap-1.5">
-                <X className="w-3.5 h-3.5" /> Anulada
+                <X className="w-3.5 h-3.5" /> {t('status.anulada')}
               </button>
               <button type="button" onClick={bulkDelete}
                 className="h-8 px-3 text-[11px] font-semibold border border-status-danger/30 text-status-danger bg-white hover:bg-status-danger/10 rounded-md transition-colors flex items-center gap-1.5">
-                <Trash2 className="w-3.5 h-3.5" /> Excluir
+                <Trash2 className="w-3.5 h-3.5" /> {t('lista.acoes.excluir')}
               </button>
             </div>
           </div>
@@ -3564,14 +3593,14 @@ export default function Bets() {
       }>
         <DialogContent className="theme-rebrand bg-white border-line text-ink sm:max-w-md">
           <DialogHeader>
-            <div className="text-[11px] uppercase tracking-[0.16em] text-forest font-semibold">Cashout</div>
+            <div className="text-[11px] uppercase tracking-[0.16em] text-forest font-semibold">{t('lista.cashout.etiqueta')}</div>
             <DialogTitle className="text-[18px] font-semibold tracking-tight text-ink">
-              {cashoutModal.bet?.is_cashout ? 'Editar cashout' : 'Encerrar antes do fim'}
+              {cashoutModal.bet?.is_cashout ? t('lista.cashout.tituloEditar') : t('lista.cashout.tituloNovo')}
             </DialogTitle>
             <DialogDescription className="text-ink-2 text-[13px]">
               {cashoutModal.bet?.is_cashout
-                ? 'Atualize o valor do cashout para esta aposta.'
-                : 'Insira o valor do cashout para esta aposta.'
+                ? t('lista.cashout.descricaoEditar')
+                : t('lista.cashout.descricaoNovo')
               }
             </DialogDescription>
           </DialogHeader>
@@ -3584,29 +3613,29 @@ export default function Bets() {
             return (
             <div className="space-y-4">
               <div className="bg-canvas border border-line rounded-lg p-4">
-                <div className="text-[11px] text-ink-2">Aposta</div>
+                <div className="text-[11px] text-ink-2">{t('lista.cashout.aposta')}</div>
                 <p className="text-[14px] font-semibold text-ink mt-0.5">{bet.bet_description}</p>
                 {bet.match_description && (
                   <p className="text-[11px] text-ink-2 mt-0.5">{bet.match_description}</p>
                 )}
                 <div className="grid grid-cols-3 gap-3 mt-3 pt-3 border-t border-line">
                   <div>
-                    <div className="text-[9px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Stake</div>
+                    <div className="text-[9px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('lista.cashout.stake')}</div>
                     <div className="text-[13px] tabular text-ink mt-0.5">{formatValue(bet.stake_amount)}</div>
                   </div>
                   <div>
-                    <div className="text-[9px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Odd</div>
+                    <div className="text-[9px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('lista.cashout.odd')}</div>
                     <div className="text-[13px] tabular text-forest font-semibold mt-0.5">{bet.odds}</div>
                   </div>
                   <div>
-                    <div className="text-[9px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Retorno se ganhar</div>
+                    <div className="text-[9px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('lista.cashout.retornoSeGanhar')}</div>
                     <div className="text-[13px] tabular text-ink mt-0.5">{formatValue(bet.potential_return)}</div>
                   </div>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Valor do cashout</Label>
+                <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('lista.cashout.valor')}</Label>
                 <div className="flex items-center h-12 bg-white border-2 border-forest/30 focus-within:border-forest rounded-md">
                   <span className="pl-4 text-[14px] text-ink-2 font-medium">R$</span>
                   <input
@@ -3629,10 +3658,18 @@ export default function Bets() {
                 }`}>
                   <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
                   <span className="leading-relaxed">
-                    {guaranteedProfit >= 0
-                      ? <>Lucro garantido de <span className="font-semibold tabular">+{formatValue(guaranteedProfit)}</span>.</>
-                      : <>Prejuízo limitado a <span className="font-semibold tabular">{formatValue(guaranteedProfit)}</span>.</>
-                    }{' '}Você abre mão de potencial <span className="font-semibold tabular">{formatValue(potentialIfWin)}</span> se acertar.
+                    <Trans
+                      t={t}
+                      i18nKey={guaranteedProfit >= 0 ? 'lista.cashout.lucroGarantido' : 'lista.cashout.prejuizoLimitado'}
+                      values={{ valor: guaranteedProfit >= 0 ? `+${formatValue(guaranteedProfit)}` : formatValue(guaranteedProfit) }}
+                      components={[<span className="font-semibold tabular" key="valor" />]}
+                    />{' '}
+                    <Trans
+                      t={t}
+                      i18nKey="lista.cashout.abreMaoDe"
+                      values={{ valor: formatValue(potentialIfWin) }}
+                      components={[<span className="font-semibold tabular" key="potencial" />]}
+                    />
                   </span>
                 </div>
               )}
@@ -3643,14 +3680,14 @@ export default function Bets() {
                   variant="ghost"
                   className="h-10 px-4 text-[13px] font-medium text-ink-2 hover:bg-canvas-2 hover:text-ink"
                 >
-                  Cancelar
+                  {t('lista.acoes.cancelar')}
                 </Button>
                 <Button
                   onClick={processCashout}
                   disabled={!cashoutModal.cashoutAmount}
                   className="h-10 px-5 text-[13px] font-semibold bg-forest hover:bg-forest-soft text-white"
                 >
-                  Confirmar cashout
+                  {t('lista.cashout.confirmar')}
                 </Button>
               </div>
             </div>
@@ -3664,15 +3701,15 @@ export default function Bets() {
         <DialogContent aria-describedby={undefined} className="theme-rebrand bg-white border-line text-ink sm:max-w-md">
           <DialogHeader>
             <div className={`text-[11px] uppercase tracking-[0.16em] font-semibold ${capitalModal.type === 'deposit' ? 'text-status-success' : 'text-status-danger'}`}>
-              {capitalModal.type === 'deposit' ? 'Aporte' : 'Resgate'}
+              {capitalModal.type === 'deposit' ? t('lista.capital.aporte') : t('lista.capital.resgate')}
             </div>
             <DialogTitle className="text-[18px] font-semibold tracking-tight text-ink">
-              {capitalModal.type === 'deposit' ? 'Adicionar à banca' : 'Retirar da banca'}
+              {capitalModal.type === 'deposit' ? t('lista.capital.adicionarABanca') : t('lista.capital.retirarDaBanca')}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Valor</Label>
+              <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('lista.capital.valor')}</Label>
               <Input
                 type="number"
                 value={capitalModal.amount}
@@ -3682,11 +3719,11 @@ export default function Bets() {
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Descrição (opcional)</Label>
+              <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('lista.capital.descricao')}</Label>
               <Input
                 value={capitalModal.description}
                 onChange={(e) => setCapitalModal(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Ex: Depósito via PIX"
+                placeholder={t('lista.capital.placeholder')}
                 className="h-10 bg-canvas border-line text-ink"
               />
             </div>
@@ -3696,7 +3733,7 @@ export default function Bets() {
                 variant="outline"
                 className="flex-1 h-10 border-line bg-white hover:bg-canvas-2 text-ink-2 hover:text-ink"
               >
-                Cancelar
+                {t('lista.acoes.cancelar')}
               </Button>
               <Button
                 onClick={async () => {
@@ -3709,12 +3746,12 @@ export default function Bets() {
                     affects_balance: true,
                   });
                   setCapitalModal({ isOpen: false, type: 'deposit', amount: '', description: '' });
-                  toast({ title: 'Sucesso', description: capitalModal.type === 'deposit' ? 'Aporte registrado' : 'Resgate registrado' });
+                  toast({ title: t('lista.aviso.sucesso'), description: capitalModal.type === 'deposit' ? t('lista.capital.aporteRegistrado') : t('lista.capital.resgateRegistrado') });
                 }}
                 disabled={!capitalModal.amount || parseFloat(capitalModal.amount) <= 0}
                 className="flex-1 h-10 bg-forest hover:bg-forest-soft text-white font-semibold"
               >
-                Confirmar
+                {t('lista.acoes.confirmar')}
               </Button>
             </div>
           </div>
@@ -3744,17 +3781,17 @@ export default function Bets() {
       }>
         <DialogContent aria-describedby={undefined} className="theme-rebrand bg-white border-line text-ink sm:max-w-lg max-h-[90vh] overflow-y-auto shadow-[0_30px_60px_-20px_rgba(0,0,0,0.15)]">
           <DialogHeader>
-            <div className="text-[11px] uppercase tracking-[0.16em] text-forest font-semibold">Aposta</div>
+            <div className="text-[11px] uppercase tracking-[0.16em] text-forest font-semibold">{t('lista.edicao.etiqueta')}</div>
             <DialogTitle className="flex items-center gap-2 text-[18px] font-semibold tracking-tight text-ink">
               <Edit className="w-4 h-4 text-forest" />
-              Editar aposta
+              {t('lista.edicao.titulo')}
             </DialogTitle>
           </DialogHeader>
 
           {editModal.bet && (
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Descrição</Label>
+                <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('lista.edicao.descricao')}</Label>
                 <Input
                   value={editModal.formData.bet_description}
                   onChange={(e) => setEditModal(prev => ({ ...prev, formData: { ...prev.formData, bet_description: e.target.value } }))}
@@ -3763,7 +3800,7 @@ export default function Bets() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Esporte</Label>
+                  <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('lista.edicao.esporte')}</Label>
                   <div className="relative">
                     <Input
                       value={editModal.formData.sport}
@@ -3832,7 +3869,7 @@ export default function Bets() {
                         setIsSportQueryTouched(false);
                       }}
                       onBlur={() => setIsSportDropdownOpen(false)}
-                      placeholder="Selecione ou digite o esporte"
+                      placeholder={t('lista.edicao.placeholderEsporte')}
                       className="h-10 bg-canvas border-line text-ink rounded-md focus:border-forest focus:bg-white"
                     />
                     {isSportDropdownOpen && (
@@ -3873,12 +3910,12 @@ export default function Bets() {
                             }}
                             className="w-full text-left px-3 py-2 text-sm text-forest font-medium hover:bg-forest-tint border-t border-line"
                           >
-                            ＋ Adicionar "{editModal.formData.sport.trim()}"
+                            {t('lista.edicao.adicionar', { valor: editModal.formData.sport.trim() })}
                           </button>
                         )}
                         {filteredSportsList.length === 0 && !editModal.formData.sport.trim() && (
                           <div className="px-3 py-2 text-xs text-ink-2">
-                            Nenhum esporte encontrado
+                            {t('lista.edicao.nenhumEsporte')}
                           </div>
                         )}
                       </div>
@@ -3886,7 +3923,7 @@ export default function Bets() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Liga</Label>
+                  <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('lista.edicao.liga')}</Label>
                   <div className="relative">
                     <Input
                       value={editModal.formData.league}
@@ -3955,7 +3992,7 @@ export default function Bets() {
                         setIsLeagueQueryTouched(false);
                       }}
                       onBlur={() => setIsLeagueDropdownOpen(false)}
-                      placeholder="Selecione ou digite a liga"
+                      placeholder={t('lista.edicao.placeholderLiga')}
                       className="h-10 bg-canvas border-line text-ink rounded-md focus:border-forest focus:bg-white"
                     />
                     {isLeagueDropdownOpen && (
@@ -3996,12 +4033,12 @@ export default function Bets() {
                             }}
                             className="w-full text-left px-3 py-2 text-sm text-forest font-medium hover:bg-forest-tint border-t border-line"
                           >
-                            ＋ Adicionar "{editModal.formData.league.trim()}"
+                            {t('lista.edicao.adicionar', { valor: editModal.formData.league.trim() })}
                           </button>
                         )}
                         {filteredLeaguesList.length === 0 && !editModal.formData.league.trim() && (
                           <div className="px-3 py-2 text-xs text-ink-2">
-                            Nenhuma liga encontrada
+                            {t('lista.edicao.nenhumaLiga')}
                           </div>
                         )}
                       </div>
@@ -4009,7 +4046,7 @@ export default function Bets() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Mercado</Label>
+                  <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('lista.edicao.mercado')}</Label>
                   <div className="relative">
                     <Input
                       value={editModal.formData.betting_market}
@@ -4074,7 +4111,7 @@ export default function Bets() {
                         setIsBettingMarketQueryTouched(false);
                       }}
                       onBlur={() => setIsBettingMarketDropdownOpen(false)}
-                      placeholder="Selecione ou digite o mercado"
+                      placeholder={t('lista.edicao.placeholderMercado')}
                       className="h-10 bg-canvas border-line text-ink rounded-md focus:border-forest focus:bg-white"
                     />
                     {isBettingMarketDropdownOpen && (
@@ -4115,12 +4152,12 @@ export default function Bets() {
                             }}
                             className="w-full text-left px-3 py-2 text-sm text-forest font-medium hover:bg-forest-tint border-t border-line"
                           >
-                            ＋ Adicionar "{editModal.formData.betting_market.trim()}"
+                            {t('lista.edicao.adicionar', { valor: editModal.formData.betting_market.trim() })}
                           </button>
                         )}
                         {filteredBettingMarketsList.length === 0 && !editModal.formData.betting_market.trim() && (
                           <div className="px-3 py-2 text-xs text-ink-2">
-                            Nenhum mercado encontrado
+                            {t('lista.edicao.nenhumMercado')}
                           </div>
                         )}
                       </div>
@@ -4131,7 +4168,7 @@ export default function Bets() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Valor</Label>
+                  <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('lista.edicao.valor')}</Label>
                   <Input
                     type="number"
                     value={editModal.formData.stake_amount}
@@ -4144,7 +4181,7 @@ export default function Bets() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Odds</Label>
+                  <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('lista.edicao.odds')}</Label>
                   <Input
                     type="number"
                     value={editModal.formData.odds}
@@ -4161,7 +4198,7 @@ export default function Bets() {
               {/* Retorno pago editável — casa às vezes paga diferente de stake×odd
                   (bônus de odd alta). Editar o retorno reajusta a odd pra enquadrar. */}
               <div className="space-y-2">
-                <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Retorno pago (R$)</Label>
+                <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('lista.edicao.retornoPago')}</Label>
                 <Input
                   type="number"
                   value={editModal.formData.potential_return}
@@ -4173,12 +4210,12 @@ export default function Bets() {
                   className="h-10 bg-canvas border-line text-ink rounded-md focus:border-forest focus:bg-white tabular"
                 />
                 <p className="text-[11px] leading-snug text-ink-2">
-                  A casa pagou diferente por causa de bônus? Ajuste o valor pago aqui — a odd se reajusta sozinha pra bater com a banca.
+                  {t('lista.edicao.retornoPagoAjuda')}
                 </p>
               </div>
 
               <div className="flex items-center gap-3">
-                <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Crédito de apostas</Label>
+                <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('lista.edicao.creditoDeApostas')}</Label>
                 <button
                   type="button"
                   onClick={() => setEditModal(prev => {
@@ -4194,7 +4231,7 @@ export default function Bets() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Data da Aposta</Label>
+                <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('lista.edicao.dataDaAposta')}</Label>
                 <Popover open={isEditDatePopoverOpen} onOpenChange={setIsEditDatePopoverOpen} modal>
                   <PopoverTrigger asChild>
                     <Button
@@ -4204,7 +4241,7 @@ export default function Bets() {
                       <CalendarIcon className="mr-2 h-4 w-4 text-forest" />
                       {(() => {
                         const date = parseDateString(editModal.formData.bet_date);
-                        return date ? format(date, 'dd/MM/yyyy', { locale: ptBR }) : 'Selecione a data';
+                        return date ? format(date, 'dd/MM/yyyy', { locale: localeDoDateFns() }) : t('lista.edicao.selecioneData');
                       })()}
                     </Button>
                   </PopoverTrigger>
@@ -4240,7 +4277,7 @@ export default function Bets() {
               </div>
 
               <div className="space-y-2">
-                <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Status</Label>
+                <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('lista.edicao.status')}</Label>
                 <Select
                   value={editModal.formData.status}
                   onValueChange={(value: any) => setEditModal(prev => ({ ...prev, formData: { ...prev.formData, status: value } }))}
@@ -4249,13 +4286,13 @@ export default function Bets() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="theme-rebrand bg-white border-line text-ink shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)]">
-                    <SelectItem value="pending">Pendente</SelectItem>
-                    <SelectItem value="won">Ganhou</SelectItem>
-                    <SelectItem value="lost">Perdeu</SelectItem>
-                    <SelectItem value="half_won">1/2 Green</SelectItem>
-                    <SelectItem value="half_lost">1/2 Red</SelectItem>
-                    <SelectItem value="void">Anulada</SelectItem>
-                    <SelectItem value="cashout">Cashout</SelectItem>
+                    <SelectItem value="pending">{t('status.pendente')}</SelectItem>
+                    <SelectItem value="won">{t('status.ganhou')}</SelectItem>
+                    <SelectItem value="lost">{t('status.perdeu')}</SelectItem>
+                    <SelectItem value="half_won">{t('status.meioGreen')}</SelectItem>
+                    <SelectItem value="half_lost">{t('status.meioRed')}</SelectItem>
+                    <SelectItem value="void">{t('status.anulada')}</SelectItem>
+                    <SelectItem value="cashout">{t('status.cashout')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -4266,13 +4303,13 @@ export default function Bets() {
                   variant="outline"
                   className="flex-1 h-10 border-line bg-white hover:bg-canvas-2 text-ink-2 hover:text-ink"
                 >
-                  Cancelar
+                  {t('lista.acoes.cancelar')}
                 </Button>
                 <Button
                   onClick={updateBetData}
                   className="flex-1 h-10 bg-forest hover:bg-forest-soft text-white font-semibold"
                 >
-                  Salvar alterações
+                  {t('lista.acoes.salvarAlteracoes')}
                 </Button>
               </div>
             </div>
@@ -4314,19 +4351,19 @@ export default function Bets() {
       >
         <AlertDialogContent className="theme-rebrand bg-white border-line text-ink sm:max-w-md">
           <AlertDialogHeader>
-            <div className="text-[11px] uppercase tracking-[0.16em] text-status-danger font-semibold">Excluir aposta{confirmDelete?.type === 'bulk' && confirmDelete.count > 1 ? 's' : ''}</div>
+            <div className="text-[11px] uppercase tracking-[0.16em] text-status-danger font-semibold">{t('lista.exclusao.etiqueta', { count: confirmDelete?.type === 'bulk' ? confirmDelete.count : 1 })}</div>
             <AlertDialogTitle className="text-[18px] font-semibold tracking-tight text-ink">
               {confirmDelete?.type === 'bulk'
-                ? `Excluir ${confirmDelete.count} aposta${confirmDelete.count !== 1 ? 's' : ''}?`
-                : 'Excluir esta aposta?'}
+                ? t('lista.exclusao.tituloLote', { count: confirmDelete.count })
+                : t('lista.exclusao.tituloUma')}
             </AlertDialogTitle>
             <AlertDialogDescription className="text-ink-2 text-[13px]">
-              Essa ação não pode ser desfeita. {confirmDelete?.type === 'bulk' ? 'As apostas serão removidas permanentemente.' : 'A aposta será removida permanentemente.'}
+              {t('lista.exclusao.prefixo')} {confirmDelete?.type === 'bulk' ? t('lista.exclusao.muitas') : t('lista.exclusao.uma')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-4">
             <AlertDialogCancel className="h-10 px-4 text-[13px] font-medium text-ink-2 hover:text-ink border-line bg-white hover:bg-canvas-2">
-              Cancelar
+              {t('lista.acoes.cancelar')}
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
@@ -4339,7 +4376,7 @@ export default function Bets() {
               }}
               className="h-10 px-4 text-[13px] font-semibold text-white bg-status-danger hover:bg-status-danger/90"
             >
-              Excluir
+              {t('lista.acoes.excluir')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DayPicker } from 'react-day-picker';
-import { ptBR } from 'date-fns/locale';
 import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useFutebolFixtureDays } from '@/hooks/use-futebol-data';
 import { brtToday } from '@/utils/futebol-datas';
+import { localeDoDateFns } from '@/utils/locale-do-date-fns';
 
 /**
  * O calendário da agenda, na casa.
@@ -15,10 +15,14 @@ import { brtToday } from '@/utils/futebol-datas';
  * cada navegador. Aqui ele usa a paleta do rebrand e, o que o nativo nunca
  * faria, **marca os dias que têm jogo** com o mesmo ponto da régua.
  *
- * ⚠️ O TEXTO daqui segue o idioma ativo; os NOMES DE MÊS E DIA, não — eles vêm
- * do `locale` do date-fns, fixo em `ptBR`. Data por idioma é o trabalho da #530,
- * e ela tem armadilha própria; trocar o locale aqui por conta própria mexeria
- * na régua de datas inteira sem passar por lá.
+ * ⚠️ OS NOMES DE MÊS E DIA vêm do date-fns, que NÃO fala a mesma língua que o
+ * resto: o produto passa `"pt-BR"` ou `"es-419"` como string para o `Intl`, e
+ * o date-fns quer um OBJETO importado. A ponte entre os dois é
+ * `localeDoDateFns`.
+ *
+ * Isto escapou da varredura da #530 justamente por não se parecer com as
+ * outras 63 chamadas: a régua de dias logo acima já dizia "Mié 30" enquanto
+ * este calendário ainda escrevia "Outubro 2026" e "DOM SEG TER".
  *
  * A contagem do mês visível vem da mesma RPC da régua (get_futebol_fixture_days),
  * consultada só para o intervalo aberto na tela.
@@ -100,7 +104,7 @@ export function AgendaCalendario({
       >
         <DayPicker
           mode="single"
-          locale={ptBR}
+          locale={localeDoDateFns()}
           month={mes}
           onMonthChange={setMes}
           selected={paraData(selectedDay)}
@@ -116,10 +120,6 @@ export function AgendaCalendario({
           }}
           // O `locale` cuida dos nomes de mês e dia; os rótulos das setas ficariam em
           // inglês para o leitor de tela sem isto.
-          //
-          // ⚠️ O `locale` do date-fns segue FIXO em português: data por idioma é o
-          // trabalho da #530, e ela tem armadilha própria (a chave de dia é de
-          // máquina). Aqui só o texto escrito por nós fala o idioma ativo.
           labels={{ labelPrevious: () => t('agenda.mesAnterior'), labelNext: () => t('agenda.proximoMes') }}
           components={{
             IconLeft: () => <ChevronLeft className="w-4 h-4" />,

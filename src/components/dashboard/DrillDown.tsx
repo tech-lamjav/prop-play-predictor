@@ -4,7 +4,7 @@ import { Sparkline } from './Sparkline';
 import { computeDrillDown } from '@/utils/dashboardAggregations';
 import type { Bet } from '@/hooks/use-bets';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { localeDoDateFns } from '@/utils/locale-do-date-fns';
 
 interface DrillDownProps {
   bets: Bet[];
@@ -131,7 +131,7 @@ export const DrillDown: React.FC<DrillDownProps> = ({
                     }`}
                   />
                   <span className="text-ink-2 tabular w-10 shrink-0">
-                    {format(new Date(b.bet_date), 'dd/MM', { locale: ptBR })}
+                    {format(new Date(b.bet_date), 'dd/MM', { locale: localeDoDateFns() })}
                   </span>
                   <span className="text-ink font-bold flex-1 truncate" title={b.match_description || b.bet_description}>
                     {b.match_description || b.bet_description}

@@ -11,6 +11,7 @@ import { SHOW_BOLAO_ENTRY_POINTS } from '@/config/bolao';
 // Mesmos ícones do cabeçalho — hub e header têm que mostrar a mesma marca
 // por produto. Ver components/icons/sports.tsx.
 import { IconSoccer, IconBasketball } from '@/components/icons/sports';
+import { useTranslation } from 'react-i18next';
 
 // Hub de direcionamento pós-login (/inicio). Para quem JÁ passou pelo onboarding
 // (sincronizado ou não). Cadastro novo continua indo pro /onboarding (vínculo do
@@ -27,6 +28,7 @@ type Destino = {
   kicker: string;
   badge?: string;
   dark?: boolean;
+  /** Chaves de tradução sob `conta.inicio`, e não o texto já resolvido: */
   tile: string;
   iconColor: string;
   onClick: (nav: ReturnType<typeof useNavigate>, synced: boolean) => void;
@@ -36,8 +38,8 @@ const TODOS_DESTINOS: Destino[] = [
   {
     key: 'futebol',
     icon: IconSoccer,
-    title: 'Futebol',
-    kicker: 'Oportunidades de valor',
+    title: 'inicio.futebol.titulo',
+    kicker: 'inicio.futebol.sub',
     tile: 'bg-forest-tint border-forest/15',
     iconColor: 'text-forest',
     onClick: (nav) => nav('/futebol'),
@@ -45,8 +47,8 @@ const TODOS_DESTINOS: Destino[] = [
   {
     key: 'betinho',
     icon: Bot,
-    title: 'Betinho',
-    kicker: 'Gestão de apostas',
+    title: 'inicio.betinho.titulo',
+    kicker: 'inicio.betinho.sub',
     dark: true,
     tile: 'bg-forest border-forest',
     iconColor: 'text-amber',
@@ -55,8 +57,8 @@ const TODOS_DESTINOS: Destino[] = [
   {
     key: 'nba',
     icon: IconBasketball,
-    title: 'Análises NBA',
-    kicker: 'Props e painéis',
+    title: 'inicio.nba.titulo',
+    kicker: 'inicio.nba.sub',
     tile: 'bg-canvas-2 border-line',
     iconColor: 'text-forest',
     onClick: (nav) => nav('/home-nba'),
@@ -64,8 +66,8 @@ const TODOS_DESTINOS: Destino[] = [
   {
     key: 'bolao',
     icon: Trophy,
-    title: 'Bolão da Copa',
-    kicker: 'Palpites e ranking',
+    title: 'inicio.bolao.titulo',
+    kicker: 'inicio.bolao.sub',
     tile: 'bg-[#f6efdb] border-[#e6d5a3]',
     iconColor: 'text-amber-2',
     onClick: (nav) => nav('/bolao'),
@@ -77,6 +79,7 @@ const DESTINOS = TODOS_DESTINOS.filter(
 );
 
 export default function Inicio() {
+  const { t } = useTranslation('conta');
   const navigate = useNavigate();
   const posthog = usePostHog();
   const supabase = createClient();
@@ -139,10 +142,10 @@ export default function Inicio() {
           {/* Cabeçalho enxuto, alinhado à esquerda */}
           <header className="mb-6 sm:mb-9">
             <p className="mb-1 text-[12px] font-semibold uppercase tracking-[0.18em] text-forest">
-              {firstName ? `Olá, ${firstName}` : 'Bem-vindo de volta'}
+              {firstName ? t('inicio.ola', { nome: firstName }) : t('inicio.bemVindo')}
             </p>
             <h1 className="font-display text-[26px] font-extrabold leading-tight tracking-tight text-ink sm:text-[34px]">
-              Por onde vamos?
+              {t('inicio.titulo')}
             </h1>
           </header>
 
@@ -182,10 +185,10 @@ export default function Inicio() {
                         d.dark ? 'text-white' : 'text-ink'
                       }`}
                     >
-                      {d.title}
+                      {t(d.title)}
                     </h2>
                     <p className={`mt-0.5 text-[13px] ${d.dark ? 'text-white/70' : 'text-ink-2'}`}>
-                      {d.kicker}
+                      {t(d.kicker)}
                     </p>
                   </div>
                   <ArrowUpRight

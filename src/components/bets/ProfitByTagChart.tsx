@@ -1,4 +1,6 @@
 import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { fmtDinheiro, fmtPct } from '@/utils/formato';
 import { Sparkles } from 'lucide-react';
 import { Bet } from '@/hooks/use-bets';
 import { aggregateTagPivot, type BetWithTags } from '@/utils/dashboardAggregations';
@@ -18,9 +20,10 @@ const MAX_DEFAULT = 8;
 
 export const ProfitByTagChart: React.FC<ProfitByTagChartProps> = ({
   bets,
-  formatValue = (v) => `R$ ${v.toFixed(0)}`,
+  formatValue = (v) => fmtDinheiro(v, { casas: 0 }),
   onAnalyzeTags,
 }) => {
+  const { t } = useTranslation('apostas');
   const allEntries = useMemo(() => aggregateTagPivot(bets), [bets]);
   const [selectedTagNames, setSelectedTagNames] = useState<string[]>([]);
 
@@ -50,9 +53,9 @@ export const ProfitByTagChart: React.FC<ProfitByTagChartProps> = ({
   if (allEntries.length === 0) {
     return (
       <div className="bg-white border border-line rounded-xl p-5">
-        <div className="text-[10px] uppercase tracking-[0.18em] text-amber-700 font-bold">Resultado por etiqueta</div>
-        <h2 className="text-[16px] font-extrabold tracking-tight text-ink mt-1">Resultado pelas etiquetas que você criou</h2>
-        <p className="text-[13px] text-ink-2 py-8 text-center">Nenhuma aposta com tag no período</p>
+        <div className="text-[10px] uppercase tracking-[0.18em] text-amber-700 font-bold">{t('porEtiqueta.etiqueta')}</div>
+        <h2 className="text-[16px] font-extrabold tracking-tight text-ink mt-1">{t('porEtiqueta.titulo')}</h2>
+        <p className="text-[13px] text-ink-2 py-8 text-center">{t('porEtiqueta.vazio')}</p>
       </div>
     );
   }
@@ -63,12 +66,12 @@ export const ProfitByTagChart: React.FC<ProfitByTagChartProps> = ({
     <div className="bg-white border border-line rounded-xl p-5">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 mb-1">
         <div>
-          <div className="text-[10px] uppercase tracking-[0.18em] text-amber-700 font-bold">Resultado por etiqueta</div>
-          <h2 className="text-[16px] font-extrabold tracking-tight text-ink mt-1">Resultado pelas etiquetas que você criou</h2>
+          <div className="text-[10px] uppercase tracking-[0.18em] text-amber-700 font-bold">{t('porEtiqueta.etiqueta')}</div>
+          <h2 className="text-[16px] font-extrabold tracking-tight text-ink mt-1">{t('porEtiqueta.titulo')}</h2>
           <p className="text-[12px] text-ink-2 mt-0.5">
             {hasSelection
-              ? `${selectedTagNames.length} ${selectedTagNames.length === 1 ? 'etiqueta selecionada' : 'etiquetas selecionadas'} (máx 8)`
-              : `Os ${Math.min(MAX_DEFAULT, allEntries.length)} que mais pesaram. Selecione etiquetas pra comparar.`}
+              ? t('porEtiqueta.selecionadas', { count: selectedTagNames.length })
+              : t('porEtiqueta.topo', { count: Math.min(MAX_DEFAULT, allEntries.length) })}
           </p>
         </div>
         {hasSelection && onAnalyzeTags && (
@@ -78,10 +81,10 @@ export const ProfitByTagChart: React.FC<ProfitByTagChartProps> = ({
             className="h-9 px-3 inline-flex items-center gap-1.5 text-[12px] font-extrabold text-forest bg-amber-400 hover:bg-amber-300 rounded-md transition-colors shrink-0"
           >
             <Sparkles className="w-3.5 h-3.5" />
-            Analisar{' '}
+            {t('porEtiqueta.analisar')}{' '}
             {selectedTagNames.length === 1
               ? selectedTagNames[0]
-              : `${selectedTagNames.length} etiquetas`}
+              : t('porEtiqueta.analisarVarias', { count: selectedTagNames.length })}
           </button>
         )}
       </div>
@@ -119,7 +122,7 @@ export const ProfitByTagChart: React.FC<ProfitByTagChartProps> = ({
             onClick={clearSelection}
             className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold border border-line bg-white text-ink-2 hover:text-status-danger hover:border-status-danger transition-colors"
           >
-            Limpar
+            {t('porEtiqueta.limpar')}
           </button>
         )}
       </div>
@@ -128,20 +131,20 @@ export const ProfitByTagChart: React.FC<ProfitByTagChartProps> = ({
       {displayEntries.length > 0 && (
         <div className="flex items-center justify-end gap-3 text-[10px] text-ink-2 mb-2 -mt-1">
           <span className="inline-flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-canvas-2 border border-line" /> identidade da etiqueta
+            <span className="w-2 h-2 rounded-full bg-canvas-2 border border-line" /> {t('porEtiqueta.legenda.identidade')}
           </span>
           <span className="inline-flex items-center gap-1">
-            <span className="w-2.5 h-1.5 rounded-sm bg-forest" /> lucro
+            <span className="w-2.5 h-1.5 rounded-sm bg-forest" /> {t('porEtiqueta.legenda.lucro')}
           </span>
           <span className="inline-flex items-center gap-1">
-            <span className="w-2.5 h-1.5 rounded-sm bg-rose-700" /> prejuízo
+            <span className="w-2.5 h-1.5 rounded-sm bg-rose-700" /> {t('porEtiqueta.legenda.prejuizo')}
           </span>
         </div>
       )}
 
       {/* Bars */}
       {displayEntries.length === 0 ? (
-        <p className="text-[12px] text-ink-2 py-4 text-center">Nenhum dado para as etiquetas selecionadas</p>
+        <p className="text-[12px] text-ink-2 py-4 text-center">{t('porEtiqueta.semDados')}</p>
       ) : (
         <>
           {/* Desktop: diverging bars (centered on zero) */}
@@ -182,9 +185,12 @@ export const ProfitByTagChart: React.FC<ProfitByTagChartProps> = ({
                     className={`text-right tabular font-bold ${
                       positive ? 'text-forest' : 'text-rose-700'
                     }`}
-                    title={`${entry.profit > 0 ? '+' : ''}${formatValue(entry.profit)} · ROI ${entry.roi.toFixed(1)}%`}
+                    title={t('porEtiqueta.tituloBarra', {
+                      valor: `${entry.profit > 0 ? '+' : ''}${formatValue(entry.profit)}`,
+                      roi: fmtPct(entry.roi / 100, 1),
+                    })}
                   >
-                    {entry.roi > 0 ? '+' : ''}{entry.roi.toFixed(1)}%
+                    {entry.roi > 0 ? '+' : ''}{fmtPct(entry.roi / 100, 1)}
                   </div>
                   <div className="text-right text-ink-2 tabular">n={entry.n}</div>
                 </div>
@@ -215,7 +221,7 @@ export const ProfitByTagChart: React.FC<ProfitByTagChartProps> = ({
                         positive ? 'text-forest' : 'text-rose-700'
                       }`}
                     >
-                      {entry.roi > 0 ? '+' : ''}{entry.roi.toFixed(1)}%
+                      {entry.roi > 0 ? '+' : ''}{fmtPct(entry.roi / 100, 1)}
                     </span>
                   </div>
                   <div className="h-1.5 bg-canvas-2 rounded-full overflow-hidden">
@@ -226,7 +232,7 @@ export const ProfitByTagChart: React.FC<ProfitByTagChartProps> = ({
                   </div>
                   <div className="flex items-center justify-between mt-1 text-[10px] text-ink-2 tabular">
                     <span>n={entry.n}</span>
-                    <span title={`Lucro · ROI ${entry.roi.toFixed(1)}%`}>
+                    <span title={t('porEtiqueta.tituloBarraMobile', { roi: fmtPct(entry.roi / 100, 1) })}>
                       {entry.profit > 0 ? '+' : ''}{formatValue(entry.profit)}
                     </span>
                   </div>

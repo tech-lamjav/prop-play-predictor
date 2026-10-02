@@ -16,5 +16,194 @@
     "falarComOTime": "Falar com o time",
     "crm": "CRM",
     "metodologia": "Metodologia"
+  },
+  "inicio": {
+    "titulo": "Por onde vamos?",
+    "ola": "Olá, {{nome}}",
+    "bemVindo": "Bem-vindo de volta",
+    "futebol": {
+      "titulo": "Futebol",
+      "sub": "Oportunidades de valor"
+    },
+    "betinho": {
+      "titulo": "Betinho",
+      "sub": "Gestão de apostas"
+    },
+    "nba": {
+      "titulo": "Análises NBA",
+      "sub": "Props e painéis"
+    },
+    "bolao": {
+      "titulo": "Bolão da Copa",
+      "sub": "Palpites e ranking"
+    }
+  },
+  "chegada": {
+    "etiqueta": {
+      "alertas": "Alertas de oportunidades",
+      "padrao": "Conheça o Betinho"
+    },
+    "titulo": {
+      "alertas": "Receba as novas oportunidades no <destaque>Telegram.</destaque>",
+      "padrao": "Seu assistente de apostas, direto no <destaque>Telegram.</destaque>"
+    },
+    "chamada": {
+      "alertas": "Conecte o Telegram e o Betinho te avisa quando uma oportunidade nova entrar no painel, antes do jogo começar. Você pode pausar os alertas quando quiser.",
+      "padrao": "Você manda a aposta por print ou texto e o Betinho registra sozinho. Ele calcula seu ROI de verdade e ainda te avisa das oportunidades do dia, no chat onde você já conversa."
+    },
+    "beneficios": {
+      "registro": {
+        "titulo": "Registra pelo print",
+        "descricao": "Manda um print ou escreve a aposta. O Betinho lê e registra sozinho."
+      },
+      "roi": {
+        "titulo": "Seu ROI de verdade",
+        "descricao": "Liquidação, banca e resultado real por esporte, sem planilha."
+      },
+      "alertas": {
+        "titulo": "O dia chega no seu chat",
+        "descricao": "Oportunidades do dia, avisos de resultado e novidades no Telegram."
+      },
+      "alertasDeOportunidade": {
+        "titulo": "Cada oportunidade nova, na hora",
+        "descricao": "O aviso de cada oportunidade assim que ela entra no painel, antes do jogo — e o resumo do dia junto."
+      }
+    },
+    "carrossel": {
+      "anterior": "Slide anterior",
+      "proximo": "Próximo slide",
+      "irPara": "Ir para o slide {{numero}}"
+    },
+    "slides": {
+      "print": "Registre só mandando o print",
+      "oportunidade": "As oportunidades do dia chegam a você",
+      "resultado": "E o resultado é liquidado sozinho"
+    },
+    "mock": {
+      "online": "online",
+      "comprovante": "Comprovante",
+      "pick": "Flamengo vence",
+      "aposta": "Aposta",
+      "printEnviado": "print enviado",
+      "registrado": "Li o print e registrei!",
+      "retornoPotencial": "Retorno potencial",
+      "oportunidadeDeHoje": "Oportunidade de hoje",
+      "mercado": "Mais de 2.5 gols",
+      "score": "Score 82",
+      "valorNaOdd": "valor +14% na odd",
+      "querRegistrar": "Quer registrar? Só mandar aqui.",
+      "bateu": "Bateu!",
+      "resultado": "Flamengo venceu o Palmeiras",
+      "roiDoMes": "ROI do mês"
+    },
+    "conectar": "Conectar meu Telegram",
+    "conectarAjuda": "Abre o Telegram, toca em <destaque>Iniciar</destaque> e pronto. Sem digitar nada.",
+    "pular": "Pular por agora",
+    "erroLink": "Não consegui gerar seu link agora. Tenta de novo em instantes.",
+    "conectando": {
+      "titulo": "Aguardando o Telegram…",
+      "texto": "No Telegram que abriu, toca em <destaque>Iniciar</destaque>. Assim que conectar, esta tela confirma sozinha.",
+      "gerarDeNovo": "O Telegram não abriu? Gerar link de novo"
+    },
+    "conectado": {
+      "titulo": "Conectado!",
+      "alertas": "Os alertas de novas oportunidades já estão ligados. Você pode pausá-los quando quiser, no site ou pelo Telegram.",
+      "padrao": "O Betinho já te mandou uma mensagem no Telegram. Manda sua primeira aposta pra ele por lá (print ou texto) quando quiser.",
+      "continuar": "Continuar"
+    },
+    "timeout": {
+      "titulo": "Ainda não conectou",
+      "texto": "Sem problema. Clica de novo abaixo e toca em <destaque>Iniciar</destaque> no Telegram.",
+      "tentarDeNovo": "Tentar de novo"
+    }
+  },
+  "configuracoes": {
+    "titulo": "Configurações",
+    "carregando": "Carregando...",
+    "salvando": "Salvando...",
+    "erro": "Erro",
+    "secoes": {
+      "perfil": {
+        "rotulo": "Perfil",
+        "resumo": "Nome, e-mail e Telegram"
+      },
+      "alertas": {
+        "rotulo": "Alertas",
+        "resumo": "Oportunidades no Telegram"
+      },
+      "assinatura": {
+        "rotulo": "Assinatura",
+        "resumo": "Planos e pagamentos"
+      },
+      "tour": {
+        "rotulo": "Tour guiado",
+        "resumo": "Rever a apresentação"
+      }
+    },
+    "perfil": {
+      "titulo": "Perfil",
+      "descricao": "Suas informações pessoais",
+      "nome": "Nome",
+      "nomeExemplo": "Seu nome",
+      "email": "E-mail",
+      "emailExemplo": "seu@email.com",
+      "telefone": "Telefone / Telegram ID",
+      "ressincronizarAviso": "Se mudou seu número no Telegram, toque para ressincronizar.",
+      "ressincronizar": "Ressincronizar Telegram",
+      "contaCriadaEm": "Conta criada em",
+      "salvar": "Salvar alterações",
+      "sucesso": "Alterações salvas com sucesso.",
+      "toastSucesso": "Sucesso",
+      "toastSucessoTexto": "Perfil atualizado.",
+      "toastErroTexto": "Falha ao salvar alterações."
+    },
+    "alertas": {
+      "titulo": "Alertas de oportunidades",
+      "descricao": "Receba no Telegram quando uma nova oportunidade entrar no painel.",
+      "semAcesso": "Indisponíveis enquanto seu acesso ao Futebol estiver inativo. Sua preferência está {{estado}} e será mantida quando voltar.",
+      "estadoAtivada": "ativada",
+      "estadoPausada": "pausada",
+      "pausarParaDepois": "Pausar para quando voltar",
+      "retomarParaDepois": "Retomar para quando voltar",
+      "convite": "Conecte seu Telegram para escolher se quer receber esses alertas.",
+      "conectar": "Conectar Telegram",
+      "ativos": "Ativos",
+      "pausados": "Pausados",
+      "ativosTexto": "Você será avisado sobre novas oportunidades antes do jogo.",
+      "pausadosTexto": "Nenhuma nova oportunidade será enviada até você retomar.",
+      "pausar": "Pausar alertas",
+      "retomar": "Retomar alertas",
+      "toastRetomados": "Alertas retomados",
+      "toastRetomadosTexto": "As próximas oportunidades publicadas poderão chegar no seu Telegram.",
+      "toastPausados": "Alertas pausados",
+      "toastPausadosTexto": "Você não receberá novas oportunidades até retomar.",
+      "toastErro": "Não foi possível salvar",
+      "toastErroTexto": "Tente novamente."
+    },
+    "assinatura": {
+      "titulo": "Assinatura",
+      "descricao": "Gerencie seu plano e pagamentos",
+      "plataformaNba": "Plataforma de Análise NBA",
+      "plano": "Plano",
+      "proximaCobranca": "Próxima cobrança",
+      "cancelaEm": "Cancela em",
+      "gerenciar": "Gerenciar assinatura",
+      "abrindo": "Abrindo...",
+      "semPlano": "Assine um plano para gerenciar sua assinatura.",
+      "toastErroTexto": "Falha ao abrir portal."
+    },
+    "tour": {
+      "titulo": "Tour guiado",
+      "descricao": "Rever a apresentação das áreas e dos produtos da plataforma",
+      "texto": "Reinicia o tour guiado: a apresentação do início reaparece agora, e a de cada produto (Futebol, Betinho, NBA, Bolão) volta a aparecer na próxima vez que você abrir a tela.",
+      "botao": "Rever tour guiado"
+    }
+  },
+  "perfil": {
+    "kpis": {
+      "apostas": "Apostas",
+      "acerto": "Acerto",
+      "roi": "ROI"
+    }
   }
 }

@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { CalendarDays, ChevronDown } from 'lucide-react';
 import type { DateRange } from 'react-day-picker';
-import { ptBR } from 'date-fns/locale';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { ATALHOS, periodoAnterior, rotuloDoPeriodo, type Periodo } from './placar-periodo';
+import { localeDoDateFns } from '@/utils/locale-do-date-fns';
 
 /**
  * O seletor de período, no formato que o Meta Ads usa.
@@ -153,7 +153,7 @@ export function SeletorDePeriodo({
                 nav_button: 'h-7 w-7 rounded-rebrand-sm border border-line-2 bg-white p-0 text-ink-2 opacity-70 transition hover:opacity-100',
               }}
               mode="range"
-              locale={ptBR}
+              locale={localeDoDateFns()}
               // Dois meses é o que faz o seletor servir para um período que
               // cruza a virada do mês. No celular não cabem dois — e insistir
               // neles espremia cada dia a ponto de o dedo não acertar um.

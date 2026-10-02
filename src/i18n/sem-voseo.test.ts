@@ -47,33 +47,75 @@ const LEGITIMAS = new Set([
   'especiales', 'modelo', 'niveles', 'oficiales', 'oscila', 'paneles',
   'potenciales', 'principales', 'promete', 'promocionales', 'totales',
   'señala', 'señalan',
-  // ⚠️ FUTUROS IRREGULARES. O futuro regular é pego por `FUTURO` abaixo, mas
-  // estes encurtam o radical e terminam em `-drás`, `-brás` ou `-rrás`, que o
-  // padrão não alcança. E não dá para alcançar: "querrás" (futuro legítimo)
-  // tem exatamente a forma de "cerrás" (presente do voseo). Por sorte é
-  // conjunto FECHADO — o espanhol tem uma dúzia — então a lista é completa e
-  // não cresce.
-  'habrás', 'cabrás', 'podrás', 'querrás', 'sabrás', 'pondrás',
-  'saldrás', 'tendrás', 'valdrás', 'vendrás',
+  // ⚠️ PRETÉRITO DE PRIMEIRA PESSOA, e a razão de ele morar numa lista.
+  // "leí" e "registré" são o passado de quem fala — a voz do Betinho, que
+  // em português diz "Li o print e registrei!". E o pretérito de primeira
+  // pessoa de uma conjugação tem a MESMA grafia do imperativo rio-platense de
+  // outra: "viví" é as duas coisas, sem nada na palavra que diga qual.
+  //
+  // Alguém reescreveu a frase para "¡Captura leída y apuesta registrada!" só
+  // para calar este teste, e com isso o Betinho parou de falar na primeira
+  // pessoa em espanhol. A frase voltou; o conserto certo é esta lista.
+  'leí', 'registré', 'pensé', 'vi', 'encontré',
+  // ⚠️ OS FUTUROS IRREGULARES NÃO MORAM AQUI, e sim em `FUTURO` abaixo, com
+  // os regulares: é a mesma pergunta ("isto é futuro?") e estava respondida
+  // em dois lugares.
 ]);
 
 /** A forma clássica: infinitivo sem o -r, com acento na última sílaba. */
 const SUFIXO_ACENTUADO = /^[a-záéíóúñü]+(á|é|í|ás|és|ís)$/;
 
+const TEM_ACENTO = /[áéíóú]/;
+const silabas = (p: string) => (p.match(/[aeiouáéíóúü]+/g) ?? []).length;
+
 /**
- * O FUTURO do indicativo, que é igual em "tú" e em "vos".
+ * O FUTURO do indicativo, que é legítimo e tem a forma do voseo.
  *
- * ⚠️ Esta exceção nasceu de a guarda acusar "Recibirás", que é espanhol
- * perfeito e pan-hispânico. O futuro de segunda pessoa termina em `-ás` e
- * colide com o presente do voseo: "hablarás" (futuro, legítimo) contra
- * "hablás" (presente, rio-platense).
+ * "Recibirás" é espanhol perfeito e pan-hispânico, e esta guarda o acusava. O
+ * futuro de segunda pessoa termina em `-ás` e o de terceira em `-á`, as duas
+ * terminações do voseo: "hablarás" (futuro) contra "hablás" (presente
+ * rio-platense).
  *
- * O que os separa é a forma: o futuro é o INFINITIVO INTEIRO mais `-ás`, então
- * termina em `-arás`, `-erás` ou `-irás`. O presente do voseo é o radical mais
- * `-ás`, e só cai nesse padrão quando o radical já acaba em `r` — "cerrás"
- * termina em `rrás`, e continua sendo acusado, que é o certo.
+ * ⚠️ É LISTA, E NÃO REGRA, E ISSO FOI MEDIDO — TRÊS REGRAS FALHARAM ANTES.
+ *
+ * A tentação é separar por morfologia: o futuro é o INFINITIVO INTEIRO mais a
+ * desinência, então tirar o acento deixaria um infinitivo atrás, e o voseo
+ * deixaria um radical. Três versões dessa regra foram escritas, e cada uma
+ * abriu um buraco que o teste de regressão pegou:
+ *
+ *   1. casar `-ará|-erá|-irá` engoliu "mirá", que termina em "irá";
+ *   2. exigir que a raiz termine em "ar|er|ir" engoliu "mirá" outra vez,
+ *      porque "mir" termina em "ir";
+ *   3. exigir duas sílabas na raiz engoliu "liberá", porque "liber" tem duas.
+ *
+ * A terceira não foi azar, foi prova: **"liberá" (voseo de "liberar") e
+ * "beberá" (futuro de "beber") têm exatamente a mesma forma** — consoante,
+ * vogal, consoante, vogal, "r", "á". Nenhuma regra ortográfica separa as duas,
+ * porque a diferença não está na grafia: está em qual dos dois verbos existe.
+ * Isso é léxico, e léxico se escreve à mão.
+ *
+ * Então a lista. O preço é que um futuro novo na copy reprova e precisa de uma
+ * linha aqui — e é o preço certo a pagar, porque o erro para o outro lado foi o
+ * que derrubou as duas primeiras gerações desta guarda: "creá", "indicá",
+ * "marcá" e "cambiá" estavam na árvore com o teste verde.
+ *
+ * Medido: nos catálogos de hoje existe UM futuro regular, "recibirás". O resto
+ * da lista são os irregulares (conjunto fechado) e os regulares que a copy
+ * provavelmente vai querer.
  */
-const FUTURO = /(arás|erás|irás)$/;
+const FUTURO = new Set([
+  // Irregulares: encurtam o radical, e o espanhol tem uma dúzia. Fechado.
+  'habré', 'habrá', 'habrás', 'cabrá', 'cabrás', 'podrá', 'podrás',
+  'querrá', 'querrás', 'sabrá', 'sabrás', 'pondrá', 'pondrás',
+  'saldrá', 'saldrás', 'tendrá', 'tendrás', 'valdrá', 'valdrás',
+  'vendrá', 'vendrás', 'será', 'serás', 'dirá', 'dirás', 'hará', 'harás',
+  'dará', 'darás', 'irá', 'irás', 'verá', 'verás',
+  // Regulares. "recibirás" é o único que está nos catálogos; os outros entram
+  // porque são os verbos desta tela e a copy vai pedir.
+  'recibirá', 'recibirás', 'hablará', 'hablarás', 'vivirá', 'vivirás',
+  'apostará', 'apostarás', 'podrás', 'ganará', 'ganarás',
+  'registrará', 'registrarás', 'empezará', 'empezarás',
+]);
 
 /**
  * A forma com pronome colado, que PERDE o acento: "ajustala", "suscribite".
@@ -87,14 +129,12 @@ const COM_PRONOME_COLADO = /^[a-zñü]+[aei](lo|la|los|las|le|les|me|te|se|nos)$
 /** As duas marcas mais reconhecíveis, e sem ambiguidade nenhuma. */
 const MARCAS = new Set(['sos', 'vos']);
 
-const TEM_ACENTO = /[áéíóú]/;
-const silabas = (p: string) => (p.match(/[aeiouáéíóúü]+/g) ?? []).length;
 
 function ehVoseo(palavra: string): boolean {
   const b = palavra.toLowerCase();
   if (LEGITIMAS.has(b)) return false;
   if (MARCAS.has(b)) return true;
-  if (FUTURO.test(b)) return false;
+  if (FUTURO.has(b)) return false;
   if (SUFIXO_ACENTUADO.test(b)) return true;
   return COM_PRONOME_COLADO.test(b) && !TEM_ACENTO.test(b) && silabas(b) >= 3;
 }
@@ -139,8 +179,24 @@ describe('o espanhol do produto é pan-hispânico', () => {
         }
       }
 
-      // A mensagem lista chave e frase: quem quebrar isto precisa saber ONDE.
-      expect(achados, `formas de voseo em es/${area}:\n${achados.join('\n')}`).toEqual([]);
+      // ⚠️ A MENSAGEM DIZ O QUE FAZER, E NÃO SÓ O QUE ACHOU.
+      //
+      // Duas vezes esta guarda foi "resolvida" pelo caminho errado: alguém
+      // renomeou uma variável de produção, e alguém REESCREVEU a copy em
+      // espanhol para desviar de "Leí la captura y la registré" — que é
+      // espanhol perfeito. A guarda existe para proteger o texto, não para
+      // ditá-lo, e a mensagem precisa dizer isso para quem a encontrar
+      // quebrada às duas da manhã.
+      expect(
+        achados,
+        `possível voseo em es/${area}:\n${achados.join('\n')}\n\n` +
+          '⚠️ ANTES DE REESCREVER A FRASE: o pretérito de primeira pessoa ' +
+          '("leí", "registré", "pensé") tem a MESMA grafia do imperativo ' +
+          'rio-platense de outra conjugação, e nenhum padrão separa os dois ' +
+          'sem contexto.\n' +
+          'Se a forma estiver certa, acrescente a palavra a LEGITIMAS neste ' +
+          'arquivo. NÃO torça a copy para calar o teste, e NÃO afrouxe o padrão.',
+      ).toEqual([]);
     });
   }
 
@@ -177,6 +233,8 @@ describe('o espanhol do produto é pan-hispânico', () => {
       'suscríbete', 'míralo', 'puedes', 'prueba', 'haz',
       // Futuro do indicativo: igual em tú e em vos, e portanto legítimo.
       'recibirás', 'hablarás', 'podrás', 'tendrás', 'vivirás',
+      // Futuro de TERCEIRA pessoa, que fez alguém reescrever a copy.
+      'será', 'podrá', 'tendrá', 'hablará', 'vendrá', 'dirá', 'hará',
     ]) {
       expect(ehVoseo(legitimo), `não deveria acusar: ${legitimo}`).toBe(false);
     }

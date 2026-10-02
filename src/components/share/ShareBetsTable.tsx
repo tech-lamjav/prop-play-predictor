@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/collapsible';
 import type { ShareResolveBet } from '@/hooks/use-share-resolve';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { localeDoDateFns } from '@/utils/locale-do-date-fns';
 
 const PAGE_SIZE = 20;
 
@@ -118,7 +118,7 @@ export const ShareBetsTable: React.FC<ShareBetsTableProps> = ({ bets }) => {
                     ) : null}
                   </TableCell>
                   <TableCell className="text-xs">
-                    {format(new Date(bet.bet_date), 'dd/MM/yyyy', { locale: ptBR })}
+                    {format(new Date(bet.bet_date), 'dd/MM/yyyy', { locale: localeDoDateFns() })}
                   </TableCell>
                   <TableCell className="text-xs max-w-[200px] truncate" title={bet.bet_description}>
                     {bet.bet_description}
