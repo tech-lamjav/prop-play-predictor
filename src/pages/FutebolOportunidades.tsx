@@ -275,10 +275,10 @@ function OppMobileCard({ o, to, locked, result, homeGoals, awayGoals, canRegiste
             </div>
             <div className="mt-2 grid gap-1">
               {[
-                { label: t('numeros.chance'), valor: bloqueada ? null : chance != null ? `${chance}%` : '—' },
-                { label: t('numeros.odd'), valor: bloqueada ? null : fmtOdd(o.best_odd) },
-              ].map(({ label, valor }) => (
-                <div key={label} className="flex items-baseline justify-end gap-2">
+                { k: 'chance', label: t('numeros.chance'), valor: bloqueada ? null : chance != null ? `${chance}%` : '—' },
+                { k: 'odd', label: t('numeros.odd'), valor: bloqueada ? null : fmtOdd(o.best_odd) },
+              ].map(({ k, label, valor }) => (
+                <div key={k} className="flex items-baseline justify-end gap-2">
                   <span className="text-[8px] uppercase tracking-[0.14em] font-semibold text-ink-3">{label}</span>
                   <span className="text-[12px] font-bold tabular-nums leading-none text-ink">
                     {valor ?? <ValorBloqueado />}

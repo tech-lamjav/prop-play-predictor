@@ -293,9 +293,9 @@ export function JogoResumoPanel({
   const pct = (v: number | null) => (v == null ? null : Math.round(v * 100));
   const chegam = perfil
     ? [
-        { label: t('comoChegam.golsMarcados'), a: perfil.gf.home, b: perfil.gf.away, maiorEhCasa: true },
-        { label: t('comoChegam.golsSofridos'), a: perfil.ga.home, b: perfil.ga.away, maiorEhCasa: false },
-        { label: t('comoChegam.semSofrerGol'), a: pct(perfil.semSofrer.home), b: pct(perfil.semSofrer.away), maiorEhCasa: true, ehPercentual: true },
+        { k: 'golsMarcados', label: t('comoChegam.golsMarcados'), a: perfil.gf.home, b: perfil.gf.away, maiorEhCasa: true },
+        { k: 'golsSofridos', label: t('comoChegam.golsSofridos'), a: perfil.ga.home, b: perfil.ga.away, maiorEhCasa: false },
+        { k: 'semSofrerGol', label: t('comoChegam.semSofrerGol'), a: pct(perfil.semSofrer.home), b: pct(perfil.semSofrer.away), maiorEhCasa: true, ehPercentual: true },
       ].filter((x) => x.a != null && x.b != null)
     : [];
 
@@ -542,7 +542,7 @@ export function JogoResumoPanel({
                 const wb = `${Math.round(((c.b ?? 0) / tot) * 100)}%`;
                 const inteiro = 'ehPercentual' in c && c.ehPercentual === true;
                 return (
-                  <div key={c.label}>
+                  <div key={c.k}>
                     <div className="flex justify-between items-baseline mb-1 tabular-nums">
                       <span className="text-[14px] font-semibold" style={{ color: '#0a3d2e' }}>
                         {inteiro ? `${c.a}%` : d1(c.a)}

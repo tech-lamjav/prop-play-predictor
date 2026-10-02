@@ -1196,17 +1196,19 @@ export function BancadaMercados({
                 <div className="flex-1 min-w-0 grid gap-1.5 pl-4 border-l" style={{ borderColor: 'rgba(255,255,255,.15)' }}>
                   {[
                     {
+                      k: 'chance',
                       rotulo: t('numeros.chance'),
                       valor: valPrincipal ? `${Math.round(valPrincipal.prob_justa_fechamento * 100)}%` : '—',
                       cor: '#fff',
                     },
                     {
+                      k: 'odd',
                       rotulo: t('numeros.odd'),
                       valor: fmtOdd(cotacaoPrincipal.odd),
                       cor: '#fff',
                     },
-                  ].map(({ rotulo, valor, cor }) => (
-                    <div key={rotulo} className="flex items-baseline justify-between gap-2">
+                  ].map(({ k, rotulo, valor, cor }) => (
+                    <div key={k} className="flex items-baseline justify-between gap-2">
                       <span className="text-[9px] uppercase tracking-[0.14em]" style={{ color: 'rgba(255,255,255,.45)' }}>{rotulo}</span>
                       <span className="tabular-nums text-[17px] font-semibold leading-none" style={{ color: cor }}>
                         {valor}
