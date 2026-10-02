@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Info } from 'lucide-react';
 import type { Celula, LinhaLiquidada } from './placar-agregacao';
 import { CartaoDoGrupo } from './CartaoDoGrupo';
@@ -14,6 +15,8 @@ import { seloDeOculto, type MercadoOculto } from './placar-vitrine';
 
 /** Um dos dois períodos dentro do cartão comparado. */
 function LadoDoPeriodo({ rotulo, celula }: { rotulo: string; celula: Celula | null }) {
+  const { t } = useTranslation('socios');
+
   return (
     <span className="flex items-baseline justify-between gap-2 text-[12px]">
       <span className="truncate text-ink-dim">{rotulo}</span>
@@ -23,7 +26,7 @@ function LadoDoPeriodo({ rotulo, celula }: { rotulo: string; celula: Celula | nu
           <span className="text-ink-dim">{emN(celula.n)}</span>
         </span>
       ) : (
-        <span className="shrink-0 text-ink-dim">sem aposta</span>
+        <span className="shrink-0 text-ink-dim">{t('quebras.semAposta')}</span>
       )}
     </span>
   );
@@ -31,12 +34,14 @@ function LadoDoPeriodo({ rotulo, celula }: { rotulo: string; celula: Celula | nu
 
 /** A diferença, com a mesma regra da tabela comparada: fora do ruído é número, dentro é frase. */
 function DiferencaNoCartao({ c }: { c: Comparacao }) {
+  const { t } = useTranslation('socios');
+
   if (c.diferencaRoi === null) return <span className="text-[13px] text-ink-dim">—</span>;
 
   if (c.dentroDoRuido) {
     return (
       <span className="flex flex-col items-end">
-        <span className="text-[12px] text-ink-2">dentro do ruído</span>
+        <span className="text-[12px] text-ink-2">{t('quebras.ruido')}</span>
         <span className="text-[11px] tabular-nums text-ink-dim">
           {roiPct(c.diferencaRoi)} ± {epPct(c.erroDaDiferenca ?? 0)}
         </span>
@@ -85,6 +90,7 @@ export function QuebrasNoCelular({
   ocultos: MercadoOculto[];
   comparacao?: { liquidadasB: LinhaLiquidada[]; rotuloDeA: string; rotuloDeB: string };
 }) {
+  const { t } = useTranslation('socios');
   const [ativa, setAtiva] = useState(0);
   const [sobre, setSobre] = useState(false);
   /** As fichas abertas, uma em cima da outra: o degrau empilha, e o voltar desempilha. */
@@ -106,16 +112,22 @@ export function QuebrasNoCelular({
   const vazio = comparadas ? comparadas.length === 0 : linhas.length === 0;
 
   return (
-    <section aria-label="Quebras do placar">
+    <section aria-label={t('quebras.celular.regiao')}>
       <div className="flex items-center gap-2">
         <div
           role="group"
-          aria-label="Quebrar por"
+          aria-label={t('quebras.celular.quebrarPor')}
           className="flex flex-1 overflow-hidden rounded-rebrand-sm border border-line-2 bg-white"
         >
+          {/* A `key` é a POSIÇÃO e não o título: título é texto de tela, e
+              rótulo traduzido como chave remontaria os quatro botões a cada
+              troca de idioma. `QUEBRAS` é um array fixo de módulo, nunca
+              reordenado nem filtrado, então o índice é identidade estável aqui.
+              (O certo seria um campo `id` em `Quebra`; `placar-quebras.ts` está
+              fora deste passo.) */}
           {QUEBRAS.map((q, i) => (
             <button
-              key={q.titulo}
+              key={i}
               type="button"
               aria-pressed={i === ativa}
               onClick={() => {
@@ -126,13 +138,15 @@ export function QuebrasNoCelular({
                 i === ativa ? 'bg-forest text-white' : 'text-ink-2'
               }`}
             >
+              {/* `curto` vem de `placar-quebras.ts` e segue em português:
+                  aquele arquivo está fora deste passo da migração. */}
               {q.curto}
             </button>
           ))}
         </div>
         <button
           type="button"
-          aria-label="Sobre esta quebra"
+          aria-label={t('quebras.celular.sobre')}
           aria-expanded={sobre}
           onClick={() => setSobre((v) => !v)}
           className={`shrink-0 rounded-full border p-2 transition ${
@@ -151,9 +165,7 @@ export function QuebrasNoCelular({
 
       {vazio ? (
         <p className="mt-3 rounded-rebrand-md border border-line-2 bg-white px-4 py-8 text-[14px] text-ink-2">
-          {comparacao
-            ? 'Nenhuma oportunidade liquidada em nenhum dos dois períodos.'
-            : 'Nenhuma oportunidade liquidada no período.'}
+          {comparacao ? t('quebras.vazioComparado') : t('quebras.vazio')}
         </p>
       ) : comparadas && comparacao ? (
         <ul className="mt-3 flex flex-col gap-2">
@@ -200,8 +212,10 @@ export function QuebrasNoCelular({
       {fora > 0 && quebra.notaDosFora && (
         <p className="mt-2 px-1 text-[11px] text-ink-dim">
           <strong className="font-bold text-ink-2">
-            {fora} aposta{fora > 1 ? 's' : ''} fora desta quebra:
+            {t('quebras.celular.foraDaQuebra', { count: fora })}
           </strong>{' '}
+          {/* `notaDosFora` vem de `placar-quebras.ts` e segue em português:
+              aquele arquivo está fora deste passo da migração. */}
           {quebra.notaDosFora}
         </p>
       )}

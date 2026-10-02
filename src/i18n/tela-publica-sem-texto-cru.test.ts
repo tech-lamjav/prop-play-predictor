@@ -167,8 +167,12 @@ function candidatos(codigo: string): string[] {
   const achados: string[] = [];
 
   for (const [, texto] of limpo.matchAll(/>([^<>{}\n]{4,80})</g)) achados.push(texto.trim());
+  // ⚠️ OS NOMES DE PROP EM PORTUGUÊS FALTAVAM, e o código desta casa é em
+  // português: uma tabela com `titulo` e `descricao` passava inteira sem ser
+  // olhada. Foi assim que os módulos do placar guardaram título e explicação de
+  // quebra em português dentro de uma tela já traduzida.
   for (const [, , texto] of limpo.matchAll(
-    /\b(label|title|placeholder|aria-label|alt|name|rotulo)\s*[:=]\s*["']([^"'\n]{4,80})["']/g,
+    /\b(label|title|placeholder|aria-label|alt|name|rotulo|titulo|subtitulo|descricao|texto|legenda|explicacao|mensagem|aviso)\s*[:=]\s*["']([^"'\n]{4,80})["']/g,
   )) {
     achados.push(texto.trim());
   }
@@ -189,9 +193,25 @@ function candidatos(codigo: string): string[] {
  */
 const FORMA_DE_CHAVE = /^[a-z][A-Za-z0-9]*(\.[A-Za-z0-9_]+)+$/;
 
+/**
+ * O candidato é CÓDIGO, e não texto que alguém lê.
+ *
+ * ⚠️ O casador de `>texto<` não sabe o que é JSX. Numa expressão de
+ * comparação ele enxerga texto entre os sinais:
+ *
+ *   comecouEm > hoje || comecouEm < umAnoAtras(hoje)
+ *            └──────────────────┘
+ *            "hoje || comecouEm", e "hoje" está na lista de só-português
+ *
+ * Foi o que pôs `DarAssinatura.tsx` no backlog de componentes sem ele ter uma
+ * palavra de texto cru. Operador lógico e de igualdade não aparecem em frase
+ * de interface, então servem de assinatura do que é código.
+ */
+const PARECE_CODIGO = /(\|\||&&|=>|===|!==|==|!=)/;
 function ehPortugues(texto: string): boolean {
   if (NAO_E_TEXTO_DE_TELA.some((t) => texto.includes(t))) return false;
   if (FORMA_DE_CHAVE.test(texto)) return false;
+  if (PARECE_CODIGO.test(texto)) return false;
   const limpo = texto.replace(PROPRIOS, '');
   if (ORTOGRAFIA_SO_PT.test(limpo) || SUFIXO_SO_PT.test(limpo)) return true;
   const palavras = limpo.toLowerCase().match(/[a-záéíóúâêôãõçà-]{3,}/g) ?? [];
@@ -405,23 +425,22 @@ const BACKLOG_DE_COMPONENTES: Record<string, string> = {
   'src/components/dashboard/HeroKPIMobile.tsx': 'Betinho: painel',
   'src/components/dashboard/OddsHistogram.tsx': 'Betinho: painel',
   'src/utils/dashboardAggregations.ts': 'Betinho: painel',
-  // avulso (3)
+  // avulso (5)
   'src/components/FutebolDayStepper.tsx': 'avulso',
   'src/components/Seo.tsx': 'avulso',
   'src/components/UnitConfigurationModal.tsx': 'avulso',
+  'src/utils/futebol-escalacao.ts': 'avulso',
+  'src/utils/perfil-declarado.ts': 'avulso',
   // compartilhar (2)
   'src/components/share/ShareBetsTable.tsx': 'compartilhar',
   'src/components/share/ShareKpiCards.tsx': 'compartilhar',
-  // sócios (2)
-  'src/components/socios/DarAssinatura.tsx': 'sócios',
-  'src/components/socios/crm-assinatura-do-stripe.ts': 'sócios',
   // futebol: frases de premissa (contrato do banco) (2)
   'src/utils/futebol-evidencias.ts': 'futebol: frases de premissa (contrato do banco)',
   'src/utils/futebol-premissas.ts': 'futebol: frases de premissa (contrato do banco)',
-  // futebol (1)
-  'src/components/futebol/MotivosJogoPorJogo.tsx': 'futebol',
   // sócios: placar (1)
   'src/components/placar/placar-periodo.ts': 'sócios: placar',
+  // sócios (1)
+  'src/components/socios/crm-assinatura-do-stripe.ts': 'sócios',
 };
 
 describe('o que a tela desenha também não tem texto cru', () => {

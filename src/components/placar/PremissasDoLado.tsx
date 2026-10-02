@@ -1,16 +1,19 @@
 import { ChevronDown } from 'lucide-react';
+import { Trans, useTranslation } from 'react-i18next';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { emN, epPct, roiPct, taxaPct, tomDoRoi } from './placar-formato';
 import type { LadoMedido } from './placar-por-premissa';
 
 /** A diferença entre acesa e apagada, com o veredito. */
 function Diferenca({ valor, erro, ruido }: { valor: number | null; erro: number | null; ruido: boolean }) {
+  const { t } = useTranslation('socios');
+
   if (valor == null) return <span className="text-[13px] text-ink-dim">—</span>;
 
   if (ruido) {
     return (
       <span className="flex flex-col">
-        <span className="text-[12px] text-ink-2">ruído</span>
+        <span className="text-[12px] text-ink-2">{t('quebras.premissas.ruido')}</span>
         <span className="text-[11px] tabular-nums text-ink-dim">
           {roiPct(valor)} ± {epPct(erro ?? 0)}
         </span>
@@ -28,14 +31,6 @@ function Diferenca({ valor, erro, ruido }: { valor: number | null; erro: number 
   );
 }
 
-/** A frase que diz o que o número do cabeçalho é. */
-const LINHA_DE_BASE =
-  'Linha de base: apostar em todas as oportunidades publicadas deste lado. Cada premissa abaixo divide essas mesmas apostas em duas.';
-
-/** A legenda das duas leituras que a lista pede. */
-const COMO_LER =
-  'O número da direita é a diferença entre acesa e apagada: quanto o ROI muda quando aquela premissa acende. Em destaque, a diferença passa do próprio erro e a amostra a sustenta; como ruído, não passa — o número aparece pequeno, para ser olhado e não decidido. Peso zero não é erro: são as premissas que a recalibragem de agosto mediu como verdadeiras sobre o jogo e sem efeito na previsão — se uma delas separar aqui, ela é candidata a voltar a pesar.';
-
 /**
  * Um lado de um mercado, com as premissas dele.
  *
@@ -52,6 +47,7 @@ const COMO_LER =
  * um "Como ler", porque com oito lados na tela elas se repetiriam oito vezes.
  */
 export function PremissasDoLado({ lado }: { lado: LadoMedido }) {
+  const { t } = useTranslation('socios');
   const noCelular = useIsMobile();
 
   return (
@@ -63,12 +59,15 @@ export function PremissasDoLado({ lado }: { lado: LadoMedido }) {
       <summary className="cursor-pointer list-none border-b border-line-2 px-5 py-3 marker:content-none">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
           <ChevronDown className="h-4 w-4 shrink-0 self-center text-ink-dim transition group-open:rotate-180" />
+          {/* `lado.rotulo` vem de `placar-por-premissa.ts` (ROTULO_DO_LADO) e
+              segue em português: aquele arquivo está fora deste passo. */}
           <h3 className="font-display text-[16px] font-black text-ink">{lado.rotulo}</h3>
           <span className={`text-[15px] font-black tabular-nums ${tomDoRoi(lado.total.roi)}`}>
             {roiPct(lado.total.roi)}
           </span>
           <span className="text-[12px] text-ink-dim">
-            {taxaPct(lado.total.taxa)} de acerto · {emN(lado.total.n)} · ± {epPct(lado.total.ep)}
+            {t('quebras.deAcerto', { taxa: taxaPct(lado.total.taxa) })} · {emN(lado.total.n)} · ±{' '}
+            {epPct(lado.total.ep)}
           </span>
         </div>
         {/* Sem esta frase o número do cabeçalho parece só mais um: ele é a LINHA
@@ -76,8 +75,11 @@ export function PremissasDoLado({ lado }: { lado: LadoMedido }) {
             premissa abaixo é lida contra ele. */}
         {!noCelular && (
           <p className="mt-1 text-[12px] text-ink-2">
-            Linha de base: apostar em <strong className="text-ink">todas</strong> as oportunidades
-            publicadas deste lado. Cada premissa abaixo divide essas mesmas apostas em duas.
+            <Trans
+              t={t}
+              i18nKey="quebras.premissas.linhaDeBase"
+              components={[<strong className="text-ink" key="todas" />]}
+            />
           </p>
         )}
       </summary>
@@ -93,25 +95,28 @@ export function PremissasDoLado({ lado }: { lado: LadoMedido }) {
                 }`}
               >
                 <span className="min-w-0">
+                  {/* `p.label` é o nome da premissa, de `placar-por-premissa.ts`,
+                      e segue em português: aquele arquivo está fora deste passo. */}
                   <span className="block text-[14px] font-bold text-ink">{p.label}</span>
                   <span className="block text-[11px] text-ink-dim">
-                    peso {p.peso == null ? '—' : p.peso}
+                    {t('quebras.premissas.peso')} {p.peso == null ? '—' : p.peso}
                   </span>
                   <span className="mt-1 block text-[12px] tabular-nums text-ink-2">
                     {p.acesa.n === 0 ? (
-                      'nunca acendeu'
+                      t('quebras.premissas.nuncaAcendeu')
                     ) : (
                       <>
-                        acesa <span className={tomDoRoi(p.acesa.roi)}>{roiPct(p.acesa.roi)}</span>{' '}
+                        {t('quebras.premissas.acesa')}{' '}
+                        <span className={tomDoRoi(p.acesa.roi)}>{roiPct(p.acesa.roi)}</span>{' '}
                         <span className="text-ink-dim">{emN(p.acesa.n)}</span>
                       </>
                     )}
                     {' · '}
                     {p.apagada.n === 0 ? (
-                      'apagada —'
+                      t('quebras.premissas.apagadaVazia')
                     ) : (
                       <>
-                        apagada{' '}
+                        {t('quebras.premissas.apagada')}{' '}
                         <span className={tomDoRoi(p.apagada.roi)}>{roiPct(p.apagada.roi)}</span>{' '}
                         <span className="text-ink-dim">{emN(p.apagada.n)}</span>
                       </>
@@ -126,9 +131,21 @@ export function PremissasDoLado({ lado }: { lado: LadoMedido }) {
           </ul>
 
           <details className="border-t border-line-2 px-4 py-2 text-[12px] text-ink-2">
-            <summary className="cursor-pointer font-bold text-ink-dim">Como ler esta lista</summary>
-            <p className="mt-1">{LINHA_DE_BASE}</p>
-            <p className="mt-1">{COMO_LER}</p>
+            <summary className="cursor-pointer font-bold text-ink-dim">
+              {t('quebras.premissas.comoLer')}
+            </summary>
+            {/* A MESMA frase do desktop, e por isso a MESMA chave — o que muda é
+                só o destaque. O `<span>` existe para absorver a marcação sem
+                pintar nada: aqui a linha é a legenda de trás de um "Como ler",
+                e nela o negrito do desktop não aparecia. */}
+            <p className="mt-1">
+              <Trans
+                t={t}
+                i18nKey="quebras.premissas.linhaDeBase"
+                components={[<span key="todas" />]}
+              />
+            </p>
+            <p className="mt-1">{t('quebras.premissas.comoLerLista')}</p>
           </details>
         </>
       ) : (
@@ -137,11 +154,19 @@ export function PremissasDoLado({ lado }: { lado: LadoMedido }) {
             <table className="w-full border-collapse text-left">
               <thead>
                 <tr className="border-b border-line-2 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim">
-                  <th className="px-5 py-2 font-bold">Premissa</th>
-                  <th className="px-3 py-2 text-right font-bold">Peso na nota</th>
-                  <th className="px-3 py-2 text-right font-bold">ROI quando acendeu</th>
-                  <th className="px-3 py-2 text-right font-bold">ROI quando não</th>
-                  <th className="px-5 py-2 text-right font-bold">Quanto ela separa</th>
+                  <th className="px-5 py-2 font-bold">{t('quebras.premissas.coluna.premissa')}</th>
+                  <th className="px-3 py-2 text-right font-bold">
+                    {t('quebras.premissas.coluna.peso')}
+                  </th>
+                  <th className="px-3 py-2 text-right font-bold">
+                    {t('quebras.premissas.coluna.roiAcesa')}
+                  </th>
+                  <th className="px-3 py-2 text-right font-bold">
+                    {t('quebras.premissas.coluna.roiApagada')}
+                  </th>
+                  <th className="px-5 py-2 text-right font-bold">
+                    {t('quebras.premissas.coluna.separa')}
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -158,7 +183,9 @@ export function PremissasDoLado({ lado }: { lado: LadoMedido }) {
                     </td>
                     <td className="px-3 py-2.5 text-right text-[13px] tabular-nums">
                       {p.acesa.n === 0 ? (
-                        <span className="text-[12px] text-ink-dim">nunca acendeu</span>
+                        <span className="text-[12px] text-ink-dim">
+                          {t('quebras.premissas.nuncaAcendeu')}
+                        </span>
                       ) : (
                         <>
                           <span className={tomDoRoi(p.acesa.roi)}>{roiPct(p.acesa.roi)}</span>
@@ -189,12 +216,11 @@ export function PremissasDoLado({ lado }: { lado: LadoMedido }) {
               a primeira pessoa a ver esta tabela perguntou o que ela estava
               medindo. */}
           <p className="border-t border-line-2 px-5 py-2 text-[11px] text-ink-dim">
-            A coluna da direita é a diferença entre as duas do meio: quanto o ROI muda quando aquela
-            premissa acende. Em destaque, a diferença passa do próprio erro e a amostra a sustenta;
-            como <strong className="font-bold">ruído</strong>, não passa — o número aparece pequeno,
-            para ser olhado e não decidido. Peso zero não é erro: são as premissas que a recalibragem
-            de agosto mediu como verdadeiras sobre o jogo e sem efeito na previsão — se uma delas
-            separar aqui, ela é candidata a voltar a pesar.
+            <Trans
+              t={t}
+              i18nKey="quebras.premissas.comoLerTabela"
+              components={[<strong className="font-bold" key="ruido" />]}
+            />
           </p>
         </>
       )}

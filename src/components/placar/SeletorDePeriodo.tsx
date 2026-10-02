@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { CalendarDays, ChevronDown } from 'lucide-react';
 import type { DateRange } from 'react-day-picker';
 import { Calendar } from '@/components/ui/calendar';
@@ -34,6 +35,7 @@ export function SeletorDePeriodo({
   hoje: string;
   aoAplicar: (periodo: Periodo, periodoB: Periodo | null) => void;
 }) {
+  const { t } = useTranslation('socios');
   const [aberto, setAberto] = useState(false);
   const noCelular = useIsMobile();
 
@@ -82,7 +84,7 @@ export function SeletorDePeriodo({
           <span>{rotuloDoPeriodo(periodo)}</span>
           {periodoB && (
             <span className="text-[12px] font-normal text-ink-dim">
-              vs {rotuloDoPeriodo(periodoB)}
+              {t('placar.periodo.versus', { periodo: rotuloDoPeriodo(periodoB) })}
             </span>
           )}
           <ChevronDown className="h-4 w-4 text-ink-dim" />
@@ -100,8 +102,10 @@ export function SeletorDePeriodo({
               antes de a pessoa chegar nele. */}
           <div className="flex flex-row flex-wrap gap-1 border-b border-line-2 bg-canvas p-3 sm:flex-col sm:border-b-0 sm:border-r">
             <span className="mb-1 hidden font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-ink-dim sm:block">
-              Atalhos
+              {t('placar.periodo.atalhos')}
             </span>
+            {/* ⚠️ `a.rotulo` continua em português: os ATALHOS moram em
+                `placar-periodo.ts`, que não entra nesta migração. */}
             {ATALHOS.filter((a) => a.id !== 'personalizado').map((a, i) => {
               const janela = a.periodo(hoje);
               const ativo = janela.de === rascunho.de && janela.ate === rascunho.ate;
@@ -175,7 +179,7 @@ export function SeletorDePeriodo({
                 }}
                 className="h-4 w-4 accent-forest"
               />
-              Comparar com
+              {t('placar.periodo.compararCom')}
               <span className={comparando ? 'font-bold' : 'text-ink-dim'}>
                 {rotuloDoPeriodo(rascunhoB)}
               </span>
@@ -185,16 +189,16 @@ export function SeletorDePeriodo({
               <div className="mt-2 flex flex-wrap items-center gap-2 text-[13px]">
                 <input
                   type="date"
-                  aria-label="Início do período de comparação"
+                  aria-label={t('placar.periodo.inicioDaComparacao')}
                   value={rascunhoB.de}
                   max={rascunhoB.ate}
                   onChange={(e) => setRascunhoB({ ...rascunhoB, de: e.target.value })}
                   className="rounded-rebrand-sm border border-line-2 px-2 py-1"
                 />
-                <span className="text-ink-dim">até</span>
+                <span className="text-ink-dim">{t('placar.periodo.ate')}</span>
                 <input
                   type="date"
-                  aria-label="Fim do período de comparação"
+                  aria-label={t('placar.periodo.fimDaComparacao')}
                   value={rascunhoB.ate}
                   min={rascunhoB.de}
                   onChange={(e) => setRascunhoB({ ...rascunhoB, ate: e.target.value })}
@@ -204,21 +208,21 @@ export function SeletorDePeriodo({
             )}
 
             <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-line-2 pt-3">
-              <span className="text-[11px] text-ink-dim">Fuso das datas: Brasília</span>
+              <span className="text-[11px] text-ink-dim">{t('placar.periodo.fuso')}</span>
               <span className="flex gap-2">
                 <button
                   type="button"
                   onClick={() => setAberto(false)}
                   className="rounded-rebrand-sm border border-line-2 px-3 py-1.5 text-[13px] font-bold text-ink-2 transition hover:border-ink hover:text-ink"
                 >
-                  Cancelar
+                  {t('placar.periodo.cancelar')}
                 </button>
                 <button
                   type="button"
                   onClick={aplicar}
                   className="rounded-rebrand-sm bg-forest px-3 py-1.5 text-[13px] font-bold text-white transition hover:bg-forest/90"
                 >
-                  Atualizar
+                  {t('placar.periodo.atualizar')}
                 </button>
               </span>
             </div>

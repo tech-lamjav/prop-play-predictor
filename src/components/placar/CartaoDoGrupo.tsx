@@ -1,4 +1,5 @@
 import { ChevronRight } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { apostasEmPalavras, roiPct, taxaPct, tomDoRoi } from './placar-formato';
 import type { Granularidade } from './placar-evolucao';
 import type { LinhaDaMatriz, Matriz } from './placar-matriz';
@@ -27,6 +28,7 @@ export function CartaoDoGrupo({
   granularidade: Granularidade;
   aoAbrir: () => void;
 }) {
+  const { t } = useTranslation('socios');
   const { celula } = linha.total;
 
   return (
@@ -46,7 +48,10 @@ export function CartaoDoGrupo({
             )}
           </span>
           <span className="mt-0.5 block text-[12px] text-ink-dim">
-            {apostasEmPalavras(celula.n)} · {taxaPct(celula.taxa, 0)} de acerto
+            {/* `apostasEmPalavras` ainda devolve português: ele mora em
+                `placar-formato.ts`, que está fora deste passo da migração. */}
+            {apostasEmPalavras(celula.n)} ·{' '}
+            {t('quebras.deAcerto', { taxa: taxaPct(celula.taxa, 0) })}
           </span>
         </span>
 

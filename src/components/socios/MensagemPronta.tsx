@@ -1,8 +1,16 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Bloco } from './Bloco';
 import { linkDoWhatsApp, type ModeloDeMensagem } from './crm-mensagens';
 
-/** As opções em blocos por etapa, na ordem em que chegaram. */
+/**
+ * As opções em blocos por etapa, na ordem em que chegaram.
+ *
+ * ⚠️ `opcao.grupo` é CHAVE de catálogo, e comparar CHAVE aqui é justamente o
+ * certo: o agrupamento tem de sair igual em qualquer idioma. Comparando o
+ * rótulo pintado, dois grupos que coincidissem na tradução viriam juntos num
+ * idioma e separados no outro.
+ */
 function agruparPorEtapa(opcoes: ModeloDeMensagem[]) {
   return opcoes.reduce<{ nome: string; itens: ModeloDeMensagem[] }[]>((grupos, opcao) => {
     const ultimo = grupos[grupos.length - 1];
@@ -52,6 +60,7 @@ export function MensagemPronta({
   /** Qual das opções é o `modelo`. É a que a tela marca como sugerida. */
   idSugerido?: string;
 }) {
+  const { t } = useTranslation('socios');
   /** Nulo enquanto intocado. É o que separa "não mexi" de "apaguei tudo". */
   const [editado, setEditado] = useState<string | null>(null);
   /** Nulo enquanto o sócio não escolheu outra: a caixa segue a sugestão. */
@@ -83,13 +92,13 @@ export function MensagemPronta({
   };
 
   return (
-    <Bloco titulo="Mensagem pronta">
+    <Bloco titulo={t('ficha.mensagem.titulo')}>
       {opcoes && opcoes.length > 1 ? (
         <label className="mb-2 block text-[12px] text-ink-2">
-          Trocar a mensagem
+          {t('ficha.mensagem.trocar')}
           <select
             value={escolhido ?? idSugerido ?? ''}
-            aria-label="Escolher outra mensagem pronta"
+            aria-label={t('ficha.mensagem.escolherAria')}
             onChange={(e) => {
               const id = e.target.value;
               // Voltar à sugerida é voltar ao automático, e não fixar o texto
@@ -101,11 +110,14 @@ export function MensagemPronta({
             className="mt-1 block h-9 w-full rounded-rebrand-sm border border-line-2 bg-white px-2 text-[13px] text-ink sm:w-auto sm:min-w-[260px]"
           >
             {agruparPorEtapa(opcoes).map((grupo) => (
-              <optgroup key={grupo.nome} label={grupo.nome}>
+              // `key={grupo.nome}` é a CHAVE do catálogo, e não o rótulo
+              // pintado: identificador ESTÁVEL, que não remonta a lista quando o
+              // idioma troca. O `label` é que passa pelo `t()`.
+              <optgroup key={grupo.nome} label={t(grupo.nome)}>
                 {grupo.itens.map((opcao) => (
                   <option key={opcao.id} value={opcao.id}>
-                    {opcao.rotulo}
-                    {opcao.id === idSugerido ? ' (sugerida)' : ''}
+                    {t(opcao.rotulo, opcao.rotuloDados)}
+                    {opcao.id === idSugerido ? t('ficha.mensagem.sugerida') : ''}
                   </option>
                 ))}
               </optgroup>
@@ -115,8 +127,12 @@ export function MensagemPronta({
       ) : null}
 
       <label className="sr-only" htmlFor="crm-mensagem">
-        Mensagem
+        {t('ficha.mensagem.rotuloDoCampo')}
       </label>
+      {/* ⚠️ O TEXTO da mensagem fica fora do catálogo, e continua em português:
+          é copy que o sócio cola no WhatsApp de um lead brasileiro, e traduzi-lo
+          mandaria espanhol para quem fala português. A fronteira está
+          documentada em `ModeloDeMensagem.texto`, em `crm-mensagens.ts`. */}
       <textarea
         id="crm-mensagem"
         value={texto}
@@ -134,7 +150,7 @@ export function MensagemPronta({
           onClick={copiar}
           className="h-10 rounded-rebrand-sm border border-line-2 px-4 text-[14px] font-bold text-ink hover:border-forest hover:text-forest"
         >
-          Copiar
+          {t('ficha.mensagem.copiar')}
         </button>
 
         {link ? (
@@ -144,10 +160,10 @@ export function MensagemPronta({
             rel="noopener noreferrer"
             className="flex h-10 items-center rounded-rebrand-sm bg-forest px-4 text-[14px] font-bold text-white"
           >
-            Abrir no WhatsApp
+            {t('ficha.mensagem.abrirNoWhatsApp')}
           </a>
         ) : (
-          <span className="text-[13px] text-ink-2">Sem WhatsApp no cadastro</span>
+          <span className="text-[13px] text-ink-2">{t('ficha.mensagem.semWhatsApp')}</span>
         )}
 
         {editado !== null && (
@@ -159,17 +175,15 @@ export function MensagemPronta({
             }}
             className="text-[13px] font-bold text-forest hover:underline"
           >
-            Voltar ao modelo
+            {t('ficha.mensagem.voltarAoModelo')}
           </button>
         )}
 
-        {copiado && <span className="text-[13px] text-forest">Copiado</span>}
+        {copiado && <span className="text-[13px] text-forest">{t('ficha.mensagem.copiado')}</span>}
       </div>
 
       {falhouAoCopiar && (
-        <p className="mt-2 text-[13px] font-bold text-ink">
-          Não deu para copiar sozinho. Selecione o texto acima e copie na mão.
-        </p>
+        <p className="mt-2 text-[13px] font-bold text-ink">{t('ficha.mensagem.falhouAoCopiar')}</p>
       )}
     </Bloco>
   );

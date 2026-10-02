@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Seo } from '@/components/Seo';
 import { CabecalhoDoPlacar } from '@/components/placar/CabecalhoDoPlacar';
@@ -40,6 +41,7 @@ import { brtToday } from '@/utils/futebol-datas';
  * toca a janela pelos DOIS eixos, então quem escolheu o eixo tem de recortar.
  */
 export default function PlacarDaMetodologia() {
+  const { t } = useTranslation('socios');
   const hoje = brtToday();
   const [periodo, setPeriodo] = useState<Periodo>(() => periodoPadrao(hoje));
   const [eixo, setEixo] = useState<Eixo>('jogo');
@@ -126,16 +128,14 @@ export default function PlacarDaMetodologia() {
 
   const resumo =
     estado.tipo === 'pronto'
-      ? `${a.publicadas.length} ${
-          a.publicadas.length === 1 ? 'oportunidade publicada' : 'oportunidades publicadas'
-        } no período`
+      ? t('paginas.placar.resumo', { count: a.publicadas.length })
       : estado.tipo === 'erro'
-        ? 'placar indisponível'
-        : 'carregando…';
+        ? t('paginas.placar.resumoIndisponivel')
+        : t('paginas.placar.carregando');
 
   return (
     <>
-      <Seo noindex title="Metodologia | Smart Betting" />
+      <Seo noindex title={`${t('paginas.placar.tituloDaAba')} | Smart Betting`} />
       <AnalyticsNav />
 
       <div className="theme-bolao min-h-screen bg-canvas text-ink">
@@ -198,8 +198,8 @@ export default function PlacarDaMetodologia() {
           <div className="mx-auto max-w-6xl px-4 pb-10">
             <p className="text-[14px] text-ink-2">
               {estado.tipo === 'erro'
-                ? 'Não deu para carregar as oportunidades publicadas. Uma tabela vazia diria que a metodologia não publicou nada, o que é diferente de não ter resposta.'
-                : 'Carregando…'}
+                ? t('paginas.placar.erroAoCarregar')
+                : t('paginas.placar.carregandoBloco')}
             </p>
           </div>
         )}

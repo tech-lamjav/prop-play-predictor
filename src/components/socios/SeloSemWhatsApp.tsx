@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next';
+
 /**
  * O selo de quem não dá para abordar por WhatsApp.
  *
@@ -15,16 +17,14 @@
  * sócio tomou, e que dá para desfazer na ficha.
  */
 export function SeloSemWhatsApp({ marcado }: { marcado: boolean }) {
+  const { t } = useTranslation('socios');
+
   return (
     <span
-      title={
-        marcado
-          ? 'Marcado na mão: o número está no cadastro, mas não leva à pessoa.'
-          : 'Sem número que abra conversa. Só dá para chegar por e-mail.'
-      }
+      title={marcado ? t('ficha.whatsapp.tituloMarcado') : t('ficha.whatsapp.tituloSemNumero')}
       className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full bg-canvas px-2 py-0.5 text-[10.5px] font-bold text-ink-2"
     >
-      {marcado ? 'Sem WhatsApp · marcado' : 'Sem WhatsApp'}
+      {marcado ? t('ficha.whatsapp.seloMarcado') : t('ficha.whatsapp.selo')}
     </span>
   );
 }

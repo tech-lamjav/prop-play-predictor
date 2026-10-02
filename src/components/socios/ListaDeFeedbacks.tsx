@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { brtDayOf } from '@/utils/futebol-datas';
 import { formatarDia } from './crm-lista';
 import { ROTA_DO_CRM } from './crm-vocabulario';
@@ -22,19 +23,16 @@ export function ListaDeFeedbacks({
   estado: EstadoDosFeedbacks;
   nomeDoSocio: (id: string | null) => string;
 }) {
+  const { t } = useTranslation('socios');
+
   if (estado.tipo === 'carregando') {
-    return <p className="px-4 py-6 text-[14px] text-ink-2">Carregando os feedbacks…</p>;
+    return <p className="px-4 py-6 text-[14px] text-ink-2">{t('dinheiro.feedbacks.carregando')}</p>;
   }
   if (estado.tipo === 'erro') {
-    return <p className="px-4 py-6 text-[14px] text-ink-2">Não deu para carregar os feedbacks.</p>;
+    return <p className="px-4 py-6 text-[14px] text-ink-2">{t('dinheiro.feedbacks.erro')}</p>;
   }
   if (estado.feedbacks.length === 0) {
-    return (
-      <p className="px-4 py-6 text-[14px] text-ink-2">
-        Nenhum feedback registrado ainda. Eles aparecem aqui quando alguém marca uma anotação como
-        feedback na ficha de um lead.
-      </p>
-    );
+    return <p className="px-4 py-6 text-[14px] text-ink-2">{t('dinheiro.feedbacks.vazio')}</p>;
   }
 
   return (
@@ -44,7 +42,9 @@ export function ListaDeFeedbacks({
         return (
           <li key={f.id} className="border-b border-line-2 px-4 py-4 last:border-b-0">
             <p className="text-[12px] text-ink-2">
-              {dia ? formatarDia(dia) : 'sem data'} · registrado por {nomeDoSocio(f.autor)}
+              {dia ? formatarDia(dia) : t('dinheiro.feedbacks.semData')}
+              {' · '}
+              {t('dinheiro.feedbacks.registradoPor', { socio: nomeDoSocio(f.autor) })}
             </p>
             <p className="mt-1 whitespace-pre-wrap text-[15px] text-ink">{f.texto}</p>
             <Link

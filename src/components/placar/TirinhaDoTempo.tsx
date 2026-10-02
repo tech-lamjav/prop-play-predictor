@@ -1,5 +1,6 @@
+import { useTranslation } from 'react-i18next';
 import { roiPct } from './placar-formato';
-import { ROTULO_DA_GRANULARIDADE, type Granularidade } from './placar-evolucao';
+import { CHAVE_DO_DEGRAU, type Granularidade } from './placar-evolucao';
 import type { CelulaDaMatriz, Matriz } from './placar-matriz';
 
 /** A altura de cada metade, em px: acima do zero o que ganhou, abaixo o que perdeu. */
@@ -34,6 +35,8 @@ export function TirinhaDoTempo({
   escala: number;
   granularidade: Granularidade;
 }) {
+  const { t } = useTranslation('socios');
+
   const descricao = gavetas
     .filter((g) => porGaveta[g.chave])
     .map((g) => `${g.rotulo} ${roiPct(porGaveta[g.chave].celula.roi)}`)
@@ -43,7 +46,12 @@ export function TirinhaDoTempo({
     <span className="block w-full">
       <span
         role="img"
-        aria-label={`ROI por ${ROTULO_DA_GRANULARIDADE[granularidade].toLowerCase()}: ${descricao}`}
+        // O `.toLowerCase()` cai sobre o texto JÁ traduzido: é ele que faz
+        // "Semana" virar "semana" dentro da frase, nos dois idiomas.
+        aria-label={t('placar.tirinha.aria', {
+          degrau: t(CHAVE_DO_DEGRAU[granularidade]).toLowerCase(),
+          descricao,
+        })}
         className="relative flex w-full gap-[2px]"
         style={{ height: METADE * 2 }}
       >

@@ -4,6 +4,10 @@
  * As duas tabelas — a de um período e a comparada — desenhavam este bloco
  * idêntico, incluindo as classes do selo. Uma cópia só divergiria no dia em que
  * alguém mexesse numa delas.
+ *
+ * Não tem `useTranslation`, e isso é correto: tudo que ele escreve na tela
+ * chega por `props` — o nome do grupo e o selo —, e quem traduz é quem monta
+ * esses valores. Texto de tela próprio ele não tem nenhum.
  */
 export function CelulaDoGrupo({ nome, selo }: { nome: string; selo: string | null }) {
   return (

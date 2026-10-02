@@ -284,6 +284,76 @@ com vírgula — publica "Más 2.5 goles" com ponto. O mesmo vale para linha de
 córner, hándicap e métricas como xG e posse. Dinheiro segue o país; cotação
 segue o setor. A régua está em `src/utils/formato.ts`.
 
+### Termos do Bolão escolhidos sem fonte
+
+O bloco do Bolão logado precisou de termos que o glossário não cobria e que
+nenhuma fonte de operador ou de imprensa resolve. Ficam decididos por uso, cada
+um com o par em espanhol declarado, e **todos valem revisão de falante nativo**:
+
+**Bolão**: é NOME DO PRODUTO e não se traduz em nenhum idioma — nem "Quiniela"
+nem "Polla". É também invariável no plural em espanhol, como o catálogo já
+fazia na landing ("Los demás Bolão que tengas").
+_Avoid_: Quiniela, Polla, Bolões (em espanhol)
+_ES_: **Bolão**
+
+**Mata-mata**: a fase de eliminação direta.
+"Eliminatorias" seria o termo mais curto e é o que primeiro vem à cabeça, mas na
+América do Sul "eliminatorias" são as ELIMINATÓRIAS da Copa, o qualificatório —
+usá-lo aqui trocaria uma fase do torneio por outra competição inteira.
+_Avoid_: Eliminatorias, Fase final
+_ES_: **Eliminación directa**
+
+**Goleiro** (prêmio de jogador): três dos quatro países escrevem "arquero" e só
+o México escreve "portero". Mesma aritmética da decisão de "Fecha, e não
+jornada", e a mesma consciência de que soa levemente estrangeiro para um dos
+quatro.
+_Avoid_: Portero, Guardameta
+_ES_: **Arquero**
+
+**Craque** (prêmio de jogador): o melhor jogador do torneio. Não há termo
+hispano único — "crack" existe mas é coloquial e não nomeia o prêmio.
+_Avoid_: Crack, Balón de Oro
+_ES_: **Mejor jugador**
+
+**Tabela da Copa**: a lista de jogos com data e hora.
+"Fixture" é corrente na Argentina e no Chile e quase ausente no México; a
+palavra neutra que serve aos quatro é "calendario".
+_Avoid_: Fixture, Tabla
+_ES_: **Calendario del Mundial**
+
+### Termos da NBA logada escolhidos sem fonte
+
+O bloco da NBA logada (oportunidades do dia, relatório em PDF, painel do
+jogador) precisou de termos que o glossário não cobria e que nenhuma fonte de
+operador resolve. Ficam decididos por uso e **todos valem revisão de falante
+nativo**:
+
+**Gatilho**: o titular desfalcado que abre a janela — é dele que a oportunidade
+nasce. Já era o termo usado no catálogo em espanhol da NBA pública antes deste
+bloco; fica declarado aqui porque até agora só existia no catálogo. "Gatillo" é
+o gatilho de arma e não serve; "disparador" é o que a técnica usa nos quatro
+países.
+_Avoid_: Gatillo, Detonante
+_ES_: **Disparador**
+
+**Oportunidade destravada**: as oportunidades que o desfalque de um gatilho
+abriu. "Destrabada" existe mas carrega a ideia de desatolar, não de abrir
+acesso.
+_Avoid_: Destrabada, Liberada
+_ES_: **Desbloqueada**
+
+**Elenco do time** (a lista de jogadores por time): os quatro países dividem de
+verdade — "plantel" é corrente no eixo sul-americano e "plantilla" no México e
+na Espanha. Nenhuma das duas serve aos quatro sem soar estrangeira em algum
+lugar; a escolha é "plantilla", e é a mais frágil deste bloco.
+_Avoid_: Roster, Nómina
+_ES_: **Plantilla**
+
+**Posto do time na liga** (o "Team Rank" do painel): segue "Puesto", que é o que
+o catálogo da NBA já usa para posição na tabela.
+_Avoid_: Ranking, Posición
+_ES_: **Puesto del equipo**
+
 ### O que ficou sem fonte
 
 Sete itens da pesquisa não têm fonte estática e estão decididos por uso, não
