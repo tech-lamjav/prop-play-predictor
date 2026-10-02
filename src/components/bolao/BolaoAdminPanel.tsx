@@ -42,6 +42,7 @@ import type { BolaoRankingEntry, WcMatch, SpecialDeadlinesConfig } from '@/servi
 import { specialDeadline } from '@/components/bolao/special-deadlines';
 import { useTelegramLink } from '@/hooks/use-telegram-link';
 import { telegramBotUrl } from '@/config/environment';
+import { localeAtivo } from '@/utils/idioma-ativo';
 
 interface BolaoAdminPanelProps {
   open: boolean;
@@ -174,7 +175,7 @@ function brtInputToIso(v: string): string {
 /** Formata um prazo pra exibição curta, ex "28/06 16:00". */
 function fmtDeadlineShort(d: Date | null): string {
   if (!d) return '—';
-  return new Intl.DateTimeFormat('pt-BR', {
+  return new Intl.DateTimeFormat(localeAtivo(), {
     timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
   }).format(d).replace(',', '');
 }

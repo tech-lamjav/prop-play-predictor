@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router-dom';
 import { ROTA_DO_CRM } from './crm-vocabulario';
 
@@ -15,6 +16,7 @@ export const ROTA_DAS_ASSINATURAS = `${ROTA_DO_CRM}/assinaturas`;
  * Ela NÃO esconde nada: quem protege o painel é a política de linha do banco.
  */
 export function CabecalhoDoCrm({ resumo }: { resumo: string }) {
+  const { t } = useTranslation('socios');
   const { pathname } = useLocation();
 
   /**
@@ -40,9 +42,11 @@ export function CabecalhoDoCrm({ resumo }: { resumo: string }) {
   return (
     <div className="border-b border-line-2 bg-white">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-4">
-        <h1 className="font-display text-2xl font-black text-ink">CRM</h1>
+        <h1 className="font-display text-2xl font-black text-ink">
+          {t('painel.cabecalho.titulo')}
+        </h1>
         <span className="rounded-full bg-forest/10 px-2.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-forest">
-          Uso interno
+          {t('painel.cabecalho.usoInterno')}
         </span>
         <p className="text-[13px] text-ink-2">{resumo}</p>
       </div>
@@ -51,15 +55,15 @@ export function CabecalhoDoCrm({ resumo }: { resumo: string }) {
 
         {/* As seções internas ficam aqui, e não no header de cima: a navegação
             do painel não se mistura com a que o assinante vê. */}
-        <nav aria-label="Seções do CRM" className="flex flex-wrap gap-1">
+        <nav aria-label={t('painel.cabecalho.ariaSecoes')} className="flex flex-wrap gap-1">
           <Link to={ROTA_DO_CRM} className={aparencia(nosLeads)}>
-            Leads
+            {t('painel.cabecalho.leads')}
           </Link>
           <Link to={ROTA_DAS_ASSINATURAS} className={aparencia(nasAssinaturas)}>
-            Assinaturas
+            {t('painel.cabecalho.assinaturas')}
           </Link>
           <Link to={ROTA_DOS_FEEDBACKS} className={aparencia(nosFeedbacks)}>
-            Feedbacks
+            {t('painel.cabecalho.feedbacks')}
           </Link>
         </nav>
       </div>

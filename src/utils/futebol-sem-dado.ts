@@ -1,3 +1,5 @@
+import type { CopyComParametros } from '@/utils/futebol-copy';
+
 // ============================================================
 // futebol-sem-dado.ts — "não deu para conferir tudo"
 // ============================================================
@@ -49,16 +51,32 @@
 // ============================================================
 
 /**
+ * O aviso, em uma frase e com a contagem dentro dela.
+ *
+ * ⚠️ A contagem entra pelo `count` do i18next, e não por um ramo `n === 1` em
+ * código: a concordância é regra de idioma, e esta frase é a mesma em português e
+ * em espanhol menos a palavra "premissa" — que tem plural em cada um.
+ */
+export const COPY_DO_SEM_DADO = {
+  aviso_zero:
+    'Faltou informação para conferir {{count}} premissas deste jogo. A leitura saiu com menos informação do que o normal, e não com informação contra.',
+  aviso_one:
+    'Faltou informação para conferir {{count}} premissa deste jogo. A leitura saiu com menos informação do que o normal, e não com informação contra.',
+  aviso_other:
+    'Faltou informação para conferir {{count}} premissas deste jogo. A leitura saiu com menos informação do que o normal, e não com informação contra.',
+} as const;
+
+/**
  * O aviso, ou null quando não há o que avisar.
  *
  * Devolver null em vez de string vazia é de propósito: quem chama decide se
  * renderiza, e um aviso que aparece sempre não é aviso.
+ *
+ * Devolve o PEDIDO e não a frase (#544 estendido às evidências): era daqui que
+ * saía o "Faltou informação para conferir 1 premissa deste jogo" que o usuário
+ * fotografou no site em espanhol.
  */
-export function avisoSemDado(contador: number | null | undefined): string | null {
+export function copyDoSemDado(contador: number | null | undefined): CopyComParametros | null {
   if (typeof contador !== 'number' || !isFinite(contador) || contador < 1) return null;
-
-  const n = Math.floor(contador);
-  const premissas = n === 1 ? '1 premissa' : `${n} premissas`;
-
-  return `Faltou informação para conferir ${premissas} deste jogo. A leitura saiu com menos informação do que o normal, e não com informação contra.`;
+  return { chave: 'semDado.aviso', params: { count: Math.floor(contador) } };
 }

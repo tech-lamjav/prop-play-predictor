@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronDown } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Crest } from './Crest';
@@ -23,24 +24,38 @@ import type { FutebolStandingRow } from '@/services/futebol-data.service';
 const GRID = 'grid grid-cols-[26px_1fr_24px_24px_24px_24px_34px_38px] gap-1.5 items-center';
 const GRID_M = 'grid grid-cols-[22px_1fr_24px_32px_34px] gap-2 items-center';
 
-/** Traduz a descrição oficial da API para o rótulo curto que vai na tela. */
-function rotuloZona(desc: string): { texto: string; cor: string } {
+/**
+ * A descrição oficial da API virada em CHAVE de catálogo e cor.
+ *
+ * Devolve chave e não frase pronta, porque a tela pode estar em espanhol
+ * (#538). Descrição que não é nenhuma das conhecidas vem com `chave: null`, e aí
+ * a tela mostra o texto cru da API — que é melhor do que inventar zona.
+ *
+ * A comparação é sempre contra o texto EM INGLÊS da fonte, que é identificador
+ * e não rótulo: traduzir o rótulo não pode mudar em que bloco um time cai.
+ */
+function rotuloZona(desc: string): { chave: string | null; bruto: string; cor: string } {
   const d = desc.toLowerCase();
-  if (d.includes('relegation')) return { texto: 'Rebaixamento', cor: '#b8341c' };
+  const zona = (chave: string, cor: string) => ({ chave, bruto: desc, cor });
+  if (d.includes('relegation')) return zona('classificacao.zona.rebaixamento', '#b8341c');
   if (d.includes('libertadores')) {
     return d.includes('qualification')
-      ? { texto: 'Pré-Libertadores', cor: '#2f7d50' }
-      : { texto: 'Libertadores', cor: '#0a3d2e' };
+      ? zona('classificacao.zona.preLibertadores', '#2f7d50')
+      : zona('classificacao.zona.libertadores', '#0a3d2e');
   }
-  if (d.includes('sudamericana')) return { texto: 'Sul-Americana', cor: '#1a5fb4' };
-  if (d.includes('champions league')) return { texto: 'Champions League', cor: '#0a3d2e' };
-  if (d.includes('europa league')) return { texto: 'Europa League', cor: '#2f7d50' };
-  if (d.includes('conference')) return { texto: 'Conference League', cor: '#1a5fb4' };
-  if (d.includes('promotion')) return { texto: 'Acesso', cor: '#0a3d2e' };
-  return { texto: desc, cor: '#6b6350' };
+  if (d.includes('sudamericana')) return zona('classificacao.zona.sulAmericana', '#1a5fb4');
+  if (d.includes('champions league')) return zona('classificacao.zona.championsLeague', '#0a3d2e');
+  if (d.includes('europa league')) return zona('classificacao.zona.europaLeague', '#2f7d50');
+  if (d.includes('conference')) return zona('classificacao.zona.conferenceLeague', '#1a5fb4');
+  if (d.includes('promotion')) return zona('classificacao.zona.acesso', '#0a3d2e');
+  return { chave: null, bruto: desc, cor: '#6b6350' };
 }
 
-type Bloco = { chave: string; zona: { texto: string; cor: string } | null; linhas: FutebolStandingRow[] };
+type Bloco = {
+  chave: string;
+  zona: { chave: string | null; bruto: string; cor: string } | null;
+  linhas: FutebolStandingRow[];
+};
 
 /** Quebra a tabela em faixas seguidas de mesma descrição. */
 function blocos(rows: FutebolStandingRow[]): Bloco[] {
@@ -123,6 +138,7 @@ export function StandingsTable({
   /** O que dizer quando a competição não tem tabela. */
   vazio?: { titulo: string; texto: string };
 }) {
+  const { t } = useTranslation('futebol');
   const [miolo, setMiolo] = useState(false);
   const grupos = useMemo(() => blocos(rows ?? []), [rows]);
 
@@ -143,10 +159,10 @@ export function StandingsTable({
         style={{ border: '1px dashed #ded2b6' }}
       >
         <div className="text-[14px] font-semibold text-ink">
-          {vazio?.titulo ?? 'Classificação não disponível'}
+          {vazio?.titulo ?? t('classificacao.vazioTitulo')}
         </div>
         <div className="mt-1.5 text-[12.5px] leading-relaxed" style={{ color: '#8d8672' }}>
-          {vazio?.texto ?? 'Entra assim que a competição passar pela coleta.'}
+          {vazio?.texto ?? t('classificacao.vazioTexto')}
         </div>
       </div>
     );
@@ -164,7 +180,7 @@ export function StandingsTable({
         style={{ background: '#f4eddc', borderBottom: '1px solid #ded2b6' }}
       >
         <span className="text-[10.5px] uppercase tracking-[0.16em] font-bold" style={{ color: '#6b6350' }}>
-          Classificação
+          {t('classificacao.titulo')}
         </span>
         {legenda && <span className="text-[10.5px]" style={{ color: '#8d8672' }}>{legenda}</span>}
       </div>
@@ -173,14 +189,14 @@ export function StandingsTable({
         className={`px-3 sm:px-4 py-2 text-[9.5px] uppercase tracking-[0.12em] font-bold ${compacto ? GRID_M : GRID}`}
         style={{ background: '#fdfbf6', borderBottom: '1px solid #f1e9d6', color: '#8d8672' }}
       >
-        <span>#</span>
-        <span>Time</span>
-        <span className="text-center">J</span>
-        {!compacto && <span className="text-center">V</span>}
-        {!compacto && <span className="text-center">E</span>}
-        {!compacto && <span className="text-center">D</span>}
-        <span className="text-center">SG</span>
-        <span className="text-center">Pts</span>
+        <span>{t('classificacao.col.posicao')}</span>
+        <span>{t('classificacao.col.time')}</span>
+        <span className="text-center">{t('classificacao.col.jogos')}</span>
+        {!compacto && <span className="text-center">{t('classificacao.col.vitorias')}</span>}
+        {!compacto && <span className="text-center">{t('classificacao.col.empates')}</span>}
+        {!compacto && <span className="text-center">{t('classificacao.col.derrotas')}</span>}
+        <span className="text-center">{t('classificacao.col.saldo')}</span>
+        <span className="text-center">{t('classificacao.col.pontos')}</span>
       </div>
 
       {grupos.map((g, i) => {
@@ -197,7 +213,13 @@ export function StandingsTable({
                   className="text-[9px] uppercase tracking-[0.12em] font-bold"
                   style={{ color: g.zona.cor }}
                 >
-                  {g.zona.texto} · {g.linhas.length === 1 ? `${g.linhas[0].rank}º` : `${g.linhas[0].rank}º ao ${g.linhas[g.linhas.length - 1].rank}º`}
+                  {g.zona.chave ? t(g.zona.chave) : g.zona.bruto} ·{' '}
+                  {g.linhas.length === 1
+                    ? t('classificacao.faixaUnica', { de: g.linhas[0].rank })
+                    : t('classificacao.faixaIntervalo', {
+                        de: g.linhas[0].rank,
+                        ate: g.linhas[g.linhas.length - 1].rank,
+                      })}
                 </span>
               </div>
             ) : i === iMiolo ? (
@@ -207,11 +229,15 @@ export function StandingsTable({
                 style={{ background: '#fdfbf6', borderTop: '1px solid #f1e9d6', borderBottom: '1px solid #f1e9d6' }}
               >
                 <span className="text-[11.5px] font-semibold" style={{ color: '#6b6350' }}>
-                  {g.linhas[0].rank}º ao {g.linhas[g.linhas.length - 1].rank}º · {g.linhas.length} times
+                  {t('classificacao.miolo', {
+                    de: g.linhas[0].rank,
+                    ate: g.linhas[g.linhas.length - 1].rank,
+                    times: t('contagem.times', { count: g.linhas.length }),
+                  })}
                 </span>
                 <span className="flex-1 h-px" style={{ background: '#f1e9d6' }} />
                 <span className="text-[11px] font-semibold text-forest inline-flex items-center gap-1">
-                  {miolo ? 'ocultar' : 'mostrar'}
+                  {miolo ? t('classificacao.ocultar') : t('classificacao.mostrar')}
                   <ChevronDown className={`w-3 h-3 transition-transform ${miolo ? 'rotate-180' : ''}`} />
                 </span>
               </button>

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { textoEmPortugues as emPortugues } from '@/test/copy-em-portugues';
 import { storyDaPremissa } from './futebol-historico';
 import type { FutebolFixtureHistorico } from '@/services/futebol-data.service';
 
@@ -100,7 +101,7 @@ describe('a legenda da binária não promete cor que ela não controla', () => {
   it('fala do lado que a premissa quer, e não de ter marcado', () => {
     // "Verde quando marcou" acertaria a `ambos_marcam` e mentiria na
     // `ataque_trava`, que lê a MESMA métrica com a direção trocada.
-    const texto = storyDaPremissa('btts', 'ambos_marcam', umEmBranco, null, null)!.comoLer;
+    const texto = emPortugues(storyDaPremissa('btts', 'ambos_marcam', umEmBranco, null, null)!.comoLer);
     expect(texto).toContain('Cada quadrado é um jogo');
     expect(texto).toContain('o lado que a premissa quer');
     expect(texto).not.toContain('barra');

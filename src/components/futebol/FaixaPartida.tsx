@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { fmtOdd } from '@/utils/formato';
 import { MapPin, Lock } from 'lucide-react';
 import { Crest } from '@/components/futebol/Crest';
@@ -9,8 +10,8 @@ import { RegistrarApostaCTA } from '@/components/futebol/RegistrarAposta';
 import type { FutebolFixturePremissas, FutebolFixtureValueRow, FutebolFormResult } from '@/services/futebol-data.service';
 import { melhorLeitura, resumoDosMercados, type SaidaPreferida } from '@/utils/futebol-leitura';
 import type { Saida } from '@/utils/futebol-saida';
-import { rotuloDaFaixa } from '@/utils/futebol-score';
-import { outcomeLabel, contaQueValem, PORTA_PREMISSAS } from '@/utils/futebol-premissas';
+import { contaQueValem, PORTA_PREMISSAS } from '@/utils/futebol-premissas';
+import { useCopyDoFutebol } from '@/hooks/use-copy-do-futebol';
 import { isFinished, isLive } from '@/utils/futebol-datas';
 import type { JogoInfo } from './jogo-info';
 
@@ -200,6 +201,8 @@ export function FaixaPartida({
    */
   cortadas: readonly Saida[];
 }) {
+  const { t } = useTranslation('futebol');
+  const copy = useCopyDoFutebol();
   const resumos = useMemo(() => resumoDosMercados(premissas, valueRows, preferida, ocultos, cortadas), [premissas, valueRows, preferida, ocultos, cortadas]);
   const top = useMemo(() => melhorLeitura(resumos), [resumos]);
   const fim = isFinished(jogo.statusShort);
@@ -211,7 +214,7 @@ export function FaixaPartida({
   const rolando = isLive(jogo.statusShort);
 
   const pick = top
-    ? outcomeLabel(top.candidato, jogo.home, jogo.away)
+    ? copy.saida(top.candidato, jogo.home, jogo.away)
     : null;
   // Sem acesso o valor é anulado NA ORIGEM, e não em cada número lá embaixo.
   // Assim todos os ramos "sem dado" que já existem assumem sozinhos, e não fica
@@ -232,10 +235,10 @@ export function FaixaPartida({
   const estado = rolando ? (
     <span className="inline-flex items-center gap-1.5 text-white/75">
       <span className="w-1.5 h-1.5 rounded-full bg-status-danger" aria-hidden />
-      Em andamento
+      {t('estado.emAndamento')}
     </span>
   ) : (
-    <span className="whitespace-nowrap">{fim ? 'Encerrado' : 'Não começou'}</span>
+    <span className="whitespace-nowrap">{fim ? t('estado.encerrado') : t('estado.naoComecou')}</span>
   );
 
   // O botão é o MESMO nos dois arranjos; o que muda é onde ele entra. Declarar
@@ -356,7 +359,7 @@ export function FaixaPartida({
           // padrão: aqui o fundo é o forest, e o cinza dele sumiria.
           <div data-testid="faixa-leitura-carregando" className="flex items-center gap-5 min-w-0" aria-busy="true">
             <div className="flex-1 min-w-0">
-              <div className={`text-[10px] uppercase text-white/45 truncate ${empilhado ? 'tracking-[0.12em]' : 'tracking-[0.16em]'}`}>Melhor leitura do jogo</div>
+              <div className={`text-[10px] uppercase text-white/45 truncate ${empilhado ? 'tracking-[0.12em]' : 'tracking-[0.16em]'}`}>{t('faixa.melhorLeitura')}</div>
               <div className="mt-2 h-[26px] w-[68%] rounded bg-white/15 animate-pulse" />
               <div className="mt-3 h-[16px] w-[45%] rounded bg-white/10 animate-pulse" />
             </div>
@@ -380,25 +383,25 @@ export function FaixaPartida({
             onClick={() => top && onAbrirMercado(top.mercado.slug)}
             className="flex-1 min-w-0 text-left bg-transparent border-0 p-0 cursor-pointer rounded-md outline-none focus-visible:ring-2 focus-visible:ring-[#fbbf24] focus-visible:ring-offset-2 focus-visible:ring-offset-[#08321f]"
           >
-            <div className={`text-[10px] uppercase text-white/45 truncate ${empilhado ? 'tracking-[0.12em]' : 'tracking-[0.16em]'}`}>Melhor leitura do jogo</div>
+            <div className={`text-[10px] uppercase text-white/45 truncate ${empilhado ? 'tracking-[0.12em]' : 'tracking-[0.16em]'}`}>{t('faixa.melhorLeitura')}</div>
             {/* Sem truncate: "Mais de 1,75 g…" escondia justamente a linha da
                 leitura. Aqui ela quebra em duas linhas. */}
             <div className="mt-1.5 text-[19px] md:text-[24px] font-semibold leading-tight tracking-[-0.025em] text-white">
               {/* Sem acesso a guarda do banco não devolve linha, então `pick` é
                   nulo — e "Sem leitura ainda" afirmaria sobre o jogo algo falso:
                   há leitura, ela é de assinante. */}
-              {locked ? 'Leitura de assinante' : (pick ?? 'Sem leitura ainda')}
+              {locked ? t('gate.leituraDeAssinante') : (pick ?? t('leitura.semLeituraAindaTitulo'))}
             </div>
             {v ? (
               <div className="flex gap-5 mt-2.5">
                 <div>
-                  <div className="text-[9px] uppercase tracking-[0.14em] text-white/45">Chance</div>
+                  <div className="text-[9px] uppercase tracking-[0.14em] text-white/45">{t('numeros.chance')}</div>
                   <div className="tabular-nums text-[16px] font-semibold text-white mt-0.5">
                     {Math.round(v.prob_justa_fechamento * 100)}%
                   </div>
                 </div>
                 <div>
-                  <div className="text-[9px] uppercase tracking-[0.14em] text-white/45">Odd</div>
+                  <div className="text-[9px] uppercase tracking-[0.14em] text-white/45">{t('numeros.odd')}</div>
                   <div className="tabular-nums text-[16px] font-semibold text-white mt-0.5">
                     {fmtOdd(v.best_odd)}
                   </div>
@@ -406,14 +409,11 @@ export function FaixaPartida({
               </div>
             ) : (
               <div className="text-[12px] text-white/55 mt-2.5 leading-relaxed">
-                {locked ? (
-                  'Chance, odd e Score são de assinante.'
-                ) : (
-                  <>
-                    {top ? `${nValem} de ${top.totalQueValem} premissas a favor` : 'Sem premissas suficientes'} · as odds entram
-                    perto do jogo
-                  </>
-                )}
+                {locked
+                  ? t('faixa.tudoAssinante')
+                  : top
+                    ? t('faixa.premissasComOdds', { aFavor: nValem, total: top.totalQueValem })
+                    : t('faixa.semPremissasComOdds')}
               </div>
             )}
           </button>
@@ -426,7 +426,11 @@ export function FaixaPartida({
               {locked ? <Lock className="w-7 h-7 mx-auto text-white/40" /> : v ? String(v.score) : nValem}
             </div>
             <div className="mt-1.5 text-[9.5px] uppercase tracking-[0.12em] text-white/50">
-              {locked ? 'de assinante' : v ? `Score · ${rotuloDaFaixa(v.faixa)}` : 'premissas a favor'}
+              {locked
+                ? t('gate.deAssinante')
+                : v
+                  ? t('numeros.scoreFaixa', { faixa: copy.rotuloDaFaixa(v.faixa) })
+                  : t('premissas.aFavorRotulo')}
             </div>
             {podeRegistrar && !empilhado && (
               <div className="mt-2.5 flex justify-center">{botaoRegistrar}</div>
@@ -435,7 +439,7 @@ export function FaixaPartida({
                 por falta de preço: a frase afirmaria sobre o jogo algo que não é
                 verdade. Preço houve; o que não há é acesso. */}
             {!locked && !v && top && nValem >= PORTA_PREMISSAS && !fim && (
-              <div className="mt-2 text-[10px] text-white/45 max-w-[130px] mx-auto leading-snug">sem preço coletado</div>
+              <div className="mt-2 text-[10px] text-white/45 max-w-[130px] mx-auto leading-snug">{t('faixa.semPreco')}</div>
             )}
           </div>
           </div>

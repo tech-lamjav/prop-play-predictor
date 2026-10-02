@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { fmtNumero } from '@/utils/formato';
+import { Trans, useTranslation } from 'react-i18next';
+import { fmtDecimal, fmtDecimalAte, fmtLinhaAnalisada, fmtNumero } from '@/utils/formato';
 import { usePostHog } from '@posthog/react';
 import { Helmet } from 'react-helmet-async';
 import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -22,6 +23,7 @@ import {
 import { gamesCache } from '@/pages/Games';
 import { useAnalise360Data } from '@/hooks/use-analise360';
 import { getPlayerPhotoUrl, getTeamLogoUrl, tryNextPlayerPhotoUrl } from '@/utils/team-logos';
+import { localeAtivo } from '@/utils/idioma-ativo';
 
 const SAO_PAULO_TZ = 'America/Sao_Paulo';
 
@@ -46,7 +48,7 @@ function parseGameDate(d: string): Date {
 
 function formatGameDateLong(d: string): string {
   const date = parseGameDate(d);
-  return date.toLocaleDateString('pt-BR', {
+  return date.toLocaleDateString(localeAtivo(), {
     timeZone: SAO_PAULO_TZ,
     weekday: 'short', day: '2-digit', month: 'short', year: 'numeric',
   });
@@ -55,7 +57,7 @@ function formatGameDateLong(d: string): string {
 function formatGameDateShort(d: string): string {
   // "ter., 12 de mai. de 2026"
   const date = parseGameDate(d);
-  return date.toLocaleDateString('pt-BR', {
+  return date.toLocaleDateString(localeAtivo(), {
     timeZone: SAO_PAULO_TZ,
     weekday: 'short', day: '2-digit', month: 'short', year: 'numeric',
   });
@@ -63,7 +65,7 @@ function formatGameDateShort(d: string): string {
 
 function formatTimeBR(iso: string | null): string | null {
   if (!iso) return null;
-  return new Date(iso).toLocaleTimeString('pt-BR', {
+  return new Date(iso).toLocaleTimeString(localeAtivo(), {
     timeZone: SAO_PAULO_TZ, hour: '2-digit', minute: '2-digit',
   });
 }
@@ -83,7 +85,7 @@ function formatPct(val: number | null): string {
   if (val == null) return '—';
   // RPC pode devolver 0–1 (fração) ou 0–100 (já em pct). Detectamos por magnitude.
   const pct = val <= 1 ? val * 100 : val;
-  return pct % 1 === 0 ? `${Math.round(pct)}%` : `${pct.toFixed(1)}%`;
+  return `${fmtDecimalAte(pct, 1)}%`;
 }
 
 function ordinalRank(n: number | null | undefined): string {
@@ -107,29 +109,30 @@ function sortLineupPlayers(a: TeamPlayer, b: TeamPlayer): number {
   return a.player_name.localeCompare(b.player_name);
 }
 
-function statusBadgeStyle(status: string | null | undefined): { label: string; cls: string } {
+function statusBadgeStyle(status: string | null | undefined): { id: string | null; cls: string } {
   const s = (status ?? '').toLowerCase();
   if (!s || s === 'active' || s === 'available' || s === 'unk') {
-    return { label: 'Disp.', cls: 'bg-emerald-100 text-emerald-700 border border-emerald-200' };
+    return { id: 'available', cls: 'bg-emerald-100 text-emerald-700 border border-emerald-200' };
   }
   if (s === 'out' || s.includes('out')) {
-    return { label: 'OUT', cls: 'bg-status-danger text-white' };
+    return { id: 'out', cls: 'bg-status-danger text-white' };
   }
   if (s.includes('doubtful')) {
-    return { label: 'DTD', cls: 'bg-status-warning/15 text-status-warning border border-status-warning/30' };
+    return { id: 'doubtful', cls: 'bg-status-warning/15 text-status-warning border border-status-warning/30' };
   }
   if (s.includes('questionable')) {
-    return { label: 'Q', cls: 'bg-amber-100 text-amber-700 border border-amber-200' };
+    return { id: 'questionable', cls: 'bg-amber-100 text-amber-700 border border-amber-200' };
   }
   if (s.includes('probable')) {
-    return { label: 'Prov.', cls: 'bg-lime-100 text-lime-700 border border-lime-200' };
+    return { id: 'probable', cls: 'bg-lime-100 text-lime-700 border border-lime-200' };
   }
-  return { label: status || '—', cls: 'bg-canvas-2 text-ink-2 border border-line' };
+  return { id: null, cls: 'bg-canvas-2 text-ink-2 border border-line' };
 }
 
 // ─── Last 5 V/D ───────────────────────────────────────────────────────────
 
 function LastFive({ results }: { results: string | null }) {
+  const { t } = useTranslation('nba');
   if (!results) return <span className="text-ink-2 text-[11px]">—</span>;
   const last5 = results.replace(/\s/g, '').slice(0, 5).split('').reverse();
   const opacities = ['opacity-30', 'opacity-50', 'opacity-70', 'opacity-90', 'opacity-100'];
@@ -140,7 +143,7 @@ function LastFive({ results }: { results: string | null }) {
         return (
           <span
             key={i}
-            title={isWin ? 'Vitória' : 'Derrota'}
+            title={isWin ? t('jogo.vitoria') : t('jogo.derrota')}
             className={`w-4 h-4 flex items-center justify-center text-[9px] font-bold rounded ${opacities[i] ?? 'opacity-100'} ${
               isWin
                 ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
@@ -169,6 +172,7 @@ function TeamHeaderBlock({
   /** Quando true, mostra OFF/DEF rating abaixo do V/D (usado no mobile pra evitar row separado). */
   showRatings?: boolean;
 }) {
+  const { t } = useTranslation('nba');
   const wins = team?.wins ?? null;
   const losses = team?.losses ?? null;
   const conf = team?.conference;
@@ -209,7 +213,7 @@ function TeamHeaderBlock({
           {rank != null && conf && (
             <>
               <span className="text-line">·</span>
-              <span>#{rank} {conf === 'East' || conf === 'Leste' ? 'East' : 'West'}</span>
+              <span>#{rank} {conf === 'East' || conf === 'Leste' ? t('jogo.conferenciaLeste') : t('jogo.conferenciaOeste')}</span>
             </>
           )}
         </div>
@@ -219,11 +223,11 @@ function TeamHeaderBlock({
         {showRatings && (team?.team_offensive_rating_rank != null || team?.team_defensive_rating_rank != null) && (
           <div className={`mt-2 flex items-center gap-3 ${isHomeBlock ? '' : 'justify-end'}`}>
             <div className="flex items-baseline gap-1">
-              <span className="text-[9px] uppercase tracking-[0.12em] font-bold text-amber-700/70">OFF</span>
+              <span className="text-[9px] uppercase tracking-[0.12em] font-bold text-amber-700/70">{t('jogo.ataqueSigla')}</span>
               <span className="text-[12px] font-bold text-amber-700 tabular-nums">{ordinalRank(team?.team_offensive_rating_rank)}</span>
             </div>
             <div className="flex items-baseline gap-1">
-              <span className="text-[9px] uppercase tracking-[0.12em] font-bold text-amber-700/70">DEF</span>
+              <span className="text-[9px] uppercase tracking-[0.12em] font-bold text-amber-700/70">{t('jogo.defesaSigla')}</span>
               <span className="text-[12px] font-bold text-amber-700 tabular-nums">{ordinalRank(team?.team_defensive_rating_rank)}</span>
             </div>
           </div>
@@ -242,6 +246,7 @@ function HeroCard({
   homeTeam: Team | null;
   visitorTeam: Team | null;
 }) {
+  const { t } = useTranslation('nba');
   const finished = game.winner_team_id != null;
   const homeWon = finished && game.winner_team_id === game.home_team_id;
   const visitorWon = finished && game.winner_team_id === game.visitor_team_id;
@@ -254,7 +259,7 @@ function HeroCard({
   const centerContent = (
     <>
       <div className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold mb-1">
-        {finished ? `${dateLabel} · FT` : dateLabel}
+        {finished ? t('jogo.heroDataFim', { data: dateLabel }) : dateLabel}
       </div>
       {finished ? (
         <>
@@ -270,14 +275,14 @@ function HeroCard({
           {winnerAbbr && (
             <div className="mt-2">
               <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-forest text-white uppercase tracking-wide">
-                {winnerAbbr} venceu
+                {t('jogo.heroVenceu', { time: winnerAbbr })}
               </span>
             </div>
           )}
         </>
       ) : (
         <>
-          <div className="text-[10px] text-ink-2 mb-0.5">vs</div>
+          <div className="text-[10px] text-ink-2 mb-0.5">{t('jogo.vs')}</div>
           <div className="text-[24px] md:text-[30px] font-semibold text-ink tabular-nums leading-none">
             {time ?? '—'}
           </div>
@@ -349,26 +354,26 @@ function HeroCard({
       <div className="hidden md:flex border-t border-line mt-5 pt-3 items-center justify-between gap-3">
         <div className="flex items-center gap-4 md:gap-6">
           <div>
-            <div className="uppercase tracking-[0.12em] text-[9px] font-bold text-amber-700/70 mb-0.5">Ataque</div>
+            <div className="uppercase tracking-[0.12em] text-[9px] font-bold text-amber-700/70 mb-0.5">{t('jogo.ataque')}</div>
             <div className="text-amber-700 font-bold tabular-nums text-[15px] leading-none">{ordinalRank(homeTeam?.team_offensive_rating_rank)}</div>
           </div>
           <div>
-            <div className="uppercase tracking-[0.12em] text-[9px] font-bold text-amber-700/70 mb-0.5">Defesa</div>
+            <div className="uppercase tracking-[0.12em] text-[9px] font-bold text-amber-700/70 mb-0.5">{t('jogo.defesa')}</div>
             <div className="text-amber-700 font-bold tabular-nums text-[15px] leading-none">{ordinalRank(homeTeam?.team_defensive_rating_rank)}</div>
           </div>
         </div>
 
         <div className="text-[9px] uppercase tracking-[0.18em] text-ink-2/60 font-semibold text-center hidden sm:block">
-          Números da temporada
+          {t('jogo.numerosTemporada')}
         </div>
 
         <div className="flex items-center gap-4 md:gap-6">
           <div className="text-right">
-            <div className="uppercase tracking-[0.12em] text-[9px] font-bold text-amber-700/70 mb-0.5">Ataque</div>
+            <div className="uppercase tracking-[0.12em] text-[9px] font-bold text-amber-700/70 mb-0.5">{t('jogo.ataque')}</div>
             <div className="text-amber-700 font-bold tabular-nums text-[15px] leading-none">{ordinalRank(visitorTeam?.team_offensive_rating_rank)}</div>
           </div>
           <div className="text-right">
-            <div className="uppercase tracking-[0.12em] text-[9px] font-bold text-amber-700/70 mb-0.5">Defesa</div>
+            <div className="uppercase tracking-[0.12em] text-[9px] font-bold text-amber-700/70 mb-0.5">{t('jogo.defesa')}</div>
             <div className="text-amber-700 font-bold tabular-nums text-[15px] leading-none">{ordinalRank(visitorTeam?.team_defensive_rating_rank)}</div>
           </div>
         </div>
@@ -399,6 +404,7 @@ function MatchupAngleCard({
   homeId: number;
   visitorId: number;
 }) {
+  const { t } = useTranslation('nba');
   // Os campos next_opponent_opp_*_rank descrevem o adversário do PRÓXIMO jogo.
   // Só são válidos se o jogo atual for o próximo confronto dos dois times.
   const homeAttacks = homeTeam && homeTeam.next_opponent_id === visitorId
@@ -423,11 +429,11 @@ function MatchupAngleCard({
   if (!homeAttacks && !visitorAttacks) return null;
 
   const stats = [
-    { key: 'pts',   label: 'Pts cedidos' },
-    { key: 'reb',   label: 'Reb cedidos' },
-    { key: 'ast',   label: 'Ast cedidas' },
-    { key: 'fg3',   label: '3P% cedido' },
-    { key: 'paint', label: 'Pts garrafão' },
+    { key: 'pts',   chave: 'jogo.confrontoPts' },
+    { key: 'reb',   chave: 'jogo.confrontoReb' },
+    { key: 'ast',   chave: 'jogo.confrontoAst' },
+    { key: 'fg3',   chave: 'jogo.confrontoFg3' },
+    { key: 'paint', chave: 'jogo.confrontoGarrafao' },
   ] as const;
 
   const renderColumn = (attackerAbbr: string, ranks: typeof homeAttacks, defenderAbbr: string) => {
@@ -435,8 +441,15 @@ function MatchupAngleCard({
     return (
       <div>
         <div className="flex items-center gap-1.5 mb-3 flex-wrap">
-          <span className="text-[11px] font-semibold text-ink">{attackerAbbr} ataca</span>
-          <span className="text-[11px] text-ink-2">contra defesa do <span className="font-semibold">{defenderAbbr}</span></span>
+          <span className="text-[11px] font-semibold text-ink">{t('jogo.confrontoAtaca', { time: attackerAbbr })}</span>
+          <span className="text-[11px] text-ink-2">
+            <Trans
+              t={t}
+              i18nKey="jogo.confrontoContraDefesa"
+              values={{ time: defenderAbbr }}
+              components={[<span className="font-semibold" key="time" />]}
+            />
+          </span>
         </div>
         <div className="grid grid-cols-3 lg:grid-cols-5 gap-x-3 gap-y-3">
           {stats.map(s => {
@@ -444,7 +457,7 @@ function MatchupAngleCard({
             const tone = rankTone(rank);
             return (
               <div key={s.key}>
-                <div className="text-[9px] uppercase tracking-wider text-ink-2/70 font-semibold mb-1">{s.label}</div>
+                <div className="text-[9px] uppercase tracking-wider text-ink-2/70 font-semibold mb-1">{t(s.chave)}</div>
                 <span className={`text-[15px] tabular-nums ${tone.cls}`}>{tone.label}</span>
               </div>
             );
@@ -457,8 +470,8 @@ function MatchupAngleCard({
   return (
     <div className="bg-white border border-line rounded-xl px-4 md:px-6 py-4">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">Ângulo do confronto</span>
-        <span className="text-[10px] text-ink-2">posição do adversário na liga · #1 = melhor defesa</span>
+        <span className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">{t('jogo.confrontoTitulo')}</span>
+        <span className="text-[10px] text-ink-2">{t('jogo.confrontoLegenda')}</span>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 md:divide-x divide-line">
         {homeAttacks && <div className="md:pr-6">{renderColumn(homeAbbr, homeAttacks, visitorAbbr)}</div>}
@@ -509,16 +522,15 @@ interface B2BPrevSummary {
  * Não tem número de queda de rendimento — esse dado precisa vir de um
  * modelo histórico real (em construção). Texto aqui é apenas qualitativo.
  */
-function generateB2BLoadSignal(top: { playerName: string; minutes: number } | undefined): string | null {
+function generateB2BLoadSignal(
+  top: { playerName: string; minutes: number } | undefined,
+): { chave: string; valores: Record<string, string | number> } | null {
   if (!top) return null;
   const lastName = top.playerName.split(' ').slice(-1)[0];
-  if (top.minutes >= 38) {
-    return `${lastName} jogou ${top.minutes} min ontem — carga muito alta.`;
-  }
-  if (top.minutes >= 32) {
-    return `${lastName} jogou ${top.minutes} min ontem — carga alta.`;
-  }
-  return `Top minutagem ontem: ${lastName} com ${top.minutes} min — carga distribuída.`;
+  const valores = { jogador: lastName, min: top.minutes };
+  if (top.minutes >= 38) return { chave: 'jogo.b2bCargaMuitoAlta', valores };
+  if (top.minutes >= 32) return { chave: 'jogo.b2bCargaAlta', valores };
+  return { chave: 'jogo.b2bCargaDistribuida', valores };
 }
 
 function B2BAlertCard({
@@ -528,13 +540,14 @@ function B2BAlertCard({
   summary: B2BPrevSummary;
   currentGameDateISO: string;
 }) {
+  const { t } = useTranslation('nba');
   const won = summary.teamScore != null && summary.opponentScore != null && summary.teamScore > summary.opponentScore;
   const weekdayLabels = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
   const prevDate = summary.gameDateISO ? new Date(`${summary.gameDateISO}T12:00:00-03:00`) : null;
   const weekday = prevDate ? weekdayLabels[prevDate.getDay()] : null;
   const dayMonth = summary.gameDateISO ? summary.gameDateISO.split('-').reverse().slice(0, 2).join('/') : null;
   const prevTime = summary.gameDatetimeBrasilia
-    ? new Date(summary.gameDatetimeBrasilia).toLocaleTimeString('pt-BR', { timeZone: SAO_PAULO_TZ, hour: '2-digit', minute: '2-digit' })
+    ? new Date(summary.gameDatetimeBrasilia).toLocaleTimeString(localeAtivo(), { timeZone: SAO_PAULO_TZ, hour: '2-digit', minute: '2-digit' })
     : null;
 
   // Descanso: diferença em dias × 24
@@ -564,22 +577,28 @@ function B2BAlertCard({
         <div>
           <div className="flex items-center gap-1.5 mb-1">
             <AlertTriangle className="w-3.5 h-3.5 text-amber-700" />
-            <span className="text-[10px] uppercase tracking-wider text-amber-700 font-semibold">Alerta de B2B</span>
+            <span className="text-[10px] uppercase tracking-wider text-amber-700 font-semibold">{t('jogo.b2bEtiqueta')}</span>
           </div>
-          <div className="text-[14px] font-semibold text-ink leading-tight">{team.name} jogou ontem</div>
+          <div className="text-[14px] font-semibold text-ink leading-tight">{t('jogo.b2bJogouOntem', { time: team.name })}</div>
           {(restHours != null || travelKm != null) && (
             <div className="text-[11px] text-ink-2 mt-1.5">
-              {restHours != null && <>Descanso: <span className="text-ink font-medium">{restHours}h</span></>}
+              {restHours != null && (
+                <Trans t={t} i18nKey="jogo.b2bDescanso" values={{ horas: restHours }}
+                  components={[<span className="text-ink font-medium" key="horas" />]} />
+              )}
               {restHours != null && travelKm != null && ' · '}
-              {travelKm != null && <>Viagem: <span className="text-ink font-medium">{fmtNumero(travelKm)} km</span></>}
+              {travelKm != null && (
+                <Trans t={t} i18nKey="jogo.b2bViagem" values={{ km: fmtNumero(travelKm) }}
+                  components={[<span className="text-ink font-medium" key="km" />]} />
+              )}
             </div>
           )}
         </div>
 
         <div>
-          <div className="text-[10px] uppercase tracking-wider text-amber-700 font-semibold mb-1">Jogo de ontem</div>
+          <div className="text-[10px] uppercase tracking-wider text-amber-700 font-semibold mb-1">{t('jogo.b2bJogoDeOntem')}</div>
           <div className="text-[14px] font-semibold text-ink leading-tight">
-            {team.abbreviation} {summary.isHome ? 'vs' : '@'} {summary.opponentAbbr}
+            {team.abbreviation} {summary.isHome ? t('jogo.vs') : '@'} {summary.opponentAbbr}
             {summary.teamScore != null && summary.opponentScore != null && (
               <> · <span className={won ? 'text-forest' : 'text-status-danger'}>
                 {summary.teamScore}-{summary.opponentScore}
@@ -594,10 +613,10 @@ function B2BAlertCard({
         </div>
 
         <div>
-          <div className="text-[10px] uppercase tracking-wider text-amber-700 font-semibold mb-1">Minutos ontem</div>
+          <div className="text-[10px] uppercase tracking-wider text-amber-700 font-semibold mb-1">{t('jogo.b2bMinutosOntem')}</div>
           <div className="space-y-1">
             {summary.keyPlayers.length === 0 ? (
-              <p className="text-[11px] text-ink-2">Sem dados de minutos.</p>
+              <p className="text-[11px] text-ink-2">{t('jogo.b2bSemDados')}</p>
             ) : (
               summary.keyPlayers.slice(0, 3).map(p => (
                 <div key={p.playerName} className="text-[12px] flex items-center gap-2">
@@ -607,9 +626,9 @@ function B2BAlertCard({
                     p.minutes >= 32 ? 'bg-amber-100 text-amber-700' :
                     'bg-canvas-2 text-ink-2'
                   }`}>
-                    {p.minutes}min
+                    {t('jogo.b2bMin', { n: p.minutes })}
                   </span>
-                  <span className="text-ink-2 tabular-nums text-[11px] shrink-0">{p.points} pts</span>
+                  <span className="text-ink-2 tabular-nums text-[11px] shrink-0">{t('jogo.b2bPts', { n: p.points })}</span>
                 </div>
               ))
             )}
@@ -618,8 +637,8 @@ function B2BAlertCard({
 
         {loadSignal && (
           <div>
-            <div className="text-[10px] uppercase tracking-wider text-amber-700 font-semibold mb-1">Sinal de carga</div>
-            <p className="text-[12px] text-ink leading-snug">{loadSignal}</p>
+            <div className="text-[10px] uppercase tracking-wider text-amber-700 font-semibold mb-1">{t('jogo.b2bSinalCarga')}</div>
+            <p className="text-[12px] text-ink leading-snug">{t(loadSignal.chave, loadSignal.valores)}</p>
           </div>
         )}
       </div>
@@ -666,6 +685,7 @@ function LineupTable({
   teamAbbr: string;
   teamName: string;
 }) {
+  const { t } = useTranslation('nba');
   const sorted = useMemo(() => [...players].sort(sortLineupPlayers), [players]);
 
   return (
@@ -678,14 +698,14 @@ function LineupTable({
           onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
         />
         <span className="text-[13px] font-semibold text-ink">{teamAbbr}</span>
-        <span className="text-[11px] text-ink-2">· {sorted.length} jogadores</span>
+        <span className="text-[11px] text-ink-2">{t('jogo.escalacaoJogadores', { n: sorted.length })}</span>
       </div>
       <table className="w-full">
         <thead>
           <tr className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">
-            <th className="text-left px-4 py-2 font-semibold">Jogador</th>
-            <th className="text-center px-2 py-2 font-semibold">Pos</th>
-            <th className="text-right px-4 py-2 font-semibold">Status</th>
+            <th className="text-left px-4 py-2 font-semibold">{t('jogo.thJogador')}</th>
+            <th className="text-center px-2 py-2 font-semibold">{t('jogo.thPos')}</th>
+            <th className="text-right px-4 py-2 font-semibold">{t('jogo.thStatus')}</th>
           </tr>
         </thead>
         <tbody>
@@ -722,7 +742,7 @@ function LineupTable({
                         {p.player_name}
                       </div>
                       {p.rating_stars > 0 && (
-                        <div className="text-[10px] text-amber-500" aria-label={`${p.rating_stars} estrelas`}>
+                        <div className="text-[10px] text-amber-500" aria-label={t('jogo.ariaEstrelas', { n: p.rating_stars })}>
                           {'★'.repeat(Math.min(3, p.rating_stars))}
                         </div>
                       )}
@@ -732,7 +752,7 @@ function LineupTable({
                 <td className="px-2 py-2 text-center text-[12px] text-ink-2 tabular-nums">{p.position || '—'}</td>
                 <td className="px-4 py-2 text-right">
                   <span className={`inline-flex items-center px-2 h-5 rounded text-[10px] font-bold ${badge.cls}`}>
-                    {badge.label}
+                    {badge.id ? t(`estado.tabela.${badge.id}`) : (p.current_status || '—')}
                   </span>
                 </td>
               </tr>
@@ -828,6 +848,7 @@ function BoxScoreTable({
   homeAbbr: string;
   visitorAbbr: string;
 }) {
+  const { t } = useTranslation('nba');
   const [view, setView] = useState<'all' | 'home' | 'visitor'>('all');
 
   const filtered = useMemo(() => {
@@ -840,7 +861,7 @@ function BoxScoreTable({
   if (rows.length === 0) {
     return (
       <div className="bg-white border border-line rounded-xl p-8 text-center">
-        <p className="text-sm text-ink-2">Box score ainda não disponível.</p>
+        <p className="text-sm text-ink-2">{t('jogo.boxIndisponivel')}</p>
       </div>
     );
   }
@@ -848,9 +869,9 @@ function BoxScoreTable({
   return (
     <div className="bg-white border border-line rounded-xl overflow-hidden">
       <div className="flex items-center justify-between gap-2 px-3 py-2.5 border-b border-line">
-        <span className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">Estatísticas do jogo · {filtered.length}</span>
+        <span className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">{t('jogo.boxTitulo', { n: filtered.length })}</span>
         <div className="inline-flex items-center bg-canvas-2 rounded-md p-0.5">
-          {([['all','Ambos'],['home',homeAbbr],['visitor',visitorAbbr]] as const).map(([k, label]) => (
+          {([['all', t('jogo.boxAmbos')], ['home', homeAbbr], ['visitor', visitorAbbr]] as const).map(([k, label]) => (
             <button
               key={k}
               type="button"
@@ -870,21 +891,21 @@ function BoxScoreTable({
         <table className="w-full text-[12px]">
           <thead>
             <tr className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold border-b border-line">
-              <th className="text-left px-4 py-2 font-semibold">Jogador</th>
-              <th className="text-right px-2 py-2 font-semibold tabular-nums">Pts</th>
-              <th className="text-right px-2 py-2 font-semibold tabular-nums">Reb</th>
-              <th className="text-right px-2 py-2 font-semibold tabular-nums" title="Rebotes ofensivos">OReb</th>
-              <th className="text-right px-2 py-2 font-semibold tabular-nums" title="Rebotes defensivos">DReb</th>
-              <th className="text-right px-2 py-2 font-semibold tabular-nums">Ast</th>
-              <th className="text-right px-2 py-2 font-semibold tabular-nums">FG%</th>
-              <th className="text-right px-2 py-2 font-semibold tabular-nums">FT%</th>
-              <th className="text-right px-2 py-2 font-semibold tabular-nums">Min</th>
-              <th className="text-right px-2 py-2 font-semibold tabular-nums">3PM</th>
-              <th className="text-right px-2 py-2 font-semibold tabular-nums">STL</th>
-              <th className="text-right px-2 py-2 font-semibold tabular-nums">BLK</th>
-              <th className="text-right px-2 py-2 font-semibold tabular-nums">TO</th>
-              <th className="text-right px-2 py-2 font-semibold tabular-nums" title="Plus/Minus">+/−</th>
-              <th className="text-right px-4 py-2 font-semibold">Pos</th>
+              <th className="text-left px-4 py-2 font-semibold">{t('jogo.thJogador')}</th>
+              <th className="text-right px-2 py-2 font-semibold tabular-nums">{t('jogo.thPts')}</th>
+              <th className="text-right px-2 py-2 font-semibold tabular-nums">{t('jogo.thReb')}</th>
+              <th className="text-right px-2 py-2 font-semibold tabular-nums" title={t('jogo.tituloRebO')}>{t('jogo.thRebO')}</th>
+              <th className="text-right px-2 py-2 font-semibold tabular-nums" title={t('jogo.tituloRebD')}>{t('jogo.thRebD')}</th>
+              <th className="text-right px-2 py-2 font-semibold tabular-nums">{t('jogo.thAst')}</th>
+              <th className="text-right px-2 py-2 font-semibold tabular-nums">{t('jogo.thFg')}</th>
+              <th className="text-right px-2 py-2 font-semibold tabular-nums">{t('jogo.thFt')}</th>
+              <th className="text-right px-2 py-2 font-semibold tabular-nums">{t('jogo.thMin')}</th>
+              <th className="text-right px-2 py-2 font-semibold tabular-nums">{t('jogo.thTres')}</th>
+              <th className="text-right px-2 py-2 font-semibold tabular-nums">{t('jogo.thRoubos')}</th>
+              <th className="text-right px-2 py-2 font-semibold tabular-nums">{t('jogo.thBloqueios')}</th>
+              <th className="text-right px-2 py-2 font-semibold tabular-nums">{t('jogo.thErros')}</th>
+              <th className="text-right px-2 py-2 font-semibold tabular-nums" title={t('jogo.tituloSaldo')}>{t('jogo.thSaldo')}</th>
+              <th className="text-right px-4 py-2 font-semibold">{t('jogo.thPos')}</th>
             </tr>
           </thead>
           <tbody>
@@ -945,30 +966,24 @@ function BoxScoreTable({
 
 // ─── Game Opportunities (dado real, filtrado de Análise 360) ──────────────
 
-const STAT_LABEL_PT_LOCAL: Record<string, string> = {
-  player_points: 'Pontos',
-  player_assists: 'Assistências',
-  player_rebounds: 'Rebotes',
-  player_points_rebounds_assists: 'PRA',
-};
-
 function GameOpportunitiesTable({
   opportunities, gameAbbrLabel,
 }: {
   opportunities: DailyOpportunity[];
   gameAbbrLabel: string;
 }) {
+  const { t } = useTranslation('nba');
   const navigate = useNavigate();
   if (opportunities.length === 0) {
     return (
       <div className="bg-white border border-line rounded-xl p-8 text-center">
-        <p className="text-sm text-ink-2 mb-1">Nenhuma oportunidade mapeada para {gameAbbrLabel} hoje.</p>
+        <p className="text-sm text-ink-2 mb-1">{t('jogo.oppVazio', { jogo: gameAbbrLabel })}</p>
         <button
           type="button"
           onClick={() => navigate('/oportunidades')}
           className="text-[12px] font-semibold text-forest hover:underline mt-2 inline-flex items-center gap-1"
         >
-          Ver todas oportunidades do dia
+          {t('jogo.oppVerTodasDoDia')}
           <ArrowRight className="w-3 h-3" />
         </button>
       </div>
@@ -980,27 +995,27 @@ function GameOpportunitiesTable({
     <div className="bg-white border border-line rounded-xl overflow-hidden">
       <div className="flex items-center justify-between gap-2 px-4 py-2 border-b border-line bg-canvas-2/40">
         <span className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">
-          Oportunidades · {sorted.length} {sorted.length === 1 ? 'pick' : 'picks'}
+          {t('jogo.oppCabecalho', { n: sorted.length })}
         </span>
         <button
           type="button"
           onClick={() => navigate('/oportunidades')}
           className="text-[11px] font-semibold text-forest hover:underline inline-flex items-center gap-1"
         >
-          Ver todas
+          {t('jogo.oppVerTodas')}
           <ArrowRight className="w-3 h-3" />
         </button>
       </div>
       <table className="w-full text-[12px]">
         <thead>
           <tr className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold border-b border-line">
-            <th className="text-left px-4 py-2 font-semibold">Jogador</th>
-            <th className="text-left px-2 py-2 font-semibold">Estatística</th>
-            <th className="text-right px-2 py-2 font-semibold tabular-nums">Com</th>
-            <th className="text-right px-2 py-2 font-semibold tabular-nums">Sem</th>
-            <th className="text-right px-2 py-2 font-semibold tabular-nums">Linha</th>
-            <th className="text-right px-2 py-2 font-semibold tabular-nums">Diferença</th>
-            <th className="text-right px-4 py-2 font-semibold">Score</th>
+            <th className="text-left px-4 py-2 font-semibold">{t('jogo.thJogador')}</th>
+            <th className="text-left px-2 py-2 font-semibold">{t('jogo.oppThEstatistica')}</th>
+            <th className="text-right px-2 py-2 font-semibold tabular-nums">{t('jogo.oppThCom')}</th>
+            <th className="text-right px-2 py-2 font-semibold tabular-nums">{t('jogo.oppThSem')}</th>
+            <th className="text-right px-2 py-2 font-semibold tabular-nums">{t('jogo.oppThLinha')}</th>
+            <th className="text-right px-2 py-2 font-semibold tabular-nums">{t('jogo.oppThDiferenca')}</th>
+            <th className="text-right px-4 py-2 font-semibold">{t('jogo.oppThScore')}</th>
           </tr>
         </thead>
         <tbody>
@@ -1015,15 +1030,15 @@ function GameOpportunitiesTable({
                 <td className="px-4 py-2">
                   <div className="flex items-center gap-2">
                     <span className="text-ink font-medium">{o.backup_player_name}</span>
-                    <span className="text-[10px] text-ink-2">sem {o.trigger_name.split(' ').slice(-1)[0]}</span>
+                    <span className="text-[10px] text-ink-2">{t('jogo.oppSem', { gatilho: o.trigger_name.split(' ').slice(-1)[0] })}</span>
                   </div>
                 </td>
-                <td className="px-2 py-2 text-ink-2">{STAT_LABEL_PT_LOCAL[o.stat_type] ?? o.stat_type}</td>
-                <td className="px-2 py-2 text-right tabular-nums">{o.avg_com.toFixed(1)}</td>
-                <td className="px-2 py-2 text-right tabular-nums font-semibold text-ink">{o.avg_sem.toFixed(1)}</td>
-                <td className="px-2 py-2 text-right tabular-nums">{o.line_value != null ? o.line_value.toFixed(1) : '—'}</td>
+                <td className="px-2 py-2 text-ink-2">{t(`estatisticas.nome.${o.stat_type}`, { defaultValue: o.stat_type })}</td>
+                <td className="px-2 py-2 text-right tabular-nums">{fmtDecimal(o.avg_com, 1)}</td>
+                <td className="px-2 py-2 text-right tabular-nums font-semibold text-ink">{fmtDecimal(o.avg_sem, 1)}</td>
+                <td className="px-2 py-2 text-right tabular-nums">{fmtLinhaAnalisada(o.line_value)}</td>
                 <td className={`px-2 py-2 text-right tabular-nums font-semibold ${isPos ? 'text-forest' : 'text-status-danger'}`}>
-                  {isPos ? '+' : ''}{o.gap_pct.toFixed(0)}%
+                  {isPos ? '+' : ''}{fmtDecimal(o.gap_pct, 0)}%
                 </td>
                 <td className="px-4 py-2 text-right">
                   <span className={`inline-flex items-center px-2 h-5 rounded text-[10px] font-bold tabular-nums ${
@@ -1050,6 +1065,7 @@ function GameOpportunitiesTable({
 type TabKey = 'lineups' | 'boxscore' | 'bets';
 
 export default function GameDetail() {
+  const { t } = useTranslation('nba');
   const { gameId } = useParams<{ gameId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -1197,7 +1213,7 @@ export default function GameDetail() {
           setIsLoadingGame(false);
           return;
         }
-        toast({ title: 'Jogo não encontrado', variant: 'destructive' });
+        toast({ title: t('jogo.erroNaoEncontrado'), variant: 'destructive' });
         navigate('/home-games');
         return;
       }
@@ -1264,7 +1280,7 @@ export default function GameDetail() {
       }
     } catch (err) {
       console.error('loadGameData:', err);
-      toast({ title: 'Erro ao carregar', description: 'Falha ao carregar o jogo.', variant: 'destructive' });
+      toast({ title: t('jogo.erroCarregarTitulo'), description: t('jogo.erroCarregarTexto'), variant: 'destructive' });
     } finally {
       setIsLoadingGame(false);
     }
@@ -1273,7 +1289,7 @@ export default function GameDetail() {
   return (
     <>
       <Helmet>
-        <title>{game ? `${game.home_team_abbreviation} vs ${game.visitor_team_abbreviation}` : 'Jogo'} — Smart Betting</title>
+        <title>{game ? `${game.home_team_abbreviation} ${t('jogo.vs')} ${game.visitor_team_abbreviation}` : t('jogo.seoTituloPadrao')} — Smart Betting</title>
       </Helmet>
 
       <div className="theme-bolao min-h-screen bg-canvas text-ink">
@@ -1322,7 +1338,7 @@ export default function GameDetail() {
                     <TabButton
                       active={activeTab === 'boxscore'}
                       onClick={() => setActiveTab('boxscore')}
-                      label="Estatísticas do jogo"
+                      label={t('jogo.abaEstatisticas')}
                       count={boxScore.length || undefined}
                     />
                   ) : (
@@ -1330,13 +1346,13 @@ export default function GameDetail() {
                       <TabButton
                         active={activeTab === 'lineups'}
                         onClick={() => setActiveTab('lineups')}
-                        label="Escalações e lesões"
+                        label={t('jogo.abaEscalacoes')}
                         count={homePlayers.length + visitorPlayers.length}
                       />
                       <TabButton
                         active={activeTab === 'bets'}
                         onClick={() => setActiveTab('bets')}
-                        label="Oportunidades do jogo"
+                        label={t('jogo.abaOportunidades')}
                         count={gameOpps.length}
                       />
                     </>
@@ -1370,7 +1386,7 @@ export default function GameDetail() {
                   {activeTab === 'bets' && (
                     <GameOpportunitiesTable
                       opportunities={gameOpps}
-                      gameAbbrLabel={`${game.home_team_abbreviation} vs ${game.visitor_team_abbreviation}`}
+                      gameAbbrLabel={`${game.home_team_abbreviation} ${t('jogo.vs')} ${game.visitor_team_abbreviation}`}
                     />
                   )}
                 </div>

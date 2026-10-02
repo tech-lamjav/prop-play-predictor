@@ -2,7 +2,7 @@ import { addDays, brtDayOf, diasEntre } from '@/utils/futebol-datas';
 import { ehAssinante, type Cadastro } from './crm-lista';
 import { ganchoDe, type Gancho } from './crm-ficha';
 import { etapaDe, type EtapasGravadas } from './crm-funil';
-import { ETAPAS, ETAPA_PADRAO, ROTULO_DA_ETAPA, type Etapa } from './crm-vocabulario';
+import { CHAVE_DA_ETAPA, ETAPAS, ETAPA_PADRAO, type Etapa } from './crm-vocabulario';
 import {
   diasDeTesteRestantes,
   etiquetaDe,
@@ -68,9 +68,10 @@ export const POSICOES: readonly Posicao[] = [
   'sem_resposta',
 ];
 
-export const ROTULO_DA_POSICAO: Record<Posicao, string> = {
-  ...ROTULO_DA_ETAPA,
-  assinante: 'Assinante',
+/** Como cada posição se chama na tela. CHAVE, pela razão de `CHAVE_DA_ETAPA`. */
+export const CHAVE_DA_POSICAO: Record<Posicao, string> = {
+  ...CHAVE_DA_ETAPA,
+  assinante: 'vocabulario.posicao.assinante',
 };
 
 /** A que o banco responde. A tela marca essa como calculada. */

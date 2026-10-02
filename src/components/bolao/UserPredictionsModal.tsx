@@ -37,6 +37,7 @@ import type {
   PlayerAwardType,
 } from '@/services/bolao.service';
 import { applyScoreBasis } from '@/services/bolao.service';
+import { localeAtivo } from '@/utils/idioma-ativo';
 
 interface UserPredictionsModalProps {
   open: boolean;
@@ -69,7 +70,7 @@ const SPECIAL_META: Record<
 
 function formatRichDate(iso: string): string {
   const d = new Date(iso + 'T00:00:00');
-  const formatted = d.toLocaleDateString('pt-BR', {
+  const formatted = d.toLocaleDateString(localeAtivo(), {
     weekday: 'long',
     day: '2-digit',
     month: 'long',

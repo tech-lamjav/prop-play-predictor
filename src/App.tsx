@@ -23,6 +23,7 @@ import { Porteiro } from "./components/perfil/Porteiro";
 import { EnvironmentBanner } from "./components/EnvironmentBanner";
 import Footer from "./components/Footer";
 import { lazyWithRetry } from "./lib/lazy-with-retry";
+import { TituloPadrao } from "@/components/TituloPadrao";
 
 // Lazy-loaded pages (not critical for first paint).
 // Usa `lazyWithRetry` em vez de `React.lazy` direto pra detectar falha de
@@ -44,7 +45,7 @@ import { lazyWithRetry } from "./lib/lazy-with-retry";
 //
 // A landing do ecossistema ("/") continua ansiosa de propósito: é a porta de
 // entrada mais comum e mais fria, a única onde uma ida extra ao servidor
-// apareceria. A Auth ainda leva o i18next junto, que serve três telas ao todo.
+// apareceria.
 const Landing = lazyWithRetry(() => import("./pages/Landing"));
 const Auth = lazyWithRetry(() => import("./pages/Auth"));
 const Picks = lazyWithRetry(() => import("./pages/Picks"));
@@ -129,6 +130,9 @@ const App = () => (
             BrowserRouter porque leem a rota. */}
         <IdentidadeAnalytics />
         <ChegadaDoTelegram />
+        {/* O título da aba para quem não monta <Seo>. Fica com os outros
+            sentinelas porque é da PESSOA e não de uma tela. Ver TituloPadrao. */}
+        <TituloPadrao />
         <CrossSellManager />
         {/* A pesquisa de perfil é da PESSOA, não de uma tela: por isso mora
             aqui com os outros sentinelas, e não pendurada numa página. Ela

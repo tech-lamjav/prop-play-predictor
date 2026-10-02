@@ -19,7 +19,6 @@ A comprehensive sports betting analytics platform focused on NBA player props, b
 - **State Management**: TanStack Query (React Query)
 - **Authentication**: Supabase Auth
 - **Data Storage**: Google Cloud Storage (REST API)
-- **Internationalization**: react-i18next
 - **Charts**: Recharts
 - **Forms**: React Hook Form + Zod validation
 

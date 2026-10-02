@@ -1,10 +1,12 @@
 import { Crest } from './Crest';
+import { useTranslation } from 'react-i18next';
 import { fmtOdd } from '@/utils/formato';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Link } from 'react-router-dom';
 import { fmtTime, isFinished, isLive } from '@/utils/futebol-datas';
 import { interceptarCliqueSimples } from '@/utils/navegacao-por-link';
-import { chancePct, ehDestaque, ehFaixaAlta, marketShort, pickLabel } from '@/utils/futebol-score';
+import { chancePct, ehDestaque, ehFaixaAlta } from '@/utils/futebol-score';
+import { useCopyDoFutebol } from '@/hooks/use-copy-do-futebol';
 import { ValorBloqueado } from '@/components/futebol/FutebolGate';
 import { linhaBloqueada } from '@/utils/futebol-bloqueio';
 import { settleFutebol, isHit } from '@/utils/futebol-settlement';
@@ -94,6 +96,8 @@ export function FixtureRow({
    */
   locked?: boolean;
 }) {
+  const { t } = useTranslation('futebol');
+  const copy = useCopyDoFutebol();
   const fim = isFinished(fixture.status_short);
   const live = isLive(fixture.status_short);
   /**
@@ -174,9 +178,9 @@ export function FixtureRow({
     >
       <div className="w-10 sm:w-11 shrink-0 text-center">
         {live ? (
-          <span className="text-[9px] uppercase tracking-[0.1em] font-bold text-status-danger">Ao vivo</span>
+          <span className="text-[9px] uppercase tracking-[0.1em] font-bold text-status-danger">{t('estado.aoVivo')}</span>
         ) : fim ? (
-          <span className="text-[9px] uppercase tracking-[0.1em] font-bold" style={{ color: '#8d8672' }}>Fim</span>
+          <span className="text-[9px] uppercase tracking-[0.1em] font-bold" style={{ color: '#8d8672' }}>{t('estado.fim')}</span>
         ) : (
           <span className="text-[12.5px] font-semibold tabular-nums text-ink">{fmtTime(fixture.kickoff_utc) || '—'}</span>
         )}
@@ -259,13 +263,13 @@ export function FixtureRow({
             a coluna passa da altura reservada e a linha volta a empurrar — o
             defeito de volta, pela porta dos fundos. */}
         <span className="hidden sm:block text-[9px] uppercase tracking-[0.14em] font-semibold truncate" style={{ color: '#8d8672' }}>
-          {best ? marketShort(best.market) : apitou ? 'sem leitura' : 'sem leitura ainda'}
+          {best ? copy.mercadoCurto(best.market) : apitou ? t('leitura.semLeitura') : t('leitura.semLeituraAinda')}
         </span>
         {best && bloqueado ? (
           // A linha existe e não é entregue. Dizer "sem leitura" aqui seria
           // mentir sobre o dia: há leitura, ela é de assinante.
           <span className="inline-flex items-center text-[11px]" style={{ color: '#8d8672' }}>
-            <ValorBloqueado rotulo="assinantes" />
+            <ValorBloqueado rotulo={t('gate.assinantes')} />
           </span>
         ) : best ? (
           <>
@@ -275,19 +279,20 @@ export function FixtureRow({
                 única coisa que esta coluna existe para dizer. Duas linhas cabem
                 porque a odd saiu daqui (ver abaixo), então a altura não muda. */}
             <span className="block sm:mt-0.5 text-[11.5px] sm:text-[12.5px] font-semibold text-ink line-clamp-2 sm:truncate">
-              {pickLabel(best, fixture.home_team_name, fixture.away_team_name)}
+              {copy.pick(best, fixture.home_team_name, fixture.away_team_name)}
             </span>
             {/* A odd é só do DESKTOP. No celular ela disputava a coluna com a
                 aposta e ganhava, sobrando reticências no lugar do que importa.
                 Ela continua a um toque de distância, na tela do jogo. */}
             <span className="hidden sm:block mt-px text-[11px] tabular-nums truncate" style={{ color: '#8d8672' }}>
-              odd {fmtOdd(best.best_odd)}
-              {chance != null ? ` · ${chance}% chance` : null}
+              {chance != null
+                ? t('linha.oddComChance', { odd: fmtOdd(best.best_odd), chance })
+                : t('linha.odd', { odd: fmtOdd(best.best_odd) })}
             </span>
           </>
         ) : (
           <span className="block sm:mt-0.5 text-[10.5px] sm:text-[11px] truncate" style={{ color: '#8d8672' }}>
-            <span className="sm:hidden">sem leitura</span>
+            <span className="sm:hidden">{t('leitura.semLeitura')}</span>
             {/* Depois do apito a agenda não sabe se houve leitura, só que não há
                 mais: o board é point-in-time e o expurgo tira a linha no apito,
                 então a agenda passa a ler um lugar onde o jogo já não está.
@@ -298,7 +303,7 @@ export function FixtureRow({
                 e teve — o mesmo jogo aparecia no histórico com quatro
                 oportunidades e odd em cada uma. Ambas reportadas no smoke test
                 da virada (#309). */}
-            <span className="hidden sm:inline">{apitou ? 'a leitura sai antes do apito' : 'odds entram perto do jogo'}</span>
+            <span className="hidden sm:inline">{apitou ? t('leitura.saiAntesDoApito') : t('leitura.oddsPertoDoJogo')}</span>
           </span>
         )}
         </>
@@ -331,7 +336,7 @@ export function FixtureRow({
                   ? { borderRadius: 11, background: '#fdf3d9', border: '1px solid #eccf85', color: '#b8870f' }
                   : { borderRadius: 11, background: '#f4eddc', color: '#8d8672' }
         }
-        title={bateu != null ? (bateu ? 'a leitura bateu' : 'a leitura não bateu') : undefined}
+        title={bateu != null ? (bateu ? t('leitura.bateu') : t('leitura.naoBateu')) : undefined}
       >
         {!best ? '—' : bateu != null ? (bateu ? '✓' : '✕') : best.score}
       </div>

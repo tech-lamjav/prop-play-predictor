@@ -31,6 +31,36 @@ export type TempoDeTeste = {
 };
 
 /**
+ * A mesma resposta em PARTES, sem frase montada.
+ *
+ * Existe porque `longo` é português escrito aqui dentro, e tela em espanhol não
+ * tem como traduzi-lo depois de pronto (#538). Quem precisa da frase no idioma
+ * ativo pega a unidade e a quantidade e escolhe a chave do catálogo; a unidade
+ * (e com ela o corte de 48 horas) continua decidida num lugar só.
+ */
+export type RestanteDoTeste =
+  | { unidade: 'dias'; quantidade: number }
+  | { unidade: 'horas'; quantidade: number }
+  | { unidade: 'menosDeUmaHora'; quantidade: 0 };
+
+export function restanteDoTeste(
+  access: FutebolAccess | undefined | null,
+  agora: number = Date.now(),
+): RestanteDoTeste | null {
+  if (!access || access.state !== 'trial') return null;
+
+  const horas = horasRestantes(access, agora);
+  if (horas === null) return null;
+
+  if (horas > HORAS_QUE_VIRAM_DIAS) return { unidade: 'dias', quantidade: Math.ceil(horas / 24) };
+  // Zero horas dentro do estado de teste é a última fração de hora. Dizer "0h"
+  // numa frase que só existe enquanto o teste vale faria a pessoa ler que
+  // perdeu o acesso que ainda tem.
+  if (horas <= 0) return { unidade: 'menosDeUmaHora', quantidade: 0 };
+  return { unidade: 'horas', quantidade: horas };
+}
+
+/**
  * Horas que faltam, arredondadas para cima. Nunca negativo.
  *
  * Prefere o número do servidor: é o relógio dele que decide o acesso, então
@@ -60,15 +90,17 @@ export function tempoDeTeste(
   access: FutebolAccess | undefined | null,
   agora: number = Date.now(),
 ): TempoDeTeste | null {
-  if (!access || access.state !== 'trial') return null;
-
+  // A unidade (e com ela o corte de 48 horas) sai de `restanteDoTeste`, para
+  // não existirem dois lugares decidindo a mesma troca de unidade. Aqui só se
+  // monta a frase em português.
+  const restante = restanteDoTeste(access, agora);
   const horas = horasRestantes(access, agora);
-  if (horas === null) return null;
+  if (!restante || horas === null) return null;
 
   const acabando = horas <= HORAS_DA_ULTIMA_RETA;
 
-  if (horas > HORAS_QUE_VIRAM_DIAS) {
-    const dias = Math.ceil(horas / 24);
+  if (restante.unidade === 'dias') {
+    const dias = restante.quantidade;
     return {
       curto: `${dias}d`,
       longo: `${dias === 1 ? 'falta' : 'faltam'} ${dias} ${dias === 1 ? 'dia' : 'dias'}`,
@@ -76,16 +108,13 @@ export function tempoDeTeste(
     };
   }
 
-  // Zero horas dentro do estado de teste é a última fração de hora. Dizer "0h"
-  // numa pílula que só existe enquanto o teste vale faria a pessoa ler que
-  // perdeu o acesso que ainda tem.
-  if (horas <= 0) {
+  if (restante.unidade === 'menosDeUmaHora') {
     return { curto: '<1h', longo: 'falta menos de 1 hora', acabando: true };
   }
 
   return {
-    curto: `${horas}h`,
-    longo: `${horas === 1 ? 'falta' : 'faltam'} ${horas} ${horas === 1 ? 'hora' : 'horas'}`,
+    curto: `${restante.quantidade}h`,
+    longo: `${restante.quantidade === 1 ? 'falta' : 'faltam'} ${restante.quantidade} ${restante.quantidade === 1 ? 'hora' : 'horas'}`,
     acabando,
   };
 }

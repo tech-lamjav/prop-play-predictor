@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { AlertTriangle } from 'lucide-react';
 import type { Inadimplente } from './crm-assinatura';
 import { formatarDia } from './crm-lista';
@@ -13,6 +14,7 @@ export type EstadoDosInadimplentes =
 
 /** Uma pessoa devendo: quanto, desde quando, e em que acordo. */
 function Linha({ item }: { item: Inadimplente }) {
+  const { t } = useTranslation('socios');
   const { assinatura, meses, total } = item;
 
   return (
@@ -27,17 +29,29 @@ function Linha({ item }: { item: Inadimplente }) {
 
         <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/20 px-2.5 py-1 text-[12px] font-bold text-ink">
           <AlertTriangle aria-hidden className="h-3 w-3" />
-          devendo {meses.length} {meses.length === 1 ? 'mês' : 'meses'}, {emReais(total)}
+          {t('dinheiro.comum.devendo', { count: meses.length, total: emReais(total) })}
         </span>
       </div>
 
+      {/* ⚠️ `ROTULO_DO_PLANO` entra INTERPOLADO e continua em português de
+          propósito (#558): o mesmo rótulo vai dentro da mensagem de cobrança que
+          o sócio cola no WhatsApp de um lead brasileiro. */}
       <p className="mt-0.5 text-[13px] text-ink-2">
-        {ROTULO_DO_PLANO[assinatura.plano]} na mão,{' '}
-        {assinatura.venceEm === null ? 'vitalícia' : `até ${formatarDia(assinatura.venceEm)}`}
-        {assinatura.valorMensal !== null ? ` · ${emReais(assinatura.valorMensal)} por mês` : ''}
+        {assinatura.venceEm === null
+          ? t('dinheiro.comum.planoVitalicia', { plano: ROTULO_DO_PLANO[assinatura.plano] })
+          : t('dinheiro.comum.planoAte', {
+              plano: ROTULO_DO_PLANO[assinatura.plano],
+              dia: formatarDia(assinatura.venceEm),
+            })}
+        {assinatura.valorMensal !== null
+          ? ` · ${t('dinheiro.comum.porMes', { valor: emReais(assinatura.valorMensal) })}`
+          : ''}
       </p>
 
-      <p className="mt-1 text-[12px] text-ink-2">Em aberto: {textoDosMesesEmAberto(meses)}</p>
+      {/* ⚠️ `textoDosMesesEmAberto` continua em PORTUGUÊS (`crm-receita.ts`). */}
+      <p className="mt-1 text-[12px] text-ink-2">
+        {t('dinheiro.inadimplentes.emAberto', { meses: textoDosMesesEmAberto(meses) })}
+      </p>
 
       {assinatura.pagaNoCartao ? <SeloDoCartao /> : null}
     </div>
@@ -56,24 +70,20 @@ function Linha({ item }: { item: Inadimplente }) {
  * histórico de pagamento na frente. A linha leva até lá.
  */
 export function ListaDeInadimplentes({ estado }: { estado: EstadoDosInadimplentes }) {
+  const { t } = useTranslation('socios');
+
   if (estado.tipo === 'carregando') {
-    return <p className="px-5 py-8 text-[14px] text-ink-2">Carregando quem está devendo…</p>;
+    return (
+      <p className="px-5 py-8 text-[14px] text-ink-2">{t('dinheiro.inadimplentes.carregando')}</p>
+    );
   }
 
   if (estado.tipo === 'erro') {
-    return (
-      <p className="px-5 py-8 text-[14px] text-ink-2">
-        Não deu para carregar os pagamentos agora, então esta fila estaria chutando quem deve.
-      </p>
-    );
+    return <p className="px-5 py-8 text-[14px] text-ink-2">{t('dinheiro.inadimplentes.erro')}</p>;
   }
 
   if (estado.inadimplentes.length === 0) {
-    return (
-      <p className="px-5 py-8 text-[14px] text-ink-2">
-        Ninguém devendo. Toda assinatura com cobrança mensal está com os meses pagos.
-      </p>
-    );
+    return <p className="px-5 py-8 text-[14px] text-ink-2">{t('dinheiro.inadimplentes.vazio')}</p>;
   }
 
   return (
@@ -82,8 +92,7 @@ export function ListaDeInadimplentes({ estado }: { estado: EstadoDosInadimplente
         <Linha key={item.assinatura.id} item={item} />
       ))}
       <p className="border-t border-line-2 px-5 py-3 text-[12px] text-ink-2">
-        Ninguém sai daqui encerrado sozinho. Para registrar um Pix ou encerrar, abra a ficha: os
-        dois ficam na aba Planos. O mês corrente conta como devido a partir do dia 1º.
+        {t('dinheiro.inadimplentes.rodape')}
       </p>
     </div>
   );

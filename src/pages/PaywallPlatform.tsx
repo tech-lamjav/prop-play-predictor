@@ -1,23 +1,34 @@
 import { useState, useEffect } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Lock, Zap, BarChart3, ArrowRight, MessageCircle, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { Zap, BarChart3, ArrowRight, MessageCircle, CheckCircle, Loader2 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/use-auth";
 import { whatsappDoTime } from "@/config/contato";
 import { createClient } from "@/integrations/supabase/client";
 import { stripeService } from "@/services/stripe.service";
 import { toast } from "@/hooks/use-toast";
+import { SeletorDeIdiomaCompacto } from '@/components/SeletorDeIdioma';
 
 // Price ID do Stripe para a Plataforma de Análises
 const STRIPE_PRICE_ID = import.meta.env.VITE_STRIPE_PRICE_ID_PLATFORM; // Configure no .env.local
 
+/**
+ * Paywall da plataforma de análise (rota /paywall-platform). Tela pública: a
+ * copy vem do catálogo `planos` no idioma ativo (#540).
+ *
+ * ⚠️ A mensagem pré-preenchida do WhatsApp segue em português de propósito:
+ * ela é escrita PARA o time de suporte, e texto de WhatsApp está fora do
+ * escopo do #532, que é interface.
+ */
 export default function PaywallPlatform() {
+  const { t } = useTranslation(['planos', 'comum']);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user, isLoading: authLoading } = useAuth();
   const supabase = createClient();
-  
+
   const [subscriptionStatus, setSubscriptionStatus] = useState<'free' | 'premium' | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
@@ -59,8 +70,8 @@ export default function PaywallPlatform() {
   useEffect(() => {
     if (success && sessionId && user?.id) {
       toast({
-        title: "Pagamento realizado!",
-        description: "Verificando sua assinatura...",
+        title: t('checkout.pagoTitulo'),
+        description: t('checkout.pagoTexto'),
         variant: "default",
       });
 
@@ -73,8 +84,8 @@ export default function PaywallPlatform() {
           if (result.verified) {
             setSubscriptionStatus('premium');
             toast({
-              title: "Assinatura ativada!",
-              description: "Seu plano premium está ativo. Redirecionando...",
+              title: t('checkout.ativaTitulo'),
+              description: t('checkout.ativaTexto'),
               variant: "default",
             });
             setTimeout(() => navigate('/home-nba'), 1000);
@@ -96,12 +107,12 @@ export default function PaywallPlatform() {
 
     if (canceled) {
       toast({
-        title: "Pagamento cancelado",
-        description: "Você cancelou o processo de pagamento. Tente novamente quando estiver pronto.",
+        title: t('checkout.canceladoTitulo'),
+        description: t('checkout.canceladoTexto'),
         variant: "default",
       });
     }
-  }, [success, canceled, sessionId, user?.id, navigate]);
+  }, [success, canceled, sessionId, user?.id, navigate, t]);
 
   const handleStripeCheckout = async () => {
     // Se ainda está carregando a autenticação, aguarde
@@ -112,8 +123,8 @@ export default function PaywallPlatform() {
     // Se não está logado, redireciona para login
     if (!user) {
       toast({
-        title: "Login necessário",
-        description: "Por favor, faça login para continuar com o pagamento.",
+        title: t('checkout.loginTitulo'),
+        description: t('checkout.loginTexto'),
         variant: "destructive",
       });
       navigate('/auth');
@@ -130,8 +141,8 @@ export default function PaywallPlatform() {
     } catch (error) {
       console.error('Error creating checkout session:', error);
       toast({
-        title: "Erro ao processar pagamento",
-        description: error instanceof Error ? error.message : "Ocorreu um erro ao iniciar o checkout. Tente novamente.",
+        title: t('checkout.erroTitulo'),
+        description: error instanceof Error ? error.message : t('checkout.erroTexto'),
         variant: "destructive",
       });
     } finally {
@@ -143,7 +154,7 @@ export default function PaywallPlatform() {
     // Open WhatsApp with pre-filled message for upgrade (Plataforma de Análise)
     const message = "Oi, gostaria de fazer upgrade do meu plano na Plataforma de Análise";
     const whatsappUrl = whatsappDoTime(message);
-    
+
     // Open WhatsApp with pre-filled message
     window.open(whatsappUrl, '_blank');
   };
@@ -160,12 +171,15 @@ export default function PaywallPlatform() {
               </div>
               <span className="text-lg sm:text-2xl font-bold text-foreground">Smartbetting</span>
             </div>
-            <Button 
-              onClick={() => navigate("/bets")} 
+            <div className="flex items-center gap-2 sm:gap-4">
+            <SeletorDeIdiomaCompacto tom="claro" />
+            <Button
+              onClick={() => navigate("/bets")}
               className="bg-gradient-primary hover:opacity-90 text-sm sm:text-base px-3 sm:px-4 py-2"
             >
-              Dashboard
+              {t('paywallPlataforma.dashboard')}
             </Button>
+            </div>
           </div>
         </nav>
 
@@ -175,19 +189,19 @@ export default function PaywallPlatform() {
               <CardHeader>
                 <div className="flex items-center gap-3 mb-2">
                   <CheckCircle className="h-8 w-8 text-green-600" />
-                  <CardTitle className="text-2xl">Você já é Premium!</CardTitle>
+                  <CardTitle className="text-2xl">{t('paywallPlataforma.jaPremium.titulo')}</CardTitle>
                 </div>
                 <CardDescription>
-                  Sua assinatura está ativa. Aproveite todos os benefícios do plano premium.
+                  {t('paywallPlataforma.jaPremium.texto')}
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button 
+                <Button
                   onClick={() => navigate("/bets")}
                   className="w-full bg-gradient-primary hover:opacity-90"
                   size="lg"
                 >
-                  Ir para Dashboard
+                  {t('paywallPlataforma.jaPremium.acao')}
                 </Button>
               </CardContent>
             </Card>
@@ -209,18 +223,21 @@ export default function PaywallPlatform() {
             <span className="text-lg sm:text-2xl font-bold text-foreground">Smartbetting</span>
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
-            <Button 
-              variant="outline" 
-              onClick={() => navigate("/auth")} 
+            {/* Sem usuário não há menu da conta, e é lá que o idioma mora.
+                Esta tela tem cabeçalho próprio, então precisa do seu. */}
+            <SeletorDeIdiomaCompacto tom="claro" />
+            <Button
+              variant="outline"
+              onClick={() => navigate("/auth")}
               className="text-sm sm:text-base px-3 sm:px-4 py-2"
             >
-              Entrar
+              {t('comum:acoes.entrar')}
             </Button>
-            <Button 
-              onClick={() => navigate("/bets")} 
+            <Button
+              onClick={() => navigate("/bets")}
               className="bg-gradient-primary hover:opacity-90 text-sm sm:text-base px-3 sm:px-4 py-2"
             >
-              Dashboard
+              {t('paywallPlataforma.dashboard')}
             </Button>
           </div>
         </div>
@@ -234,15 +251,15 @@ export default function PaywallPlatform() {
               <BarChart3 className="h-10 w-10 text-white" />
             </div>
             <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
-              Acesso à Plataforma Premium
+              {t('paywallPlataforma.titulo')}
             </h1>
             <p className="text-xl text-muted-foreground">
-              Desbloqueie análises avançadas e insights exclusivos para melhorar suas estratégias
+              {t('paywallPlataforma.chamada')}
             </p>
             {isCheckingStatus && (
               <div className="mt-4 flex items-center justify-center gap-2 text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="text-sm">Verificando status da assinatura...</span>
+                <span className="text-sm">{t('checkout.verificandoAssinatura')}</span>
               </div>
             )}
           </div>
@@ -250,9 +267,9 @@ export default function PaywallPlatform() {
           {/* Main Card */}
           <Card className="mb-8">
             <CardHeader>
-              <CardTitle className="text-2xl">Desbloqueie Análises Avançadas</CardTitle>
+              <CardTitle className="text-2xl">{t('paywallPlataforma.cartaoTitulo')}</CardTitle>
               <CardDescription>
-                Assine o plano premium e tenha acesso completo à plataforma de análise
+                {t('paywallPlataforma.cartaoChamada')}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -264,9 +281,9 @@ export default function PaywallPlatform() {
                       <BarChart3 className="h-4 w-4 text-green-600 dark:text-green-400" />
                     </div>
                     <div>
-                      <p className="font-semibold text-foreground">Análises Detalhadas</p>
+                      <p className="font-semibold text-foreground">{t('paywallPlataforma.itens.analises.titulo')}</p>
                       <p className="text-sm text-muted-foreground">
-                        Acesse análises profundas e estatísticas avançadas de jogadores e times
+                        {t('paywallPlataforma.itens.analises.texto')}
                       </p>
                     </div>
                   </div>
@@ -275,9 +292,9 @@ export default function PaywallPlatform() {
                       <Zap className="h-4 w-4 text-green-600 dark:text-green-400" />
                     </div>
                     <div>
-                      <p className="font-semibold text-foreground">Insights Exclusivos</p>
+                      <p className="font-semibold text-foreground">{t('paywallPlataforma.itens.insights.titulo')}</p>
                       <p className="text-sm text-muted-foreground">
-                        Receba insights e recomendações personalizadas baseadas em dados
+                        {t('paywallPlataforma.itens.insights.texto')}
                       </p>
                     </div>
                   </div>
@@ -286,9 +303,9 @@ export default function PaywallPlatform() {
                       <ArrowRight className="h-4 w-4 text-green-600 dark:text-green-400" />
                     </div>
                     <div>
-                      <p className="font-semibold text-foreground">Prioridade no Suporte</p>
+                      <p className="font-semibold text-foreground">{t('paywallPlataforma.itens.suporte.titulo')}</p>
                       <p className="text-sm text-muted-foreground">
-                        Receba suporte prioritário para todas suas dúvidas
+                        {t('paywallPlataforma.itens.suporte.texto')}
                       </p>
                     </div>
                   </div>
@@ -297,7 +314,7 @@ export default function PaywallPlatform() {
                 {/* CTA Buttons */}
                 <div className="pt-6 border-t space-y-3">
                   {/* Botão Stripe Checkout (Principal) */}
-                  <Button 
+                  <Button
                     onClick={handleStripeCheckout}
                     disabled={isLoading || authLoading}
                     className="w-full bg-gradient-primary hover:opacity-90 text-lg py-6 gap-2 disabled:opacity-50"
@@ -306,43 +323,49 @@ export default function PaywallPlatform() {
                     {isLoading ? (
                       <>
                         <Loader2 className="h-5 w-5 animate-spin" />
-                        <span>Processando...</span>
+                        <span>{t('checkout.processando')}</span>
                       </>
                     ) : authLoading ? (
                       <>
                         <Loader2 className="h-5 w-5 animate-spin" />
-                        <span>Verificando autenticação...</span>
+                        <span>{t('checkout.verificandoAuth')}</span>
                       </>
                     ) : (
                       <>
                         <Zap className="h-5 w-5" />
-                        <span>Assinar Premium Agora</span>
+                        <span>{t('paywallPlataforma.acao')}</span>
                         <ArrowRight className="h-5 w-5" />
                       </>
                     )}
                   </Button>
 
                   {/* Botão WhatsApp (Alternativa) */}
-                  <Button 
+                  <Button
                     onClick={handleUpgrade}
                     variant="outline"
                     className="w-full text-lg py-6 gap-2"
                     size="lg"
                   >
                     <MessageCircle className="h-5 w-5" />
-                    <span>Ou entre em contato via WhatsApp</span>
+                    <span>{t('checkout.whatsappContato')}</span>
                   </Button>
 
                   {!user && (
                     <p className="text-sm text-muted-foreground text-center">
-                      <Button
-                        variant="link"
-                        onClick={() => navigate('/auth')}
-                        className="p-0 h-auto text-primary"
-                      >
-                        Faça login
-                      </Button>
-                      {" "}para continuar com o pagamento
+                      {/* `Trans`, e não concatenação: o link cai NO MEIO da frase,
+                          e em outro idioma ele cai em outro lugar. */}
+                      <Trans
+                        t={t}
+                        i18nKey="checkout.loginParaPagar"
+                        components={[
+                          <Button
+                            key="login"
+                            variant="link"
+                            onClick={() => navigate('/auth')}
+                            className="p-0 h-auto text-primary"
+                          />,
+                        ]}
+                      />
                     </p>
                   )}
                 </div>
@@ -354,8 +377,7 @@ export default function PaywallPlatform() {
           <Card className="bg-muted/50">
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground text-center">
-                Com o plano premium, você tem acesso completo a todas as funcionalidades da plataforma de análise.
-                Cancele quando quiser, sem compromisso.
+                {t('paywallPlataforma.rodape')}
               </p>
             </CardContent>
           </Card>
@@ -364,4 +386,3 @@ export default function PaywallPlatform() {
     </div>
   );
 }
-

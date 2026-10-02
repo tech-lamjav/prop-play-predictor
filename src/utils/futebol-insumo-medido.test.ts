@@ -1,8 +1,35 @@
 import { describe, expect, it } from 'vitest';
-import { evidenciaDoInsumoMedido, insumosDaPremissa, type InsumoMedido } from './futebol-insumo-medido';
-import { evidenciaDaPremissa } from './futebol-evidencia-da-premissa';
+import { fraseEmPortugues } from '@/test/copy-em-portugues';
+import type { Evidencia } from './futebol-evidencias';
+import {
+  evidenciaDoInsumoMedido as medidoCru,
+  insumosDaPremissa,
+  type InsumoMedido,
+} from './futebol-insumo-medido';
+import { evidenciaDaPremissa as portaCrua } from './futebol-evidencia-da-premissa';
 import { SPECS } from './futebol-historico';
 import type { FutebolFixtureNumeros } from '@/services/futebol-data.service';
+
+/**
+ * A evidência com a frase já montada em PORTUGUÊS.
+ *
+ * Desde o #544 a função devolve chave e valores, e as asserções deste arquivo
+ * são sobre a FRASE — é ela que o assinante lê, e é o recorte de mando e a
+ * grandeza dentro dela que cada teste aqui protege. Montar pelo catálogo real
+ * mantém as duas coisas: a chave certa e o texto certo.
+ *
+ * Em volta da função, e não em cada asserção, porque são trinta — e porque
+ * assim a próxima asserção nasce já lendo a frase.
+ */
+type EvidenciaEmPortugues = Omit<Evidencia, 'texto'> & { texto: string };
+
+const comFrase = (ev: Evidencia | null): EvidenciaEmPortugues | null =>
+  ev == null ? null : { ...ev, texto: fraseEmPortugues(ev.texto) };
+
+const evidenciaDoInsumoMedido = (...args: Parameters<typeof medidoCru>) =>
+  comFrase(medidoCru(...args));
+
+const evidenciaDaPremissa = (...args: Parameters<typeof portaCrua>) => comFrase(portaCrua(...args));
 
 // ============================================================================
 // O valor medido entra na porta única, e em que posição (#464)

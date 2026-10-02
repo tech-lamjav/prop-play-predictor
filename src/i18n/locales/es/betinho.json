@@ -1,0 +1,215 @@
+{
+  "acoes": {
+    "telegram": "Empieza gratis en Telegram",
+    "verPainel": "Ver el panel",
+    "verComoFunciona": "Ver cómo funciona",
+    "guia": "Guía de uso"
+  },
+  "hero": {
+    "bolao": {
+      "etiqueta": "Vienes del Bolão de la Copa",
+      "tituloLinhaUm": "Acabas de pronosticar en el Bolão.",
+      "tituloLinhaDois": "¿Y las apuestas de verdad, las anotas?",
+      "chamada": "Documenta todo en Telegram en 10 segundos — captura del boleto, la IA la registra, y tu bankroll aparece organizado en el panel. Sin planilla, sin app nueva."
+    },
+    "padrao": {
+      "etiqueta": "Betinho · Gestión de bankroll en Telegram",
+      "tituloLinhaUm": "¿Estás en ganancia o en pérdida?",
+      "tituloLinhaDois": "El Betinho lo sabe de memoria.",
+      "chamada": "Manda la captura del boleto en Telegram. La IA lee, registra y te devuelve bankroll, ROI y tasa de acierto — sin planilla, sin teclear. Pruébalo aquí abajo: <0>manda una captura al Betinho.</0>",
+      "rodape": "3 apuestas por día gratis · Sin tarjeta · El bankroll es tuyo, nosotros solo lo organizamos"
+    }
+  },
+  "demo": {
+    "selo": "datos de ejemplo",
+    "chat": {
+      "remetente": "Telegram · @betinho",
+      "lendo": "leyendo el boleto…",
+      "fim": "Esas eran las 3 capturas de ejemplo — en el bot es igual: <0>3 registros por día gratis.</0>",
+      "queroBot": "Quiero el bot de verdad",
+      "mandarPrint": "Mandar captura al Betinho"
+    },
+    "narrativa": {
+      "etiqueta": "Betinho · resumen del período",
+      "recebi": "¡Recibido! <0>{{aposta}}</0> registrada como pendiente. ¿Ya se resolvió? Cuéntame y actualizo el bankroll.",
+      "resumo": "Tu mes está positivo: <0>{{roi}} de ROI</0> — las props de la NBA empujaron el resultado."
+    },
+    "kpis": {
+      "roi": "ROI",
+      "lucro": "Ganancia neta",
+      "totalApostado": "Total apostado",
+      "taxa": "Tasa de acierto",
+      "apostas": "Apuestas",
+      "pendentes_zero": "{{count}} pendientes",
+      "pendentes_one": "{{count}} pendiente",
+      "pendentes_other": "{{count}} pendientes"
+    },
+    "plano": {
+      "etiqueta": "Plan de acción",
+      "titulo": "3 movimientos que subirían tu ROI",
+      "verFatia": "Ver la porción en el mapa",
+      "oportunidade": {
+        "rotulo": "Oportunidad",
+        "titulo": "Las props de la NBA son tu mina",
+        "texto": "+38% de ROI en 12 apuestas. Es tu mejor porción — el volumen aquí viene pagando."
+      },
+      "alerta": {
+        "rotulo": "Alerta",
+        "titulo": "La Serie A te está costando caro",
+        "texto": "−45% de ROI en el Más/Menos de la Serie A: 4 apuestas, 3 perdidas. Vale repensar esa porción."
+      },
+      "disciplina": {
+        "rotulo": "Disciplina",
+        "titulo": "Stake doblado después de perder",
+        "texto": "Tu promedio es R$ 120, pero después de perder doblas la mano. La constancia paga más que la recuperación."
+      }
+    },
+    "mapa": {
+      "titulo": "ROI por liga × mercado",
+      "legenda": "Verde = ganancia · rojo = pérdida · gris = sin volumen",
+      "semDados": "sin datos",
+      "colunas": {
+        "props": "Props de jugador",
+        "ml": "ML",
+        "overUnder": "Más/Menos"
+      }
+    },
+    "tabela": {
+      "titulo": "Últimos registros",
+      "contagem": "{{total}} apuestas en el período · mostrando las últimas 5",
+      "hoje": "hoy",
+      "colunas": {
+        "data": "Fecha",
+        "descricao": "Descripción",
+        "esporte": "Deporte",
+        "valor": "Importe",
+        "odd": "Cuota",
+        "retorno": "Retorno",
+        "situacao": "Estado"
+      }
+    },
+    "status": {
+      "ganhou": "GANADA",
+      "perdeu": "PERDIDA",
+      "pendente": "PENDIENTE",
+      "cashout": "CASHOUT"
+    },
+    "esportes": {
+      "basquete": "Baloncesto",
+      "futebol": "Fútbol"
+    },
+    "apostas": {
+      "lebronPontos": "LeBron 25+ puntos",
+      "corinthiansML": "Corinthians ML",
+      "curryTres": "Curry 5+ triples",
+      "underGols": "Menos de 2.5 goles",
+      "jokicPontosAssistencias": "Jokic 25+ pts y 8+ asts",
+      "flamengoML": "Flamengo ML",
+      "overPontos": "Más de 215.5 puntos"
+    },
+    "rodape": "3 apuestas por día gratis · sin tarjeta"
+  },
+  "fatos": {
+    "um": "Captura o texto",
+    "dois": "1 mensaje = 1 apuesta",
+    "tres": "Bankroll, ROI y tasa",
+    "quatro": "Cashout y estado",
+    "cinco": "Etiquetas y filtros"
+  },
+  "comoFunciona": {
+    "etiqueta": "Cómo funciona",
+    "titulo": "3 pasos. Sin complicación.",
+    "passos": {
+      "um": {
+        "titulo": "Conecta tu Telegram",
+        "texto": "Sincroniza el bot con tu cuenta en segundos."
+      },
+      "dois": {
+        "titulo": "Manda como hablas",
+        "texto": "\"Le puse 50 a Brasil a 1.85\" o la captura del boleto. La IA extrae y organiza todo."
+      },
+      "tres": {
+        "titulo": "Míralo todo en el panel",
+        "texto": "Bankroll, ROI, tasa de acierto. Organizado, automático."
+      }
+    }
+  },
+  "video": {
+    "etiqueta": "Sin truco",
+    "titulo": "El Betinho de verdad, en 30 segundos",
+    "chamada": "La demostración de arriba es simulada. Esto es grabación real del bot en Telegram — captura enviada, apuesta confirmada.",
+    "semSuporte": "Tu navegador no soporta el elemento de video."
+  },
+  "dentro": {
+    "etiqueta": "Qué hay dentro",
+    "titulo": "La planilla que se llena sola",
+    "chamada": "Todo apostador ya intentó anotar las apuestas. La planilla muere en la segunda semana — no por falta de ganas, por el trabajo. El Betinho saca el trabajo de la ecuación.",
+    "itens": {
+      "um": {
+        "titulo": "Registro por captura o texto",
+        "texto": "Manda la captura del boleto o escribe \"le puse 50 al Corinthians a 2.10\". La IA extrae partido, cuota e importe — 1 mensaje, 1 apuesta."
+      },
+      "dois": {
+        "titulo": "Bankroll, ROI y tasa sin planilla",
+        "texto": "Ganancia, retorno, promedio de cuotas y evolución del bankroll calculados solos, apuesta por apuesta. El número que evitas mirar, siempre a la vista."
+      },
+      "tres": {
+        "titulo": "El Betinho comenta tus números",
+        "texto": "En el panel, resume tu período en buen español: dónde ganas, dónde insistes en perder. Análisis, no juicio."
+      },
+      "quatro": {
+        "titulo": "Cashout, estado y filtros",
+        "texto": "¿Se resolvió la apuesta? Responde \"ganó\", \"perdió\" o \"cashout\" en el bot y el panel se actualiza. Después filtra por deporte, estado, fecha o etiqueta."
+      }
+    }
+  },
+  "combinado": {
+    "etiqueta": "Transparencia",
+    "titulo": "El acuerdo que firmamos",
+    "nuncaTitulo": "Lo que nunca vas a ver aquí",
+    "nunca": {
+      "um": "Pronóstico de apuesta en medio de tu chat",
+      "dois": "Acceso a tu cuenta en la casa de apuestas",
+      "tres": "Spam — el bot solo habla de registro",
+      "quatro": "Número maquillado para que te sientas mejor"
+    },
+    "sempreTitulo": "Lo que siempre vas a tener",
+    "sempre": {
+      "um": "Registro en segundos, por captura o texto",
+      "dois": "Tu ganancia y tu pérdida, sin filtro",
+      "tres": "Tus datos exportables cuando quieras",
+      "quatro": "El bankroll es tuyo — nosotros solo lo organizamos"
+    },
+    "assinatura": "— Betinho · acuerdo válido desde la primera captura"
+  },
+  "faq": {
+    "etiqueta": "Preguntas frecuentes",
+    "titulo": "Vamos a aclarar dudas",
+    "itens": {
+      "gratis": {
+        "pergunta": "¿Es gratis?",
+        "resposta": "Sí. En el plan gratis registras hasta 3 apuestas por día por el bot y usas el gestor completo — bankroll, ROI, filtros y exportación. El Premium libera registros ilimitados y los análisis del Betinho IA en el panel."
+      },
+      "whatsapp": {
+        "pergunta": "¿Funciona en WhatsApp?",
+        "resposta": "No — el Betinho vive en Telegram. Conectas tu cuenta en segundos y todo el registro pasa por allí."
+      },
+      "print": {
+        "pergunta": "¿Funciona con captura de cualquier casa?",
+        "resposta": "Sirve captura de boleto de cualquier casa — la IA lee el texto de la imagen y extrae partido, cuota e importe. ¿Salió algo mal? Lo corriges en el panel en segundos. Y si quieres, manda el caso al soporte: cada boleto que la IA falla nos ayuda a mejorar la lectura."
+      },
+      "dinheiro": {
+        "pergunta": "¿Tienen acceso a mi dinero?",
+        "resposta": "Cero. El Betinho no se conecta a tu cuenta en la casa de apuestas — registra lo que le mandas. Es un cuaderno inteligente, no una cartera."
+      },
+      "trabalho": {
+        "pergunta": "¿Da trabajo mantenerlo?",
+        "resposta": "Un mensaje por apuesta. ¿Se resolvió? Responde \"ganó\", \"perdió\" o \"cashout\" y el panel se actualiza. Planilla nunca más."
+      }
+    }
+  },
+  "fechamento": {
+    "titulo": "Manda la primera captura.",
+    "texto": "Cuenta gratis en un minuto, bot en Telegram, 3 registros por día sin pagar nada. En la próxima apuesta, ya sabes dónde está tu bankroll."
+  }
+}

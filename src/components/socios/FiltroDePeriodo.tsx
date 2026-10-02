@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { periodoDosUltimos, type Periodo } from './crm-painel';
 
 /**
@@ -10,12 +11,18 @@ import { periodoDosUltimos, type Periodo } from './crm-painel';
  * `dias` nulo é o atalho que não recorta nada. `personalizado` não tem dias
  * porque quem manda nele são os dois campos de data.
  */
-const ATALHOS: { id: string; rotulo: string; dias: number | null }[] = [
-  { id: 'sempre', rotulo: 'Desde sempre', dias: null },
-  { id: '7', rotulo: 'Últimos 7 dias', dias: 7 },
-  { id: '30', rotulo: 'Últimos 30 dias', dias: 30 },
-  { id: '90', rotulo: 'Últimos 90 dias', dias: 90 },
-  { id: 'personalizado', rotulo: 'Escolher as datas', dias: null },
+/**
+ * ⚠️ Guarda CHAVE, e não texto. A tabela é avaliada uma vez, no carregamento do
+ * módulo: texto aqui congelaria o idioma da primeira pintura e trocar de idioma
+ * não mexeria no seletor. O `t()` acontece no render, e o `key` do React é o
+ * `id`. Mesmo desenho de `src/config/menu-da-conta.ts`.
+ */
+const ATALHOS: { id: string; chave: string; dias: number | null }[] = [
+  { id: 'sempre', chave: 'painel.filtroPeriodo.atalhos.sempre', dias: null },
+  { id: '7', chave: 'painel.filtroPeriodo.atalhos.ultimos7', dias: 7 },
+  { id: '30', chave: 'painel.filtroPeriodo.atalhos.ultimos30', dias: 30 },
+  { id: '90', chave: 'painel.filtroPeriodo.atalhos.ultimos90', dias: 90 },
+  { id: 'personalizado', chave: 'painel.filtroPeriodo.atalhos.personalizado', dias: null },
 ];
 
 export const ATALHO_PADRAO = 'sempre';
@@ -43,6 +50,8 @@ export function FiltroDePeriodo({
   hoje: string;
   aoMudar: (atalho: string, periodo: Periodo) => void;
 }) {
+  const { t } = useTranslation('socios');
+
   const escolher = (id: string) => {
     const encontrado = ATALHOS.find((a) => a.id === id);
     if (id === 'personalizado') {
@@ -62,12 +71,12 @@ export function FiltroDePeriodo({
       <select
         value={atalho}
         onChange={(e) => escolher(e.target.value)}
-        aria-label="Período de cadastro"
+        aria-label={t('painel.filtroPeriodo.aria')}
         className="h-11 rounded-rebrand-sm border border-line-2 bg-white px-3 text-[14px] text-ink"
       >
         {ATALHOS.map((a) => (
           <option key={a.id} value={a.id}>
-            {a.rotulo}
+            {t(a.chave)}
           </option>
         ))}
       </select>
@@ -79,7 +88,7 @@ export function FiltroDePeriodo({
             value={periodo.de ?? ''}
             max={periodo.ate ?? undefined}
             onChange={(e) => aoMudar(atalho, { ...periodo, de: e.target.value || null })}
-            aria-label="Cadastrado a partir de"
+            aria-label={t('painel.filtroPeriodo.de')}
             className="h-11 rounded-rebrand-sm border border-line-2 bg-white px-3 text-[14px] text-ink"
           />
           <input
@@ -87,7 +96,7 @@ export function FiltroDePeriodo({
             value={periodo.ate ?? ''}
             min={periodo.de ?? undefined}
             onChange={(e) => aoMudar(atalho, { ...periodo, ate: e.target.value || null })}
-            aria-label="Cadastrado até"
+            aria-label={t('painel.filtroPeriodo.ate')}
             className="h-11 rounded-rebrand-sm border border-line-2 bg-white px-3 text-[14px] text-ink"
           />
         </>

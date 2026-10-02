@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, Cell, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import type { LinhaLiquidada } from './placar-agregacao';
@@ -7,7 +8,7 @@ import {
   granularidadeAbaixo,
   granularidadesDe,
   mercadosPresentes,
-  ROTULO_DA_GRANULARIDADE,
+  CHAVE_DO_DEGRAU,
   serie,
   type Granularidade,
   type Ponto,
@@ -18,6 +19,8 @@ import { rotuloDoMercado } from './placar-vocabulario';
 
 /** O que a barra diz quando o ponteiro para nela. */
 function Balao({ ponto }: { ponto?: Ponto }) {
+  const { t } = useTranslation('socios');
+
   if (!ponto) return null;
 
   return (
@@ -30,7 +33,10 @@ function Balao({ ponto }: { ponto?: Ponto }) {
         <span className="text-[12px] font-normal text-ink-dim">± {epPct(ponto.total.ep)}</span>
       </p>
       <p className="text-[12px] text-ink-2">
-        {taxaPct(ponto.total.taxa)} de acerto · {emN(ponto.total.n)}
+        {t('placar.evolucao.acertoEBase', {
+          taxa: taxaPct(ponto.total.taxa),
+          base: emN(ponto.total.n),
+        })}
       </p>
     </div>
   );
@@ -93,6 +99,7 @@ export function EvolucaoDoRoi({
    */
   comparando: boolean;
 }) {
+  const { t } = useTranslation('socios');
   const noCelular = useIsMobile();
   const disponiveis = granularidadesDe(periodo);
   const [mercados, setMercados] = useState<string[]>([]);
@@ -128,7 +135,9 @@ export function EvolucaoDoRoi({
   return (
     <section className="rounded-rebrand-md border border-line-2 bg-white">
       <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-line-2 px-4 py-3 sm:px-5">
-        <h2 className="font-display text-[17px] font-black text-ink">Evolução do ROI</h2>
+        <h2 className="font-display text-[17px] font-black text-ink">
+          {t('placar.evolucao.titulo')}
+        </h2>
 
         {gaveta && (
           <button
@@ -137,7 +146,12 @@ export function EvolucaoDoRoi({
             className="flex items-center gap-1 rounded-rebrand-sm border border-line-2 px-2 py-1 text-[12px] font-bold text-ink-2 transition hover:border-ink hover:text-ink"
           >
             <ChevronLeft className="h-3 w-3" />
-            {gaveta.rotulo}, por {ROTULO_DA_GRANULARIDADE[granularidade].toLowerCase()} — voltar
+            {/* O `.toLowerCase()` cai sobre o texto JÁ traduzido: é ele que faz
+                "Semana" virar "semana" dentro da frase, nos dois idiomas. */}
+            {t('placar.evolucao.voltar', {
+              gaveta: gaveta.rotulo,
+              degrau: t(CHAVE_DO_DEGRAU[granularidade]).toLowerCase(),
+            })}
           </button>
         )}
 
@@ -155,7 +169,7 @@ export function EvolucaoDoRoi({
                   granularidade === g ? 'bg-forest text-white' : 'bg-white text-ink-2 hover:text-ink'
                 }`}
               >
-                {ROTULO_DA_GRANULARIDADE[g]}
+                {t(CHAVE_DO_DEGRAU[g])}
               </button>
             ))}
           </span>
@@ -187,7 +201,7 @@ export function EvolucaoDoRoi({
 
       {pontos.length === 0 ? (
         <p className="px-4 py-8 text-[14px] text-ink-2 sm:px-5">
-          Nenhuma oportunidade liquidada no período com os mercados escolhidos.
+          {t('placar.evolucao.vazio')}
         </p>
       ) : (
         <div className="px-2 py-4">
@@ -259,7 +273,10 @@ export function EvolucaoDoRoi({
                   </span>
                 </span>
                 <span className="block text-[12px] text-ink-2">
-                  {taxaPct(pontoTocado.total.taxa)} de acerto · {emN(pontoTocado.total.n)}
+                  {t('placar.evolucao.acertoEBase', {
+                    taxa: taxaPct(pontoTocado.total.taxa),
+                    base: emN(pontoTocado.total.n),
+                  })}
                 </span>
               </span>
               {degrauAbaixo && (
@@ -268,7 +285,9 @@ export function EvolucaoDoRoi({
                   onClick={() => abrir(pontoTocado.chave)}
                   className="flex shrink-0 items-center gap-1 rounded-rebrand-sm bg-forest px-3 py-2 text-[12px] font-bold text-white"
                 >
-                  Abrir por {ROTULO_DA_GRANULARIDADE[degrauAbaixo].toLowerCase()}
+                  {t('placar.evolucao.abrirPor', {
+                    degrau: t(CHAVE_DO_DEGRAU[degrauAbaixo]).toLowerCase(),
+                  })}
                   <ChevronRight className="h-3 w-3" />
                 </button>
               )}
@@ -277,12 +296,14 @@ export function EvolucaoDoRoi({
 
           <p className="px-3 pt-1 text-[11px] text-ink-dim">
             {comparando
-              ? 'Comparando dois períodos, a barra não abre: a gaveta recorta a tela toda, e a tela está mostrando duas janelas.'
+              ? t('placar.evolucao.rodapeComparando')
               : noCelular
-              ? 'Toque numa barra para ver o número dela.'
+              ? t('placar.evolucao.rodapeToque')
               : degrauAbaixo
-              ? `Clique numa barra para abrir por ${ROTULO_DA_GRANULARIDADE[degrauAbaixo].toLowerCase()}.`
-              : 'Este é o último degrau: cada barra é um dia.'}
+              ? t('placar.evolucao.rodapeClique', {
+                  degrau: t(CHAVE_DO_DEGRAU[degrauAbaixo]).toLowerCase(),
+                })
+              : t('placar.evolucao.rodapeUltimoDegrau')}
           </p>
         </div>
       )}

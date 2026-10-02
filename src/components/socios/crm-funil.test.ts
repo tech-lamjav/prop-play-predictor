@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { etapaDe, filtrarPorEtapa } from './crm-funil';
-import { ETAPAS, ETAPA_PADRAO, ROTULO_DA_ETAPA } from './crm-vocabulario';
+import { CHAVE_DA_ETAPA, ETAPAS, ETAPA_PADRAO } from './crm-vocabulario';
 import { cadastroDeTeste as cadastro } from './crm-cadastro-de-teste';
 
 describe('etapaDe', () => {
@@ -24,11 +24,11 @@ describe('etapaDe', () => {
   });
 });
 
-describe('ROTULO_DA_ETAPA', () => {
+describe('CHAVE_DA_ETAPA', () => {
   it('toda etapa tem rótulo', () => {
-    // Um rótulo faltando vira `undefined` no seletor, e o sócio escolhe um
+    // Uma chave faltando vira `undefined` no seletor, e o sócio escolhe um
     // item em branco sem saber o que escolheu.
-    for (const etapa of ETAPAS) expect(ROTULO_DA_ETAPA[etapa]).toBeTruthy();
+    for (const etapa of ETAPAS) expect(CHAVE_DA_ETAPA[etapa]).toBeTruthy();
   });
 });
 

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { fmtDinheiro } from '@/utils/formato';
 import { format, parse, isValid, isBefore } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { Calendar as CalendarIcon, ChevronDown, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
@@ -10,6 +10,7 @@ import { TagSelector } from '@/components/bets/TagSelector';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { telegramBotUrl } from '@/config/environment';
 import { canonicalizeVocab, vocabHasValue } from '@/utils/betVocab';
+import { localeDoDateFns } from '@/utils/locale-do-date-fns';
 
 export interface CreateBetTag {
   id: string;
@@ -89,6 +90,7 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
   userTags: _userTags,
   onTagsUpdated,
 }) => {
+  const { t } = useTranslation('apostas');
   const [formData, setFormData] = useState<CreateBetFormState>(getDefaultFormState());
   const [stayOpen, setStayOpen] = useState(false);
   const [isCreateDatePopoverOpen, setIsCreateDatePopoverOpen] = useState(false);
@@ -281,14 +283,14 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
         {/* Header */}
         <div className="px-6 py-4 border-b border-line flex items-center justify-between">
           <div>
-            <div className="text-[11px] uppercase tracking-[0.16em] text-forest font-semibold">Nova aposta</div>
-            <DialogTitle className="text-[20px] font-semibold tracking-tight text-ink mt-0.5">Cadastrar aposta</DialogTitle>
+            <div className="text-[11px] uppercase tracking-[0.16em] text-forest font-semibold">{t('novaAposta.etiqueta')}</div>
+            <DialogTitle className="text-[20px] font-semibold tracking-tight text-ink mt-0.5">{t('novaAposta.titulo')}</DialogTitle>
           </div>
         </div>
 
         {/* Subheader: "Cadastro manual" + Telegram pill */}
         <div className="px-6 pt-5 flex items-center justify-between gap-3">
-          <div className="text-[12px] text-ink-2">Cadastro manual da aposta</div>
+          <div className="text-[12px] text-ink-2">{t('novaAposta.subtitulo')}</div>
           <a
             href={telegramBotUrl}
             target="_blank"
@@ -296,8 +298,8 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
             className="h-9 px-3 inline-flex items-center gap-2 text-[12px] font-semibold text-forest border border-forest/30 hover:bg-forest-tint rounded-md transition-colors shrink-0"
           >
             <Send className="w-3.5 h-3.5 text-amber-500" />
-            <span className="hidden sm:inline">Cadastrar pelo Telegram</span>
-            <span className="text-[9px] uppercase tracking-[0.1em] bg-amber-400 text-forest px-1.5 py-0.5 rounded">+ rápido</span>
+            <span className="hidden sm:inline">{t('novaAposta.telegram')}</span>
+            <span className="text-[9px] uppercase tracking-[0.1em] bg-amber-400 text-forest px-1.5 py-0.5 rounded">{t('novaAposta.maisRapido')}</span>
           </a>
         </div>
 
@@ -306,14 +308,14 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
           {/* Descrição (col-span-2) */}
           <div className="col-span-1 sm:col-span-2">
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Descrição *</label>
+              <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('novaAposta.descricao')}</label>
             </div>
             <div className="flex items-center h-10 bg-canvas border border-line rounded-md focus-within:border-forest/50 focus-within:ring-2 focus-within:ring-forest/10">
               <input
                 value={formData.bet_description}
                 onChange={(e) => setFormData((prev) => ({ ...prev, bet_description: e.target.value }))}
                 className="flex-1 bg-transparent px-3 text-[13px] text-ink outline-none tabular"
-                placeholder="Ex: LeBron 25+ pontos"
+                placeholder={t('novaAposta.placeholderDescricao')}
               />
             </div>
           </div>
@@ -321,7 +323,7 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
           {/* Esporte | Liga */}
           <div className="col-span-1">
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Esporte *</label>
+              <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('novaAposta.esporte')}</label>
             </div>
             <div className="relative">
               <div className="flex items-center h-10 bg-canvas border border-line rounded-md focus-within:border-forest/50 focus-within:ring-2 focus-within:ring-forest/10 hover:border-forest/30">
@@ -392,7 +394,7 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
                     setIsCreateSportQueryTouched(false);
                   }}
                   onBlur={() => setIsCreateSportDropdownOpen(false)}
-                  placeholder="Selecione ou digite"
+                  placeholder={t('novaAposta.selecioneOuDigite')}
                   className="flex-1 bg-transparent px-3 text-[13px] text-ink outline-none"
                 />
                 <ChevronDown className="w-3.5 h-3.5 text-ink-2 mr-3" />
@@ -434,7 +436,7 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
                       }}
                       className="w-full text-left px-3 py-2 text-sm text-forest font-medium hover:bg-forest-tint border-t border-line"
                     >
-                      ＋ Adicionar "{formData.sport.trim()}"
+                      {t('novaAposta.adicionar', { valor: formData.sport.trim() })}
                     </button>
                   )}
                 </div>
@@ -444,7 +446,7 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
 
           <div className="col-span-1">
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Liga / competição</label>
+              <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('novaAposta.liga')}</label>
             </div>
             <div className="relative">
               <div className="flex items-center h-10 bg-canvas border border-line rounded-md focus-within:border-forest/50 focus-within:ring-2 focus-within:ring-forest/10 hover:border-forest/30">
@@ -515,7 +517,7 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
                     setIsCreateLeagueQueryTouched(false);
                   }}
                   onBlur={() => setIsCreateLeagueDropdownOpen(false)}
-                  placeholder="Selecione ou digite"
+                  placeholder={t('novaAposta.selecioneOuDigite')}
                   className="flex-1 bg-transparent px-3 text-[13px] text-ink outline-none"
                 />
                 <ChevronDown className="w-3.5 h-3.5 text-ink-2 mr-3" />
@@ -557,7 +559,7 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
                       }}
                       className="w-full text-left px-3 py-2 text-sm text-forest font-medium hover:bg-forest-tint border-t border-line"
                     >
-                      ＋ Adicionar "{formData.league.trim()}"
+                      {t('novaAposta.adicionar', { valor: formData.league.trim() })}
                     </button>
                   )}
                 </div>
@@ -568,7 +570,7 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
           {/* Tipo de aposta | Status inicial */}
           <div className="col-span-1">
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Tipo de aposta</label>
+              <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('novaAposta.tipoDeAposta')}</label>
             </div>
             <div className="relative">
               <div className="flex items-center h-10 bg-canvas border border-line rounded-md focus-within:border-forest/50 focus-within:ring-2 focus-within:ring-forest/10 hover:border-forest/30">
@@ -635,7 +637,7 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
                     setIsCreateBettingMarketQueryTouched(false);
                   }}
                   onBlur={() => setIsCreateBettingMarketDropdownOpen(false)}
-                  placeholder="Selecione ou digite"
+                  placeholder={t('novaAposta.selecioneOuDigite')}
                   className="flex-1 bg-transparent px-3 text-[13px] text-ink outline-none"
                 />
                 <ChevronDown className="w-3.5 h-3.5 text-ink-2 mr-3" />
@@ -677,7 +679,7 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
                       }}
                       className="w-full text-left px-3 py-2 text-sm text-forest font-medium hover:bg-forest-tint border-t border-line"
                     >
-                      ＋ Adicionar "{formData.betting_market.trim()}"
+                      {t('novaAposta.adicionar', { valor: formData.betting_market.trim() })}
                     </button>
                   )}
                 </div>
@@ -688,7 +690,7 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
           {/* Status inicial — visual-only; TODO: wire status to onCreate */}
           <div className="col-span-1">
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Status inicial</label>
+              <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('novaAposta.statusInicial')}</label>
             </div>
             <div className="relative">
               <select
@@ -696,11 +698,11 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
                 onChange={(e) => setFormData((prev) => ({ ...prev, status: e.target.value }))}
                 className="w-full h-10 px-3 pr-8 appearance-none bg-canvas border border-line rounded-md text-[13px] text-ink hover:border-forest/30 focus:border-forest/50 focus:ring-2 focus:ring-forest/10 outline-none"
               >
-                <option value="pending">Pendente</option>
-                <option value="won">Ganhou</option>
-                <option value="lost">Perdeu</option>
-                <option value="void">Cancelada</option>
-                <option value="cashout">Cashout</option>
+                <option value="pending">{t('status.pendente')}</option>
+                <option value="won">{t('status.ganhou')}</option>
+                <option value="lost">{t('status.perdeu')}</option>
+                <option value="void">{t('status.cancelada')}</option>
+                <option value="cashout">{t('status.cashout')}</option>
               </select>
               <ChevronDown className="w-3.5 h-3.5 text-ink-2 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
@@ -709,13 +711,13 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
           {/* Stake (com link "Usar 1 unidade" no right) | Odd */}
           <div className="col-span-1">
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Stake *</label>
+              <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('novaAposta.stake')}</label>
               <button
                 type="button"
                 onClick={handleUseOneUnit}
                 className="text-[10px] text-forest font-semibold uppercase tracking-[0.08em] hover:underline"
               >
-                Usar 1 unidade
+                {t('novaAposta.usarUmaUnidade')}
               </button>
             </div>
             <div className="flex items-center h-10 bg-canvas border border-line rounded-md focus-within:border-forest/50 focus-within:ring-2 focus-within:ring-forest/10">
@@ -733,7 +735,7 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
 
           <div className="col-span-1">
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Odd *</label>
+              <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('novaAposta.odd')}</label>
             </div>
             <div className="flex items-center h-10 bg-canvas border border-line rounded-md focus-within:border-forest/50 focus-within:ring-2 focus-within:ring-forest/10">
               <input
@@ -750,7 +752,7 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
           {/* Casa de apostas | Data e hora */}
           <div className="col-span-1">
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Casa de apostas</label>
+              <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('novaAposta.casaDeApostas')}</label>
             </div>
             {/* TODO: wire bookmaker to onCreate */}
             <div className="flex items-center h-10 bg-canvas border border-line rounded-md focus-within:border-forest/50 focus-within:ring-2 focus-within:ring-forest/10">
@@ -758,14 +760,14 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
                 value={formData.bookmaker}
                 onChange={(e) => setFormData((prev) => ({ ...prev, bookmaker: e.target.value }))}
                 className="flex-1 bg-transparent px-3 text-[13px] text-ink outline-none"
-                placeholder="Ex: Bet365"
+                placeholder={t('novaAposta.placeholderCasa')}
               />
             </div>
           </div>
 
           <div className="col-span-1">
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Data da Aposta *</label>
+              <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('novaAposta.dataDaAposta')}</label>
             </div>
             <Popover open={isCreateDatePopoverOpen} onOpenChange={setIsCreateDatePopoverOpen} modal>
               <PopoverTrigger asChild>
@@ -777,7 +779,7 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
                     <CalendarIcon className="w-3.5 h-3.5 text-forest" />
                     {(() => {
                       const date = parseDateString(formData.bet_date);
-                      return date ? format(date, 'dd/MM/yyyy', { locale: ptBR }) : 'Selecione a data';
+                      return date ? format(date, 'dd/MM/yyyy', { locale: localeDoDateFns() }) : t('novaAposta.selecioneData');
                     })()}
                   </span>
                   <ChevronDown className="w-3.5 h-3.5 text-ink-2" />
@@ -811,21 +813,21 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
           {/* Partida (opcional) | Data da partida (opcional) */}
           <div className="col-span-1">
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Partida (opcional)</label>
+              <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('novaAposta.partida')}</label>
             </div>
             <div className="flex items-center h-10 bg-canvas border border-line rounded-md focus-within:border-forest/50 focus-within:ring-2 focus-within:ring-forest/10">
               <input
                 value={formData.match_description}
                 onChange={(e) => setFormData((prev) => ({ ...prev, match_description: e.target.value }))}
                 className="flex-1 bg-transparent px-3 text-[13px] text-ink outline-none"
-                placeholder="Ex: Lakers x Celtics"
+                placeholder={t('novaAposta.placeholderPartida')}
               />
             </div>
           </div>
 
           <div className="col-span-1">
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Data da partida (opcional)</label>
+              <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('novaAposta.dataDaPartida')}</label>
             </div>
             <Popover open={isCreateMatchDatePopoverOpen} onOpenChange={setIsCreateMatchDatePopoverOpen} modal>
               <PopoverTrigger asChild>
@@ -837,7 +839,7 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
                     <CalendarIcon className="w-3.5 h-3.5 text-forest" />
                     {(() => {
                       const date = parseDateString(formData.match_date);
-                      return date ? format(date, 'dd/MM/yyyy', { locale: ptBR }) : 'Selecione a data';
+                      return date ? format(date, 'dd/MM/yyyy', { locale: localeDoDateFns() }) : t('novaAposta.selecioneData');
                     })()}
                   </span>
                   <ChevronDown className="w-3.5 h-3.5 text-ink-2" />
@@ -875,7 +877,7 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
           {/* Tags (col-span-2) */}
           <div className="col-span-1 sm:col-span-2">
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Etiquetas</label>
+              <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('novaAposta.etiquetas')}</label>
             </div>
             <TagSelector
               selectedTags={formData.selectedTags}
@@ -887,7 +889,7 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
 
           {/* Credit bet toggle (compacto) */}
           <div className="col-span-1 sm:col-span-2 flex items-center gap-3">
-            <span className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Crédito de apostas</span>
+            <span className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('novaAposta.creditoDeApostas')}</span>
             <button
               type="button"
               onClick={() => setFormData((prev) => ({ ...prev, is_credit_bet: !prev.is_credit_bet }))}
@@ -905,19 +907,19 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
           {/* Summary card (col-span-2 bg-forest-tint) */}
           <div className="col-span-1 sm:col-span-2 mt-2 grid grid-cols-3 gap-3 p-4 bg-forest-tint border border-forest/15 rounded-lg">
             <div>
-              <div className="text-[10px] uppercase tracking-[0.12em] text-forest/70 font-semibold">Stake</div>
+              <div className="text-[10px] uppercase tracking-[0.12em] text-forest/70 font-semibold">{t('novaAposta.resumo.stake')}</div>
               <div className="text-[16px] font-semibold tabular text-ink mt-0.5">
                 {summary ? fmtDinheiro(summary.stake) : '—'}
               </div>
             </div>
             <div>
-              <div className="text-[10px] uppercase tracking-[0.12em] text-forest/70 font-semibold">Retorno potencial</div>
+              <div className="text-[10px] uppercase tracking-[0.12em] text-forest/70 font-semibold">{t('novaAposta.resumo.retornoPotencial')}</div>
               <div className="text-[16px] font-semibold tabular text-forest mt-0.5">
                 {summary ? fmtDinheiro(summary.retorno) : '—'}
               </div>
             </div>
             <div>
-              <div className="text-[10px] uppercase tracking-[0.12em] text-forest/70 font-semibold">Lucro potencial</div>
+              <div className="text-[10px] uppercase tracking-[0.12em] text-forest/70 font-semibold">{t('novaAposta.resumo.lucroPotencial')}</div>
               <div className="text-[16px] font-semibold tabular text-status-success mt-0.5">
                 {summary ? `+ ${fmtDinheiro(summary.lucro)}` : '—'}
               </div>
@@ -934,7 +936,7 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
               checked={stayOpen}
               onChange={(e) => setStayOpen(e.target.checked)}
             />
-            Cadastrar outra após salvar
+            {t('novaAposta.cadastrarOutra')}
           </label>
           <div className="flex items-center gap-2">
             <Button
@@ -943,7 +945,7 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
               onClick={() => handleOpenChange(false)}
               className="h-10 px-4 text-[13px] font-medium text-ink-2 hover:bg-canvas-2 hover:text-ink rounded-md"
             >
-              Cancelar
+              {t('novaAposta.cancelar')}
             </Button>
             <Button
               type="button"
@@ -951,7 +953,7 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
               disabled={!formData.bet_description || !formData.sport || !formData.odds || !formData.stake_amount}
               className="h-10 px-5 text-[13px] font-semibold text-white bg-forest hover:bg-forest-soft rounded-md"
             >
-              Salvar aposta
+              {t('novaAposta.salvar')}
             </Button>
           </div>
         </div>

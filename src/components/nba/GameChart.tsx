@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
-import { fmtNumero } from '@/utils/formato';
+import { useTranslation } from 'react-i18next';
+import { fmtDecimal, fmtDecimalAte, fmtLinhaAnalisada, fmtNumero, fmtPct } from '@/utils/formato';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, ReferenceLine, Label, Tooltip, LabelList } from 'recharts';
 import { GamePlayerStats, TeamPlayer } from '@/services/nba-data.service';
 import { RotateCcw, Info, Globe, Home, Plane, X, ChevronDown, ChevronLeft, ChevronRight, Star, SlidersHorizontal } from 'lucide-react';
@@ -8,12 +9,13 @@ import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { getPlayerPhotoUrl, tryNextPlayerPhotoUrl, getTeamLogoUrl, teamAbbrToName } from '@/utils/team-logos';
 import { TeammateFilter } from '@/components/nba/TeammateFilterBar';
 import { STAT_TYPES_BASIC, STAT_TYPES_COMBOS, STAT_TYPES_PERIOD } from '@/components/nba/StatTypeSelector';
+import { localeAtivo } from '@/utils/idioma-ativo';
 
-const gameOptions: Array<{ value: number | 'all'; label: string }> = [
-  { value: 5, label: 'Últ. 5' },
-  { value: 10, label: 'Últ. 10' },
-  { value: 15, label: 'Últ. 15' },
-  { value: 'all', label: 'Todos' },
+const gameOptions: Array<{ value: number | 'all' }> = [
+  { value: 5 },
+  { value: 10 },
+  { value: 15 },
+  { value: 'all' },
 ];
 
 const locationOptions: Array<{ value: 'all' | 'home' | 'away'; icon: React.ReactNode }> = [
@@ -71,12 +73,13 @@ interface ChartDataPoint {
 }
 
 const CustomTooltip = ({ active, payload }: any) => {
+  const { t } = useTranslation('nba');
   if (active && payload && payload.length) {
     const data = payload[0].payload as ChartDataPoint;
     const hasScore = data.playerScore !== null && data.oppScore !== null;
     const margin = hasScore ? Math.abs((data.playerScore ?? 0) - (data.oppScore ?? 0)) : null;
     const isOver = data.line > 0 ? data.value > data.line : null;
-    const statDisplay = data.value % 1 === 0 ? String(data.value) : data.value.toFixed(1);
+    const statDisplay = fmtDecimalAte(data.value, 1);
 
     return (
       <div className="bg-white border border-line rounded-lg shadow-lg p-3 w-44">
@@ -88,7 +91,7 @@ const CustomTooltip = ({ active, payload }: any) => {
             )}
             {hasScore && data.gameWon !== null && (
               <span className={`text-[9px] px-1 py-px rounded font-bold ${data.gameWon ? 'bg-emerald-100 text-forest' : 'bg-rose-100 text-rose-700'}`}>
-                {data.gameWon ? 'V' : 'D'}+{margin}
+                {data.gameWon ? t('grafico.vitoria') : t('grafico.derrota')}+{margin}
               </span>
             )}
           </div>
@@ -100,14 +103,14 @@ const CustomTooltip = ({ active, payload }: any) => {
         )}
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-[9px] text-ink-dim uppercase tracking-wider mb-0.5">Valor</div>
+            <div className="text-[9px] text-ink-dim uppercase tracking-wider mb-0.5">{t('grafico.tooltipValor')}</div>
             <div className="text-xl font-semibold text-ink leading-none tabular">{statDisplay}</div>
           </div>
           {data.line > 0 && (
             <div className="text-right">
-              <div className="text-[9px] text-ink-dim mb-0.5">Linha {data.line.toFixed(1)}</div>
+              <div className="text-[9px] text-ink-dim mb-0.5">{t('grafico.tooltipLinha', { valor: fmtLinhaAnalisada(data.line) })}</div>
               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${isOver ? 'bg-emerald-100 text-forest' : 'bg-rose-100 text-rose-700'}`}>
-                {isOver ? 'ACIMA' : 'ABAIXO'}
+                {isOver ? t('grafico.acima') : t('grafico.abaixo')}
               </span>
             </div>
           )}
@@ -167,6 +170,7 @@ export const GameChart: React.FC<GameChartProps> = ({
   chartLoading = false,
   potentialAstSeason = null, potentialAstSeasonRank = null,
 }) => {
+  const { t } = useTranslation('nba');
   const [adjustedLine, setAdjustedLine] = useState<number | null>(currentLine ?? null);
   const [isDragging, setIsDragging] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -244,7 +248,7 @@ export const GameChart: React.FC<GameChartProps> = ({
       game: `G${index + 1}`,
       value: game.stat_value ?? 0,
       opponent: game.played_against,
-      date: new Date(game.game_date).toLocaleDateString('pt-BR', { month: 'numeric', day: 'numeric' }),
+      date: new Date(game.game_date).toLocaleDateString(localeAtivo(), { month: 'numeric', day: 'numeric' }),
       isOver: game.stat_vs_line === 'Over',
       line: game.line ?? 0,
       statVsLine: game.stat_vs_line || '',
@@ -274,14 +278,14 @@ export const GameChart: React.FC<GameChartProps> = ({
     : fullChartData;
 
   const average = chartData.length > 0
-    ? (chartData.reduce((sum, game) => sum + game.value, 0) / chartData.length).toFixed(1)
+    ? fmtDecimal(chartData.reduce((sum, game) => sum + game.value, 0) / chartData.length, 1)
     : '0.0';
 
   const hitRate = adjustedLine && chartData.length > 0
     ? {
         hits: chartData.filter(g => g.value > adjustedLine).length,
         total: chartData.length,
-        percentage: ((chartData.filter(g => g.value > adjustedLine).length / chartData.length) * 100).toFixed(1)
+        taxa: chartData.filter((g) => g.value > adjustedLine).length / chartData.length
       }
     : null;
 
@@ -367,12 +371,12 @@ export const GameChart: React.FC<GameChartProps> = ({
   if (chartData.length === 0) {
     return (
       <div className="rounded-lg bg-white border border-line p-4 mb-3">
-        <h3 className="section-title mb-3">GRÁFICO DE DESEMPENHO</h3>
+        <h3 className="section-title mb-3">{t('grafico.tituloVazio')}</h3>
         <div className="h-72 flex items-center justify-center text-ink opacity-50">
           {chartLoading ? (
-            <span className="animate-pulse">Carregando...</span>
+            <span className="animate-pulse">{t('grafico.carregando')}</span>
           ) : (
-            <p>Nenhum dado de jogo disponível</p>
+            <p>{t('grafico.vazio')}</p>
           )}
         </div>
       </div>
@@ -401,12 +405,12 @@ export const GameChart: React.FC<GameChartProps> = ({
           className="w-full h-7 text-[11px] font-semibold rounded-md inline-flex items-center justify-center gap-1.5 border border-line text-ink-2 hover:border-rose-300 hover:text-rose-700 hover:bg-rose-50 transition-colors"
         >
           <X className="w-3 h-3" />
-          Limpar filtros
+          {t('filtros.limpar')}
         </button>
       )}
       {onSeasonChange && (
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-2 mb-1.5">Temporada</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-2 mb-1.5">{t('filtros.temporada')}</p>
           <div className="flex gap-1 flex-wrap">
             {([
               { value: 'current' as const, label: '25/26' },
@@ -427,7 +431,7 @@ export const GameChart: React.FC<GameChartProps> = ({
       )}
 
       <div>
-        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-2 mb-1.5">Últimos jogos</p>
+        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-2 mb-1.5">{t('filtros.ultimosJogos')}</p>
         <div className="flex gap-1 flex-wrap">
           {gameOptions.map(opt => {
             const isDisabled = typeof opt.value === 'number' && opt.value > totalGamesAvailable;
@@ -441,7 +445,7 @@ export const GameChart: React.FC<GameChartProps> = ({
                       ? 'border-forest/10 text-ink/30 cursor-not-allowed'
                       : 'border-forest/30 text-ink hover:border-forest/50 hover:bg-forest/5'
                 }`}>
-                {opt.label}
+                {opt.value === 'all' ? t('filtros.todos') : t('grafico.ultN', { n: opt.value })}
               </button>
             );
           })}
@@ -449,11 +453,11 @@ export const GameChart: React.FC<GameChartProps> = ({
       </div>
 
       <div>
-        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-2 mb-1.5">Local</p>
+        <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-2 mb-1.5">{t('filtros.local')}</p>
         <div className="flex gap-1">
           {locationOptions.map(opt => {
             const isActive = homeAway === opt.value;
-            const label = opt.value === 'all' ? 'Todos' : opt.value === 'home' ? 'Casa' : 'Fora';
+            const label = opt.value === 'all' ? t('filtros.todos') : opt.value === 'home' ? t('filtros.casa') : t('filtros.fora');
             return (
               <button key={opt.value} onClick={() => onHomeAwayChange(opt.value)}
                 className={`flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded border transition-all ${
@@ -469,7 +473,7 @@ export const GameChart: React.FC<GameChartProps> = ({
       </div>
 
       <div className="border-t border-line pt-3">
-        <p className="text-[10px] font-bold uppercase tracking-wider opacity-40 mb-2">Avançado</p>
+        <p className="text-[10px] font-bold uppercase tracking-wider opacity-40 mb-2">{t('filtros.avancado')}</p>
         <div className="flex flex-wrap gap-1.5 mb-3">
           <button onClick={() => onB2BChange(!b2bOnly)}
             className={`px-3 py-1 text-xs font-medium rounded border transition-all ${
@@ -489,13 +493,13 @@ export const GameChart: React.FC<GameChartProps> = ({
 
         {onSeasonTypeChange && selectedSeason !== 'current' && (
           <div className="mb-3">
-            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-2 mb-1.5">Tipo de temporada</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-2 mb-1.5">{t('filtros.tipoTemporada')}</p>
             <div className="flex gap-1 flex-wrap">
               {([
-                { value: 'all' as const, label: 'Todos' },
-                { value: 'regular' as const, label: 'Regular' },
-                { value: 'playoffs' as const, label: 'Playoffs' },
-                { value: 'playin' as const, label: 'Play-in' },
+                { value: 'all' as const, label: t('filtros.todos') },
+                { value: 'regular' as const, label: t('filtros.regular') },
+                { value: 'playoffs' as const, label: t('filtros.playoffs') },
+                { value: 'playin' as const, label: t('filtros.playin') },
               ]).map(opt => (
                 <button key={opt.value} onClick={() => onSeasonTypeChange(opt.value)}
                   className={`px-3 py-1 text-xs font-medium rounded border transition-all ${
@@ -510,25 +514,25 @@ export const GameChart: React.FC<GameChartProps> = ({
 
         {availableTeammates.length > 0 && (
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-2 mb-1.5">Companheiros</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-ink-2 mb-1.5">{t('filtros.companheiros')}</p>
             <div className="max-h-64 overflow-y-auto minimal-scrollbar border border-line rounded">
-              {availableTeammates.map(t => {
-                const active = teammateFilter?.find(tf => tf.playerId === t.player_id);
-                const photoUrl = getPlayerPhotoUrl(t.player_name, teamName);
-                const initials = t.player_name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+              {availableTeammates.map(companheiro => {
+                const active = teammateFilter?.find(tf => tf.playerId === companheiro.player_id);
+                const photoUrl = getPlayerPhotoUrl(companheiro.player_name, teamName);
+                const initials = companheiro.player_name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
                 const rowHighlight = active?.mode === 'with'
                   ? 'bg-emerald-50 border-l-2 border-l-forest'
                   : active?.mode === 'without'
                     ? 'bg-rose-50 border-l-2 border-l-rose-300'
                     : 'hover:bg-canvas-2/30';
                 return (
-                  <div key={t.player_id} className={`flex items-center gap-2 px-2 py-1.5 border-b border-line/30 last:border-0 transition-colors ${rowHighlight}`}>
+                  <div key={companheiro.player_id} className={`flex items-center gap-2 px-2 py-1.5 border-b border-line/30 last:border-0 transition-colors ${rowHighlight}`}>
                     <div className="w-7 h-7 rounded-full overflow-hidden bg-canvas-2 border border-line shrink-0 flex items-center justify-center">
                       {photoUrl ? (
-                        <img src={photoUrl} alt={t.player_name}
+                        <img src={photoUrl} alt={companheiro.player_name}
                           className="w-full h-full object-cover object-top"
                           onError={(e) => {
-                            const didTry = tryNextPlayerPhotoUrl(e.target as HTMLImageElement, t.player_name, teamName);
+                            const didTry = tryNextPlayerPhotoUrl(e.target as HTMLImageElement, companheiro.player_name, teamName);
                             if (!didTry) {
                               const el = e.target as HTMLImageElement;
                               el.style.display = 'none';
@@ -542,35 +546,35 @@ export const GameChart: React.FC<GameChartProps> = ({
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1">
-                        <span className="text-xs font-medium text-ink truncate">{t.player_name}</span>
-                        {t.rating_stars > 0 && (
+                        <span className="text-xs font-medium text-ink truncate">{companheiro.player_name}</span>
+                        {companheiro.rating_stars > 0 && (
                           <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-700 shrink-0" />
                         )}
                       </div>
                     </div>
                     <div className="flex gap-1 shrink-0">
                       <button onClick={() => {
-                        const entry = { playerId: t.player_id, playerName: t.player_name, mode: 'with' as const };
+                        const entry = { playerId: companheiro.player_id, playerName: companheiro.player_name, mode: 'with' as const };
                         const current = teammateFilter ?? [];
-                        const filtered = current.filter(f => f.playerId !== t.player_id);
+                        const filtered = current.filter(f => f.playerId !== companheiro.player_id);
                         onTeammateFilterChange([...filtered, entry]);
                       }}
                         className={`px-2 py-0.5 text-[10px] rounded border transition-colors ${
                           active?.mode === 'with'
                             ? 'bg-forest/20 border-forest text-forest'
                             : 'border-forest/40 text-forest hover:bg-forest/10'
-                        }`}>COM</button>
+                        }`}>{t('filtros.com')}</button>
                       <button onClick={() => {
-                        const entry = { playerId: t.player_id, playerName: t.player_name, mode: 'without' as const };
+                        const entry = { playerId: companheiro.player_id, playerName: companheiro.player_name, mode: 'without' as const };
                         const current = teammateFilter ?? [];
-                        const filtered = current.filter(f => f.playerId !== t.player_id);
+                        const filtered = current.filter(f => f.playerId !== companheiro.player_id);
                         onTeammateFilterChange([...filtered, entry]);
                       }}
                         className={`px-2 py-0.5 text-[10px] rounded border transition-colors ${
                           active?.mode === 'without'
                             ? 'bg-rose-100 border-rose-200 text-rose-700'
                             : 'border-rose-200/40 text-rose-700 hover:bg-rose-50'
-                        }`}>SEM</button>
+                        }`}>{t('filtros.sem')}</button>
                     </div>
                   </div>
                 );
@@ -620,7 +624,7 @@ export const GameChart: React.FC<GameChartProps> = ({
             onClick={() => onStatTypeChange(stat.id)}
             className={`${base} ${isActive ? activeCls : idleCls}`}
           >
-            {stat.label}
+            {t(`estatisticas.rotulo.${stat.id}`)}
           </button>
         );
       })}
@@ -636,7 +640,7 @@ export const GameChart: React.FC<GameChartProps> = ({
             type="button"
             onClick={() => scrollTabs('left')}
             className="absolute left-1 top-1/2 -translate-y-1/2 z-10 h-7 w-7 flex items-center justify-center rounded-full bg-white border border-line shadow hover:bg-canvas-2 transition-colors"
-            aria-label="Scroll tabs left"
+            aria-label={t('grafico.rolarEsquerda')}
           >
             <ChevronLeft className="w-4 h-4 text-ink" />
           </button>
@@ -646,18 +650,18 @@ export const GameChart: React.FC<GameChartProps> = ({
             type="button"
             onClick={() => scrollTabs('right')}
             className="absolute right-1 top-1/2 -translate-y-1/2 z-10 h-7 w-7 flex items-center justify-center rounded-full bg-white border border-line shadow hover:bg-canvas-2 transition-colors"
-            aria-label="Scroll tabs right"
+            aria-label={t('grafico.rolarDireita')}
           >
             <ChevronRight className="w-4 h-4 text-ink" />
           </button>
         )}
         <div ref={tabsScrollRef} className="overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           <div className="flex items-center min-w-max gap-3">
-            {renderStatGroup('Básicos', STAT_TYPES_BASIC, 'forest')}
+            {renderStatGroup(t('grafico.grupoBasicos'), STAT_TYPES_BASIC, 'forest')}
             <div className="w-px h-5 bg-line shrink-0" />
-            {renderStatGroup('Combinados', STAT_TYPES_COMBOS, 'forest')}
+            {renderStatGroup(t('grafico.grupoCombinados'), STAT_TYPES_COMBOS, 'forest')}
             <div className="w-px h-5 bg-line shrink-0" />
-            {renderStatGroup('Períodos', STAT_TYPES_PERIOD, 'amber')}
+            {renderStatGroup(t('grafico.grupoPeriodos'), STAT_TYPES_PERIOD, 'amber')}
           </div>
         </div>
       </div>
@@ -666,24 +670,24 @@ export const GameChart: React.FC<GameChartProps> = ({
       {/* Header: title + hit rate + line */}
       <div className="px-5 py-3 flex items-center justify-between border-b border-line bg-canvas-2/30 flex-wrap gap-2">
         <div className="flex items-baseline gap-2">
-          <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2">Gráfico de desempenho</span>
+          <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2">{t('grafico.titulo')}</span>
           {chartData.length > 0 && (
-            <span className="text-[10px] tabular text-ink-dim">· últimos {chartData.length}</span>
+            <span className="text-[10px] tabular text-ink-dim">{t('grafico.ultimos', { n: chartData.length })}</span>
           )}
         </div>
         <div className="flex items-center gap-4 text-[11px] tabular">
           {hitRate && (
             <span className="text-ink-2">
-              Taxa de acerto{' '}
-              <span className={`font-semibold ml-1 ${parseFloat(hitRate.percentage) >= 50 ? 'text-forest' : 'text-rose-700'}`}>
-                {hitRate.percentage}%
+              {t('grafico.taxaAcerto')}{' '}
+              <span className={`font-semibold ml-1 ${hitRate.taxa >= 0.5 ? 'text-forest' : 'text-rose-700'}`}>
+                {fmtPct(hitRate.taxa, 1)}
               </span>{' '}
               <span className="text-ink-dim">({hitRate.hits}/{hitRate.total})</span>
             </span>
           )}
           {adjustedLine !== null && (
             <span className="text-ink-2">
-              Linha <span className="font-semibold ml-1 text-ink">{adjustedLine.toFixed(1)}</span>
+              {t('grafico.linha')} <span className="font-semibold ml-1 text-ink">{fmtLinhaAnalisada(adjustedLine)}</span>
             </span>
           )}
         </div>
@@ -699,7 +703,7 @@ export const GameChart: React.FC<GameChartProps> = ({
           className="h-7 px-2.5 text-[11px] font-semibold rounded-md inline-flex items-center gap-1.5 bg-forest text-white hover:bg-forest-soft transition-colors"
         >
           <SlidersHorizontal className="w-3.5 h-3.5" />
-          Filtros
+          {t('filtros.botao')}
           {activeFilterCount > 0 && (
             <span className="ml-0.5 px-1.5 h-4 inline-flex items-center justify-center rounded text-[9px] font-bold tabular bg-amber-300 text-forest">
               {activeFilterCount}
@@ -738,7 +742,9 @@ export const GameChart: React.FC<GameChartProps> = ({
                 )}
               </div>
               <span className="text-[11px] font-semibold">
-                {isWith ? 'Com' : 'Sem'} {f.playerName.split(' ').slice(-1)[0]}
+                {isWith
+                  ? t('filtros.chipCom', { jogador: f.playerName.split(' ').slice(-1)[0] })
+                  : t('filtros.chipSem', { jogador: f.playerName.split(' ').slice(-1)[0] })}
               </span>
               <button onClick={() => {
                 const updated = teammateFilter.filter(tf => tf.playerId !== f.playerId);
@@ -755,7 +761,7 @@ export const GameChart: React.FC<GameChartProps> = ({
         {adjustedLine !== null && (
           <div className="hidden sm:flex items-center gap-1.5 shrink-0 ml-auto">
             <span className="text-[11px] font-semibold tabular text-ink-2">
-              Linha <span className="text-ink ml-1">{adjustedLine.toFixed(1)}</span>
+              {t('grafico.linha')} <span className="text-ink ml-1">{fmtLinhaAnalisada(adjustedLine)}</span>
             </span>
             <TooltipProvider>
               <UITooltip>
@@ -765,7 +771,7 @@ export const GameChart: React.FC<GameChartProps> = ({
                   </span>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="text-xs max-w-[180px] text-center bg-white text-ink border-line">
-                  ↕ Arraste a linha para simular diferentes cenários
+                  {t('grafico.arrasteLinha')}
                 </TooltipContent>
               </UITooltip>
             </TooltipProvider>
@@ -773,7 +779,7 @@ export const GameChart: React.FC<GameChartProps> = ({
               <button
                 onClick={handleReset}
                 className="w-6 h-6 flex items-center justify-center rounded border border-line text-ink-2 hover:bg-canvas-2 transition-colors"
-                title={`Resetar para ${currentLine}`}
+                title={t('grafico.resetarPara', { valor: currentLine })}
               >
                 <RotateCcw className="w-3 h-3" />
               </button>
@@ -787,7 +793,7 @@ export const GameChart: React.FC<GameChartProps> = ({
         {(teammateFilterLoading || chartLoading) && (
           <div className="absolute inset-0 z-20 flex items-center justify-center pointer-events-none">
             <span className="text-sm font-semibold text-ink bg-canvas-2 px-4 py-2 rounded-lg border border-line animate-pulse shadow-lg">
-              {chartLoading ? 'Carregando...' : 'Recalculando...'}
+              {chartLoading ? t('grafico.carregando') : t('grafico.recalculando')}
             </span>
           </div>
         )}
@@ -847,7 +853,7 @@ export const GameChart: React.FC<GameChartProps> = ({
                     content={(props: any) => {
                       const { viewBox } = props;
                       if (!viewBox) return null;
-                      const v = adjustedLine.toFixed(1);
+                      const v = fmtLinhaAnalisada(adjustedLine);
                       const w = v.length > 4 ? 38 : 32;
                       const x = viewBox.x + viewBox.width - w + 2;
                       const y = viewBox.y - 10;
@@ -880,7 +886,7 @@ export const GameChart: React.FC<GameChartProps> = ({
           <div className="hidden md:flex w-64 shrink-0 bg-white border border-line rounded-lg max-h-[18rem] flex-col shadow-sm">
             <div className="flex items-center justify-between px-3 py-2 border-b border-line bg-canvas-2/40 rounded-t-lg shrink-0">
               <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2 flex items-center gap-1.5">
-                <SlidersHorizontal className="w-3 h-3" /> Filtros
+                <SlidersHorizontal className="w-3 h-3" /> {t('filtros.botao')}
               </span>
               <button onClick={() => setFiltersOpen(false)} className="text-ink-dim hover:text-ink-2 transition-colors">
                 <X className="w-4 h-4" />
@@ -904,7 +910,7 @@ export const GameChart: React.FC<GameChartProps> = ({
           </div>
           <div className="flex items-center gap-2 px-4 py-3 border-b border-line shrink-0">
             <SlidersHorizontal className="w-4 h-4 text-forest" />
-            <span className="text-[12px] font-bold uppercase tracking-[0.16em] text-ink-2">Filtros</span>
+            <span className="text-[12px] font-bold uppercase tracking-[0.16em] text-ink-2">{t('filtros.botao')}</span>
           </div>
           <div className="flex-1 overflow-y-auto minimal-scrollbar p-4">
             {renderFiltersContent()}
@@ -923,10 +929,10 @@ export const GameChart: React.FC<GameChartProps> = ({
             className="h-7 px-2.5 rounded-md inline-flex items-center gap-1.5 text-[11px] font-semibold bg-white border border-line text-ink hover:border-forest/30 hover:bg-canvas-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white transition-colors"
           >
             <ChevronLeft className="w-3.5 h-3.5" />
-            Mais antigos
+            {t('grafico.maisAntigos')}
           </button>
           <span className="text-ink-dim tabular">
-            Página {chartPage + 1} de {totalChartPages}
+            {t('grafico.paginacao', { atual: chartPage + 1, total: totalChartPages })}
           </span>
           <button
             type="button"
@@ -934,7 +940,7 @@ export const GameChart: React.FC<GameChartProps> = ({
             disabled={chartPage === 0}
             className="h-7 px-2.5 rounded-md inline-flex items-center gap-1.5 text-[11px] font-semibold bg-white border border-line text-ink hover:border-forest/30 hover:bg-canvas-2 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white transition-colors"
           >
-            Mais recentes
+            {t('grafico.maisRecentes')}
             <ChevronRight className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -942,34 +948,34 @@ export const GameChart: React.FC<GameChartProps> = ({
       {/* Footer */}
       <div className="px-5 py-3 border-t border-line flex items-center justify-between text-[11px] flex-wrap gap-2 bg-canvas-2/30">
         <div className="flex items-center gap-4 text-ink-2">
-          <span className="font-semibold text-ink-dim">Últ. {chartData.length}</span>
+          <span className="font-semibold text-ink-dim">{t('grafico.ultN', { n: chartData.length })}</span>
           {adjustedLine !== null && (
             <>
               <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-sm shrink-0" style={{ background: '#0a3d2e' }} /> OVER
+                <span className="w-2 h-2 rounded-sm shrink-0" style={{ background: '#0a3d2e' }} /> {t('grafico.acima')}
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-sm shrink-0" style={{ background: '#be123c' }} /> UNDER
+                <span className="w-2 h-2 rounded-sm shrink-0" style={{ background: '#be123c' }} /> {t('grafico.abaixo')}
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="w-3 h-px shrink-0 bg-ink" /> Linha
+                <span className="w-3 h-px shrink-0 bg-ink" /> {t('grafico.linha')}
               </span>
             </>
           )}
         </div>
         <div className="flex items-center gap-3 text-ink-dim flex-wrap">
-          <span>Média <span className="font-medium text-ink opacity-100">{average}</span></span>
+          <span>{t('grafico.media')} <span className="font-medium text-ink opacity-100">{average}</span></span>
           {seasonAvg !== undefined && seasonAvg !== null && (
-            <span>Média da Temporada <span className="font-medium text-ink opacity-100">{Number(seasonAvg).toFixed(1)}</span></span>
+            <span>{t('grafico.mediaTemporada')} <span className="font-medium text-ink opacity-100">{fmtDecimal(Number(seasonAvg), 1)}</span></span>
           )}
           {/* Potential assists (season) — só faz sentido na aba de Assistências.
               balldontlie nao expoe potential_ast game-by-game, entao mostramos
               a media da temporada como info complementar. */}
           {selectedStatType === 'player_assists' && potentialAstSeason != null && (
-            <span title="Passes que viraram chances de cesta — independe de o companheiro ter convertido. Fonte: balldontlie (dados da temporada)">
-              Assistências potenciais (temporada){' '}
+            <span title={t('grafico.astPotenciaisTitulo')}>
+              {t('grafico.astPotenciais')}{' '}
               <span className="font-medium text-ink opacity-100">
-                {potentialAstSeason.toFixed(1)}
+                {fmtDecimal(potentialAstSeason, 1)}
               </span>
               {potentialAstSeasonRank != null && (
                 <span className="opacity-70"> · #{potentialAstSeasonRank}</span>

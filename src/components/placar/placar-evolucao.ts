@@ -17,10 +17,23 @@ import { diaDaLinha, type Eixo, type Periodo } from './placar-periodo';
 
 export type Granularidade = 'mes' | 'semana' | 'dia';
 
-export const ROTULO_DA_GRANULARIDADE: Record<Granularidade, string> = {
-  mes: 'Mês',
-  semana: 'Semana',
-  dia: 'Dia',
+/**
+ * Como cada degrau se chama na tela — a CHAVE do catálogo, e não o texto.
+ *
+ * ⚠️ Tabela declarada FORA de componente é avaliada uma vez, no carregamento do
+ * módulo: texto aqui congelaria o idioma da primeira pintura. O `t()` acontece
+ * em quem desenha, pelo mesmo motivo de `config/menu-da-conta.ts`.
+ *
+ * Entrou na migração #558 porque ela aparece DENTRO de frase traduzida — "Abrir
+ * por semana", "…, por semana — voltar" — e meio português no meio de uma frase
+ * em espanhol é pior que a tela inteira em português. Quem desenha aplica
+ * `.toLowerCase()` sobre o texto JÁ traduzido: é ele que faz "Semana" virar
+ * "semana" dentro da frase, e funciona igual nos dois idiomas.
+ */
+export const CHAVE_DO_DEGRAU: Record<Granularidade, string> = {
+  mes: 'placar.degrau.mes',
+  semana: 'placar.degrau.semana',
+  dia: 'placar.degrau.dia',
 };
 
 /** A segunda-feira da semana de um dia BRT. */

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { FiltroDeWhatsApp as Valor } from './crm-painel';
 
 /**
@@ -7,10 +8,15 @@ import type { FiltroDeWhatsApp as Valor } from './crm-painel';
  * abordar, sem ninguém precisar ligar nada. "Só quem não tem" existe para
  * revisar a pilha — completar cadastro, ou decidir mandar e-mail.
  */
-const OPCOES: { id: Valor; rotulo: string }[] = [
-  { id: 'com', rotulo: 'Só quem tem WhatsApp' },
-  { id: 'todos', rotulo: 'Com e sem WhatsApp' },
-  { id: 'sem', rotulo: 'Só quem não tem WhatsApp' },
+/**
+ * ⚠️ Guarda CHAVE, e não texto: declarada fora do componente, a tabela é
+ * avaliada uma vez no carregamento do módulo e texto aqui congelaria o idioma.
+ * O `t()` acontece no render, e o `key` do React é o `id`.
+ */
+const OPCOES: { id: Valor; chave: string }[] = [
+  { id: 'com', chave: 'painel.filtroWhatsApp.opcoes.com' },
+  { id: 'todos', chave: 'painel.filtroWhatsApp.opcoes.todos' },
+  { id: 'sem', chave: 'painel.filtroWhatsApp.opcoes.sem' },
 ];
 
 /**
@@ -51,26 +57,32 @@ export function FiltroDeWhatsApp({
   suspensoPelaBusca: boolean;
   aoMudar: (valor: Valor) => void;
 }) {
+  const { t } = useTranslation('socios');
+
   return (
     <div className="flex flex-wrap items-center gap-2">
       <select
         value={valor}
         onChange={(e) => aoMudar(e.target.value as Valor)}
-        aria-label="Filtrar por WhatsApp"
+        aria-label={t('painel.filtroWhatsApp.aria')}
         className="h-11 rounded-rebrand-sm border border-line-2 bg-white px-3 text-[14px] text-ink"
       >
         {OPCOES.map((o) => (
           <option key={o.id} value={o.id}>
-            {o.rotulo}
+            {t(o.chave)}
           </option>
         ))}
       </select>
 
       {suspensoPelaBusca ? (
-        <span className="text-[12px] text-ink-dim">a busca mostra todo mundo</span>
+        <span className="text-[12px] text-ink-dim">
+          {t('painel.filtroWhatsApp.suspensoPelaBusca')}
+        </span>
       ) : (
         semAsMarcas && (
-          <span className="text-[12px] text-ink-dim">só pelo número — as marcas não carregaram</span>
+          <span className="text-[12px] text-ink-dim">
+            {t('painel.filtroWhatsApp.semAsMarcas')}
+          </span>
         )
       )}
     </div>

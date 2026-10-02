@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { fmtOdd, fmtDecimal, fmtExato, fmtLinhaAnalisada } from '@/utils/formato';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
@@ -15,7 +16,12 @@ import { rotuloDoMercado } from './placar-vocabulario';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { brtDayOf } from '@/utils/futebol-datas';
 
-/** A saída, do jeito que o produto a escreve: mercado, lado e linha. */
+/**
+ * A saída, do jeito que o produto a escreve: mercado, lado e linha.
+ *
+ * `outcome` é o valor CRU do banco (`Over`, `Home`, `Yes`) e `rotuloDoMercado`
+ * vem de `placar-vocabulario.ts` — os dois seguem em português neste passo.
+ */
 function saida(market: string, outcome: string, line: number | null): string {
   const linha = line == null ? '' : ` ${line > 0 ? '+' : ''}${fmtLinhaAnalisada(line)}`;
   return `${rotuloDoMercado(market)} · ${outcome}${linha}`;
@@ -29,14 +35,20 @@ function diaCurto(kickoff: string): string {
 
 const emUnidades = (n: number) => `${n > 0 ? '+' : ''}${fmtDecimal(n, 2)}u`;
 
-/** As colunas pelas quais a lista se deixa ordenar, na ordem em que se pergunta. */
-const ORDENACOES: { coluna: ColunaDoDrill; rotulo: string }[] = [
-  { coluna: 'lucro', rotulo: 'Lucro' },
-  { coluna: 'score', rotulo: 'Score' },
-  { coluna: 'odd', rotulo: 'Odd' },
-  { coluna: 'margem', rotulo: 'Distância' },
-  { coluna: 'jogo', rotulo: 'Jogo' },
-  { coluna: 'saida', rotulo: 'Saída' },
+/**
+ * As colunas pelas quais a lista se deixa ordenar, na ordem em que se pergunta.
+ *
+ * Guarda CHAVE e não texto: a tabela é avaliada uma vez, na carga do módulo, e
+ * texto aqui congelaria o idioma da primeira renderização. O `t()` acontece no
+ * render, e a `key` do React é a `coluna`, que é identificador e não rótulo.
+ */
+const ORDENACOES: { coluna: ColunaDoDrill; chave: string }[] = [
+  { coluna: 'lucro', chave: 'quebras.drill.coluna.lucro' },
+  { coluna: 'score', chave: 'quebras.drill.coluna.score' },
+  { coluna: 'odd', chave: 'quebras.drill.coluna.odd' },
+  { coluna: 'margem', chave: 'quebras.drill.coluna.distancia' },
+  { coluna: 'jogo', chave: 'quebras.drill.coluna.jogo' },
+  { coluna: 'saida', chave: 'quebras.drill.coluna.saida' },
 ];
 
 /**
@@ -64,6 +76,7 @@ export function DrillDaCelula({
   celula: CelulaDaMatriz | null;
   aoFechar: () => void;
 }) {
+  const { t } = useTranslation('socios');
   const noCelular = useIsMobile();
   const aberto = celula !== null;
   /**
@@ -133,8 +146,8 @@ export function DrillDaCelula({
                 {roiPct(celula.celula.roi)}
               </span>
               <span className="text-[12px] text-ink-dim">
-                {taxaPct(celula.celula.taxa)} de acerto · {emN(celula.celula.n)} · ±{' '}
-                {epPct(celula.celula.ep)}
+                {t('quebras.deAcerto', { taxa: taxaPct(celula.celula.taxa) })} ·{' '}
+                {emN(celula.celula.n)} · ± {epPct(celula.celula.ep)}
               </span>
             </header>
 
@@ -147,7 +160,7 @@ export function DrillDaCelula({
             {noCelular && (
               <div className="flex items-center gap-1.5 overflow-x-auto border-b border-line-2 px-4 py-2 no-scrollbar">
                 <span className="shrink-0 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-ink-dim">
-                  Ordenar
+                  {t('quebras.drill.ordenar')}
                 </span>
                 {ORDENACOES.map((o) => (
                   <button
@@ -160,7 +173,7 @@ export function DrillDaCelula({
                         : 'border-line-2 text-ink-dim'
                     }`}
                   >
-                    {o.rotulo}
+                    {t(o.chave)}
                     {ordem.coluna === o.coluna && <Seta desc={ordem.desc} />}
                   </button>
                 ))}
@@ -190,19 +203,24 @@ export function DrillDaCelula({
                       </div>
 
                       <p className="mt-0.5 text-[11px] text-ink-dim">
-                        {diaCurto(l.linha.kickoff_utc)} · {l.linha.competition ?? 'sem campeonato'}
-                        {l.unidades !== 1 && ` · ${fmtExato(l.unidades)}u apostada`}
+                        {diaCurto(l.linha.kickoff_utc)} ·{' '}
+                        {l.linha.competition ?? t('quebras.drill.semCampeonato')}
+                        {l.unidades !== 1 &&
+                          ` · ${t('quebras.drill.unidadeApostada', {
+                            unidades: fmtExato(l.unidades),
+                          })}`}
                       </p>
 
                       <p className="mt-1.5 text-[13px] text-ink-2">
                         {saida(l.linha.market, l.linha.outcome, l.linha.line_value)}
                         <span className="text-ink-dim"> · </span>
-                        odd{' '}
+                        {t('quebras.drill.oddEmLinha')}{' '}
                         <span className="tabular-nums text-ink">
                           {fmtOdd(l.linha.best_odd)}
                         </span>
                         <span className="text-ink-dim"> · </span>
-                        Score <span className="tabular-nums text-ink">{l.linha.score}</span>
+                        {t('quebras.drill.coluna.score')}{' '}
+                        <span className="tabular-nums text-ink">{l.linha.score}</span>
                       </p>
 
                       {/* O placar e a distância: sem eles, "Red" não diz se faltou
@@ -230,18 +248,24 @@ export function DrillDaCelula({
                 <table className="w-full border-collapse text-left">
                   <thead>
                     <tr className="border-b border-line-2 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim">
-                      <Cabecalho coluna="jogo">Jogo</Cabecalho>
-                      <Cabecalho coluna="saida">Saída</Cabecalho>
+                      <Cabecalho coluna="jogo">{t('quebras.drill.coluna.jogo')}</Cabecalho>
+                      <Cabecalho coluna="saida">{t('quebras.drill.coluna.saida')}</Cabecalho>
                       <Cabecalho coluna="odd" direita>
-                        Odd
+                        {t('quebras.drill.coluna.odd')}
                       </Cabecalho>
                       <Cabecalho coluna="score" direita>
-                        Score
+                        {t('quebras.drill.coluna.score')}
                       </Cabecalho>
-                      <Cabecalho coluna="margem">Placar</Cabecalho>
-                      <th className="px-3 py-2 font-bold">Resultado</th>
+                      {/* A MESMA coluna se chama "Placar" na tabela e
+                          "Distância" na fila de ordenação do celular: ali o
+                          botão nomeia a pergunta, aqui o cabeçalho nomeia o
+                          número embaixo dele. São duas chaves de propósito. */}
+                      <Cabecalho coluna="margem">{t('quebras.drill.cabecalho.placar')}</Cabecalho>
+                      <th className="px-3 py-2 font-bold">
+                        {t('quebras.drill.cabecalho.resultado')}
+                      </th>
                       <Cabecalho coluna="lucro" direita>
-                        Lucro
+                        {t('quebras.drill.coluna.lucro')}
                       </Cabecalho>
                     </tr>
                   </thead>
@@ -259,7 +283,7 @@ export function DrillDaCelula({
                             </span>
                             <span className="ml-2 text-[11px] text-ink-dim">
                               {diaCurto(l.linha.kickoff_utc)} ·{' '}
-                              {l.linha.competition ?? 'sem campeonato'}
+                              {l.linha.competition ?? t('quebras.drill.semCampeonato')}
                             </span>
                           </td>
                           <td className="whitespace-nowrap px-3 py-2.5 text-[13px] text-ink-2">
@@ -299,7 +323,7 @@ export function DrillDaCelula({
                             {emUnidades(lucroEfetivo(l))}
                             {l.unidades !== 1 && (
                               <span className="ml-1 text-[10px] font-normal text-ink-dim">
-                                de {fmtExato(l.unidades)}u
+                                {t('quebras.drill.deUnidades', { unidades: fmtExato(l.unidades) })}
                               </span>
                             )}
                           </td>
@@ -311,10 +335,15 @@ export function DrillDaCelula({
               </div>
             )}
 
+            {/* ⚠️ O rodapé diz "linha da aposta", e esse é termo PROIBIDO pelo
+                verbete "Linha de referência" do CONTEXT.md — os sancionados são
+                linha analisada, cotada, de referência e bloqueada. A frase
+                entrou no catálogo exatamente como estava: este passo move o
+                texto, não o reescreve. Corrigir o vocabulário é outro ticket, e
+                ele tem de corrigir português e espanhol juntos. */}
             <p className="border-t border-line-2 px-4 py-3 text-[12px] text-ink-dim sm:px-5">
-              {!noCelular && 'Clique num cabeçalho para reordenar. '}O placar é do jogo, e a
-              distância é até a linha da aposta — nos mercados que têm linha. O lucro é em unidades
-              apostadas.
+              {!noCelular && `${t('quebras.drill.reordenar')} `}
+              {t('quebras.drill.rodape')}
             </p>
           </>
         )}

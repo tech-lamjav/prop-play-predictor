@@ -32,14 +32,23 @@ export const ETAPAS = [
 
 export type Etapa = (typeof ETAPAS)[number];
 
-/** Como cada etapa se chama na tela. */
-export const ROTULO_DA_ETAPA: Record<Etapa, string> = {
-  novo: 'Novo',
-  primeiro_contato: 'Primeiro contato',
-  nutrindo: 'Nutrindo',
-  boletada: 'Boletada',
-  interesse: 'Interesse',
-  sem_resposta: 'Sem resposta',
+/**
+ * Como cada etapa se chama na tela — a CHAVE do catálogo, e não o texto.
+ *
+ * O valor do banco (`novo`, `boletada`) continua à esquerda e não muda nunca:
+ * é ele que a migration 123 restringe. O que mora à direita é endereço de
+ * texto na área `socios`, pelo mesmo motivo de `config/menu-da-conta.ts` —
+ * tabela declarada fora do componente é avaliada uma vez, no carregamento do
+ * módulo, então guardar texto aqui congelaria o idioma da primeira pintura. O
+ * `t()` acontece em quem desenha.
+ */
+export const CHAVE_DA_ETAPA: Record<Etapa, string> = {
+  novo: 'vocabulario.etapa.novo',
+  primeiro_contato: 'vocabulario.etapa.primeiroContato',
+  nutrindo: 'vocabulario.etapa.nutrindo',
+  boletada: 'vocabulario.etapa.boletada',
+  interesse: 'vocabulario.etapa.interesse',
+  sem_resposta: 'vocabulario.etapa.semResposta',
 };
 
 /**
@@ -102,6 +111,22 @@ export const PLANOS_A_VENDER = ['entrada', 'essencial', 'completo'] as const;
 
 export type PlanoAVender = (typeof PLANOS_A_VENDER)[number];
 
+/**
+ * ⚠️ FICA EM PORTUGUÊS, e isso é decisão medida e não esquecimento (#558).
+ *
+ * Ao contrário de `CHAVE_DA_ETAPA`, este rótulo não é só de tela: ele entra
+ * INTERPOLADO na mensagem de cobrança que o sócio cola no WhatsApp — "Seu
+ * acesso ao {plano} vai até…", em `crm-cobranca.ts` — e essa mensagem vai para
+ * um lead brasileiro, em português. Virar chave aqui colocaria o endereço do
+ * catálogo dentro do texto da mensagem; virar espanhol escreveria uma palavra
+ * espanhola no meio de uma frase portuguesa que outra pessoa vai ler.
+ *
+ * O custo conhecido: num CRM em espanhol o nome do plano aparece em português
+ * nas três telas que o desenham (`DarAssinatura`, `ListaDeCobranca`,
+ * `ListaDeInadimplentes`). Separar "nome na tela" de "nome na mensagem" é o
+ * conserto, e é refatoração própria — com dono próprio — e não um efeito
+ * colateral desta migração de interface.
+ */
 export const ROTULO_DO_PLANO: Record<PlanoAVender, string> = {
   entrada: 'Entrada',
   essencial: 'Essencial',
@@ -118,10 +143,10 @@ export const ROTULO_DO_PLANO: Record<PlanoAVender, string> = {
  */
 export const ETAPA_PADRAO: Etapa = 'novo';
 
-/** Como cada tipo de registro se chama na tela. */
-export const ROTULO_DO_TIPO: Record<TipoNaLinhaDoTempo, string> = {
-  anotacao: 'Anotação',
-  feedback: 'Feedback',
-  objecao: 'Objeção',
-  acesso: 'Acesso',
+/** Como cada tipo de registro se chama na tela. CHAVE, pela razão de `CHAVE_DA_ETAPA`. */
+export const CHAVE_DO_TIPO: Record<TipoNaLinhaDoTempo, string> = {
+  anotacao: 'vocabulario.tipo.anotacao',
+  feedback: 'vocabulario.tipo.feedback',
+  objecao: 'vocabulario.tipo.objecao',
+  acesso: 'vocabulario.tipo.acesso',
 };

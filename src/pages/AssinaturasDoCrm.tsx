@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Seo } from '@/components/Seo';
 import { CabecalhoDoCrm } from '@/components/socios/CabecalhoDoCrm';
@@ -30,18 +31,31 @@ import { brtToday } from '@/utils/futebol-datas';
  */
 type Recorte = 'cobrar' | 'devendo' | 'todas' | 'cartao';
 
-const RECORTES: { id: Recorte; rotulo: string; explicacao: string }[] = [
+/**
+ * Cada recorte pela CHAVE do seu texto, e não pelo texto.
+ *
+ * A tabela mora FORA do componente, então ela é avaliada uma vez, no
+ * carregamento do módulo: guardar texto aqui congelaria o idioma da primeira
+ * pintura. O `t()` acontece em quem desenha, pelo mesmo motivo de
+ * `config/menu-da-conta.ts`. O número de dias entra por interpolação, porque
+ * ele é uma constante do código e não do catálogo.
+ */
+const RECORTES: { id: Recorte; chaveDoRotulo: string; chaveDaExplicacao: string }[] = [
   {
     id: 'cobrar',
-    rotulo: 'A cobrar',
-    explicacao: `quem vence nos próximos ${DIAS_PARA_COBRAR} dias, e quem já venceu`,
+    chaveDoRotulo: 'paginas.assinaturas.recorte.cobrar.rotulo',
+    chaveDaExplicacao: 'paginas.assinaturas.recorte.cobrar.explicacao',
   },
   {
     id: 'devendo',
-    rotulo: 'Devendo',
-    explicacao: 'quem tem cobrança mensal e mês em aberto, do que deve mais para o que deve menos',
+    chaveDoRotulo: 'paginas.assinaturas.recorte.devendo.rotulo',
+    chaveDaExplicacao: 'paginas.assinaturas.recorte.devendo.explicacao',
   },
-  { id: 'todas', rotulo: 'Todas', explicacao: 'todas as assinaturas manuais abertas' },
+  {
+    id: 'todas',
+    chaveDoRotulo: 'paginas.assinaturas.recorte.todas.rotulo',
+    chaveDaExplicacao: 'paginas.assinaturas.recorte.todas.explicacao',
+  },
   /*
    * ⚠️ Recorte PRÓPRIO, e não misturado em "Todas".
    *
@@ -54,7 +68,11 @@ const RECORTES: { id: Recorte; rotulo: string; explicacao: string }[] = [
    * cobrar", que é trabalho do sócio. Esta responde "quem está pagando sozinho",
    * que é acompanhamento.
    */
-  { id: 'cartao', rotulo: 'No cartão', explicacao: 'quem assina pelo gateway, e quando renova' },
+  {
+    id: 'cartao',
+    chaveDoRotulo: 'paginas.assinaturas.recorte.cartao.rotulo',
+    chaveDaExplicacao: 'paginas.assinaturas.recorte.cartao.explicacao',
+  },
 ];
 
 /**
@@ -69,6 +87,7 @@ const RECORTES: { id: Recorte; rotulo: string; explicacao: string }[] = [
  * pagar, o acesso some um dia, ou fica de graça para sempre, e ninguém nota.
  */
 export default function AssinaturasDoCrm() {
+  const { t } = useTranslation('socios');
   const cadastros = useCadastros();
   const todas = useAssinaturas(cadastros.tipo === 'pronto' ? cadastros.cadastros : []);
   const pagamentos = usePagamentosDasAssinaturas();
@@ -140,10 +159,10 @@ export default function AssinaturasDoCrm() {
 
   const resumo =
     todas.tipo === 'pronto'
-      ? `${todas.assinaturas.length} na mão, ${noCartao} no cartão`
+      ? t('paginas.assinaturas.resumo', { naMao: todas.assinaturas.length, noCartao })
       : todas.tipo === 'erro'
-        ? 'assinaturas indisponíveis'
-        : 'carregando…';
+        ? t('paginas.assinaturas.resumoIndisponivel')
+        : t('paginas.assinaturas.carregando');
 
   return (
     <>
@@ -155,21 +174,18 @@ export default function AssinaturasDoCrm() {
 
         <div className="mx-auto max-w-3xl px-4 py-6">
           <p className="mb-4 text-[14px] text-ink-2">
-            Assinatura dada na mão não renova sozinha e não encerra sozinha. "A cobrar" junta quem
-            vence primeiro, com quem já venceu no topo. "Devendo" junta quem parou de pagar, e é
-            ali que se decide quem encerrar. "No cartão" é o outro lado: quem assina pelo gateway
-            renova e é cobrado sozinho, então ali não há o que cobrar — é acompanhamento.
+            {t('paginas.assinaturas.introducao')}
           </p>
 
           <div className="rounded-rebrand-md border border-line-2 bg-white">
             <div className="flex flex-wrap items-center gap-1 border-b border-line-2 px-4 py-3">
-              {RECORTES.map(({ id, rotulo, explicacao }) => (
+              {RECORTES.map(({ id, chaveDoRotulo, chaveDaExplicacao }) => (
                 <button
                   key={id}
                   type="button"
                   role="radio"
                   aria-checked={recorte === id}
-                  title={explicacao}
+                  title={t(chaveDaExplicacao, { dias: DIAS_PARA_COBRAR })}
                   onClick={() => setRecorte(id)}
                   className={`rounded-rebrand-sm px-3 py-1.5 text-[14px] font-bold transition ${
                     recorte === id
@@ -177,7 +193,7 @@ export default function AssinaturasDoCrm() {
                       : 'text-ink-2 hover:bg-canvas hover:text-ink'
                   }`}
                 >
-                  {rotulo}
+                  {t(chaveDoRotulo)}
                 </button>
               ))}
             </div>
@@ -187,8 +203,8 @@ export default function AssinaturasDoCrm() {
             {cadastros.tipo !== 'pronto' ? (
               <p className="px-5 py-8 text-[14px] text-ink-2">
                 {cadastros.tipo === 'erro'
-                  ? 'Não deu para carregar a base, então as cobranças ficariam sem dono.'
-                  : 'Carregando…'}
+                  ? t('paginas.assinaturas.erroNaBase')
+                  : t('paginas.assinaturas.carregandoBase')}
               </p>
             ) : recorte === 'devendo' ? (
               <ListaDeInadimplentes estado={estadoDosInadimplentes} />
@@ -201,8 +217,8 @@ export default function AssinaturasDoCrm() {
                 noCartao={escondidosPeloCartao}
                 vazio={
                   recorte === 'cobrar'
-                    ? 'Ninguém para cobrar agora. Nenhuma assinatura manual vence nesta semana.'
-                    : 'Nenhuma assinatura dada na mão até agora.'
+                    ? t('paginas.assinaturas.vazio.cobrar')
+                    : t('paginas.assinaturas.vazio.todas')
                 }
               />
             )}

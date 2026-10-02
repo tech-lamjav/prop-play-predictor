@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { fmtExato, fmtLinhaAnalisada } from '@/utils/formato';
 import { ChevronRight } from 'lucide-react';
 import type { FutebolFixtureHistorico, FutebolFixtureNumeros } from '@/services/futebol-data.service';
-import { pesoPalavra, pesoForte, rotuloPremissa, type Premissa } from '@/utils/futebol-premissas';
+import { pesoForte, type Premissa } from '@/utils/futebol-premissas';
+import { useCopyDoFutebol } from '@/hooks/use-copy-do-futebol';
 import { evidenciaDe, type Evidencia } from '@/utils/futebol-evidencias';
 import { alinharAbaixoDoCabecalho } from '@/utils/rolagem';
 import { EH_QUADRO, evidenciaDoHistorico, storyDaPremissa, type SerieHistorico, type Story } from '@/utils/futebol-historico';
 import {
-  corteEmPalavras,
+  copyDoCorte,
   faltouParaOCorte,
-  fraseDaPrestacao,
   numeroDaPrestacao,
   prestacaoDaPremissa,
   type Prestacao,
@@ -35,26 +36,37 @@ import { cabeRotulo, d1, dia, tetoDaEscala } from '@/utils/futebol-grafico-de-ba
  */
 
 /**
- * O sentido em palavra. Os valores do enum são as próprias palavras hoje, e o
- * ternário que os repetia era um no-op — mas renomear o enum mudaria a copy em
- * silêncio, e um mapa é o que separa o tipo do texto.
+ * O sentido em palavra. O mapa é o que separa o TIPO do texto: renomear o enum
+ * não pode mudar a copy em silêncio, e a copy agora mora no catálogo.
  */
-const LADO_DO_CORTE: Record<Prestacao['sentido'], string> = { acima: 'acima', abaixo: 'abaixo' };
+const LADO_DO_CORTE: Record<Prestacao['sentido'], string> = {
+  acima: 'corte.acima',
+  abaixo: 'corte.abaixo',
+};
+
+/**
+ * O tradutor, como as funções soltas deste arquivo precisam dele.
+ *
+ * `baseDeJogos` não é componente e não pode chamar o gancho; receber a função é
+ * o que a mantém pura e testável sem biblioteca de tradução montada.
+ */
+type Traduzir = (chave: string, valores?: Record<string, unknown>) => string;
 
 /**
  * Amostra de 1 ou 2 jogos não vira gráfico: barra sozinha ocupando a largura toda
  * parecia bloco de cor e não informava nada. Vira o valor escrito.
  */
 function SerieMiuda({ s }: { s: SerieHistorico }) {
+  const { t } = useTranslation('futebol');
   const rotulo = (v: number | null) => {
     if (v == null) return '—';
-    if (s.metrica === 'sem_sofrer') return v ? 'não sofreu gol' : 'sofreu gol';
-    if (s.metrica === 'sem_marcar') return v ? 'não marcou' : 'marcou';
-    if (s.metrica === 'xg') return `${d1(v)} de gol esperado`;
+    if (s.metrica === 'sem_sofrer') return v ? t('serie.naoSofreuGol') : t('serie.sofreuGol');
+    if (s.metrica === 'sem_marcar') return v ? t('serie.naoMarcou') : t('serie.marcou');
+    if (s.metrica === 'xg') return t('serie.golEsperado', { valor: d1(v) });
     const n = Math.round(v);
-    if (s.metrica === 'ga') return `${n} ${n === 1 ? 'gol sofrido' : 'gols sofridos'}`;
-    if (s.metrica === 'gf') return `${n} ${n === 1 ? 'gol marcado' : 'gols marcados'}`;
-    return `${n} ${n === 1 ? 'gol no jogo' : 'gols no jogo'}`;
+    if (s.metrica === 'ga') return t('serie.golsSofridos', { count: n });
+    if (s.metrica === 'gf') return t('serie.golsMarcados', { count: n });
+    return t('serie.golsNoJogo', { count: n });
   };
   return (
     <div className="flex flex-wrap gap-2">
@@ -64,7 +76,7 @@ function SerieMiuda({ s }: { s: SerieHistorico }) {
           <div className="flex items-center gap-1 mt-1.5">
             <Crest name={j.adversario} id={j.adversarioId} size={13} />
             <span className="text-[9.5px] text-ink-3">
-              {j.placar} contra {j.adversario} · {dia(j.data)}
+              {t('serie.contexto', { placar: j.placar, adversario: j.adversario, dia: dia(j.data) })}
             </span>
           </div>
         </div>
@@ -75,6 +87,8 @@ function SerieMiuda({ s }: { s: SerieHistorico }) {
 
 /** O gráfico dos dois times em uma caixa, escala compartilhada. */
 function GraficoUnificado({ story }: { story: Story }) {
+  const { t } = useTranslation('futebol');
+  const copy = useCopyDoFutebol();
   const numericas = story.series.filter((s) => s.metrica !== 'resultado');
   const teto = tetoDaEscala(numericas, story.referencia?.valor);
   const comRotulo = cabeRotulo(numericas);
@@ -97,11 +111,11 @@ function GraficoUnificado({ story }: { story: Story }) {
       <div className="flex flex-col items-start gap-1 mb-3 md:flex-row md:items-center md:gap-3">
         <span className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: COR_FAVOR }} />
-          <span className="text-[10.5px] text-ink-2">{quer ? 'acima da média' : 'abaixo da média'}, o lado que a premissa quer</span>
+          <span className="text-[10.5px] text-ink-2">{quer ? t('grafico.legendaQuerMaior') : t('grafico.legendaQuerMenor')}</span>
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: COR_CONTRA }} />
-          <span className="text-[10.5px] text-ink-3">{quer ? 'abaixo' : 'acima'}</span>
+          <span className="text-[10.5px] text-ink-3">{quer ? t('grafico.abaixo') : t('grafico.acima')}</span>
         </span>
       </div>
       {/* Lado a lado no desktop, empilhado no celular: em 343px os dois blocos
@@ -118,7 +132,9 @@ function GraficoUnificado({ story }: { story: Story }) {
         ))}
       </div>
       {story.referencia && (
-        <div className="text-[10px] text-ink-3 mt-2">Linha tracejada cinza: {story.referencia.label}.</div>
+        <div className="text-[10px] text-ink-3 mt-2">
+          {t('grafico.linhaCinza', { rotulo: copy.frase(story.referencia.label) })}
+        </div>
       )}
     </div>
   );
@@ -130,6 +146,8 @@ function GraficoUnificado({ story }: { story: Story }) {
  * separado não responde.
  */
 function Consolidado({ c, saidaLabel, modo }: { c: NonNullable<Story['consolidado']>; saidaLabel: string; modo: 'favor' | 'contra' }) {
+  const { t } = useTranslation('futebol');
+  const copy = useCopyDoFutebol();
   const teto = Math.max(c.valor, c.linha) * 1.25;
   const pct = (v: number) => `${Math.min(100, (v / teto) * 100)}%`;
   const cor = c.favorece ? 'var(--forest)' : 'var(--ink-3)';
@@ -137,16 +155,16 @@ function Consolidado({ c, saidaLabel, modo }: { c: NonNullable<Story['consolidad
     <div className="rounded-xl bg-canvas-2 p-4">
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
-          <div className="text-[10px] uppercase tracking-[0.14em] font-semibold text-ink-3">Somando os dois times</div>
+          <div className="text-[10px] uppercase tracking-[0.14em] font-semibold text-ink-3">{t('consolidado.titulo')}</div>
           <div className="flex items-baseline gap-2 mt-1">
             <span className="tabular-nums text-[30px] font-semibold leading-none" style={{ color: cor }}>
               {d1(c.valor)}
             </span>
-            <span className="text-[12px] text-ink-2">{c.unidade}</span>
+            <span className="text-[12px] text-ink-2">{copy.textoDaChave(c.unidade)}</span>
           </div>
         </div>
         <div className="text-right">
-          <div className="text-[10px] uppercase tracking-[0.14em] font-semibold text-ink-3">Linha escolhida</div>
+          <div className="text-[10px] uppercase tracking-[0.14em] font-semibold text-ink-3">{t('consolidado.linhaEscolhida')}</div>
           <div className="tabular-nums text-[20px] font-semibold leading-none mt-1.5 text-ink">{fmtLinhaAnalisada(c.linha)}</div>
         </div>
       </div>
@@ -157,7 +175,7 @@ function Consolidado({ c, saidaLabel, modo }: { c: NonNullable<Story['consolidad
           className="absolute top-0 -translate-x-1/2 text-[9.5px] font-bold tabular-nums whitespace-nowrap"
           style={{ left: pct(c.linha), color: '#b8870f' }}
         >
-          linha {fmtLinhaAnalisada(c.linha)}
+          {t('consolidado.marcaLinha', { linha: fmtLinhaAnalisada(c.linha) })}
         </span>
         <div className="relative h-3.5 rounded-full bg-white">
           <div className="absolute left-0 top-0 bottom-0 rounded-full" style={{ width: pct(c.valor), background: cor }} />
@@ -171,13 +189,25 @@ function Consolidado({ c, saidaLabel, modo }: { c: NonNullable<Story['consolidad
           "joga a favor" só porque o número passa da linha: o critério do modelo é
           mais exigente que a linha, e é isso que a frase precisa contar. */}
       <div className="text-[11.5px] leading-relaxed text-ink-2 mt-2.5">
-        {modo === 'favor'
-          ? c.favorece
-            ? `Fica ${c.direcao === 'maior' ? 'acima' : 'abaixo'} da linha de ${fmtLinhaAnalisada(c.linha)}, e é por isso que esta premissa joga a favor de ${saidaLabel}.`
-            : `Fica ${c.direcao === 'maior' ? 'abaixo' : 'acima'} da linha de ${fmtLinhaAnalisada(c.linha)}: por este número, a premissa não sustenta ${saidaLabel}.`
-          : c.favorece
-            ? `Fica ${c.direcao === 'maior' ? 'acima' : 'abaixo'} da linha de ${fmtLinhaAnalisada(c.linha)}, mas a premissa não acendeu: o critério do modelo é mais exigente do que a linha.`
-            : `Fica ${c.direcao === 'maior' ? 'abaixo' : 'acima'} da linha de ${fmtLinhaAnalisada(c.linha)}, e é por isso que esta premissa não atingiu o corte.`}
+        {(() => {
+          // O LADO é o mesmo nas quatro frases: "maior" sustenta acima da linha,
+          // e quem não favorece está do lado oposto ao que a premissa quer.
+          const acima = c.favorece === (c.direcao === 'maior');
+          const valores = {
+            lado: acima ? t('corte.acima') : t('corte.abaixo'),
+            linha: fmtLinhaAnalisada(c.linha),
+            saida: saidaLabel,
+          };
+          const chave =
+            modo === 'favor'
+              ? c.favorece
+                ? 'consolidado.favorSim'
+                : 'consolidado.favorNao'
+              : c.favorece
+                ? 'consolidado.contraSim'
+                : 'consolidado.contraNao';
+          return t(chave, valores);
+        })()}
       </div>
     </div>
   );
@@ -189,12 +219,12 @@ function Consolidado({ c, saidaLabel, modo }: { c: NonNullable<Story['consolidad
  * card a desenham igual. Duas cópias da mesma frase é como o "2,4 no card com 2,3
  * no subtítulo" nasceu.
  */
-function baseDeJogos(p: Prestacao): string {
+function baseDeJogos(p: Prestacao, t: Traduzir): string {
   return p.parcelas
     .map((b) =>
       b.jogos === b.daJanela
-        ? `${b.teamName}, ${b.jogos} ${b.jogos === 1 ? 'jogo' : 'jogos'}`
-        : `${b.teamName}, ${b.jogos} dos últimos ${b.daJanela}`,
+        ? t('base.jogos', { count: b.jogos, time: b.teamName })
+        : t('base.dosUltimos', { time: b.teamName, jogos: b.jogos, janela: b.daJanela }),
     )
     .join(' · ');
 }
@@ -212,22 +242,28 @@ function baseDeJogos(p: Prestacao): string {
  * corte e não entende por que a premissa acendeu.
  */
 function PrestacaoPorTime({ p, saidaLabel }: { p: Prestacao; saidaLabel: string }) {
+  const { t } = useTranslation('futebol');
+  const copy = useCopyDoFutebol();
+  const corte = copy.frase(copyDoCorte(p));
+  const unidade = copy.textoDaChave(p.unidade);
   const teto = Math.max(...p.parcelas.map((x) => x.valor), p.corte) * 1.2 || 1;
   const pct = (v: number) => `${Math.min(100, (v / teto) * 100)}%`;
   const exigencia =
     p.combinacao === 'e'
-      ? `Os DOIS times precisam de ${corteEmPalavras(p)}.`
-      : `Basta UM dos times ter ${corteEmPalavras(p)}.`;
+      ? t('prestacao.exigenciaE', { corte })
+      : t('prestacao.exigenciaOu', { corte });
   // A contagem é medida contra a LINHA escolhida, e muda quando o assinante
   // arrasta a régua. Sem dizer isso, ver o número mudar parece defeito.
   const contraALinha =
     p.escala === 'contagem' && p.linha != null
-      ? ` A conta é contra a linha de ${fmtLinhaAnalisada(p.linha)}, e muda com ela.`
+      ? t('prestacao.contraALinha', { linha: fmtLinhaAnalisada(p.linha) })
       : '';
   return (
     <div className="rounded-xl bg-canvas-2 p-4">
       <div className="text-[10px] uppercase tracking-[0.14em] font-semibold text-ink-3">
-        {p.escala === 'contagem' ? `Jogos ${p.unidade}` : `${p.unidade}, por time`}
+        {p.escala === 'contagem'
+          ? t('prestacao.jogosUnidade', { unidade })
+          : t('prestacao.unidadePorTime', { unidade })}
       </div>
 
       <div className="flex flex-col gap-3 mt-3">
@@ -263,14 +299,19 @@ function PrestacaoPorTime({ p, saidaLabel }: { p: Prestacao; saidaLabel: string 
         {exigencia}{contraALinha}{' '}
         {p.cruzou
           ? p.combinacao === 'ou' && p.parcelas.some((x) => !x.cruzou)
-            ? `${p.parcelas.filter((x) => x.cruzou).map((x) => x.teamName).join(' e ')} passou do corte sozinho, e é por isso que esta premissa sustenta ${saidaLabel}.`
-            : `Os dois passaram do corte, e é por isso que esta premissa sustenta ${saidaLabel}.`
+            ? t('prestacao.umSozinho', {
+                times: p.parcelas.filter((x) => x.cruzou).map((x) => x.teamName).join(t('lista.juntorE')),
+                saida: saidaLabel,
+              })
+            : t('prestacao.doisPassaram', { saida: saidaLabel })
           : p.parcelas.every((x) => !x.cruzou)
-            ? 'Nenhum dos dois atingiu o corte.'
-            : `${p.parcelas.filter((x) => !x.cruzou).map((x) => x.teamName).join(' e ')} não atingiu o corte, e por isso a premissa não acendeu.`}
+            ? t('prestacao.nenhum')
+            : t('prestacao.naoAtingiu', {
+                times: p.parcelas.filter((x) => !x.cruzou).map((x) => x.teamName).join(t('lista.juntorE')),
+              })}
       </div>
 
-      <div className="text-[10.5px] text-ink-3 mt-2 tabular-nums">Base: {baseDeJogos(p)}</div>
+      <div className="text-[10.5px] text-ink-3 mt-2 tabular-nums">{t('prestacao.base', { base: baseDeJogos(p, t) })}</div>
     </div>
   );
 }
@@ -289,6 +330,8 @@ function PrestacaoPorTime({ p, saidaLabel }: { p: Prestacao; saidaLabel: string 
  * e sumir com ela deixaria o corte sem referência.
  */
 function PrestacaoDeContas({ p, saidaLabel }: { p: Prestacao; saidaLabel: string }) {
+  const { t } = useTranslation('futebol');
+  const copy = useCopyDoFutebol();
   if (p.insumo == null) return <PrestacaoPorTime p={p} saidaLabel={saidaLabel} />;
   const insumo = p.insumo;
   const linha = p.linha;
@@ -299,7 +342,7 @@ function PrestacaoDeContas({ p, saidaLabel }: { p: Prestacao; saidaLabel: string
   // A frase da distância mora na tela, e o número vem do critério: uma função que
   // devolvesse ", por 0,05" só serviria colada nesta frase.
   const falta = faltouParaOCorte(p);
-  const porQuanto = falta == null ? '' : `, por ${fmtExato(falta)}`;
+  const porQuanto = falta == null ? '' : t('prestacao.porQuanto', { falta: fmtExato(falta) });
   return (
     <div className="rounded-xl bg-canvas-2 p-4">
       <div className="flex items-end justify-between gap-4 flex-wrap">
@@ -311,7 +354,7 @@ function PrestacaoDeContas({ p, saidaLabel }: { p: Prestacao; saidaLabel: string
             <span className="tabular-nums text-[30px] font-semibold leading-none" style={{ color: cor }}>
               {d1(insumo)}
             </span>
-            <span className="text-[12px] text-ink-2">{p.unidade}</span>
+            <span className="text-[12px] text-ink-2">{copy.textoDaChave(p.unidade)}</span>
           </div>
           <div className="text-[11px] text-ink-3 mt-1 tabular-nums">
             {p.parcelas.map((x) => `${x.teamName} ${d1(x.valor)}`).join(' · ')}
@@ -319,10 +362,10 @@ function PrestacaoDeContas({ p, saidaLabel }: { p: Prestacao; saidaLabel: string
         </div>
         <div className="text-right">
           <div className="text-[10px] uppercase tracking-[0.14em] font-semibold text-ink-3">
-            Corte da premissa
+            {t('prestacao.corteDaPremissa')}
           </div>
           <div className="tabular-nums text-[20px] font-semibold leading-none mt-1.5 text-ink">
-            {corteEmPalavras(p)}
+            {copy.frase(copyDoCorte(p))}
           </div>
         </div>
       </div>
@@ -351,14 +394,14 @@ function PrestacaoDeContas({ p, saidaLabel }: { p: Prestacao; saidaLabel: string
           <span className="inline-flex items-center gap-1.5">
             <span className="w-[3px] h-3 rounded-full" style={{ background: '#b8870f' }} />
             <span className="tabular-nums" style={{ color: '#8d8672' }}>
-              corte {fmtExato(p.corte)}
+              {t('prestacao.corte', { corte: fmtExato(p.corte) })}
             </span>
           </span>
           {!semMargem && (
             <span className="inline-flex items-center gap-1.5">
               <span className="w-[2px] h-3 rounded-full" style={{ background: '#c0b79f' }} />
               <span className="tabular-nums" style={{ color: '#8d8672' }}>
-                linha {fmtLinhaAnalisada(linha ?? 0)}
+                {t('prestacao.linha', { linha: fmtLinhaAnalisada(linha ?? 0) })}
               </span>
             </span>
           )}
@@ -367,18 +410,25 @@ function PrestacaoDeContas({ p, saidaLabel }: { p: Prestacao; saidaLabel: string
 
       <div className="text-[11.5px] leading-relaxed text-ink-2 mt-2.5">
         {p.cruzou
-          ? `${d1(insumo)} fica ${LADO_DO_CORTE[p.sentido]} do corte de ${fmtExato(p.corte)}, e é por isso que esta premissa sustenta ${saidaLabel}.`
-          : `${d1(insumo)} não atingiu o corte de ${fmtExato(p.corte)}${porQuanto}.`}
+          ? t('prestacao.cruzou', {
+              insumo: d1(insumo),
+              lado: t(LADO_DO_CORTE[p.sentido]),
+              corte: fmtExato(p.corte),
+              saida: saidaLabel,
+            })
+          : t('prestacao.naoCruzou', { insumo: d1(insumo), corte: fmtExato(p.corte), porQuanto })}
         {!semMargem && (
           <>
             {' '}
-            O corte é a linha de {fmtLinhaAnalisada(linha ?? 0)} com uma margem de{' '}
-            {fmtExato(Math.abs(p.margem ?? 0))}: o modelo é mais exigente do que a linha.
+            {t('prestacao.margem', {
+              linha: fmtLinhaAnalisada(linha ?? 0),
+              margem: fmtExato(Math.abs(p.margem ?? 0)),
+            })}
           </>
         )}
       </div>
 
-      <div className="text-[10.5px] text-ink-3 mt-2 tabular-nums">Base: {baseDeJogos(p)}</div>
+      <div className="text-[10.5px] text-ink-3 mt-2 tabular-nums">{t('prestacao.base', { base: baseDeJogos(p, t) })}</div>
     </div>
   );
 }
@@ -395,6 +445,8 @@ function PainelPremissa({
   saidaLabel: string;
   modo: 'favor' | 'contra';
 }) {
+  const { t } = useTranslation('futebol');
+  const copy = useCopyDoFutebol();
   const soMiudas = story.series.every((s) => !EH_QUADRO(s.metrica) && s.jogos.length <= 2);
   return (
     <div className="px-4 pb-4 pt-3.5" style={{ borderTop: '1px solid #f1e9d6' }}>
@@ -419,8 +471,10 @@ function PainelPremissa({
             <div key={s.chave}>
               <div className="flex items-center gap-1.5 mb-2">
                 <Crest name={s.teamName} id={s.teamId} size={16} />
-                <span className="text-[12px] font-semibold text-ink">{s.titulo}</span>
-                <span className="text-[10.5px] ml-auto" style={{ color: '#8d8672' }}>{s.sub}</span>
+                <span className="text-[12px] font-semibold text-ink">{copy.frase(s.titulo)}</span>
+                <span className="text-[10.5px] ml-auto" style={{ color: '#8d8672' }}>
+                  {copy.fraseOuVazio(s.sub)}
+                </span>
               </div>
               {/* Nas binárias a cor segue o que a PREMISSA quer, e não o
                   resultado nem o fato cru: a mesma métrica atende premissas de
@@ -437,8 +491,10 @@ function PainelPremissa({
             <div key={s.chave}>
               <div className="flex items-center gap-1.5 mb-2">
                 <Crest name={s.teamName} id={s.teamId} size={16} />
-                <span className="text-[12px] font-semibold text-ink">{s.titulo}</span>
-                <span className="text-[10.5px] ml-auto" style={{ color: '#8d8672' }}>{s.sub}</span>
+                <span className="text-[12px] font-semibold text-ink">{copy.frase(s.titulo)}</span>
+                <span className="text-[10.5px] ml-auto" style={{ color: '#8d8672' }}>
+                  {copy.fraseOuVazio(s.sub)}
+                </span>
               </div>
               <SerieMiuda s={s} />
             </div>
@@ -450,7 +506,7 @@ function PainelPremissa({
 
       {(soMiudas || story.comoLer) && (
         <div className="text-[11px] leading-relaxed mt-3" style={{ color: '#8d8672' }}>
-          {soMiudas ? 'Amostra curta na competição: em vez de gráfico, o valor de cada jogo.' : story.comoLer}
+          {soMiudas ? t('painelPremissa.amostraCurta') : copy.textoDaChave(story.comoLer)}
         </div>
       )}
     </div>
@@ -462,6 +518,7 @@ function PainelPremissa({
  * direita. A barra inteira é clicável e o gráfico abre embaixo, na mesma linha.
  */
 function LinhaPremissa({
+  mercado,
   p,
   modo,
   lado,
@@ -472,6 +529,15 @@ function LinhaPremissa({
   onAlternar,
   saidaLabel,
 }: {
+  /**
+   * O mercado da premissa.
+   *
+   * Necessário porque a frase é pedida por mercado+slug e não pelo slug: o
+   * mesmo `defesas_vazaveis` existe em gols e em ambos marcam, com pesos
+   * diferentes — e a chave de idioma segue a mesma régua da tabela de apoio do
+   * banco, para as duas não se descolarem (#544).
+   */
+  mercado: string;
   p: Premissa;
   modo: 'favor' | 'contra';
   lado: 'home' | 'away' | null;
@@ -482,6 +548,8 @@ function LinhaPremissa({
   onAlternar: () => void;
   saidaLabel: string;
 }) {
+  const { t } = useTranslation('futebol');
+  const copy = useCopyDoFutebol();
   const forte = pesoForte(p);
   const podeAbrir = story != null;
   // Existe bloco de explicação embaixo do cabeçalho? É ele quem dá o respiro
@@ -567,10 +635,10 @@ function LinhaPremissa({
                 : { background: '#eae2cf', color: '#8d8672' }
           }
         >
-          {pesoPalavra(p)}
+          {copy.peso(p)}
         </span>
         <span className="flex-1 min-w-0 text-[13.5px] font-semibold" style={{ color: aberta ? '#fff' : '#1a1d1a' }}>
-          {rotuloPremissa(p, lado, modo === 'contra')}
+          {copy.premissa(mercado, p, lado, modo === 'contra')}
         </span>
         {podeAbrir ? (
           <span className="shrink-0 inline-flex items-center gap-1.5 text-[11.5px] font-semibold" style={{ color: aberta ? '#fbbf24' : '#0a3d2e' }}>
@@ -578,7 +646,7 @@ function LinhaPremissa({
                 continua no leitor de tela. Escondido de vez, o botão passaria a
                 se anunciar só pelo nome da premissa, sem dizer que abre nada.
                 A seta sozinha basta para quem enxerga — ela já gira ao abrir. */}
-            <span className="sr-only md:not-sr-only">{aberta ? 'fechar' : 'ver os jogos'}</span>
+            <span className="sr-only md:not-sr-only">{aberta ? t('painelPremissa.fechar') : t('painelPremissa.verOsJogos')}</span>
             <ChevronRight className="w-3.5 h-3.5 transition-transform" style={{ transform: `rotate(${aberta ? 90 : 0}deg)` }} />
           </span>
         ) : null}
@@ -586,13 +654,13 @@ function LinhaPremissa({
 
       {temExplicacao && (
         <div className="px-4 py-3 text-[12.5px] leading-relaxed" style={{ color: '#5a625a' }}>
-          {ev?.texto}
+          {copy.fraseOuVazio(ev?.texto)}
           {/* O motivo do peso zero fica VISÍVEL, e não num `title`: no celular
               ninguém passa o mouse, e é ele que responde "por que uma premissa
               que não ajuda está na lista a favor". */}
           {p.peso === 0 && p.motivo && (
             <span className="block mt-1 text-[11.5px]" style={{ color: '#8d8672' }}>
-              Não ajuda na previsão: {p.motivo}.
+              {t('painelPremissa.naoAjuda', { motivo: copy.motivoDaPremissa(mercado, p) })}
             </span>
           )}
         </div>
@@ -662,6 +730,8 @@ export function MotivosJogoPorJogo({
     quantidade: number,
   ) => void;
 }) {
+  const { t } = useTranslation('futebol');
+  const copy = useCopyDoFutebol();
   const acesa = modo === 'favor';
   const itens = useMemo(
     () =>
@@ -712,7 +782,7 @@ export function MotivosJogoPorJogo({
   useEffect(() => setAberta(primeira), [chave, primeira]);
 
   if (!historico) {
-    return <div className="p-6 md:p-8 text-[13px]" style={{ color: '#8d8672' }}>Carregando os jogos anteriores.</div>;
+    return <div className="p-6 md:p-8 text-[13px]" style={{ color: '#8d8672' }}>{t('estatisticas.carregando')}</div>;
   }
 
   return (
@@ -721,19 +791,21 @@ export function MotivosJogoPorJogo({
         <div className="text-[12.5px]" style={{ color: '#8d8672' }}>
           {modo === 'favor'
             ? total > 0
-              ? `${total} ${total === 1 ? 'motivo sustenta' : 'motivos sustentam'} ${saidaLabel.toLowerCase()}. Clique numa premissa para ver os jogos que produziram o número.`
-              : 'Nenhum motivo a favor desta saída.'
+              ? t('motivos.sustentam', { count: total, saida: saidaLabel.toLowerCase() })
+              : t('motivos.nenhumFavor')
             : total > 0
-              ? `Premissas de ${saidaLabel.toLowerCase()} que foram avaliadas e não atingiram o corte. Não são sinal para o outro lado: são a ausência deste.`
-              : 'Todas as premissas que valem nesta saída atingiram o corte.'}
+              ? t('motivos.contraTexto', { saida: saidaLabel.toLowerCase() })
+              : t('motivos.todasAtingiram')}
           {/* A definição do corte, UMA vez na lista e não em cada card. Ela só
               aparece quando existe premissa prestando contas, senão a tela
               explicaria um conceito que não está em lugar nenhum dela. */}
           {itens.some((x) => x.prestacao != null) && (
             <span className="block mt-1">
-              O <strong className="font-semibold">corte</strong> é o número que a premissa precisa
-              bater para acender. Ele sai da linha em umas e é fixo em outras, e quase nunca é a
-              própria linha.
+              <Trans
+                t={t}
+                i18nKey="motivos.definicaoCorte"
+                components={[<strong className="font-semibold" key="corte" />]}
+              />
             </span>
           )}
         </div>
@@ -743,11 +815,11 @@ export function MotivosJogoPorJogo({
           <div className="flex flex-col items-start gap-1 md:flex-row md:items-center md:gap-4">
             <span className="inline-flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: COR_FAVOR }} />
-              <span className="text-[10.5px]" style={{ color: '#5a625a' }}>o lado que a premissa quer</span>
+              <span className="text-[10.5px]" style={{ color: '#5a625a' }}>{t('grafico.ladoQuer')}</span>
             </span>
             <span className="inline-flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ background: COR_CONTRA }} />
-              <span className="text-[10.5px]" style={{ color: '#8d8672' }}>o lado contrário</span>
+              <span className="text-[10.5px]" style={{ color: '#8d8672' }}>{t('grafico.ladoContrario')}</span>
             </span>
           </div>
         )}
@@ -783,6 +855,7 @@ export function MotivosJogoPorJogo({
           return (
             <LinhaPremissa
               key={p.slug}
+              mercado={mercado}
               p={p}
               modo={modo}
               lado={lado}
@@ -810,12 +883,12 @@ export function MotivosJogoPorJogo({
 
       {itens.some((x) => x.story == null) && (
         <div className="text-[11.5px] leading-relaxed mt-4 pt-4" style={{ borderTop: '1px solid #f1e9d6', color: '#8d8672' }}>
-          Sem jogo a jogo:{' '}
-          {itens
-            .filter((x) => x.story == null)
-            .map((x) => rotuloPremissa(x.p, lado, modo === 'contra').toLowerCase())
-            .join('; ')}
-          . Aqui o sinal não vem de gol marcado ou sofrido, vem da tabela, do histórico entre os dois ou da escalação.
+          {t('motivos.semJogoAJogo', {
+            lista: itens
+              .filter((x) => x.story == null)
+              .map((x) => copy.premissa(mercado, x.p, lado, modo === 'contra').toLowerCase())
+              .join('; '),
+          })}
         </div>
       )}
     </div>

@@ -1,4 +1,5 @@
 import type { FutebolFixturePremissas, FutebolFixtureValueRow } from '@/services/futebol-data.service';
+import { preencher, type CopyComParametros } from '@/utils/futebol-copy';
 import { filtrarCatalogoDeMercados } from '@/utils/futebol-mercados-ocultos';
 import { ehDestaque } from '@/utils/futebol-score';
 import { mesmaLinha, mesmaSaida, type Saida } from '@/utils/futebol-saida';
@@ -243,7 +244,34 @@ export function melhorLeitura(resumos: MercadoResumo[]): MercadoResumo | null {
  * do que um que mente e depois se corrige.
  */
 export function sufixoDeLeitura(carregando: boolean, comLeitura: number): string {
-  return carregando ? '' : ` · ${comLeitura} com leitura`;
+  return carregando ? '' : preencher(COPY_DO_SUFIXO_DE_LEITURA, { n: comLeitura });
+}
+
+/**
+ * O molde do sufixo. Fonte única do texto em português, e é dele que o catálogo
+ * de idioma é gerado.
+ *
+ * O separador e o espaço da frente fazem parte do molde porque fazem parte da
+ * frase: quem chama concatena o sufixo direto no contador, e tirar o espaço
+ * daqui obrigaria cada chamador a lembrar de pôr.
+ */
+export const COPY_DO_SUFIXO_DE_LEITURA = ' · {{n}} com leitura';
+
+/** A chave de idioma do sufixo. O número vem em `n`. */
+export const CHAVE_DO_SUFIXO_DE_LEITURA = 'sufixo.comLeitura';
+
+/**
+ * A chave e o parâmetro do sufixo, ou `null` enquanto o board não respondeu.
+ *
+ * `null` e não uma chave vazia: o sufixo SOME enquanto carrega, e uma chave com
+ * texto vazio reprovaria na guarda de paridade do catálogo — com razão, porque
+ * valor vazio é pior que ausente.
+ */
+export function copyDoSufixoDeLeitura(
+  carregando: boolean,
+  comLeitura: number,
+): CopyComParametros | null {
+  return carregando ? null : { chave: CHAVE_DO_SUFIXO_DE_LEITURA, params: { n: comLeitura } };
 }
 
 /**

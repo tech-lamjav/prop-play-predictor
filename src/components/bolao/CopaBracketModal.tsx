@@ -9,6 +9,7 @@ import { useWcMatches } from '@/hooks/use-bolao';
 import { TeamFlag } from './TeamFlag';
 import { Plus, Minus, RotateCcw } from 'lucide-react';
 import type { WcMatch } from '@/services/bolao.service';
+import { localeAtivo } from "@/utils/idioma-ativo";
 
 interface Props {
   open: boolean;
@@ -64,7 +65,7 @@ function BracketMatchCard({
     match.away_score > match.home_score;
 
   const dateStr = new Date(match.match_date + 'T00:00:00').toLocaleDateString(
-    'pt-BR',
+    localeAtivo(),
     { day: '2-digit', month: 'short' }
   );
   const timeStr = match.match_time_brasilia.slice(0, 5);

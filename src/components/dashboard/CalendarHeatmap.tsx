@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { aggregateCalendarHeatmap } from '@/utils/dashboardAggregations';
 import type { Bet } from '@/hooks/use-bets';
+import { localeAtivo } from '@/utils/idioma-ativo';
 
 interface CalendarHeatmapProps {
   bets: Bet[];
@@ -156,7 +157,7 @@ export const CalendarHeatmap: React.FC<CalendarHeatmapProps> = ({ bets }) => {
                         className="theme-rebrand bg-ink text-white border-ink px-2.5 py-1.5 text-[11px] shadow-[0_10px_30px_-10px_rgba(0,0,0,0.3)]"
                       >
                         <div className="font-bold tabular leading-tight">
-                          {cell.date.toLocaleDateString('pt-BR', {
+                          {cell.date.toLocaleDateString(localeAtivo(), {
                             day: '2-digit',
                             month: 'short',
                             year: 'numeric',

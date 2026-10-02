@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 /**
  * A régua de paradas da aba de Estatísticas.
@@ -21,14 +22,16 @@ export function ReguaDeLinhas({
   valor,
   onEscolher,
   rotulo,
-  aria = 'Linha de referência',
+  aria,
 }: {
   paradas: number[];
   valor: number | null;
   onEscolher: (v: number) => void;
   rotulo: (v: number) => string;
+  /** Sem isto, o nome acessível é "Linha de referência", do catálogo. */
   aria?: string;
 }) {
+  const { t } = useTranslation('futebol');
   const trilha = useRef<HTMLDivElement | null>(null);
   /**
    * A medida vale o arrasto inteiro, e é tirada uma vez só. Remedindo a cada
@@ -59,7 +62,7 @@ export function ReguaDeLinhas({
         ref={trilha}
         role="slider"
         tabIndex={0}
-        aria-label={aria}
+        aria-label={aria ?? t('regua.linhaDeReferencia')}
         aria-valuemin={paradas[0]}
         aria-valuemax={paradas[paradas.length - 1]}
         aria-valuenow={valor ?? undefined}

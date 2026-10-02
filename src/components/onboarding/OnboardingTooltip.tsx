@@ -1,8 +1,13 @@
 import type { TooltipRenderProps } from 'react-joyride';
+import { useTranslation } from 'react-i18next';
 
 // Tooltip do onboarding guiado. O Joyride renderiza num portal no <body>, fora
 // da árvore .theme-bolao — então a classe vai no próprio container pra que as
 // variáveis do design system (forest/ink/etc.) resolvam nos filhos.
+//
+// O título e o corpo do passo chegam JÁ TRADUZIDOS (o OnboardingTourJoyride
+// resolve as chaves antes de entregar os passos ao Joyride); o que este arquivo
+// traduz é só a moldura — a contagem de passos e os botões.
 export default function OnboardingTooltip({
   index,
   size,
@@ -13,6 +18,7 @@ export default function OnboardingTooltip({
   skipProps,
   tooltipProps,
 }: TooltipRenderProps) {
+  const { t } = useTranslation('tour');
   const isFirst = index === 0;
   const single = size === 1;
 
@@ -23,14 +29,16 @@ export default function OnboardingTooltip({
     >
       <div className="mb-2 flex items-center justify-between">
         <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-forest">
-          {single ? 'Dica rápida' : `Passo ${index + 1} de ${size}`}
+          {single
+            ? t('tooltip.dicaRapida')
+            : t('tooltip.passo', { atual: index + 1, total: size })}
         </span>
         {!single && (
           <button
             {...skipProps}
             className="text-[12px] font-medium text-ink-3 transition-colors hover:text-ink"
           >
-            Pular
+            {t('tooltip.pular')}
           </button>
         )}
       </div>
@@ -64,14 +72,14 @@ export default function OnboardingTooltip({
               {...backProps}
               className="rounded-rebrand-sm px-3 py-2 text-[13px] font-semibold text-ink-2 transition-colors hover:text-ink"
             >
-              Voltar
+              {t('tooltip.voltar')}
             </button>
           )}
           <button
             {...primaryProps}
             className="rounded-rebrand-sm bg-forest px-4 py-2 text-[13px] font-bold text-white transition-colors hover:bg-forest-2"
           >
-            {isLastStep ? 'Entendi' : 'Próximo'}
+            {isLastStep ? t('tooltip.entendi') : t('tooltip.proximo')}
           </button>
         </div>
       </div>

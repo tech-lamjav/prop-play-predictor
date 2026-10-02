@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { AlertTriangle } from 'lucide-react';
 import {
   Dialog,
@@ -31,13 +32,18 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   onOpenChange,
   title,
   description,
-  confirmLabel = 'Confirmar',
-  cancelLabel = 'Cancelar',
+  confirmLabel,
+  cancelLabel,
   variant = 'default',
   onConfirm,
   isLoading,
 }) => {
+  const { t } = useTranslation('bolao');
   const isDestructive = variant === 'destructive';
+  // Os rótulos padrão saem do catálogo, e não do valor padrão do parâmetro:
+  // valor padrão é avaliado onde a função é definida, e ali não há idioma.
+  const rotuloConfirmar = confirmLabel ?? t('confirmacao.confirmar');
+  const rotuloCancelar = cancelLabel ?? t('confirmacao.cancelar');
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -70,7 +76,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             autoFocus
             className="h-11 px-4 rounded-rebrand-md text-[13px] font-medium text-ink-2 hover:text-ink hover:bg-canvas-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            {cancelLabel}
+            {rotuloCancelar}
           </button>
           <button
             type="button"
@@ -82,7 +88,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
                 : 'bg-forest hover:bg-forest-2'
             }`}
           >
-            {isLoading ? 'Processando...' : confirmLabel}
+            {isLoading ? t('confirmacao.processando') : rotuloConfirmar}
           </button>
         </div>
       </DialogContent>

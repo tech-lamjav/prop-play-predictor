@@ -1,4 +1,5 @@
 import { Info } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 /**
@@ -26,6 +27,7 @@ export function AjudaCampo({
   /** No fundo forest do destaque; no card claro fica false. */
   escuro?: boolean;
 }) {
+  const { t } = useTranslation('futebol');
   return (
     <span className="inline-flex items-center gap-1">
       <span
@@ -38,7 +40,7 @@ export function AjudaCampo({
         <PopoverTrigger asChild>
           <button
             type="button"
-            aria-label={`O que é ${titulo}`}
+            aria-label={t('ajuda.oQueE', { titulo })}
             className={`grid h-4 w-4 place-items-center rounded-full transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 ${
               escuro ? 'hover:bg-white/15' : 'hover:bg-canvas-2'
             }`}

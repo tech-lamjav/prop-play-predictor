@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { fraseEmPortugues } from '@/test/copy-em-portugues';
 import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -100,6 +101,6 @@ describe('a política do front quando não há confronto anterior', () => {
     const ev = evidenciaDoH2h({ h2h_jogos: 3, h2h_vitorias: 2, h2h_empates: 1 });
 
     expect(ev).not.toBeNull();
-    expect(ev!.texto).toContain('3 confrontos');
+    expect(fraseEmPortugues(ev!.texto)).toContain('3 confrontos');
   });
 });

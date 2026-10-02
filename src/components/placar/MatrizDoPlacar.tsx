@@ -1,4 +1,5 @@
 import { Fragment, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronRight } from 'lucide-react';
 import type { LinhaLiquidada } from './placar-agregacao';
 import { DrillDaCelula } from './DrillDaCelula';
@@ -7,6 +8,30 @@ import type { Granularidade } from './placar-evolucao';
 import { matriz, type CelulaDaMatriz } from './placar-matriz';
 import { linhasDa, type Quebra } from './placar-quebras';
 import type { Eixo } from './placar-periodo';
+
+/**
+ * O rótulo CURTO de uma quebra, para a frase "abre a linha por …".
+ *
+ * Isto era `dentro.titulo.replace('Por ', '')` — texto de tela DERIVADO de
+ * outro texto de tela por recorte de string, e o recorte é a tradução esperando
+ * para quebrar: só o português começa esse título com "Por ". Em espanhol o
+ * `replace` não acha nada e devolveria o título inteiro no meio da frase.
+ *
+ * O rótulo curto é texto de tela como qualquer outro, então ele é uma CHAVE do
+ * catálogo. A tabela guarda chave e não texto, porque é avaliada na carga do
+ * módulo: texto aqui congelaria o idioma da primeira renderização.
+ *
+ * ⚠️ Indexada pelo TÍTULO porque `Quebra` não tem identificador estável, e
+ * `placar-quebras.ts` já usa o título como identidade (`porTitulo`). Aquele
+ * arquivo está fora deste passo; no dia em que os títulos entrarem no catálogo,
+ * `Quebra` precisa de um campo `id` e esta tabela passa a usá-lo.
+ */
+const CHAVE_DO_CURTO: Record<string, string> = {
+  'Por mercado': 'quebras.curto.mercado',
+  'Por faixa de Score': 'quebras.curto.faixaDeScore',
+  'Por faixa de odd': 'quebras.curto.faixaDeOdd',
+  'Por campeonato': 'quebras.curto.campeonato',
+};
 
 /** O conteúdo de uma célula: o ROI grande, a base pequena. */
 function Conteudo({ celula }: { celula: CelulaDaMatriz | undefined }) {
@@ -74,12 +99,15 @@ export function MatrizDoPlacar({
   eixo: Eixo;
   selo?: (chave: string) => string | null;
 }) {
+  const { t } = useTranslation('socios');
   const [aberta, setAberta] = useState<{ titulo: string; celula: CelulaDaMatriz } | null>(null);
   const [expandidas, setExpandidas] = useState<string[]>([]);
 
   const { gavetas, linhas } = matriz(liquidadas, quebra, granularidade, eixo);
   const fora = liquidadas.length - linhasDa(quebra, liquidadas).length;
   const dentro = quebra.desdobraEm;
+  const chaveDoCurto = dentro ? CHAVE_DO_CURTO[dentro.titulo] : undefined;
+  const dentroCurto = chaveDoCurto ? t(chaveDoCurto) : '';
 
   const abrirCelula = (titulo: string, celula: CelulaDaMatriz | undefined) => {
     if (!celula || celula.linhas.length === 0) return;
@@ -96,6 +124,9 @@ export function MatrizDoPlacar({
       <summary className="cursor-pointer list-none border-b border-line-2 px-5 py-3 marker:content-none">
         <div className="flex items-start gap-2">
           <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-ink-dim transition group-open/card:rotate-90" />
+          {/* `titulo` e `explicacao` vêm do catálogo de quebras, em
+              `placar-quebras.ts`, e seguem em português: aquele arquivo está
+              fora deste passo da migração. */}
           <div>
             <h2 className="font-display text-[17px] font-black text-ink">{quebra.titulo}</h2>
             <p className="mt-1 text-[13px] text-ink-2">{quebra.explicacao}</p>
@@ -104,21 +135,23 @@ export function MatrizDoPlacar({
       </summary>
 
       {linhas.length === 0 ? (
-        <p className="px-5 py-8 text-[14px] text-ink-2">
-          Nenhuma oportunidade liquidada no período.
-        </p>
+        <p className="px-5 py-8 text-[14px] text-ink-2">{t('quebras.vazio')}</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-left">
             <thead>
               <tr className="border-b border-line-2 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim">
-                <th className="sticky left-0 bg-white px-5 py-2 font-bold">Grupo</th>
+                <th className="sticky left-0 bg-white px-5 py-2 font-bold">
+                  {t('quebras.colunaGrupo')}
+                </th>
                 {gavetas.map((g) => (
                   <th key={g.chave} className="px-3 py-2 text-right font-bold">
                     {g.rotulo}
                   </th>
                 ))}
-                <th className="px-5 py-2 text-right font-bold text-ink">Total</th>
+                <th className="px-5 py-2 text-right font-bold text-ink">
+                  {t('quebras.matriz.total')}
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -135,7 +168,10 @@ export function MatrizDoPlacar({
                             <button
                               type="button"
                               onClick={() => alternar(l.chave)}
-                              aria-label={`Abrir ${l.rotulo} por ${dentro.titulo.replace('Por ', '')}`}
+                              aria-label={t('quebras.matriz.abrirLinha', {
+                                grupo: l.rotulo,
+                                dentro: dentroCurto,
+                              })}
                               aria-expanded={aberto}
                               className="text-ink-dim transition hover:text-ink"
                             >
@@ -166,7 +202,9 @@ export function MatrizDoPlacar({
                       ))}
 
                       <td
-                        onClick={() => abrirCelula(`${l.rotulo} · período inteiro`, l.total)}
+                        onClick={() =>
+                          abrirCelula(`${l.rotulo} · ${t('quebras.periodoInteiro')}`, l.total)
+                        }
                         className="cursor-pointer border-l border-line-2 px-5 py-2.5 text-right hover:bg-forest/[0.06]"
                       >
                         <Total celula={l.total} forte />
@@ -209,14 +247,16 @@ export function MatrizDoPlacar({
 
       <p className="border-t border-line-2 px-5 py-2 text-[11px] text-ink-dim">
         {dentro
-          ? `A seta abre a linha por ${dentro.titulo.replace('Por ', '')}. A célula abre as apostas dela.`
-          : 'Clique numa célula para ver as apostas dela.'}
+          ? t('quebras.matriz.comoAbrir', { dentro: dentroCurto })
+          : t('quebras.matriz.cliqueNaCelula')}
         {fora > 0 && quebra.notaDosFora && (
           <>
             {' '}
             <strong className="font-bold text-ink-2">
-              {fora} aposta{fora > 1 ? 's' : ''} fora desta tabela:
+              {t('quebras.matriz.foraDaTabela', { count: fora })}
             </strong>{' '}
+            {/* `notaDosFora` vem de `placar-quebras.ts` e segue em português:
+                aquele arquivo está fora deste passo da migração. */}
             {quebra.notaDosFora}
           </>
         )}

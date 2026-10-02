@@ -32,24 +32,24 @@ const PERFIL = fonte('pages/Perfil.tsx');
 
 describe('itens do menu da conta', () => {
   it('traz a lista na ordem do desenho', () => {
-    const labels = itensDaConta(() => {}).map((i) => i.label);
+    const labels = itensDaConta(() => {}).map((i) => i.chave);
     expect(labels).toEqual([
-      'Configurações',
-      'Planos e preços',
-      'Indique um amigo',
-      ...(SHOW_COMO_USAR_ENTRY_POINTS ? ['Como usar'] : []),
-      'Falar com o time',
+      'itens.configuracoes',
+      'itens.planos',
+      'itens.indicar',
+      ...(SHOW_COMO_USAR_ENTRY_POINTS ? ['itens.comoUsar'] : []),
+      'itens.falarComOTime',
     ]);
   });
 
   it('"Falar com o time" aponta para o WhatsApp com mensagem pronta', () => {
-    const item = itensDaConta(() => {}).find((i) => i.label === 'Falar com o time');
+    const item = itensDaConta(() => {}).find((i) => i.chave === 'itens.falarComOTime');
     expect(item?.href).toBe(WHATSAPP_FALAR_COM_O_TIME);
   });
 
   it('"Indique um amigo" chama a ação recebida, e não navega', () => {
     const indicar = vi.fn();
-    const item = itensDaConta(indicar).find((i) => i.label === 'Indique um amigo');
+    const item = itensDaConta(indicar).find((i) => i.chave === 'itens.indicar');
     expect(item?.href).toBeUndefined();
     item?.onClick?.();
     expect(indicar).toHaveBeenCalledOnce();
@@ -59,7 +59,7 @@ describe('itens do menu da conta', () => {
   // faria o CI quebrar em quem religar o item, que é exatamente a instrução
   // escrita em como-usar.ts.
   it('"Como usar" respeita a chave', () => {
-    const temComoUsar = itensDaConta(() => {}).some((i) => i.label === 'Como usar');
+    const temComoUsar = itensDaConta(() => {}).some((i) => i.chave === 'itens.comoUsar');
     expect(temComoUsar).toBe(SHOW_COMO_USAR_ENTRY_POINTS);
   });
 
@@ -67,12 +67,12 @@ describe('itens do menu da conta', () => {
     for (const arquivo of [USER_NAV, PERFIL]) {
       expect(arquivo).toContain('itensDaConta(openReferral,');
       // Nenhum item de menu escrito à mão dentro da tela. Um item de menu é uma
-      // linha com rótulo E ícone — os blocos de número da tela de Perfil também
+      // linha com CHAVE e ícone — os blocos de número da tela de Perfil também
       // têm `label`, e não são menu. O "Sair da conta" é a exceção declarada:
       // ele muda de forma entre as duas telas e por isso não entra no catálogo.
       const itensNaMao = arquivo
         .split('\n')
-        .filter((l) => /label: '/.test(l) && /icon:/.test(l) && !l.includes('Sair da conta'));
+        .filter((l) => /chave: '/.test(l) && /icon:/.test(l) && !l.includes('menu.sair'));
       expect(itensNaMao).toEqual([]);
     }
   });
@@ -85,23 +85,23 @@ describe('a entrada do CRM', () => {
     // Quem protege o painel é a política de linha do banco, e não este item.
     // Mas mostrar a porta para quem não pode entrar é anunciar que ela existe,
     // que é justamente o que a rota escondida evita.
-    expect(doSocio(false).some((i) => i.label === 'CRM')).toBe(false);
+    expect(doSocio(false).some((i) => i.chave === 'itens.crm')).toBe(false);
   });
 
   it('aparece para sócio', () => {
-    expect(doSocio(true).some((i) => i.label === 'CRM')).toBe(true);
+    expect(doSocio(true).some((i) => i.chave === 'itens.crm')).toBe(true);
   });
 
   it('o padrão é não mostrar', () => {
     // Errar para menos: uma tela que esquecer de passar o parâmetro esconde o
     // item de um sócio, e não mostra a porta para a base inteira.
-    expect(itensDaConta(() => {}).some((i) => i.label === 'CRM')).toBe(false);
+    expect(itensDaConta(() => {}).some((i) => i.chave === 'itens.crm')).toBe(false);
   });
 
   it('leva para a rota do CRM, e não para um endereço escrito à mão', () => {
     // O CRM desceu um andar (ADR 0001): o item aponta para o andar, e não para
     // a raiz da área, que só redireciona.
-    const item = doSocio(true).find((i) => i.label === 'CRM');
+    const item = doSocio(true).find((i) => i.chave === 'itens.crm');
     expect(item?.href).toBe(ROTA_DO_CRM);
   });
 
@@ -109,19 +109,19 @@ describe('a entrada do CRM', () => {
     // O placar nasceu alcançável só por uma aba dentro da faixa do CRM, e o
     // primeiro sócio a procurar abriu este menu, viu CRM e concluiu que não
     // havia mais nada. Porta que existe e não se acha é porta fechada.
-    const item = doSocio(true).find((i) => i.label === 'Metodologia');
+    const item = doSocio(true).find((i) => i.chave === 'itens.metodologia');
     expect(item?.href).toBe(ROTA_DO_PLACAR);
   });
 
   it('e o placar também é só para sócio', () => {
-    expect(itensDaConta(() => {}).some((i) => i.label === 'Metodologia')).toBe(false);
+    expect(itensDaConta(() => {}).some((i) => i.chave === 'itens.metodologia')).toBe(false);
   });
 
   it('os internos vêm por último, e marcados', () => {
     // Por último porque não disputam espaço com o que o assinante usa, e
     // marcados porque as duas telas desenham o grupo separado do resto.
     const itens = doSocio(true);
-    expect(itens.slice(-2).map((i) => i.label)).toEqual(['CRM', 'Metodologia']);
+    expect(itens.slice(-2).map((i) => i.chave)).toEqual(['itens.crm', 'itens.metodologia']);
     expect(itens.slice(-2).every((i) => i.interno)).toBe(true);
   });
 
@@ -131,7 +131,32 @@ describe('a entrada do CRM', () => {
     expect(
       doSocio(true)
         .filter((i) => i.interno)
-        .map((i) => i.label),
-    ).toEqual(['CRM', 'Metodologia']);
+        .map((i) => i.chave),
+    ).toEqual(['itens.crm', 'itens.metodologia']);
+  });
+});
+
+describe('toda chave do menu existe no catálogo', () => {
+  // A guarda de paridade compara um idioma contra o outro. Ela NÃO vê uma
+  // chave que o menu pede e que nenhum catálogo tem: os dois idiomas estariam
+  // igualmente errados, e a tela mostraria "itens.configuracoes" para o
+  // usuário. Este teste fecha esse buraco pelo lado de cá.
+  const catalogo = JSON.parse(
+    readFileSync(resolve(__dirname, '../i18n/locales/pt/conta.json'), 'utf8'),
+  ) as Record<string, Record<string, string>>;
+
+  const existe = (chave: string) => {
+    const [area, nome] = chave.split('.');
+    return typeof catalogo?.[area]?.[nome] === 'string';
+  };
+
+  it('para todo item, inclusive os internos', () => {
+    for (const item of itensDaConta(() => {}, true)) {
+      expect(existe(item.chave), `sem tradução: ${item.chave}`).toBe(true);
+    }
+  });
+
+  it('e para o "Sair da conta", que as telas montam por fora', () => {
+    expect(existe('menu.sair')).toBe(true);
   });
 });

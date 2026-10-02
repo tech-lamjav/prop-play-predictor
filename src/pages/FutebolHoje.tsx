@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { fmtOdd } from '@/utils/formato';
 import { Link } from 'react-router-dom';
 import { Zap, ArrowRight, Check, AlertTriangle, Lock } from 'lucide-react';
@@ -12,14 +13,14 @@ import FutebolDayStepper, { ALTURA_DA_PILULA } from '@/components/FutebolDayStep
 import { CartaoBloqueado, FutebolAccessBanner, ValorBloqueado } from '@/components/futebol/FutebolGate';
 import { linhaBloqueada } from '@/utils/futebol-bloqueio';
 import { AjudaCampo } from '@/components/futebol/AjudaCampo';
-import { textoDoScore, TEXTO_CHANCE, TEXTO_ODD } from '@/utils/futebol-ajuda-copy';
+import { useCopyDoFutebol } from '@/hooks/use-copy-do-futebol';
 import { getFutebolTeamLogoUrl } from '@/utils/futebol-logos';
-import { competitionLabel, fixtureScopesFor } from '@/utils/futebol-competitions';
+import { fixtureScopesFor } from '@/utils/futebol-competitions';
 import { LigaCrest } from '@/components/futebol/LigaCrest';
 import { VerAnaliseCTA } from '@/components/futebol/VerAnaliseCTA';
 import {
-  pickLabel, marketLabel, groupBoardByFixture,
-  faixaBadgeCls, faixaWord, faixaTone, topEvidencia, chancePct, ehDestaque, compararOportunidades, escalaDeExibicao,
+  groupBoardByFixture,
+  faixaBadgeCls, faixaTone, topEvidencia, chancePct, ehDestaque, compararOportunidades, escalaDeExibicao,
 } from '@/utils/futebol-score';
 import type { FutebolValueBoardRow, FutebolFixture } from '@/services/futebol-data.service';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
@@ -48,20 +49,20 @@ import {
 import { oportunidadesDoDia, type OppLike } from '@/utils/futebol-registradas';
 import { estadoDosMotivos, explicacaoDaLeitura, type MotivoExibivel as Motivo } from '@/utils/futebol-motivos';
 import { ladoDaSaida } from '@/utils/futebol-evidencias';
-import { rotuloPremissa } from '@/utils/futebol-premissas';
 import { useNow } from '@/hooks/use-now';
 import { comDia, useDiaNaUrl } from '@/hooks/use-dia-na-url';
+import { localeAtivo } from '@/utils/idioma-ativo';
 // Quantos dias futuros (com jogos) o navegador mostra — janela curta, não a temporada toda.
 const DAY_WINDOW = 8;
 
 function fmtDayTime(raw: string | null): string {
   const d = parseUtc(raw);
   if (!d) return '—';
-  const s = formatadorDeData('pt-BR', { timeZone: SAO_PAULO_TZ, weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(d);
+  const s = formatadorDeData(localeAtivo(), { timeZone: SAO_PAULO_TZ, weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(d);
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 function fmtTodayHeader(d: Date): string {
-  const s = formatadorDeData('pt-BR', { timeZone: SAO_PAULO_TZ, weekday: 'long', day: '2-digit', month: 'long' }).format(d);
+  const s = formatadorDeData(localeAtivo(), { timeZone: SAO_PAULO_TZ, weekday: 'long', day: '2-digit', month: 'long' }).format(d);
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 function crestInitials(name: string): string {
@@ -112,7 +113,9 @@ function HeroStat({ label, value, dark, ajuda }: { label: string; value: string;
 // ── Hero: melhor oportunidade do dia — 3 colunas (pick · por quê · confiab). ─
 // Alta = gradiente forest (texto branco); Média = card claro com acento âmbar.
 function TopValueHero({ o, to, favor, contra, textoScore, carregandoMotivos = false, aoClicar }: { o: FutebolValueBoardRow; to: string; favor: Motivo[]; contra: Motivo[]; textoScore: string; carregandoMotivos?: boolean; aoClicar?: () => void }) {
-  const pick = pickLabel(o, o.home_team_name, o.away_team_name);
+  const { t } = useTranslation('futebol');
+  const copy = useCopyDoFutebol();
+  const pick = copy.pick(o, o.home_team_name, o.away_team_name);
   const ev = topEvidencia(o.evidencias);
   const d = true; // hero sempre no fundo forest (mockup); a faixa vai no selo, não na cor do card
   const chance = chancePct(o.prob_justa_fechamento);
@@ -125,9 +128,25 @@ function TopValueHero({ o, to, favor, contra, textoScore, carregandoMotivos = fa
   // nunca dependeu do número para se sustentar. Manter o primeiro afirmaria uma
   // vantagem que a tela não mostra mais, e o leitor não teria como conferir.
   const forte = d ? 'text-white' : 'text-ink';
+  // `Trans`, e não concatenação: o negrito cai no meio da frase, e em outro
+  // idioma ele cai em outro lugar. Quem decide onde é o catálogo.
   const porque = chance != null
-    ? <>O mercado dá <b className={forte}>~{chance}% de chance</b>, e a odd é <b className={forte}>{fmtOdd(o.best_odd)}</b>. O que sustenta esta leitura é o cenário, não o preço.</>
-    : <>Na odd <b className={forte}>{fmtOdd(o.best_odd)}</b>, a aposta se paga a partir de <b className={forte}>{Math.round(100 / o.best_odd)}%</b> de acerto — e a leitura do jogo aponta nessa direção.</>;
+    ? (
+      <Trans
+        t={t}
+        i18nKey="hoje.destaque.porqueComChance"
+        values={{ chance, odd: fmtOdd(o.best_odd) }}
+        components={[<b className={forte} key="chance" />, <b className={forte} key="odd" />]}
+      />
+    )
+    : (
+      <Trans
+        t={t}
+        i18nKey="hoje.destaque.porqueSemChance"
+        values={{ odd: fmtOdd(o.best_odd), limiar: Math.round(100 / o.best_odd) }}
+        components={[<b className={forte} key="odd" />, <b className={forte} key="limiar" />]}
+      />
+    );
 
   return (
     <div className={`rounded-2xl overflow-hidden relative ${d ? 'text-white' : 'bg-white border border-line border-l-4 border-l-amber'}`}
@@ -151,9 +170,9 @@ function TopValueHero({ o, to, favor, contra, textoScore, carregandoMotivos = fa
                 de texto conforme o sinal. Com o valor fora da tela (#519) sobrou
                 um texto só, e ele diz o mesmo de outro jeito: o que sustenta a
                 leitura é o cenário, não o preço. */}
-            <Zap className="w-3 h-3" /> Melhor oportunidade do dia
+            <Zap className="w-3 h-3" /> {t('hoje.destaque.selo')}
           </span>
-          <div className={`text-[11px] uppercase tracking-[0.16em] font-semibold mt-5 ${d ? 'text-white/50' : 'text-ink-3'}`}>{marketLabel(o.market)} · {competitionLabel(o.competition)}</div>
+          <div className={`text-[11px] uppercase tracking-[0.16em] font-semibold mt-5 ${d ? 'text-white/50' : 'text-ink-3'}`}>{copy.mercadoLongo(o.market)} · {copy.competicao(o.competition)}</div>
           <div className={`text-[28px] md:text-[32px] font-bold tracking-tight leading-[1.1] mt-2 ${d ? '' : 'text-ink'}`}>{pick}</div>
           {/* No celular a data desce para a própria linha. Tudo numa fileira só,
               os nomes quebravam no meio e o escudo do visitante ficava órfão
@@ -168,7 +187,7 @@ function TopValueHero({ o, to, favor, contra, textoScore, carregandoMotivos = fa
           </div>
           <Link to={to} onClick={aoClicar} className={`h-11 px-5 mt-5 w-fit rounded-md text-[13px] font-semibold inline-flex items-center gap-2 ${d ? '' : 'bg-ink text-canvas hover:bg-ink-2'} transition`}
             style={d ? { background: '#fbbf24', color: '#1a1d1a' } : undefined}>
-            Abrir análise do jogo <ArrowRight className="w-4 h-4" />
+            {t('hoje.destaque.abrirAnalise')} <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
 
@@ -181,7 +200,7 @@ function TopValueHero({ o, to, favor, contra, textoScore, carregandoMotivos = fa
         <div className="md:col-span-5 flex flex-col gap-4">
           {estado === 'motivos' && favor.length > 0 && (
             <div>
-              <div className={`text-[11px] uppercase tracking-[0.18em] font-semibold ${d ? 'text-white/50' : 'text-ink-3'}`}>A favor</div>
+              <div className={`text-[11px] uppercase tracking-[0.18em] font-semibold ${d ? 'text-white/50' : 'text-ink-3'}`}>{t('motivos.aFavor')}</div>
               <ul className="mt-2 flex flex-col gap-1.5">
                 {favor.map((m) => (
                   <li key={m.slug} className={`flex items-start gap-2 text-[14px] leading-snug ${d ? 'text-white/90' : 'text-ink'}`}>
@@ -230,7 +249,7 @@ function TopValueHero({ o, to, favor, contra, textoScore, carregandoMotivos = fa
               layout. */}
           {estado === 'carregando' && (
             <div>
-              <div className={`text-[11px] uppercase tracking-[0.18em] font-semibold ${d ? 'text-white/50' : 'text-ink-3'}`}>Por quê</div>
+              <div className={`text-[11px] uppercase tracking-[0.18em] font-semibold ${d ? 'text-white/50' : 'text-ink-3'}`}>{t('motivos.porque')}</div>
               <div className="mt-2 flex flex-col gap-2" aria-hidden>
                 <Skeleton className={`h-[24px] md:h-[27px] w-full ${d ? 'bg-white/15' : 'bg-canvas-2'}`} />
                 <Skeleton className={`h-[24px] md:h-[27px] w-3/4 ${d ? 'bg-white/15' : 'bg-canvas-2'}`} />
@@ -240,7 +259,7 @@ function TopValueHero({ o, to, favor, contra, textoScore, carregandoMotivos = fa
 
           {estado === 'sem_motivos' && (
             <div>
-              <div className={`text-[11px] uppercase tracking-[0.18em] font-semibold ${d ? 'text-white/50' : 'text-ink-3'}`}>Por quê</div>
+              <div className={`text-[11px] uppercase tracking-[0.18em] font-semibold ${d ? 'text-white/50' : 'text-ink-3'}`}>{t('motivos.porque')}</div>
               <p className={`text-[17px] md:text-[19px] leading-[1.4] font-medium tracking-tight mt-2 ${d ? 'text-white/95' : 'text-ink'}`} style={{ textWrap: 'pretty' }}>{porque}</p>
             </div>
           )}
@@ -252,21 +271,21 @@ function TopValueHero({ o, to, favor, contra, textoScore, carregandoMotivos = fa
             era estilo inline, que não aceita breakpoint — virou classe md:. */}
         <div className={`md:col-span-3 flex flex-col justify-between md:pl-6 md:border-l ${d ? 'md:border-white/10' : 'md:border-line'}`}>
           <div>
-            <AjudaCampo rotulo="Score" titulo="Score" texto={textoScore} escuro={d} />
+            <AjudaCampo rotulo={t('numeros.score')} titulo={t('numeros.score')} texto={textoScore} escuro={d} />
             <div className="flex items-baseline gap-1.5 mt-1">
               <span className={`text-[56px] md:text-[64px] font-bold tabular-nums leading-none ${d ? '' : 'text-amber-2'}`} style={d ? { color: '#fbbf24' } : undefined}>{o.score}</span>
               <span className={`text-[16px] ${d ? 'text-white/40' : 'text-ink-3'}`}>/100</span>
             </div>
             <span className={`inline-flex items-center gap-1.5 mt-2 px-2 h-6 rounded text-[10px] uppercase tracking-[0.14em] font-bold ${d ? '' : 'bg-amber/15 text-amber-2'}`}
               style={d ? { background: 'rgba(220,239,226,0.15)', color: '#dcefe2' } : undefined}>
-              <span className="w-1.5 h-1.5 rounded-full" style={{ background: d ? '#fbbf24' : 'var(--amber)' }} />Faixa {faixaWord(o.faixa)}
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: d ? '#fbbf24' : 'var(--amber)' }} />{t('hoje.destaque.faixa', { faixa: copy.palavraDaFaixa(o.faixa) })}
             </span>
             {/* Os dois numa linha só: eles são a mesma leitura — a chance
                 estimada e o preço — e lidos em sequência dizem mais do que
                 empilhados. Eram três, e a diferença entre os dois saiu (#519). */}
             <div className="grid grid-cols-2 gap-x-3 gap-y-3 mt-5">
-              {chance != null && <HeroStat label="Chance" value={`${chance}%`} dark={d} ajuda={TEXTO_CHANCE} />}
-              <HeroStat label="Odd" value={fmtOdd(o.best_odd)} dark={d} ajuda={TEXTO_ODD} />
+              {chance != null && <HeroStat label={t('numeros.chance')} value={`${chance}%`} dark={d} ajuda={copy.textoDaChance()} />}
+              <HeroStat label={t('numeros.odd')} value={fmtOdd(o.best_odd)} dark={d} ajuda={copy.textoDaOdd()} />
             </div>
           </div>
         </div>
@@ -277,7 +296,9 @@ function TopValueHero({ o, to, favor, contra, textoScore, carregandoMotivos = fa
 
 // ── Card de oportunidade ───────────────────────────────────
 function OppCard({ o, to, aoClicar, aoAparecer }: { o: FutebolValueBoardRow; to: string; aoClicar?: () => void; aoAparecer?: () => void }) {
-  const pick = pickLabel(o, o.home_team_name, o.away_team_name);
+  const { t } = useTranslation('futebol');
+  const copy = useCopyDoFutebol();
+  const pick = copy.pick(o, o.home_team_name, o.away_team_name);
   const chance = chancePct(o.prob_justa_fechamento);
   // O gancho é chamado AQUI, e não no pai: hook não roda dentro de `.map`, e o
   // que se observa é este cartão. O pai só diz o que fazer quando ele aparece.
@@ -301,8 +322,8 @@ function OppCard({ o, to, aoClicar, aoAparecer }: { o: FutebolValueBoardRow; to:
       <div className="flex items-start justify-between gap-3 sm:grow">
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
-            <span className="px-1.5 h-5 inline-flex items-center rounded text-[10px] font-semibold uppercase tracking-[0.1em] bg-canvas-2 text-ink-2">{marketLabel(o.market)}</span>
-            <span className={`px-1.5 h-5 inline-flex items-center rounded text-[10px] font-bold uppercase tracking-[0.1em] ${faixaBadgeCls(o.faixa)}`}>{faixaWord(o.faixa)}</span>
+            <span className="px-1.5 h-5 inline-flex items-center rounded text-[10px] font-semibold uppercase tracking-[0.1em] bg-canvas-2 text-ink-2">{copy.mercadoLongo(o.market)}</span>
+            <span className={`px-1.5 h-5 inline-flex items-center rounded text-[10px] font-bold uppercase tracking-[0.1em] ${faixaBadgeCls(o.faixa)}`}>{copy.palavraDaFaixa(o.faixa)}</span>
           </div>
           {/* Mesma métrica da linha dos times logo abaixo — escudo de 16,
               o mesmo vão, o mesmo corpo de 12px — para os dois nomes começarem
@@ -311,7 +332,7 @@ function OppCard({ o, to, aoClicar, aoAparecer }: { o: FutebolValueBoardRow; to:
               do que duas linhas claramente diferentes. */}
           <div className="flex items-center gap-1.5 mt-2 min-w-0 text-[12px] text-ink-3">
             <LigaCrest slug={o.competition} size={16} />
-            <span className="truncate">{competitionLabel(o.competition)}</span>
+            <span className="truncate">{copy.competicao(o.competition)}</span>
           </div>
           <div className="text-[16px] font-semibold tracking-tight mt-2 text-ink">{pick}</div>
           <div className="flex items-center gap-1.5 text-[12px] mt-1 text-ink-3 min-w-0">
@@ -331,17 +352,17 @@ function OppCard({ o, to, aoClicar, aoAparecer }: { o: FutebolValueBoardRow; to:
             vão no meio do cartão. Empilhados sob o Score eles viram ficha
             técnica da leitura — que é o papel deles — e o cartão encurta. */}
         <div className="text-right shrink-0">
-          <div className="text-[9px] uppercase tracking-[0.14em] font-semibold text-ink-3">Score</div>
+          <div className="text-[9px] uppercase tracking-[0.14em] font-semibold text-ink-3">{t('numeros.score')}</div>
           <div className="text-[26px] font-bold tabular-nums tracking-tight leading-none mt-0.5 text-forest">{o.score}</div>
           <div className="mt-2.5 grid gap-1">
             {/* Rótulo à esquerda, número à direita, como a tabelinha da bancada:
                 os valores alinham numa coluna só. */}
             <div className="flex items-baseline justify-end gap-2">
-              <span className="text-[9px] uppercase tracking-[0.14em] font-semibold text-ink-3">Chance</span>
+              <span className="text-[9px] uppercase tracking-[0.14em] font-semibold text-ink-3">{t('numeros.chance')}</span>
               <span className="text-[13px] font-bold tabular-nums text-ink">{chance != null ? `${chance}%` : '—'}</span>
             </div>
             <div className="flex items-baseline justify-end gap-2">
-              <span className="text-[9px] uppercase tracking-[0.14em] font-semibold text-ink-3">Odd</span>
+              <span className="text-[9px] uppercase tracking-[0.14em] font-semibold text-ink-3">{t('numeros.odd')}</span>
               <span className="text-[13px] font-bold tabular-nums text-ink">{fmtOdd(o.best_odd)}</span>
             </div>
           </div>
@@ -359,10 +380,11 @@ function OppCard({ o, to, aoClicar, aoAparecer }: { o: FutebolValueBoardRow; to:
 
 // ── Linha de jogo (rail) ───────────────────────────────────
 function GameRailRow({ f, best, to, locked, aoClicar }: { f: FutebolFixture & { competition?: string }; best: FutebolValueBoardRow | null; to: string; locked?: boolean; aoClicar?: () => void }) {
+  const { t } = useTranslation('futebol');
   const finished = isFinished(f.status_short);
   return (
     <Link to={to} onClick={aoClicar} style={finished ? { background: 'var(--canvas-2)' } : undefined} className="w-full flex items-center gap-2.5 px-4 py-3 border-t border-line first:border-t-0 hover:bg-canvas-2 transition text-left">
-      <span className={`w-10 text-[11px] font-semibold tabular-nums shrink-0 ${finished ? 'text-ink-3 uppercase tracking-wide' : 'text-ink-2'}`}>{finished ? 'fim' : fmtTime(f.kickoff_utc)}</span>
+      <span className={`w-10 text-[11px] font-semibold tabular-nums shrink-0 ${finished ? 'text-ink-3 uppercase tracking-wide' : 'text-ink-2'}`}>{finished ? t('estado.fimMinusculo') : fmtTime(f.kickoff_utc)}</span>
       <div className="flex items-center gap-1.5 min-w-0 flex-1">
         <Crest teamId={f.home_team_id} name={f.home_team_name} size={20} />
         <span className={`text-[13px] truncate ${finished ? 'text-ink-2' : 'text-ink'}`}>{f.home_team_name}</span>
@@ -375,13 +397,15 @@ function GameRailRow({ f, best, to, locked, aoClicar }: { f: FutebolFixture & { 
         <span className={`text-[13px] truncate ${finished ? 'text-ink-2' : 'text-ink'}`}>{f.away_team_name}</span>
       </div>
       {best && !locked && !linhaBloqueada(best) ? (
-        <span className={`text-[10px] font-bold rounded px-1.5 py-0.5 shrink-0 tabular-nums ${faixaBadgeCls(best.faixa)}`} title="Score de Confiabilidade">{best.score}</span>
+        <span className={`text-[10px] font-bold rounded px-1.5 py-0.5 shrink-0 tabular-nums ${faixaBadgeCls(best.faixa)}`} title={t('hoje.grade.tituloScore')}>{best.score}</span>
       ) : null}
     </Link>
   );
 }
 
 export default function FutebolHoje() {
+  const { t } = useTranslation('futebol');
+  const copy = useCopyDoFutebol();
   // UM instante para a tela inteira, e ele anda: o seletor de dias, o corte de
   // "já começou" e a janela do calendário têm que concordar sobre que horas são.
   const agora = useNow();
@@ -632,19 +656,21 @@ export default function FutebolHoje() {
       { max: 3, incluirPesoZero: false, maxContra: 2 },
     );
 
+    // A frase vem do catálogo de idioma, pedida por mercado+slug+mando — o
+    // `slug` continua sendo a identidade do motivo para a tela (#544).
     const traduzir = (itens: typeof explicacao.itens, negativo: boolean) =>
       itens.map(({ premissa }) => ({
         slug: premissa.slug,
-        texto: rotuloPremissa(premissa, lado, negativo),
+        texto: copy.premissa(heroOpp.market, premissa, lado, negativo),
       }));
 
     return {
       favor: traduzir(explicacao.itens, false),
       contra: traduzir(explicacao.contra, true),
     };
-  }, [heroOpp, contratoMotivos]);
+  }, [heroOpp, contratoMotivos, copy]);
   // A escala da janela, e não a da linha: a registrada não declara versão.
-  const textoScore = textoDoScore(escalaDeExibicao(dayRows));
+  const textoScore = copy.textoDoScore(escalaDeExibicao(dayRows));
   // A população que a home exibe E que a tela de Oportunidades lista por
   // padrão: faixa Alta ou Média, com número. É ela que manda na conta do
   // convite — nunca o total do dia.
@@ -746,7 +772,7 @@ export default function FutebolHoje() {
         {/* Briefing */}
         <div className="grid md:grid-cols-12 gap-5">
           <div className="md:col-span-5">
-            <div className={`${LABEL} flex items-center gap-2`}>{isToday ? 'Hoje no futebol' : 'No futebol'}{isDemo && <DemoBadge />}</div>
+            <div className={`${LABEL} flex items-center gap-2`}>{isToday ? t('hoje.sobretituloHoje') : t('hoje.sobretituloDia')}{isDemo && <DemoBadge />}</div>
             <h1 data-tour="futebol-hero" className="font-display text-3xl md:text-[40px] font-extrabold tracking-tight leading-none text-ink mt-1">{fmtTodayHeader(selectedDate)}</h1>
             {/* Duas linhas reservadas no celular. A frase começa em "Sem jogos
                 nesse dia" (uma linha) e vira "6 jogos · 4 oportunidades · 2 de
@@ -757,28 +783,28 @@ export default function FutebolHoje() {
             <p className="text-sm mt-2.5 text-ink-2 min-h-10 md:min-h-0">
               {gameList.length > 0 ? (
                 <>
-                  <span className="font-semibold text-ink">{gameList.length} jogo{gameList.length === 1 ? '' : 's'}</span>
-                  {nOpps > 0 && <> · {nOpps} oportunidade{nOpps === 1 ? '' : 's'}</>}
+                  <span className="font-semibold text-ink">{t('contagem.jogos', { count: gameList.length })}</span>
+                  {nOpps > 0 && <> · {t('contagem.oportunidades', { count: nOpps })}</>}
                   {/* Quantas são Alta é leitura do modelo, igual ao indicador ao
                       lado: sem acesso não sai. Quantas existem é contagem, e essa
                       fica. */}
-                  {!locked && alta > 0 && <> · <span className="font-semibold text-forest">{alta} de faixa Alta</span></>}
+                  {!locked && alta > 0 && <> · <span className="font-semibold text-forest">{t('hoje.resumo.deFaixaAlta', { count: alta })}</span></>}
                 </>
-              ) : 'Sem jogos nesse dia'}
+              ) : t('hoje.resumo.semJogos')}
             </p>
             <div className="flex items-center gap-2 mt-3 text-[11px] tabular-nums text-ink-3">
               <span className="inline-block w-1.5 h-1.5 rounded-full bg-forest" />
-              <span>Odds revisadas de hora em hora</span>
+              <span>{t('hoje.resumo.oddsRevisadas')}</span>
             </div>
           </div>
           <div data-tour="futebol-resumo" className="md:col-span-7 grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Kpi label="Jogos hoje" value={loading ? '—' : gameList.length} sub={isToday ? 'na agenda' : 'no dia'} />
-            <Kpi label="Oportunidades" value={loading ? '—' : nOpps} sub="publicadas" tone="green" />
+            <Kpi label={t('hoje.kpi.jogos')} value={loading ? '—' : gameList.length} sub={isToday ? t('hoje.kpi.jogosSubHoje') : t('hoje.kpi.jogosSubDia')} />
+            <Kpi label={t('hoje.kpi.oportunidades')} value={loading ? '—' : nOpps} sub={t('hoje.kpi.oportunidadesSub')} tone="green" />
             {/* Quantas existem é contagem, e a contagem sobrevive ao bloqueio.
                 Quantas são Alta e qual a melhor diferença do dia já são leitura
                 do modelo: sem acesso elas chegam nulas, e imprimir "0" e "—"
                 afirmaria sobre o dia algo que a tela não sabe. */}
-            <Kpi label="Faixa Alta" value={loading ? '—' : locked ? <ValorBloqueado /> : alta} sub="maior confiança" anchor />
+            <Kpi label={t('hoje.kpi.faixaAlta')} value={loading ? '—' : locked ? <ValorBloqueado /> : alta} sub={t('hoje.kpi.faixaAltaSub')} anchor />
             {/* Este cartão era a maior diferença do dia para o preço justo, e
                 antes disso "Melhor valor" — o rótulo alternava conforme o sinal,
                 porque num dia de diferença negativa (o normal desde 03/09) o
@@ -791,9 +817,9 @@ export default function FutebolHoje() {
                 duas leem a mesma régua e respondem a mesma pergunta: quanto do
                 dia sustenta a leitura. */}
             <Kpi
-              label="Faixa Média"
+              label={t('hoje.kpi.faixaMedia')}
               value={loading ? '—' : locked ? <ValorBloqueado /> : media}
-              sub="sustentação parcial"
+              sub={t('hoje.kpi.faixaMediaSub')}
               tone="amber"
             />
           </div>
@@ -817,9 +843,12 @@ export default function FutebolHoje() {
             <Lock className="w-5 h-5 text-forest mt-0.5 shrink-0" />
             <div>
               <p className="text-sm font-semibold text-ink">
-                {nOpps} oportunidade{nOpps === 1 ? '' : 's'} {isToday ? 'hoje' : 'nesse dia'}, bloqueada{nOpps === 1 ? '' : 's'}
+                {t('hoje.bloqueio.titulo', {
+                  count: nOpps,
+                  quando: isToday ? t('hoje.quando.hoje') : t('hoje.quando.nesseDia'),
+                })}
               </p>
-              <p className="text-xs text-ink-2 mt-1">A aposta, a odd, a chance e o Score são de assinante. A agenda dos jogos continua aberta abaixo.</p>
+              <p className="text-xs text-ink-2 mt-1">{t('hoje.bloqueio.descricao')}</p>
             </div>
           </div>
         ) : heroOpp ? (
@@ -851,8 +880,14 @@ export default function FutebolHoje() {
                   justa do mercado". Só que quem esvazia esta tela é o Score — é
                   ele que decide o destaque —, e desde o #519 o preço nem
                   aparece, então explicar por ele seria explicar pelo invisível. */}
-              <p className="text-sm font-semibold text-ink">Nenhuma leitura em destaque {isToday ? 'hoje' : 'nesse dia'}</p>
-              <p className="text-xs text-ink-2 mt-1">Nenhuma linha do dia passou a régua de confiabilidade. Os jogos do dia estão abaixo{days.length > 1 ? '; use as setas pra ver outros dias' : ''}.</p>
+              <p className="text-sm font-semibold text-ink">
+                {t('hoje.semDestaque.titulo', {
+                  quando: isToday ? t('hoje.quando.hoje') : t('hoje.quando.nesseDia'),
+                })}
+              </p>
+              <p className="text-xs text-ink-2 mt-1">
+                {days.length > 1 ? t('hoje.semDestaque.descricaoComSetas') : t('hoje.semDestaque.descricao')}
+              </p>
             </div>
           </div>
         )}
@@ -887,7 +922,7 @@ export default function FutebolHoje() {
                     largura do que o número de letras sugere, e "Ordenadas por
                     confiabilidade" virava duas linhas sozinho. "Por
                     confiabilidade" diz a mesma coisa e cabe em uma. */}
-                <div className={LABEL}>Por confiabilidade</div>
+                <div className={LABEL}>{t('hoje.lista.sobretitulo')}</div>
                 {/* `truncate` é o que garante a linha única prometida — e não
                     um `whitespace-nowrap` solto, que segura a linha mas deixa o
                     texto transbordar em vez de cortar.
@@ -914,11 +949,11 @@ export default function FutebolHoje() {
                     carregar o filtro, senão o defeito volta. */}
                 <div className="text-lg font-bold tracking-tight text-ink mt-0.5 truncate">
                   {loading || nOpps === 0 ? (
-                    'Mais oportunidades'
+                    t('hoje.lista.tituloPadrao')
                   ) : (
                     <>
-                      {nOpps} oportunidade{nOpps === 1 ? '' : 's'}
-                      <span className="hidden sm:inline"> {isToday ? 'hoje' : 'nesse dia'}</span>
+                      {t('contagem.oportunidades', { count: nOpps })}
+                      <span className="hidden sm:inline"> {isToday ? t('hoje.quando.hoje') : t('hoje.quando.nesseDia')}</span>
                     </>
                   )}
                 </div>
@@ -944,7 +979,7 @@ export default function FutebolHoje() {
                     título, e cada caractere aqui é largura roubada de lá. Era
                     isso, mais que o tamanho da fonte, que quebrava o título em
                     duas linhas na primeira versão. */}
-                Ver todas
+                {t('hoje.lista.verTodas')}
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
@@ -988,7 +1023,7 @@ export default function FutebolHoje() {
                 ))}
               </div>
             ) : (
-              <div className={`${CARD} p-6 text-center text-sm text-ink-3`}>Sem outras oportunidades relevantes agora.</div>
+              <div className={`${CARD} p-6 text-center text-sm text-ink-3`}>{t('hoje.lista.vazio')}</div>
             )}
 
             {/* Segunda chamada, no fim da grade.
@@ -1007,7 +1042,7 @@ export default function FutebolHoje() {
                 to={comDia('/futebol/oportunidades', selectedDay)}
                 className="mt-4 flex items-center justify-center gap-1.5 rounded-rebrand-md border border-dashed border-forest/40 bg-forest/[0.04] text-forest hover:bg-forest/[0.09] transition text-[13px] font-bold h-11"
               >
-                Ver todas as oportunidades {isToday ? 'de hoje' : 'do dia'}
+                {isToday ? t('hoje.lista.verTodasHoje') : t('hoje.lista.verTodasDoDia')}
                 <ArrowRight className="w-4 h-4" />
               </Link>
             )}
@@ -1016,11 +1051,11 @@ export default function FutebolHoje() {
           <div data-tour="futebol-jogos" className="md:col-span-4 min-w-0">
             <div className="flex items-end justify-between mb-3">
               <div>
-                <div className={LABEL}>{isToday ? 'Jogos de hoje' : 'Jogos do dia'}</div>
-                <div className="text-lg font-bold tracking-tight text-ink mt-0.5">{gameList.length} partida{gameList.length === 1 ? '' : 's'}</div>
+                <div className={LABEL}>{isToday ? t('hoje.grade.sobretituloHoje') : t('hoje.grade.sobretituloDia')}</div>
+                <div className="text-lg font-bold tracking-tight text-ink mt-0.5">{t('contagem.partidas', { count: gameList.length })}</div>
               </div>
               <Link to={comDia('/futebol/jogos', selectedDay)} className="text-[12px] font-semibold inline-flex items-center gap-1 text-forest hover:text-forest-2">
-                Ver todos <ArrowRight className="w-3.5 h-3.5" />
+                {t('hoje.grade.verTodos')} <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
             {loading ? (
@@ -1050,7 +1085,7 @@ export default function FutebolHoje() {
                 ))}
               </div>
             ) : (
-              <div className={`${CARD} p-6 text-center text-sm text-ink-3`}>Sem jogos na agenda.</div>
+              <div className={`${CARD} p-6 text-center text-sm text-ink-3`}>{t('hoje.grade.vazio')}</div>
             )}
           </div>
         </div>
@@ -1059,7 +1094,7 @@ export default function FutebolHoje() {
         <div data-tour="futebol-metodologia" className="rounded-rebrand-md px-5 py-4 flex items-start gap-3" style={{ background: '#fef7df', border: '1px solid #fde68a' }}>
           <span className="mt-0.5 shrink-0" style={{ color: '#9a6c00' }}><AlertTriangle className="w-4 h-4" /></span>
           <div className="text-[12px] leading-relaxed" style={{ color: '#5a3c00' }}>
-            <span className="font-semibold">Não é recomendação.</span> Score e faixa medem o quanto o cenário sustenta a linha, não garantia de acerto. A decisão de apostar, e por quanto, é sua.
+            <span className="font-semibold">{t('aviso.naoERecomendacao')}</span> {t('hoje.aviso')}
           </div>
         </div>
       </div>

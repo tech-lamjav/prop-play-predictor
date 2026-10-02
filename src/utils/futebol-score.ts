@@ -3,6 +3,7 @@
 // ============================================================
 import { linhaDaSaida, type Saida } from '@/utils/futebol-saida';
 import { fmtLinhaAnalisada } from '@/utils/formato';
+import { preencher, type CopyComParametros } from '@/utils/futebol-copy';
 // O estado do jogo se decide com o RELÓGIO e o status juntos — as três funções
 // vêm do mesmo lugar que as telas usam, para não nascer uma segunda definição
 // de 'acabou' aqui dentro.
@@ -30,10 +31,23 @@ export function faixaTone(faixa: string): Faixa {
   return 'baixa';
 }
 
+/**
+ * A palavra de cada faixa. Fonte única: o catálogo em português é gerado daqui.
+ */
+export const COPY_DA_FAIXA: Record<Faixa, string> = {
+  alta: 'Alta',
+  media: 'Média',
+  baixa: 'Baixa',
+};
+
 /** Palavra da faixa em PT (normalizada). */
 export function faixaWord(faixa: string): string {
-  const t = faixaTone(faixa);
-  return t === 'alta' ? 'Alta' : t === 'media' ? 'Média' : 'Baixa';
+  return COPY_DA_FAIXA[faixaTone(faixa)];
+}
+
+/** A chave de idioma da palavra da faixa. */
+export function chaveDaPalavraDaFaixa(faixa: string): string {
+  return `faixa.palavra.${faixaTone(faixa)}`;
 }
 
 /** Classes do selo de Score por faixa: Alta=forest preenchido · Média=âmbar tint · Baixa=cinza. */
@@ -59,14 +73,32 @@ export function topEvidencia(evidencias: string[] | null | undefined): string | 
   return evidencias && evidencias.length ? evidencias[0] : null;
 }
 
+/**
+ * O nome longo de cada mercado. Fonte única do texto em português.
+ *
+ * Mercado que não está aqui sai como o slug veio — é dado que o catálogo não
+ * conhece, e inventar nome esconderia isso.
+ */
+export const COPY_DO_MERCADO_LONGO: Record<string, string> = {
+  match_winner: 'Vencedor (1X2)',
+  goals_over_under: 'Gols (Over/Under)',
+  asian_handicap: 'Handicap asiático',
+  btts: 'Ambos marcam',
+  double_chance: 'Dupla chance',
+};
+
+/** O nome curto de cada mercado. Fonte única do texto em português. */
+export const COPY_DO_MERCADO_CURTO: Record<string, string> = {
+  match_winner: 'Resultado',
+  goals_over_under: 'Gols',
+  asian_handicap: 'Handicap',
+  btts: 'Ambos marcam',
+  double_chance: 'Dupla chance',
+};
+
 /** Nome do mercado em PT. */
 export function marketLabel(market: string): string {
-  if (market === 'match_winner') return 'Vencedor (1X2)';
-  if (market === 'goals_over_under') return 'Gols (Over/Under)';
-  if (market === 'asian_handicap') return 'Handicap asiático';
-  if (market === 'btts') return 'Ambos marcam';
-  if (market === 'double_chance') return 'Dupla chance';
-  return market;
+  return COPY_DO_MERCADO_LONGO[market] ?? market;
 }
 
 /**
@@ -74,12 +106,24 @@ export function marketLabel(market: string): string {
  * agenda. "Gols (Over/Under)" em 9px com letter-spacing vira uma tira de ruído.
  */
 export function marketShort(market: string): string {
-  if (market === 'match_winner') return 'Resultado';
-  if (market === 'goals_over_under') return 'Gols';
-  if (market === 'asian_handicap') return 'Handicap';
-  if (market === 'btts') return 'Ambos marcam';
-  if (market === 'double_chance') return 'Dupla chance';
-  return market;
+  return COPY_DO_MERCADO_CURTO[market] ?? market;
+}
+
+/**
+ * A chave do nome longo do mercado, ou `null` quando o catálogo não conhece o
+ * mercado.
+ *
+ * `null` e não uma chave inventada: sem entrada no catálogo a tela mostra o slug,
+ * que é exatamente o que ela mostrava antes. Uma chave que não existe faria a
+ * tela mostrar o CÓDIGO DA CHAVE, que é pior que o slug.
+ */
+export function chaveDoMercadoLongo(market: string): string | null {
+  return market in COPY_DO_MERCADO_LONGO ? `mercado.longo.${market}` : null;
+}
+
+/** A chave do nome curto do mercado. `null` pelo mesmo motivo do longo. */
+export function chaveDoMercadoCurto(market: string): string | null {
+  return market in COPY_DO_MERCADO_CURTO ? `mercado.curto.${market}` : null;
 }
 
 /** Linha do handicap com sinal e vírgula decimal (ex.: -1,5 / +1,5). */
@@ -88,46 +132,94 @@ function fmtHandicapLine(line: number): string {
   return `${sign}${fmtLinhaAnalisada(Math.abs(line))}`;
 }
 
+/**
+ * Os moldes do rótulo da aposta, por identificador. Fonte única do português.
+ *
+ * ⚠️ Família SEPARADA dos moldes de `outcomeLabel` (`saida.*` em
+ * `futebol-premissas.ts`), e não é descuido: os dois rótulos discordam em
+ * português de propósito — a Dupla chance X2 é "Empate ou Fulano" aqui e
+ * "Fulano ou empate" lá, e o Resultado é o nome do time aqui e "Vitória do
+ * Fulano" lá. Uma chave só para os dois mudaria o português de um deles.
+ */
+export const COPY_DO_PICK = {
+  over: 'Mais de {{linha}} gols',
+  under: 'Menos de {{linha}} gols',
+  handicap: '{{time}} {{linha}}',
+  time: '{{time}}',
+  // "Sim" e "Não" sozinhos não são aposta nenhuma: na agenda e no resumo do
+  // dia o rótulo aparece SEM o nome do mercado ao lado, e a linha ficava
+  // "Náutico × Botafogo — Sim". Por isso o rótulo carrega o mercado junto.
+  //
+  // O nome é o DA CASA DE APOSTAS, e não uma descrição do que acontece em
+  // campo. Uma tentativa anterior descreveu — "Os dois marcam" / "Um dos dois
+  // não marca" — e ficou mais preciso e menos reconhecível: quem aposta
+  // procura "Ambos marcam" na casa, e é assim que a DM do Telegram já
+  // escreve. Duas grafias para a mesma aposta é como o produto passa a
+  // parecer dois produtos.
+  bttsSim: 'Ambos marcam: Sim',
+  bttsNao: 'Ambos marcam: Não',
+  // 1X = mandante ou empate · X2 = empate ou visitante (aposta de proteção)
+  casaOuEmpate: '{{time}} ou empate',
+  empateOuFora: 'Empate ou {{time}}',
+  empate: 'Empate',
+  cru: '{{outcome}}',
+} as const;
+
+/** O identificador de um molde de rótulo de aposta. */
+export type CopyDoPick = keyof typeof COPY_DO_PICK;
+
+/** A chave e os parâmetros do outcome do 1X2, sem palavra de idioma dentro. */
+export function copyDoOutcome(
+  outcome: string,
+  homeName: string,
+  awayName: string,
+): CopyComParametros {
+  switch (outcome) {
+    case 'Home': return { chave: 'pick.time', params: { time: homeName } };
+    case 'Away': return { chave: 'pick.time', params: { time: awayName } };
+    case 'Draw': return { chave: 'pick.empate' };
+    default: return { chave: 'pick.cru', params: { outcome } };
+  }
+}
+
 /** Outcome do 1X2 em PT. */
 export function outcomePt(outcome: string, homeName: string, awayName: string): string {
-  switch (outcome) {
-    case 'Home': return homeName;
-    case 'Away': return awayName;
-    case 'Draw': return 'Empate';
-    default: return outcome;
+  return pickEmPortugues(copyDoOutcome(outcome, homeName, awayName));
+}
+
+/** A chave e os parâmetros do rótulo da aposta, sem palavra de idioma dentro. */
+export function copyDoPick(s: Saida, homeName: string, awayName: string): CopyComParametros {
+  const { market, outcome, line_value: line } = s;
+  if (market === 'goals_over_under') {
+    const linha = line != null ? fmtLinhaAnalisada(line) : '';
+    return { chave: outcome === 'Over' ? 'pick.over' : 'pick.under', params: { linha } };
   }
+  if (market === 'asian_handicap') {
+    const time = outcome === 'Home' ? homeName : awayName;
+    const sideLine = linhaDaSaida(s);
+    return sideLine == null
+      ? { chave: 'pick.time', params: { time } }
+      : { chave: 'pick.handicap', params: { time, linha: fmtHandicapLine(sideLine) } };
+  }
+  if (market === 'btts') {
+    return { chave: outcome === 'Yes' ? 'pick.bttsSim' : 'pick.bttsNao' };
+  }
+  if (market === 'double_chance') {
+    return outcome === '1X'
+      ? { chave: 'pick.casaOuEmpate', params: { time: homeName } }
+      : { chave: 'pick.empateOuFora', params: { time: awayName } };
+  }
+  return copyDoOutcome(outcome, homeName, awayName);
+}
+
+/** Preenche um molde de pick com o texto em português. */
+function pickEmPortugues({ chave, params }: CopyComParametros): string {
+  return preencher(COPY_DO_PICK[chave.slice('pick.'.length) as CopyDoPick], params);
 }
 
 /** Rótulo da aposta (pick), por mercado — inclui a linha no Over/Under. */
 export function pickLabel(s: Saida, homeName: string, awayName: string): string {
-  const { market, outcome, line_value: line } = s;
-  if (market === 'goals_over_under') {
-    const n = line != null ? fmtLinhaAnalisada(line) : '';
-    return outcome === 'Over' ? `Mais de ${n} gols` : `Menos de ${n} gols`;
-  }
-  if (market === 'asian_handicap') {
-    const team = outcome === 'Home' ? homeName : awayName;
-    const sideLine = linhaDaSaida(s);
-    return sideLine != null ? `${team} ${fmtHandicapLine(sideLine)}` : team;
-  }
-  if (market === 'btts') {
-    // "Sim" e "Não" sozinhos não são aposta nenhuma: na agenda e no resumo do
-    // dia o rótulo aparece SEM o nome do mercado ao lado, e a linha ficava
-    // "Náutico × Botafogo — Sim". Por isso o rótulo carrega o mercado junto.
-    //
-    // O nome é o DA CASA DE APOSTAS, e não uma descrição do que acontece em
-    // campo. Uma tentativa anterior descreveu — "Os dois marcam" / "Um dos dois
-    // não marca" — e ficou mais preciso e menos reconhecível: quem aposta
-    // procura "Ambos marcam" na casa, e é assim que a DM do Telegram já
-    // escreve. Duas grafias para a mesma aposta é como o produto passa a
-    // parecer dois produtos.
-    return outcome === 'Yes' ? 'Ambos marcam: Sim' : 'Ambos marcam: Não';
-  }
-  if (market === 'double_chance') {
-    // 1X = mandante ou empate · X2 = empate ou visitante (aposta de proteção)
-    return outcome === '1X' ? `${homeName} ou empate` : `Empate ou ${awayName}`;
-  }
-  return outcomePt(outcome, homeName, awayName);
+  return pickEmPortugues(copyDoPick(s, homeName, awayName));
 }
 
 /** Frequência mastigada: "se paga em ~X de 10". */
@@ -251,18 +343,22 @@ export type OpcaoDeFaixa = { tone: Faixa; rotulo: string; selo: string | null };
 export function opcoesDeFaixa(
   versao: VersaoDaJanela,
 ): OpcaoDeFaixa[] {
+  // O `rotulo` sai do MESMO mapa de `faixaWord`, e não de três literais
+  // repetidos: a palavra da faixa tem uma fonte só, e é dela que o catálogo de
+  // idioma é gerado. Quem desenha a legenda em espanhol pede por `tone`, que é
+  // identificador — ver `chaveDaPalavraDaFaixa`.
   if (versao === 'indefinida') {
     return [
-      { tone: 'alta', rotulo: 'Alta', selo: null },
-      { tone: 'media', rotulo: 'Média', selo: null },
-      { tone: 'baixa', rotulo: 'Baixa', selo: null },
+      { tone: 'alta', rotulo: COPY_DA_FAIXA.alta, selo: null },
+      { tone: 'media', rotulo: COPY_DA_FAIXA.media, selo: null },
+      { tone: 'baixa', rotulo: COPY_DA_FAIXA.baixa, selo: null },
     ];
   }
   const { media, alta } = fronteirasDoScore(versao);
   return [
-    { tone: 'alta', rotulo: 'Alta', selo: `${alta}+` },
-    { tone: 'media', rotulo: 'Média', selo: `${media}+` },
-    { tone: 'baixa', rotulo: 'Baixa', selo: `<${media}` },
+    { tone: 'alta', rotulo: COPY_DA_FAIXA.alta, selo: `${alta}+` },
+    { tone: 'media', rotulo: COPY_DA_FAIXA.media, selo: `${media}+` },
+    { tone: 'baixa', rotulo: COPY_DA_FAIXA.baixa, selo: `<${media}` },
   ];
 }
 
@@ -296,12 +392,28 @@ export function passaNoFiltroDeFaixas(
  * classificaria errado assim que a escala mudasse.
  */
 export function rotuloDaFaixa(faixa: string | null | undefined): string {
-  if (faixa == null) return 'sem faixa';
-  switch (faixaTone(faixa)) {
-    case 'alta': return 'faixa alta';
-    case 'media': return 'faixa média';
-    default: return 'faixa baixa';
-  }
+  return COPY_DO_ROTULO_DA_FAIXA[seloDoRotuloDaFaixa(faixa)];
+}
+
+/** O selo do rótulo da faixa, como identificador. `sem` é a faixa ausente. */
+export type SeloDoRotuloDaFaixa = Faixa | 'sem';
+
+/** A régua do rótulo da faixa, separada da palavra. */
+export function seloDoRotuloDaFaixa(faixa: string | null | undefined): SeloDoRotuloDaFaixa {
+  return faixa == null ? 'sem' : faixaTone(faixa);
+}
+
+/** O rótulo de cada faixa. Fonte única do texto em português. */
+export const COPY_DO_ROTULO_DA_FAIXA: Record<SeloDoRotuloDaFaixa, string> = {
+  sem: 'sem faixa',
+  alta: 'faixa alta',
+  media: 'faixa média',
+  baixa: 'faixa baixa',
+};
+
+/** A chave de idioma do rótulo da faixa. */
+export function chaveDoRotuloDaFaixa(faixa: string | null | undefined): string {
+  return `faixa.rotulo.${seloDoRotuloDaFaixa(faixa)}`;
 }
 
 /** A linha está na faixa de destaque do painel (Alta ou Média). */

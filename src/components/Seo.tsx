@@ -1,5 +1,8 @@
 import { Helmet } from "react-helmet-async";
+import { useTranslation } from "react-i18next";
 import publicRoutes from "@/seo/public-routes.json";
+import type { Idioma } from "@/i18n/idiomas";
+import { idiomaAtivo } from "@/i18n/init";
 
 /**
  * Origem canônica do site em produção. Todo canonical/og:url é montado a partir
@@ -7,13 +10,58 @@ import publicRoutes from "@/seo/public-routes.json";
  */
 export const SITE_URL = "https://www.smartbetting.app";
 
-const DEFAULT_TITLE =
-  "Smart Betting — Análises, Gestão e Ferramentas para Apostadores";
-const DEFAULT_DESCRIPTION =
-  "Análise de prop bets NBA, gestão de banca e ferramentas para apostadores que querem decidir com dados. Controle suas apostas e acompanhe seus resultados.";
+/** A copy de <head> que a PESSOA lê: o título da aba e a descrição do card. */
+type CopyDoHead = { title: string; description: string };
+
+/**
+ * O default da marca, pra página que não está na tabela de rotas.
+ *
+ * É `Record<Idioma, …>` de propósito: idioma novo na matriz (src/i18n/idiomas.ts)
+ * para de compilar aqui até alguém escrever a copy dele, em vez de a aba abrir
+ * calada em português.
+ */
+export const PADRAO_DA_MARCA: Record<Idioma, CopyDoHead> = {
+  pt: {
+    title: "Smart Betting — Análises, Gestão e Ferramentas para Apostadores",
+    description:
+      "Análise de prop bets NBA, gestão de banca e ferramentas para apostadores que querem decidir com dados. Controle suas apostas e acompanhe seus resultados.",
+  },
+  es: {
+    title: "Smart Betting — Análisis, Gestión y Herramientas para Apostadores",
+    description:
+      "Análisis de prop bets NBA, gestión de bankroll y herramientas para apostadores que quieren decidir con datos. Controla tus apuestas y sigue tus resultados.",
+  },
+};
+
 // Card social 1200×630 da marca ("Decida com dados."). Cards por produto em
 // /og/og-futebol.jpg e /og/og-nba.jpg — as páginas passam via prop `image`.
 const DEFAULT_IMAGE = `${SITE_URL}/og/og-default.jpg`;
+
+/**
+ * Uma linha da tabela de rotas públicas.
+ *
+ * O tipo é escrito aqui porque o JSON é heterogêneo — nem toda rota tem imagem,
+ * canonical ou tradução — e ler campo opcional do literal inferido não compila.
+ * `sitemap` fica fora porque é assunto do gen-sitemap, e não do <head>.
+ */
+export type RotaPublica = {
+  path: string;
+  title: string;
+  description: string;
+  image?: string;
+  canonical?: string;
+  /**
+   * A MESMA copy nos outros idiomas, e só o que a pessoa LÊ: título e descrição.
+   *
+   * ⚠️ Idioma aqui NÃO é rota. O produto não tem prefixo de caminho por idioma e
+   * não passa a ter por isto — a #532 deixou prefixo, hreflang e redirecionamento
+   * por idioma declarados fora de escopo. A URL continua sendo uma só; o que muda
+   * é o texto do <head> que o idioma ativo pede. O <head> SERVIDO no HTML
+   * (`scripts/gen-route-heads.mjs`) segue saindo no idioma de referência, porque
+   * o servidor não sabe o idioma de quem chega e não existe para onde redirecionar.
+   */
+  traducoes?: Partial<Record<Idioma, CopyDoHead>>;
+};
 
 /**
  * Tabela de title/description/imagem por rota pública. É a MESMA fonte que o
@@ -21,7 +69,9 @@ const DEFAULT_IMAGE = `${SITE_URL}/og/og-default.jpg`;
  * `scripts/gen-sitemap.mjs` usa pra montar o sitemap. Um só lugar pra editar
  * essa copy, então o que o WhatsApp mostra nunca divirge do que a página diz.
  */
-const ROUTE_META = new Map(publicRoutes.map((r) => [r.path, r]));
+export const ROTAS_PUBLICAS: RotaPublica[] = publicRoutes;
+
+const ROUTE_META = new Map(ROTAS_PUBLICAS.map((r) => [r.path, r] as const));
 
 /** Monta uma URL absoluta a partir de um caminho relativo ("/futebol") ou
  * devolve a própria string se já vier absoluta. */
@@ -79,10 +129,26 @@ export function Seo({
   jsonLd,
   children,
 }: SeoProps) {
-  // Precedência: prop explícita > tabela da rota > default da marca.
+  // `useTranslation` sem área nenhuma: este componente não mostra texto de
+  // catálogo, ele só precisa REPINTAR quando o idioma muda. A troca acontece sem
+  // recarregar a página, e sem esta assinatura o título da aba ficaria congelado
+  // no idioma em que a página abriu — que é o defeito que o usuário viu.
+  useTranslation();
+  const idioma = idiomaAtivo();
+
+  // Precedência: prop explícita > tradução da rota > tabela da rota > default.
+  // A tradução entra ANTES da tabela porque a tabela é o idioma de referência;
+  // rota sem bloco do idioma ativo cai nela, e a aba mostra português em vez de
+  // código de chave. A guarda em `gen-route-heads.test.ts` é o que impede isso
+  // de chegar na develop.
   const meta = route ? ROUTE_META.get(route) : undefined;
-  const finalTitle = title ?? meta?.title ?? DEFAULT_TITLE;
-  const finalDescription = description ?? meta?.description ?? DEFAULT_DESCRIPTION;
+  const traduzido = meta?.traducoes?.[idioma];
+  const finalTitle = title ?? traduzido?.title ?? meta?.title ?? PADRAO_DA_MARCA[idioma].title;
+  const finalDescription =
+    description ??
+    traduzido?.description ??
+    meta?.description ??
+    PADRAO_DA_MARCA[idioma].description;
   const finalImage = image ?? meta?.image ?? DEFAULT_IMAGE;
   // `canonical` da tabela existe pra rotas que apontam pra outra URL
   // (ex.: /termos canonicaliza em /privacidade, evitando conteúdo duplicado).

@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { applyScoreBasis } from '@/services/bolao.service';
 import { useParams, useNavigate } from 'react-router-dom';
 import AnalyticsNav from '@/components/AnalyticsNav';
@@ -28,6 +29,7 @@ import { useToast } from '@/hooks/use-toast';
 type GroupFilter = 'all' | string;
 
 const BolaoPalpites: React.FC = () => {
+  const { t } = useTranslation('palpites');
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
@@ -78,21 +80,21 @@ const BolaoPalpites: React.FC = () => {
       });
     } catch (err: any) {
       toast({
-        title: 'Erro ao buscar palpites',
-        description: err?.message ?? 'Tente novamente',
+        title: t('quickPick.erroBuscar'),
+        description: err?.message ?? t('erros.tenteNovamente'),
         variant: 'destructive',
       });
       return;
     }
     if (generated.length === 0) {
       toast({
-        title: 'Nada pra preencher',
+        title: t('quickPick.nadaPreencher'),
         description:
           opts.kind === 'copy'
-            ? 'O bolão escolhido não tem palpites pra copiar nesses jogos.'
+            ? t('quickPick.nadaCopiar')
             : opts.mode === 'pendentes'
-              ? 'Todos os jogos já têm palpite. Use "Substituir todos" se quiser refazer.'
-              : 'Todos os jogos já foram finalizados ou estão sem times definidos.',
+              ? t('quickPick.nadaPendente')
+              : t('quickPick.nadaAberto'),
       });
       return;
     }
@@ -101,16 +103,20 @@ const BolaoPalpites: React.FC = () => {
       { bolaoId: id, predictions: generated },
       {
         onSuccess: (res) => {
-          const sourceLabel =
-            opts.kind === 'copy' ? ` (de "${opts.sourceBolaoName}")` : '';
+          // Plural pelo `count` do i18next: o texto de antes dizia
+          // "1 palpites preenchidos!" quando só um jogo era preenchido.
+          const origem =
+            opts.kind === 'copy'
+              ? t('quickPick.origemCopia', { nome: opts.sourceBolaoName })
+              : '';
           toast({
-            title: `${res.saved} palpites preenchidos!${sourceLabel}`,
+            title: t('quickPick.preenchidos', { count: res.saved, origem }),
             description: res.skipped > 0
-              ? `Edite os que quiser. ${res.skipped} jogos foram pulados (prazo encerrado ou sem times).`
-              : 'Edite os que quiser na lista abaixo.',
+              ? t('quickPick.pulados', { count: res.skipped })
+              : t('quickPick.editeNaLista'),
             action: (
-              <ToastAction altText="Desfazer Quick Pick" onClick={() => quickPickUndo.undo(generated!)}>
-                Desfazer
+              <ToastAction altText={t('quickPick.desfazerAlt')} onClick={() => quickPickUndo.undo(generated!)}>
+                {t('quickPick.desfazer')}
               </ToastAction>
             ),
           });
@@ -119,7 +125,7 @@ const BolaoPalpites: React.FC = () => {
           }
         },
         onError: (err: any) => {
-          toast({ title: 'Erro ao preencher', description: err?.message ?? 'Tente novamente', variant: 'destructive' });
+          toast({ title: t('quickPick.erroPreencher'), description: err?.message ?? t('erros.tenteNovamente'), variant: 'destructive' });
         },
       }
     );
@@ -132,10 +138,10 @@ const BolaoPalpites: React.FC = () => {
       { bolao_id: id, match_id: matchId },
       {
         onSuccess: () => {
-          toast({ title: 'Palpite apagado' });
+          toast({ title: t('apagar.sucesso') });
         },
         onError: (err: any) => {
-          toast({ title: 'Erro ao apagar', description: err?.message ?? 'Tente novamente', variant: 'destructive' });
+          toast({ title: t('apagar.erro'), description: err?.message ?? t('erros.tenteNovamente'), variant: 'destructive' });
         },
       }
     );
@@ -161,8 +167,8 @@ const BolaoPalpites: React.FC = () => {
         },
         onError: (err: any) => {
           toast({
-            title: 'Erro ao salvar palpite',
-            description: err?.message ?? 'Tente novamente',
+            title: t('salvar.erro'),
+            description: err?.message ?? t('erros.tenteNovamente'),
             variant: 'destructive',
           });
         },
@@ -215,13 +221,13 @@ const BolaoPalpites: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate(`/bolao/${id}`)}
-            aria-label="Voltar para o bolão"
+            aria-label={t('cabecalho.voltar')}
             className="w-11 h-11 rounded-rebrand-md hover:bg-canvas-2 text-ink-2 hover:text-ink flex items-center justify-center transition-colors shrink-0"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div className="flex-1 min-w-0">
-            <h1 className="font-display text-[20px] font-bold text-ink leading-tight">Palpites</h1>
+            <h1 className="font-display text-[20px] font-bold text-ink leading-tight">{t('cabecalho.titulo')}</h1>
             <p className="text-[12px] text-ink-2 truncate">{bolao?.name}</p>
           </div>
           <PalpitesProgress
@@ -270,9 +276,9 @@ const BolaoPalpites: React.FC = () => {
       <ConfirmDialog
         open={confirmDeleteMatchId !== null}
         onOpenChange={(open) => !open && setConfirmDeleteMatchId(null)}
-        title="Apagar este palpite?"
-        description="O palpite vai voltar ao estado vazio (- x -). Você pode palpitar de novo enquanto o prazo estiver aberto."
-        confirmLabel="Apagar"
+        title={t('apagar.titulo')}
+        description={t('apagar.descricao')}
+        confirmLabel={t('apagar.confirmar')}
         variant="destructive"
         onConfirm={performDelete}
         isLoading={deletePrediction.isPending}

@@ -1,5 +1,6 @@
 import type { FutebolFixtureHistorico } from '@/services/futebol-data.service';
 import { fmtDecimal, fmtExato } from '@/utils/formato';
+import type { CopyComParametros } from '@/utils/futebol-copy';
 import { storyDaPremissa, type Story } from '@/utils/futebol-historico';
 
 // A premissa prestando contas do modelo (spec #349, issues #353, #354, #355).
@@ -122,7 +123,13 @@ export interface Prestacao {
   /** O veredito, já combinado. É a nossa conta, não a do mart. */
   cruzou: boolean;
   parcelas: Parcela[];
-  /** "gols sofridos por jogo, somados" — o que o número É, em palavras. */
+  /**
+   * A CHAVE da frase que diz o que o número é — `criterio.unidade.golsSofridosSomados`.
+   *
+   * Chave e não frase (#544 estendido ao critério): a tela em espanhol mostrava
+   * "gols sofridos por jogo, somados" no meio do conteúdo traduzido. Quem troca a
+   * chave pela frase é `useCopyDoFutebol`, e o português vive no catálogo.
+   */
   unidade: string;
 }
 
@@ -138,7 +145,8 @@ interface Criterio {
   combinacao: Combinacao;
   sentido: Sentido;
   escala: Escala;
-  unidade: string;
+  /** O id da unidade em `COPY_DA_UNIDADE`, não a frase. */
+  unidade: keyof typeof COPY_DA_UNIDADE;
   corte: { de: 'linha'; margem: number } | { de: 'fixo'; valor: number };
   /**
    * Quantas parcelas o insumo tem.
@@ -166,6 +174,69 @@ interface Criterio {
 }
 
 /**
+ * O que o número É, em palavras — a unidade de cada critério.
+ *
+ * Mapa de id para frase, e não a frase solta no critério, pelo mesmo motivo que
+ * `COPY_DO_PESO` e `COPY_DA_LEITURA` existem: o id é o que a tela pede ao
+ * catálogo de idioma, e o catálogo em português é GERADO deste mapa
+ * (`futebol-copy-catalogo.ts`), então o português não tem como divergir dele.
+ *
+ * ⚠️ Sete entradas para dez critérios, de propósito: duas premissas somam gols
+ * sofridos e duas somam gols esperados, e a unidade é a mesma. Repetir a frase
+ * por critério daria ao tradutor a mesma frase quatro vezes, sem dizer por quê.
+ */
+export const COPY_DA_UNIDADE = {
+  golsSofridosSomados: 'gols sofridos por jogo, somados',
+  golsMarcadosSomados: 'gols marcados por jogo, somados',
+  golsEsperadosSomados: 'gols esperados por jogo, somados',
+  jogosSemSofrer: 'dos jogos sem sofrer gol',
+  jogosSemMarcar: 'dos jogos sem marcar',
+  acimaDaLinhaEmCinco: 'acima da linha, nos últimos 5 de cada',
+  abaixoDaLinhaEmCinco: 'abaixo da linha, nos últimos 5 de cada',
+} as const;
+
+/**
+ * O corte em palavras, pelo lado que a premissa quer e pela exigência que ela tem.
+ *
+ * A estrita tem frase própria: numa `ambos_vazam`, "no máximo 35%" seria falso,
+ * porque 35% exato não acende. As quatro combinações estão aqui porque é o
+ * conjunto fechado de `Sentido` × `estrito`.
+ */
+export const COPY_DO_CORTE = {
+  acima: 'pelo menos {{corte}}',
+  acimaEstrito: 'mais de {{corte}}',
+  abaixo: 'no máximo {{corte}}',
+  abaixoEstrito: 'menos de {{corte}}',
+} as const;
+
+/**
+ * "3 jogos": o corte da escala de CONTAGEM conta jogos, e o número sozinho não
+ * diz o quê.
+ *
+ * Camada separada porque ela entra DENTRO da frase do corte ("pelo menos 3
+ * jogos"), e a palavra "jogos" muda de idioma junto com a de fora. Em espanhol
+ * é **partidos** — partida de futebol, nunca "juegos".
+ */
+export const COPY_DO_CORTE_EM_JOGOS = '{{corte}} jogos';
+export const CHAVE_DO_CORTE_EM_JOGOS = 'criterio.corteEmJogos';
+
+/**
+ * A frase de uma linha que acompanha a premissa na lista, em duas formas.
+ *
+ * `soma` quando existe um número único; `porTime` quando o corte é comparado
+ * parcela a parcela e não há soma que signifique algo. O `{{quem}}` é o que diz
+ * se as duas parcelas precisam cruzar ou se basta uma — sem ele o assinante vê
+ * um time abaixo do corte e não entende por que a premissa acendeu.
+ */
+export const COPY_DA_PRESTACAO = {
+  soma: '{{insumo}} {{unidade}} · o corte é {{corte}}',
+  porTime: '{{partes}} {{unidade}} · {{quem}} {{corte}}',
+  parcela: '{{time}} {{valor}}',
+  quemE: 'os dois precisam de',
+  quemOu: 'basta um com',
+} as const;
+
+/**
  * Os critérios, por mercado e slug.
  *
  * ⚠️ A chave é `mercado:slug`, e não o slug sozinho. `defesas_vazaveis` existe no
@@ -187,7 +258,7 @@ export const CRITERIOS: Record<string, Criterio> = {
     combinacao: 'soma',
     sentido: 'abaixo',
     escala: 'gols',
-    unidade: 'gols sofridos por jogo, somados',
+    unidade: 'golsSofridosSomados',
     corte: { de: 'linha', margem: -0.3 },
     parcelas: 2,
   },
@@ -200,7 +271,7 @@ export const CRITERIOS: Record<string, Criterio> = {
     combinacao: 'soma',
     sentido: 'acima',
     escala: 'gols',
-    unidade: 'gols sofridos por jogo, somados',
+    unidade: 'golsSofridosSomados',
     corte: { de: 'linha', margem: 0 },
     parcelas: 2,
   },
@@ -210,7 +281,7 @@ export const CRITERIOS: Record<string, Criterio> = {
     combinacao: 'soma',
     sentido: 'acima',
     escala: 'gols',
-    unidade: 'gols marcados por jogo, somados',
+    unidade: 'golsMarcadosSomados',
     corte: { de: 'linha', margem: 0.5 },
     parcelas: 2,
   },
@@ -219,7 +290,7 @@ export const CRITERIOS: Record<string, Criterio> = {
     combinacao: 'soma',
     sentido: 'acima',
     escala: 'gols',
-    unidade: 'gols esperados por jogo, somados',
+    unidade: 'golsEsperadosSomados',
     corte: { de: 'linha', margem: 0.3 },
     parcelas: 2,
   },
@@ -228,7 +299,7 @@ export const CRITERIOS: Record<string, Criterio> = {
     combinacao: 'soma',
     sentido: 'abaixo',
     escala: 'gols',
-    unidade: 'gols esperados por jogo, somados',
+    unidade: 'golsEsperadosSomados',
     corte: { de: 'linha', margem: -0.3 },
     parcelas: 2,
   },
@@ -245,7 +316,7 @@ export const CRITERIOS: Record<string, Criterio> = {
     combinacao: 'e',
     sentido: 'acima',
     escala: 'percentual',
-    unidade: 'dos jogos sem sofrer gol',
+    unidade: 'jogosSemSofrer',
     corte: { de: 'fixo', valor: 40 },
     parcelas: 2,
   },
@@ -257,7 +328,7 @@ export const CRITERIOS: Record<string, Criterio> = {
     combinacao: 'e',
     sentido: 'abaixo',
     escala: 'percentual',
-    unidade: 'dos jogos sem sofrer gol',
+    unidade: 'jogosSemSofrer',
     corte: { de: 'fixo', valor: 35 },
     parcelas: 2,
   },
@@ -268,7 +339,7 @@ export const CRITERIOS: Record<string, Criterio> = {
     combinacao: 'ou',
     sentido: 'acima',
     escala: 'percentual',
-    unidade: 'dos jogos sem marcar',
+    unidade: 'jogosSemMarcar',
     corte: { de: 'fixo', valor: 35 },
     parcelas: 2,
   },
@@ -285,7 +356,7 @@ export const CRITERIOS: Record<string, Criterio> = {
     combinacao: 'e',
     sentido: 'acima',
     escala: 'contagem',
-    unidade: 'acima da linha, nos últimos 5 de cada',
+    unidade: 'acimaDaLinhaEmCinco',
     corte: { de: 'fixo', valor: 3 },
     parcelas: 2,
     contagem: { compara: 'acima_da_linha' },
@@ -295,7 +366,7 @@ export const CRITERIOS: Record<string, Criterio> = {
     combinacao: 'e',
     sentido: 'acima',
     escala: 'contagem',
-    unidade: 'abaixo da linha, nos últimos 5 de cada',
+    unidade: 'abaixoDaLinhaEmCinco',
     corte: { de: 'fixo', valor: 3 },
     parcelas: 2,
     contagem: { compara: 'abaixo_da_linha' },
@@ -429,7 +500,7 @@ function prestacaoDoStory(
     estrito,
     cruzou,
     parcelas,
-    unidade: criterio.unidade,
+    unidade: `criterio.unidade.${criterio.unidade}`,
   };
 }
 
@@ -454,19 +525,22 @@ export function numeroDaPrestacao(p: Prestacao, valor: number): string {
  * card e a frase da lista descreviam o mesmo corte com palavras que não pareciam
  * a mesma coisa.
  *
- * A estrita tem palavra própria: numa `ambos_vazam`, "no máximo 35%" seria falso,
- * porque 35% exato não acende.
+ * Devolve o PEDIDO e não a frase: a tela em espanhol mostrava "pelo menos 2.5"
+ * debaixo de "CORTE DE LA PREMISA". Quem monta é `useCopyDoFutebol`.
  */
-export function corteEmPalavras(p: Prestacao): string {
-  const lado =
-    p.sentido === 'abaixo'
-      ? p.estrito
-        ? 'menos de'
-        : 'no máximo'
-      : p.estrito
-        ? 'mais de'
-        : 'pelo menos';
-  return `${lado} ${corteDaPrestacao(p)}`;
+export function copyDoCorte(p: Prestacao): CopyComParametros {
+  const lado = p.sentido === 'abaixo' ? 'abaixo' : 'acima';
+  return {
+    chave: `criterio.corte.${p.estrito ? `${lado}Estrito` : lado}`,
+    params: {
+      // A escala de contagem é a única cujo corte precisa da palavra "jogos" —
+      // nas outras o `%` e a casa decimal já dizem a grandeza.
+      corte:
+        p.escala === 'contagem'
+          ? { chave: CHAVE_DO_CORTE_EM_JOGOS, params: { corte: numeroDoCorte(p) } }
+          : numeroDoCorte(p),
+    },
+  };
 }
 
 /**
@@ -490,10 +564,16 @@ export function faltouParaOCorte(p: Prestacao): number | null {
   return Math.abs(duasCasas(p.insumo - p.corte));
 }
 
-/** O corte sai como é: 2,95 é 2,95, e arredondar para 3,0 desfaria o ponto dele. */
-export function corteDaPrestacao(p: Prestacao): string {
+/**
+ * O corte como NÚMERO na escala dele, sem palavra nenhuma.
+ *
+ * Sai como é: 2,95 é 2,95, e arredondar para 3,0 desfaria o ponto dele. A palavra
+ * "jogos" que acompanhava a contagem saiu daqui para o catálogo — ela é texto, e
+ * aqui só mora número.
+ */
+export function numeroDoCorte(p: Prestacao): string {
   if (p.escala === 'percentual') return `${p.corte}%`;
-  if (p.escala === 'contagem') return `${p.corte} jogos`;
+  if (p.escala === 'contagem') return String(p.corte);
   return fmtExato(p.corte);
 }
 
@@ -505,12 +585,29 @@ export function corteDaPrestacao(p: Prestacao): string {
  * diferentes — o card lia o perfil de temporada (RPC 094) e a frase lia o
  * histórico jogo a jogo (095). Agora é um número só, com uma origem só.
  */
-export function fraseDaPrestacao(p: Prestacao): string {
+export function copyDaPrestacao(p: Prestacao): CopyComParametros {
+  const corte = copyDoCorte(p);
+  const unidade = { chave: p.unidade };
   if (p.insumo != null) {
-    return `${numeroDaPrestacao(p, p.insumo)} ${p.unidade} · o corte é ${corteEmPalavras(p)}`;
+    return {
+      chave: 'criterio.frase.soma',
+      params: { insumo: numeroDaPrestacao(p, p.insumo), unidade, corte },
+    };
   }
-  const quem = p.combinacao === 'e' ? 'os dois precisam de' : 'basta um com';
-  return `${p.parcelas.map((x) => `${x.teamName} ${numeroDaPrestacao(p, x.valor)}`).join(' · ')} ${p.unidade} · ${quem} ${corteEmPalavras(p)}`;
+  return {
+    chave: 'criterio.frase.porTime',
+    params: {
+      // Uma parcela por time, e a lista é o dado: quantas são depende de quantos
+      // lados vieram, não do texto.
+      partes: p.parcelas.map((x) => ({
+        chave: 'criterio.frase.parcela',
+        params: { time: x.teamName, valor: numeroDaPrestacao(p, x.valor) },
+      })),
+      unidade,
+      quem: { chave: p.combinacao === 'e' ? 'criterio.frase.quemE' : 'criterio.frase.quemOu' },
+      corte,
+    },
+  };
 }
 
 export interface Divergencia {

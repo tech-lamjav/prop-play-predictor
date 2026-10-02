@@ -54,10 +54,22 @@ describe('contato do time', () => {
   });
 
   it('"Falar com o time" no rodapé não é mais e-mail', () => {
-    const linha = FOOTER.split('\n').find((l) => l.includes("label: 'Falar com o time'"));
-    expect(linha).toBeDefined();
-    expect(linha).toContain('WHATSAPP_FALAR_COM_O_TIME');
-    expect(linha).not.toContain('mailto:');
+    // ⚠️ Esta guarda procurava a linha com o TEXTO `label: 'Falar com o time'`.
+    // Quando o rodapé foi traduzido (#532) o rótulo virou chave e o par
+    // rótulo/destino passou a ocupar duas linhas: a busca não achou nada e o
+    // teste quebrou. Quebrar foi o comportamento CERTO — outra guarda desta
+    // mesma migração casava por `label: '` e teria passado a aprovar qualquer
+    // coisa, calada.
+    //
+    // Agora ela ancora na CHAVE, que é estável, e olha a janela de linhas do
+    // item em vez de exigir tudo numa linha só.
+    const linhas = FOOTER.split('\n');
+    const i = linhas.findIndex((l) => l.includes('rodape.links.falarComOTime'));
+    expect(i, 'o item "Falar com o time" sumiu do rodapé').toBeGreaterThanOrEqual(0);
+
+    const item = linhas.slice(i, i + 4).join('\n');
+    expect(item).toContain('WHATSAPP_FALAR_COM_O_TIME');
+    expect(item).not.toContain('mailto:');
   });
 
   it('o número não aparece em mais nenhum arquivo do app', () => {

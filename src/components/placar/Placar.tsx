@@ -1,3 +1,4 @@
+import { Trans, useTranslation } from 'react-i18next';
 import {
   ehSimulacao,
   liquidarTudo,
@@ -48,37 +49,44 @@ function NumerosNoCelular({
   total: ReturnType<typeof totalDe>;
   simulando: boolean;
 }) {
+  const { t } = useTranslation('socios');
+
   return (
     <div className="mb-6 rounded-rebrand-md border border-line-2 bg-white px-4 py-4">
       <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-ink-dim">
-        ROI do período
+        {t('placar.totais.roiDoPeriodo')}
       </p>
       <p className={`mt-1 font-display text-[48px] font-black leading-none ${tomDoRoi(total.roi)}`}>
         {roiPct(total.roi)}
       </p>
       <p className="mt-1.5 text-[12px] text-ink-dim">
         ± {epPct(total.ep)}{' '}
-        {simulando ? `em ${fmtExato(total.unidades)}u` : emN(total.n)}
+        {simulando
+          ? t('placar.totais.emUnidades', { unidades: fmtExato(total.unidades) })
+          : emN(total.n)}
       </p>
       <p className="mt-3 flex flex-wrap items-baseline gap-x-2 border-t border-line-2 pt-3">
         <span className="font-display text-[22px] font-black leading-none text-ink">
           {taxaPct(total.taxa)}
         </span>
         <span className="text-[12px] text-ink-dim">
-          de acerto · {total.acertos} {emN(total.n - total.anuladas)}
+          {t('placar.totais.deAcerto', {
+            acertos: total.acertos,
+            base: emN(total.n - total.anuladas),
+          })}
         </span>
       </p>
       <p className="mt-2 text-[12px] text-ink-2">
-        {total.publicadas} publicadas · {total.n + total.foraDaSimulacao} liquidadas · {total.pendentes} pendentes ·{' '}
-        {total.anuladas} anuladas
+        {t('placar.totais.resumoNoCelular', {
+          publicadas: total.publicadas,
+          liquidadas: total.n + total.foraDaSimulacao,
+          pendentes: total.pendentes,
+          anuladas: total.anuladas,
+        })}
       </p>
     </div>
   );
 }
-
-/** O que a seção de premissas precisa dizer antes da primeira lista. */
-const COMO_LER_AS_PREMISSAS =
-  'Sempre dentro do lado do mercado, porque o ROI do lado é a linha de base. A coluna que decide é a diferença entre acesa e apagada. A flag vem recalculada do mart, então mudar o critério de uma premissa reescreve o passado — e o quanto ela acendeu, o insumo, ainda não chega neste banco.';
 
 /**
  * O placar da metodologia.
@@ -152,12 +160,21 @@ export function Placar({
     rotuloDeB: string;
   };
 }) {
+  const { t } = useTranslation('socios');
   const { liquidadas, pendentes, foraDaSimulacao } = liquidarTudo(publicadas, pesos);
   const total = totalDe(liquidadas, pendentes, foraDaSimulacao);
   const liquidadasB = comparacao ? liquidarTudo(comparacao.publicadas, pesos).liquidadas : [];
   const simulando = ehSimulacao(pesos);
   const porPremissa = porLadoDoMercado(liquidadas);
   const noCelular = useIsMobile();
+
+  /**
+   * O que a seção de premissas precisa dizer antes da primeira lista.
+   *
+   * Lida no render, e não num `const` de módulo: texto num const de módulo é
+   * avaliado uma vez, no carregamento, e congelaria o idioma da primeira visita.
+   */
+  const comoLerAsPremissas = t('placar.premissas.comoLerTexto');
 
   const tabela = (quebra: Quebra) => {
     const selo = quebra.marcaOculto
@@ -198,30 +215,34 @@ export function Placar({
           quem chega hoje abre. */}
       <details className="mb-5 max-w-3xl text-[13px] text-ink-2">
         <summary className="cursor-pointer font-bold text-ink-2 hover:text-ink">
-          Como este número é medido
+          {t('placar.comoEMedido.titulo')}
         </summary>
         <p className="mt-2">
-          Cada oportunidade vale <strong className="text-ink">uma unidade</strong>, medida pela odd,
-          pela nota e pela faixa com que ela foi publicada — a foto de nascimento, e não o estado
-          dela no apito, que é o que o assinante vê no histórico dele.
+          <Trans
+            t={t}
+            i18nKey="placar.comoEMedido.unidade"
+            components={[<strong className="text-ink" key="unidade" />]}
+          />
         </p>
         <p className="mt-2">
-          Só entra aqui o que foi <strong className="text-ink">publicado</strong>. A candidata que o
-          funil recusou vive no BigQuery e o site não a alcança, então esta tela não responde se o
-          corte está apertado demais nem se falta premissa.
+          <Trans
+            t={t}
+            i18nKey="placar.comoEMedido.soPublicado"
+            components={[<strong className="text-ink" key="publicado" />]}
+          />
         </p>
-        <p className="mt-2">
-          Taxa de acerto não conta anulada no denominador; o ROI conta, com lucro zero. É por isso
-          que os dois números têm bases diferentes.
-        </p>
+        <p className="mt-2">{t('placar.comoEMedido.denominadores')}</p>
       </details>
 
+      {/* ⚠️ O texto do aviso continua em português: ele vem de
+          `avisosDoPeriodo`, em `placar-periodo.ts`, que não entra nesta
+          migração. */}
       {avisos.map((aviso) => (
         <p
           key={aviso.slice(0, 40)}
           className="mb-4 max-w-3xl rounded-rebrand-md border border-amber-300 bg-amber-50 px-4 py-3 text-[13px] text-amber-900"
         >
-          <strong>Atenção:</strong> {aviso}
+          <strong>{t('placar.avisos.atencao')}</strong> {aviso}
         </p>
       ))}
 
@@ -231,29 +252,52 @@ export function Placar({
       {gaveta && (
         <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-rebrand-md border border-forest bg-forest/[0.06] px-4 py-3 text-[13px] text-ink">
           <span>
-            Aberto em <strong>{gaveta.rotulo}</strong>. Tudo nesta tela — os números do topo, o
-            gráfico, as quebras e as premissas — conta só essa janela.
+            <Trans
+              t={t}
+              i18nKey="placar.gaveta.aberta"
+              values={{ rotulo: gaveta.rotulo }}
+              components={[<strong key="gaveta" />]}
+            />
           </span>
           <button
             type="button"
             onClick={aoFecharGaveta}
             className="ml-auto shrink-0 rounded-rebrand-sm border border-forest px-2.5 py-1 text-[12px] font-bold text-forest transition hover:bg-forest hover:text-white"
           >
-            Ver o período inteiro
+            {t('placar.gaveta.verPeriodoInteiro')}
           </button>
         </div>
       )}
 
       {simulando && (
         <p className="mb-4 max-w-3xl rounded-rebrand-md border border-forest bg-forest/[0.06] px-4 py-3 text-[13px] text-ink">
-          <strong>Simulação ligada.</strong> As unidades por faixa não são as medidas:{' '}
-          {Object.entries(pesos)
-            .map(([faixa, peso]) => `${faixa} ${fmtExato(peso)}u`)
-            .join(' · ')}
-          . O ROI abaixo é o que teria acontecido com esses tamanhos, sobre as mesmas apostas — e o
-          erro-padrão passa a ser aproximado, porque ele é calculado por unidade e não ponderado.
+          {/*
+           * ⚠️ SEM `<Trans>` AQUI, e é defeito MEDIDO — não preferência.
+           *
+           * O nome da faixa é `Baixa (<30)`, e o `<` faz o parser de nós do
+           * `<Trans>` TRUNCAR a frase naquele ponto: o aviso terminava em
+           * "…não são as medidas: Baixa (" e o resto — os pesos, o ROI, a
+           * ressalva do erro-padrão — desaparecia da tela, sem erro no
+           * console. `PlacarDaMetodologia.test.tsx` pegou.
+           *
+           * A regra que fica: valor que pode conter `<`, `>` ou `&` NÃO
+           * atravessa `<Trans>`. Ou ele é filho de verdade, ou a frase se
+           * parte em duas chaves e o negrito volta a ser JSX — que é o caso
+           * aqui, e é também exatamente como o código era antes da migração.
+           *
+           * O nome da faixa é o valor gravado no banco, e por isso ele não
+           * passa pelo catálogo: é contrato de dado.
+           */}
+          <strong>{t('placar.simulacao.ligada')}</strong>{' '}
+          {t('placar.simulacao.aviso', {
+            pesos: Object.entries(pesos)
+              .map(([faixa, peso]) =>
+                t('placar.simulacao.pesoDaFaixa', { faixa, peso: fmtExato(peso) }),
+              )
+              .join(' · '),
+          })}
           {total.foraDaSimulacao > 0 &&
-            ` ${total.foraDaSimulacao} oportunidade(s) ficaram fora por peso zero.`}
+            ` ${t('placar.simulacao.foraPorPesoZero', { count: total.foraDaSimulacao })}`}
         </p>
       )}
 
@@ -267,20 +311,28 @@ export function Placar({
         <NumerosNoCelular total={total} simulando={simulando} />
       ) : (
         <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          <Numero valor={String(total.publicadas)} rotulo="Publicadas" />
+          <Numero valor={String(total.publicadas)} rotulo={t('placar.totais.publicadas')} />
           {/* Liquidar é o jogo, não a aposta: a linha que a simulação mandou não
             apostar também liquidou. Sem somá-la, abrir a tela simulando
             encolhia este número calado. */}
-        <Numero valor={String(total.n + total.foraDaSimulacao)} rotulo="Liquidadas" />
-          <Numero valor={String(total.pendentes)} rotulo="Pendentes" />
-          <Numero valor={String(total.anuladas)} rotulo="Anuladas" />
+        <Numero valor={String(total.n + total.foraDaSimulacao)} rotulo={t('placar.totais.liquidadas')} />
+          <Numero valor={String(total.pendentes)} rotulo={t('placar.totais.pendentes')} />
+          <Numero valor={String(total.anuladas)} rotulo={t('placar.totais.anuladas')} />
           <Numero
             valor={taxaPct(total.taxa)}
-            rotulo={`Acerto: ${total.acertos} ${emN(total.n - total.anuladas)}`}
+            rotulo={t('placar.totais.rotuloAcerto', {
+              acertos: total.acertos,
+              base: emN(total.n - total.anuladas),
+            })}
           />
           <Numero
             valor={roiPct(total.roi)}
-            rotulo={`ROI ± ${epPct(total.ep)} ${simulando ? `em ${fmtExato(total.unidades)}u` : emN(total.n)}`}
+            rotulo={t('placar.totais.rotuloRoi', {
+              ep: epPct(total.ep),
+              base: simulando
+                ? t('placar.totais.emUnidades', { unidades: fmtExato(total.unidades) })
+                : emN(total.n),
+            })}
             tom={tomDoRoi(total.roi)}
           />
         </div>
@@ -288,21 +340,18 @@ export function Placar({
 
       {total.pendentes > 0 && (
         <p className="mb-6 text-[13px] text-ink-2">
-          {total.pendentes === 1
-            ? 'Uma oportunidade ainda não liquidou'
-            : `${total.pendentes} oportunidades ainda não liquidaram`}{' '}
-          — jogo por acabar, jogo sem placar no fato, ou mercado que a regra de liquidação ainda não
-          conhece. Nenhuma delas entra nas contas acima, e a conta muda quando elas liquidarem.
+          {t('placar.pendentes.aviso', { count: total.pendentes })}
         </p>
       )}
 
       {foraDaVitrine > 0 && (
         <p className="mb-6 text-[13px] text-ink-2">
-          A conta está restrita à <strong className="text-ink">vitrine</strong>:{' '}
-          {foraDaVitrine === 1
-            ? 'uma oportunidade ficou de fora'
-            : `${foraDaVitrine} oportunidades ficaram de fora`}{' '}
-          porque o assinante não as viu. Esta é a leitura do produto; a do board inteiro é a outra.
+          <Trans
+            t={t}
+            i18nKey="placar.vitrine.aviso"
+            count={foraDaVitrine}
+            components={[<strong className="text-ink" key="vitrine" />]}
+          />
         </p>
       )}
 
@@ -343,14 +392,16 @@ export function Placar({
       )}
 
       <div className="mt-8 border-t border-line-2 pt-6">
-        <h2 className="font-display text-xl font-black text-ink">ROI por premissa</h2>
+        <h2 className="font-display text-xl font-black text-ink">{t('placar.premissas.titulo')}</h2>
         {noCelular ? (
           <details className="mt-1 text-[13px] text-ink-2">
-            <summary className="cursor-pointer font-bold text-ink-dim">Como ler</summary>
-            <p className="mt-1">{COMO_LER_AS_PREMISSAS}</p>
+            <summary className="cursor-pointer font-bold text-ink-dim">
+              {t('placar.premissas.comoLer')}
+            </summary>
+            <p className="mt-1">{comoLerAsPremissas}</p>
           </details>
         ) : (
-          <p className="mt-1 max-w-3xl text-[13px] text-ink-2">{COMO_LER_AS_PREMISSAS}</p>
+          <p className="mt-1 max-w-3xl text-[13px] text-ink-2">{comoLerAsPremissas}</p>
         )}
 
         <div className="mt-5 grid gap-5">
@@ -359,7 +410,7 @@ export function Placar({
           ))}
           {porPremissa.length === 0 && (
             <p className="rounded-rebrand-md border border-line-2 bg-white px-5 py-8 text-[14px] text-ink-2">
-              Nenhuma oportunidade liquidada no período.
+              {t('placar.premissas.vazio')}
             </p>
           )}
         </div>

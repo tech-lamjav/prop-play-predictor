@@ -1,9 +1,22 @@
 import { describe, it, expect } from 'vitest';
-import { avisoSemDado } from './futebol-sem-dado';
+import { fraseEmPortugues } from '@/test/copy-em-portugues';
+import { copyDoSemDado } from './futebol-sem-dado';
 
 // A regra de produto está na ADR 0003 e é curta: dado faltante DIAGNOSTICA, NÃO
 // PENALIZA. O score não muda. O aviso fala da NOSSA confiança, não da qualidade
 // da aposta, e é por isso que ele não pode parecer uma penalidade.
+
+/**
+ * O aviso em PORTUGUÊS, montado pelo catálogo real.
+ *
+ * A função devolve chave e contagem desde o #544; as asserções deste arquivo são
+ * sobre a FRASE — é copy de produto, e a ADR 0003 é sobre o que ela diz. Montar
+ * pelo catálogo é o que mantém as duas coisas verdadeiras ao mesmo tempo.
+ */
+const avisoSemDado = (contador: number | null | undefined) => {
+  const pedido = copyDoSemDado(contador);
+  return pedido == null ? null : fraseEmPortugues(pedido);
+};
 
 describe('avisoSemDado', () => {
   it('não avisa quando não faltou nada', () => {

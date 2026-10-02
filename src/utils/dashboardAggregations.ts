@@ -1,5 +1,6 @@
 import type { Bet } from '@/hooks/use-bets';
 import { fmtDinheiro, fmtOdd, fmtDecimal } from '@/utils/formato';
+import { localeAtivo } from '@/utils/idioma-ativo';
 
 export type BetWithTags = Bet & { tags?: { id: string; name: string; color?: string }[] };
 
@@ -330,7 +331,7 @@ export function aggregateCalendarHeatmap(
 
     if (cursor.getMonth() !== lastMonthSeen) {
       months.push({
-        label: cursor.toLocaleString('pt-BR', { month: 'short' }).replace('.', ''),
+        label: cursor.toLocaleString(localeAtivo(), { month: 'short' }).replace('.', ''),
         weekIndex: weekIdx,
       });
       lastMonthSeen = cursor.getMonth();

@@ -14,6 +14,11 @@ import { EXPLICACAO_DA_ETIQUETA, textoDaEtiqueta, type Etiqueta } from './crm-et
  *
  * Só "vencendo" ganha cor. É a única com prazo correndo, e três etiquetas
  * coloridas numa lista brigariam com o âmbar que marca o que é urgente.
+ *
+ * ⚠️ O texto e a explicação ainda são PORTUGUÊS, e este componente não tem como
+ * mudar isso: vêm de `crm-etiquetas.ts` (`textoDaEtiqueta`,
+ * `EXPLICACAO_DA_ETIQUETA`), que não foi migrado para o catálogo neste passo.
+ * Em espanhol a etiqueta aparece em português.
  */
 export function EtiquetaDoLead({
   etiqueta,

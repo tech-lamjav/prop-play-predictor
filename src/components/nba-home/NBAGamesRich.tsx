@@ -1,7 +1,9 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronRight, AlertTriangle } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { getTeamLogoUrl } from '@/utils/team-logos';
+import { localeAtivo } from '@/utils/idioma-ativo';
 
 export interface GameAngle {
   /** Time alvo do ângulo (geralmente o oponente de quem vai render o pick) */
@@ -59,17 +61,19 @@ interface NBAGamesRichProps {
   onOpenGame: (gameId: number, gameDate: string) => void;
 }
 
-function statusBadgeTone(status: string): { text: string; cls: string } {
+/** Devolve o IDENTIFICADOR do estado (e a cor); o selo vem do catálogo. */
+function statusBadgeTone(status: string): { id: string; cls: string } {
   const s = status.toLowerCase();
-  if (s === 'out' || s.includes('out')) return { text: 'OUT', cls: 'text-rose-700' };
-  if (s.includes('doubtful')) return { text: 'DTD', cls: 'text-orange-700' };
-  return { text: 'Q', cls: 'text-amber-700' };
+  if (s === 'out' || s.includes('out')) return { id: 'out', cls: 'text-rose-700' };
+  if (s.includes('doubtful')) return { id: 'doubtful', cls: 'text-orange-700' };
+  return { id: 'questionable', cls: 'text-amber-700' };
 }
 
-function angleBadgeTone(rank: number): { cls: string; label: string } {
-  if (rank >= 20) return { cls: 'bg-emerald-100 text-forest', label: 'defesa fraca' };
-  if (rank >= 11) return { cls: 'bg-amber-100 text-amber-700', label: 'defesa média' };
-  return { cls: 'bg-rose-100 text-rose-700', label: 'defesa forte' };
+/** Devolve a CHAVE do rótulo de força da defesa; a decisão é sobre o número. */
+function angleBadgeTone(rank: number): { cls: string; chave: string } {
+  if (rank >= 20) return { cls: 'bg-emerald-100 text-forest', chave: 'grade.defesaFraca' };
+  if (rank >= 11) return { cls: 'bg-amber-100 text-amber-700', chave: 'grade.defesaMedia' };
+  return { cls: 'bg-rose-100 text-rose-700', chave: 'grade.defesaForte' };
 }
 
 function lastName(full: string): string {
@@ -77,9 +81,9 @@ function lastName(full: string): string {
   return parts[parts.length - 1] ?? full;
 }
 
-function formatTime(iso: string | null): string {
-  if (!iso) return 'A definir';
-  return new Date(iso).toLocaleTimeString('pt-BR', {
+function formatTime(iso: string | null, semHorario: string): string {
+  if (!iso) return semHorario;
+  return new Date(iso).toLocaleTimeString(localeAtivo(), {
     timeZone: 'America/Sao_Paulo',
     hour: '2-digit',
     minute: '2-digit',
@@ -103,6 +107,7 @@ const TeamLogo: React.FC<{ teamName: string; abbr: string; size?: number }> = ({
 );
 
 const FormDots: React.FC<{ form: string | null; align?: 'left' | 'right' }> = ({ form, align = 'left' }) => {
+  const { t } = useTranslation('nba');
   if (!form) return null;
   const last3 = form.replace(/\s/g, '').slice(0, 3).split('');
   return (
@@ -115,7 +120,7 @@ const FormDots: React.FC<{ form: string | null; align?: 'left' | 'right' }> = ({
             className={`inline-flex items-center justify-center text-[8px] font-bold text-white ${isWin ? 'bg-forest' : 'bg-rose-700'}`}
             style={{ width: 14, height: 14, borderRadius: 3 }}
           >
-            {isWin ? 'V' : 'D'}
+            {isWin ? t('grade.vitoria') : t('grade.derrota')}
           </span>
         );
       })}
@@ -124,7 +129,8 @@ const FormDots: React.FC<{ form: string | null; align?: 'left' | 'right' }> = ({
 };
 
 const GameRow: React.FC<{ g: RichGame; onClick: () => void }> = ({ g, onClick }) => {
-  const time = formatTime(g.gameDatetimeBrasilia);
+  const { t } = useTranslation('nba');
+  const time = formatTime(g.gameDatetimeBrasilia, t('grade.aDefinir'));
   const angle = g.angle ? angleBadgeTone(g.angle.rank) : null;
   return (
     <button
@@ -136,13 +142,13 @@ const GameRow: React.FC<{ g: RichGame; onClick: () => void }> = ({ g, onClick })
       <div>
         {g.isFinished ? (
           <>
-            <div className="text-[11px] font-semibold uppercase tracking-widest text-ink-2">FT</div>
-            <div className="text-[10px] uppercase tracking-[0.14em] font-semibold text-ink-2/70">final</div>
+            <div className="text-[11px] font-semibold uppercase tracking-widest text-ink-2">{t('grade.fim')}</div>
+            <div className="text-[10px] uppercase tracking-[0.14em] font-semibold text-ink-2/70">{t('grade.final')}</div>
           </>
         ) : (
           <>
             <div className="text-[18px] font-semibold tabular tracking-tight text-ink">{time}</div>
-            <div className="text-[10px] uppercase tracking-[0.14em] font-semibold text-ink-2/70">hoje</div>
+            <div className="text-[10px] uppercase tracking-[0.14em] font-semibold text-ink-2/70">{t('grade.hoje')}</div>
           </>
         )}
       </div>
@@ -186,11 +192,11 @@ const GameRow: React.FC<{ g: RichGame; onClick: () => void }> = ({ g, onClick })
       <div className="pr-2 min-w-0">
         {g.angle && angle && (
           <>
-            <div className="text-[10px] uppercase tracking-[0.16em] font-semibold text-ink-2">Confronto</div>
+            <div className="text-[10px] uppercase tracking-[0.16em] font-semibold text-ink-2">{t('grade.confronto')}</div>
             <div className="text-[12px] mt-1 text-ink">
               <span className="font-semibold">{g.angle.teamAbbr}</span> {g.angle.metricLabel} · #{g.angle.rank}
               <span className={`ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold tabular ${angle.cls}`}>
-                {angle.label}
+                {t(angle.chave)}
               </span>
             </div>
           </>
@@ -215,13 +221,13 @@ const GameRow: React.FC<{ g: RichGame; onClick: () => void }> = ({ g, onClick })
         )}
         {g.injuries.length > 0 && (
           <div className="flex items-center gap-1.5 flex-wrap text-[10px]">
-            <span className="uppercase tracking-[0.14em] font-bold text-ink-2/70">Lesões:</span>
+            <span className="uppercase tracking-[0.14em] font-bold text-ink-2/70">{t('grade.lesoes')}</span>
             {g.injuries.map((inj, i) => {
               const badge = statusBadgeTone(inj.status);
               return (
                 <span key={i} className="text-ink-2 whitespace-nowrap">
                   <span className="font-semibold text-ink">{lastName(inj.name)}</span>{' '}
-                  <span className={`tabular font-bold ${badge.cls}`}>{badge.text}</span>
+                  <span className={`tabular font-bold ${badge.cls}`}>{t(`estado.selo.${badge.id}`)}</span>
                   {i < g.injuries.length - 1 ? ',' : ''}
                 </span>
               );
@@ -236,7 +242,8 @@ const GameRow: React.FC<{ g: RichGame; onClick: () => void }> = ({ g, onClick })
 };
 
 const GameCardMobile: React.FC<{ g: RichGame; onClick: () => void }> = ({ g, onClick }) => {
-  const time = formatTime(g.gameDatetimeBrasilia);
+  const { t } = useTranslation('nba');
+  const time = formatTime(g.gameDatetimeBrasilia, t('grade.aDefinir'));
   const angle = g.angle ? angleBadgeTone(g.angle.rank) : null;
   const starsTotal = g.highlights.reduce((acc, h) => acc + h.stars, 0);
   return (
@@ -248,7 +255,7 @@ const GameCardMobile: React.FC<{ g: RichGame; onClick: () => void }> = ({ g, onC
       {/* Header */}
       <div className="px-3 py-2 flex items-center justify-between bg-canvas-2 border-b border-line">
         {g.isFinished ? (
-          <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2/70">FT</span>
+          <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2/70">{t('grade.fim')}</span>
         ) : (
           <span className="text-[10px] font-semibold tabular">{time}</span>
         )}
@@ -295,9 +302,9 @@ const GameCardMobile: React.FC<{ g: RichGame; onClick: () => void }> = ({ g, onC
         <div className="px-3 py-2 flex flex-col gap-1.5 border-t border-line">
           {g.angle && angle && (
             <div className="text-[10px] text-ink-2">
-              <span className="text-[9px] uppercase tracking-[0.16em] font-bold mr-1 text-ink-2/70">Ângulo</span>
+              <span className="text-[9px] uppercase tracking-[0.16em] font-bold mr-1 text-ink-2/70">{t('grade.angulo')}</span>
               <span className="font-semibold text-ink">{g.angle.teamAbbr}</span> {g.angle.metricLabel} · #{g.angle.rank}
-              <span className={`ml-1 px-1 py-0.5 rounded text-[9px] font-bold ${angle.cls}`}>{angle.label}</span>
+              <span className={`ml-1 px-1 py-0.5 rounded text-[9px] font-bold ${angle.cls}`}>{t(angle.chave)}</span>
             </div>
           )}
           {g.highlights.length > 0 && (
@@ -318,12 +325,13 @@ const GameCardMobile: React.FC<{ g: RichGame; onClick: () => void }> = ({ g, onC
 };
 
 export const NBAGamesRich: React.FC<NBAGamesRichProps> = ({ games, onOpenGame }) => {
+  const { t } = useTranslation('nba');
   const isMobile = useIsMobile();
 
   if (games.length === 0) {
     return (
       <div className="text-center py-8 text-[13px] text-ink-2 bg-white border border-line rounded-xl">
-        Nenhum jogo hoje
+        {t('grade.vazio')}
       </div>
     );
   }

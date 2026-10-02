@@ -1,4 +1,5 @@
 import { ArrowRight } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -39,6 +40,7 @@ import { cn } from '@/lib/utils';
  * dele, e não no card.
  */
 export function VerAnaliseCTA({ className }: { className?: string }) {
+  const { t } = useTranslation('futebol');
   return (
     <span
       className={cn(
@@ -47,7 +49,7 @@ export function VerAnaliseCTA({ className }: { className?: string }) {
         className,
       )}
     >
-      Ver análise completa <ArrowRight />
+      {t('cta.verAnalise')} <ArrowRight />
     </span>
   );
 }

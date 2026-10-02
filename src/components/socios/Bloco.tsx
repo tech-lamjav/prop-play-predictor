@@ -10,6 +10,10 @@ import type { ReactNode } from 'react';
  * o mesmo `h2` e a mesma lista de classes — inclusive o `role` e o `aria-label`
  * que os testes usam para achar cada bloco. Duas cópias divergiriam no primeiro
  * ajuste de espaçamento.
+ *
+ * `titulo` chega TRADUZIDO: o `t()` fica em quem chama, que é quem sabe de que
+ * bloco se trata. Traduzir aqui obrigaria o componente a conhecer o catálogo de
+ * todas as áreas que o usam — hoje `socios` e `futebol`.
  */
 export function Bloco({ titulo, children }: { titulo: string; children: ReactNode }) {
   return (

@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { fmtOdd, fmtDinheiro, fmtPct, fmtDecimal, fmtExato, fmtDecimalAte, fmtNumero, fmtLinhaAnalisada, LOCALE_PADRAO, MOEDA_PADRAO } from './formato';
+import { afterEach, describe, expect, it } from 'vitest';
+import { fmtOdd, fmtDinheiro, fmtPct, fmtDecimal, fmtExato, fmtDecimalAte, fmtNumero, fmtLinhaAnalisada, definirLocaleAtivo, LOCALE_PADRAO, MOEDA_PADRAO } from './formato';
 
 // ============================================================================
 // Réguas diferentes, e é de propósito (#529)
@@ -7,8 +7,8 @@ import { fmtOdd, fmtDinheiro, fmtPct, fmtDecimal, fmtExato, fmtDecimalAte, fmtNu
 // O produto misturava réguas incompatíveis num `toFixed` escrito à mão:
 //
 //   1. A ODD segue a convenção do setor e é SEMPRE ponto
-//   2. O DINHEIRO segue o país
-//   3. PORCENTAGEM, DECIMAL e NÚMERO seguem o país
+//   2. O DINHEIRO segue a MOEDA, e não o idioma da tela
+//   3. PORCENTAGEM, DECIMAL e NÚMERO seguem o IDIOMA ATIVO (#536)
 //   4. A LINHA ANALISADA ainda não tem régua decidida
 //
 // A prova da primeira está em página de operador: a Betsson escreve "cuota de
@@ -46,7 +46,7 @@ describe('fmtOdd · a odd não tem pátria', () => {
   });
 });
 
-describe('fmtDinheiro · o dinheiro segue o país', () => {
+describe('fmtDinheiro · o dinheiro segue a moeda', () => {
   it('no padrão da casa, mostra o símbolo', () => {
     // O símbolo vem da moeda configurada, e não de um "R$" digitado na tela —
     // que era o caso em três lugares, e é o que não vira "S/" nem "$" sozinho.
@@ -58,7 +58,7 @@ describe('fmtDinheiro · o dinheiro segue o país', () => {
     expect(fmtDinheiro(1234.5)).toBe('R$ 1.234,50');
   });
 
-  it('acompanha o país quando o país muda', () => {
+  it('acompanha o país quando a moeda muda', () => {
     expect(fmtDinheiro(1234.5, { locale: 'es-PE', moeda: 'PEN' })).toContain('1,234.50');
     expect(fmtDinheiro(1234.5, { locale: 'es-AR', moeda: 'ARS' })).toContain('1.234,50');
   });
@@ -68,7 +68,7 @@ describe('fmtDinheiro · o dinheiro segue o país', () => {
   });
 });
 
-describe('fmtPct e fmtDecimal · também seguem o país', () => {
+describe('fmtPct e fmtDecimal · seguem o idioma ativo', () => {
   it('a porcentagem arredonda e leva o símbolo', () => {
     expect(fmtPct(0.4)).toBe('40%');
     expect(fmtPct(0.406, 1)).toBe('40,6%');
@@ -145,7 +145,7 @@ describe('fmtDinheiro sem centavo', () => {
 });
 
 describe('fmtLinhaAnalisada · a régua que ainda não foi decidida', () => {
-  it('hoje segue o país, que é o que o produto já fazia', () => {
+  it('hoje segue o idioma, que é o que o produto já fazia pelo país', () => {
     expect(fmtLinhaAnalisada(2.5)).toBe('2,5');
     expect(fmtLinhaAnalisada(1.75)).toBe('1,75');
   });
@@ -159,6 +159,42 @@ describe('fmtLinhaAnalisada · a régua que ainda não foi decidida', () => {
 
   it('vazio vira travessão', () => {
     expect(fmtLinhaAnalisada(null)).toBe('—');
+  });
+});
+
+describe('o idioma ativo move umas réguas e não move outras (#536)', () => {
+  // Este bloco nasceu de um erro real: uma substituição cega apontou TODAS as
+  // réguas para o idioma ativo, dinheiro incluído. O resultado seria
+  // "R$ 1,234.50" — símbolo brasileiro com separador estrangeiro — numa tela
+  // que ninguém abriria em teste. Agora a regra tem quem a cobre.
+  afterEach(() => definirLocaleAtivo(LOCALE_PADRAO));
+
+  it('porcentagem e decimal acompanham o idioma', () => {
+    expect(fmtPct(0.406, 1)).toBe('40,6%');
+    definirLocaleAtivo('es-419');
+    expect(fmtPct(0.406, 1)).toBe('40.6%');
+    expect(fmtDecimal(2.45, 2)).toBe('2.45');
+    expect(fmtExato(0.12345)).toBe('0.12345');
+  });
+
+  it('⚠️ o DINHEIRO não acompanha, e é de propósito', () => {
+    // O preço é cobrado em real. A moeda manda no separador, não a tela.
+    const emPortugues = fmtDinheiro(1234.5);
+    definirLocaleAtivo('es-419');
+    expect(fmtDinheiro(1234.5)).toBe(emPortugues);
+    expect(fmtDinheiro(1234.5)).toBe('R$ 1.234,50');
+  });
+
+  it('⚠️ a ODD não acompanha, porque ela não acompanha nada', () => {
+    definirLocaleAtivo('es-419');
+    expect(fmtOdd(2.5)).toBe('2.50');
+    definirLocaleAtivo('pt-BR');
+    expect(fmtOdd(2.5)).toBe('2.50');
+  });
+
+  it('idioma passado à mão ainda ganha do ativo', () => {
+    definirLocaleAtivo('es-419');
+    expect(fmtDecimal(2.45, 2, 'pt-BR')).toBe('2,45');
   });
 });
 

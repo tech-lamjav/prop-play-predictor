@@ -1,12 +1,15 @@
-import { useRef } from 'react';
+import { useMemo, useRef } from 'react';
 import { Joyride, EVENTS, STATUS, type Step, type EventData } from 'react-joyride';
+import { useTranslation } from 'react-i18next';
 import { usePostHog } from '@posthog/react';
 import OnboardingTooltip from './OnboardingTooltip';
+import type { PassoDoTour } from './tours';
 
 export type PropsDoTour = {
   /** Identificador do tour (vai nos eventos de PostHog e na persistência). */
   tourId: string;
-  steps: Step[];
+  /** Os passos com o texto por CHAVE — ver `tours.tsx`. Aqui é que viram frase. */
+  steps: PassoDoTour[];
   run: boolean;
   /** Chamado uma vez quando o tour termina (concluído ou pulado). */
   onFinish: () => void;
@@ -23,6 +26,22 @@ export type PropsDoTour = {
 export default function OnboardingTourJoyride({ tourId, steps, run, onFinish }: PropsDoTour) {
   const posthog = usePostHog();
   const endedRef = useRef(false);
+  // A FRONTEIRA DA TRADUÇÃO do tour (#532). Os passos chegam com chave porque são
+  // dado montado fora de componente (ver `tours.tsx`); é aqui, que é componente e
+  // tem o tradutor, que a chave vira frase. O `t` troca de identidade quando o
+  // idioma muda, então os passos são remontados e o balão aberto já fala a língua
+  // nova, sem recarregar a página.
+  const { t, ready } = useTranslation('tour');
+
+  const passos = useMemo<Step[]>(
+    () =>
+      steps.map(({ tituloChave, conteudoChave, ...resto }) => ({
+        ...resto,
+        ...(tituloChave ? { title: t(tituloChave) } : {}),
+        content: t(conteudoChave),
+      })),
+    [steps, t],
+  );
 
   const handleEvent = (data: EventData) => {
     const { type, status, index, step } = data;
@@ -56,13 +75,22 @@ export default function OnboardingTourJoyride({ tourId, steps, run, onFinish }: 
 
   return (
     <Joyride
-      steps={steps}
-      run={run}
+      steps={passos}
+      // ⚠️ Espera o catálogo do tour chegar. O carregamento do texto é sob demanda
+      // e sem Suspense, então começar antes mostraria o CÓDIGO DA CHAVE no lugar
+      // da frase no primeiro quadro — e o tour roda uma vez na vida do usuário.
+      run={run && ready}
       continuous
       scrollToFirstStep
       onEvent={handleEvent}
       tooltipComponent={OnboardingTooltip}
-      locale={{ back: 'Voltar', close: 'Fechar', last: 'Entendi', next: 'Próximo', skip: 'Pular' }}
+      locale={{
+        back: t('tooltip.voltar'),
+        close: t('tooltip.fechar'),
+        last: t('tooltip.entendi'),
+        next: t('tooltip.proximo'),
+        skip: t('tooltip.pular'),
+      }}
       options={{
         arrowColor: '#ffffff',
         overlayColor: 'rgba(10, 31, 24, 0.55)',
