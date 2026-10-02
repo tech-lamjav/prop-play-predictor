@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { brtDateStr, brtDayOf, fmtDayHeader } from './futebol-datas';
+import { brtDateStr, brtDayOf, fmtDayHeader, fmtDayShort } from './futebol-datas';
 import { definirLocaleAtivo, LOCALE_PADRAO } from './idioma-ativo';
 
 // ============================================================================
@@ -65,5 +65,57 @@ describe('o rótulo que a pessoa lê, esse sim acompanha', () => {
     // versão do navegador. O que ele cobra é a DIFERENÇA — se as duas saírem
     // iguais, o rótulo parou de seguir o idioma e ninguém notaria.
     expect(emEspanhol, `as duas saíram "${emPortugues}"`).not.toBe(emPortugues);
+  });
+});
+
+// ============================================================================
+// As duas pontas de um intervalo escrevem a data do mesmo jeito
+// ============================================================================
+// A tela de campeonatos escrevia "del 15 ago al 30 may 2027" com um HÍFEN só
+// numa das pontas — "del 15-ago" — e isso parecia defeito nosso. Não era: o
+// CLDR escreve dia+mês de `es-419` com hífen e dia+mês+ano com espaço, e as
+// duas pontas saem da MESMA `fmtDayShort`, uma com ano e outra sem.
+//
+// Em português o problema não aparece, porque `pt-BR` usa "de" nos dois casos.
+// Então é uma guarda que só tem o que medir no idioma novo — e sem ela, o
+// conserto volta a ser desfeito por quem mexer na formatação sem abrir a tela
+// em espanhol.
+// ============================================================================
+
+describe('as duas pontas de um intervalo de datas combinam', () => {
+  afterEach(() => definirLocaleAtivo(LOCALE_PADRAO));
+
+  const INICIO = '2026-08-15';
+  const FIM = '2027-05-30';
+
+  for (const locale of ['pt-BR', 'es-419']) {
+    it(`mesmo separador com e sem ano em ${locale}`, () => {
+      definirLocaleAtivo(locale);
+      const semAno = fmtDayShort(INICIO);
+      const comAno = fmtDayShort(FIM, true);
+      // O separador é o que está entre o dia e o mês. Comparar os dois
+      // diretamente não serve, porque um tem ano e o outro não.
+      // Sem `trim`: um espaço É o separador, e apagá-lo faria "30 may 2027"
+      // parecer não ter separador nenhum.
+      const separador = (s: string) => s.replace(/[\p{L}\d]+/gu, '').charAt(0);
+      expect(
+        separador(semAno),
+        `"${semAno}" e "${comAno}" separam dia e mês de formas diferentes`,
+      ).toBe(separador(comAno));
+    });
+  }
+
+  it('não sobrou hífen no espanhol', () => {
+    definirLocaleAtivo('es-419');
+    // O caso exato que o usuário fotografou: "02-dic".
+    expect(fmtDayShort('2026-12-02')).not.toContain('-');
+  });
+
+  it('o português não mudou', () => {
+    // Critério da migração inteira: em português nada muda. Aqui isso é fácil
+    // de garantir porque `pt-BR` não põe hífen nessa posição — mas é
+    // justamente o tipo de coisa que ninguém confere.
+    expect(fmtDayShort('2026-12-02')).toBe('02 de dez');
+    expect(fmtDayShort('2027-05-30', true)).toBe('30 de mai de 2027');
   });
 });

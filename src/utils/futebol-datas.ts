@@ -161,6 +161,29 @@ export function fmtDayHeader(dayKey: string | null | undefined): string {
 }
 
 /**
+ * O separador entre dia e mês, uniforme.
+ *
+ * ⚠️ MESMA FUNÇÃO, DOIS SEPARADORES, E A CULPA NÃO É NOSSA. O CLDR escreve
+ * dia+mês de `es-419` com HÍFEN e dia+mês+ano com ESPAÇO:
+ *
+ *   dia e mês ....... "02-dic"
+ *   com o ano ....... "30 may 2027"
+ *
+ * Na tela de campeonatos as duas pontas do intervalo saem da mesma
+ * `fmtDayShort`, uma com ano e outra sem — então o produto escrevia
+ * "del 15-ago al 30 may 2027" e parecia defeito nosso. Em português o problema
+ * não existe, porque `pt-BR` usa "de" nos dois casos.
+ *
+ * Trocar o hífen por espaço iguala as duas pontas e não muda nada em português,
+ * que não tem hífen nessa posição. O que NÃO serve é mexer em
+ * `LOCALE_DO_IDIOMA`: `es-419` está escolhido por causa do separador DECIMAL
+ * dos quatro mercados, e data não manda nessa decisão.
+ */
+function separadorUniforme(s: string): string {
+  return s.replace(/-/g, ' ');
+}
+
+/**
  * Dia sem o dia da semana: "21 de mar", ou "21 de mar de 2027" com `comAno`.
  * Pra intervalo (temporada de 15/ago a 30/mai), repetir "Sábado," nas duas pontas
  * só ocupa espaço, e o ano importa quando a temporada atravessa o ano.
@@ -169,7 +192,7 @@ export function fmtDayShort(dayKey: string | null | undefined, comAno = false): 
   if (!dayKey) return '—';
   const d = new Date(`${dayKey}T12:00:00Z`);
   if (isNaN(d.getTime())) return '—';
-  return formatadorDeData(localeAtivo(), {
+  const bruto = formatadorDeData(localeAtivo(), {
     timeZone: SAO_PAULO_TZ,
     day: '2-digit',
     month: 'short',
@@ -177,6 +200,7 @@ export function fmtDayShort(dayKey: string | null | undefined, comAno = false): 
   })
     .format(d)
     .replace('.', '');
+  return separadorUniforme(bruto);
 }
 
 /** Ano de uma chave `YYYY-MM-DD`. */
