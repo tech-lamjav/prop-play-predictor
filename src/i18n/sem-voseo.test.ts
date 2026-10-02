@@ -45,6 +45,16 @@ const LEGITIMAS = new Set([
   // Todas medidas nos catálogos deste produto; a lista cresce por medição.
   'cancela', 'cancelas', 'cancelo', 'empate', 'escala', 'modelo',
   'oscila', 'promete', 'señala', 'señalan',
+  // ⚠️ VERBO COM RADICAL TERMINADO EM "L", que é a classe que mais aparece
+  // aqui. "cancelar" e "señalar" fazem "cancel+e" e "señal+e", e o "l" do
+  // radical cola na desinência virando "le" — a mesma forma de um pronome
+  // colado. "cancela", "cancelas", "cancelo", "señala" e "señalan" já estavam
+  // na lista pelo mesmo motivo; estas são as duas flexões que faltavam.
+  //
+  // Não dá para virar regra como o plural em "-les": excluir tudo que termina
+  // em "-ale/-ele" deixaria passar "hacele" e "decile", que são voseo de
+  // verdade. O preço de a morfologia ser ambígua é esta linha.
+  'cancele', 'señale',
   // Nome próprio terminado em vogal acentuada.
   'canadá',
   // ⚠️ PRETÉRITO DE PRIMEIRA PESSOA, e a razão de ele morar numa lista.
@@ -274,6 +284,8 @@ describe('o espanhol do produto é pan-hispânico', () => {
       // Plural de palavra terminada em -l: morfologia, não pronome colado.
       // As três primeiras apareceram nos catálogos e fizeram a regra existir.
       'actuales', 'Modelos', 'Canadá', 'niveles', 'totales', 'principales',
+      // Subjuntivo de verbo com radical em -l: 'cuando ella cancele'.
+      'cancele', 'señale',
       // Futuro de TERCEIRA pessoa, que fez alguém reescrever a copy.
       'será', 'podrá', 'tendrá', 'hablará', 'vendrá', 'dirá', 'hará',
     ]) {

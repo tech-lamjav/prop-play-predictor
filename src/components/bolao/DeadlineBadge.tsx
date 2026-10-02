@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Clock, AlertCircle } from 'lucide-react';
 import {
   getNextDeadline,
@@ -22,6 +23,7 @@ interface DeadlineBadgeProps {
  * when < 1h remains.
  */
 export const DeadlineBadge: React.FC<DeadlineBadgeProps> = ({ matches, mode, isClosed, variant = 'default' }) => {
+  const { t } = useTranslation('bolao');
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
@@ -35,6 +37,9 @@ export const DeadlineBadge: React.FC<DeadlineBadgeProps> = ({ matches, mode, isC
   if (!next) return null;
 
   const urgent = isDeadlineUrgent(next.deadline, now);
+  // ⚠️ `formatDeadlineRelative` ainda devolve português ("Encerrado", "Hoje",
+  // "Amanhã"): mora em `src/hooks/use-bolao.ts`, fora deste bloco, e é função
+  // pura sem acesso ao `t()`. Fica como dívida declarada.
   const label = formatDeadlineRelative(next.deadline, now);
 
   if (variant === 'compact') {
@@ -43,10 +48,10 @@ export const DeadlineBadge: React.FC<DeadlineBadgeProps> = ({ matches, mode, isC
         className={`inline-flex items-center gap-1 text-[11px] font-medium tabular-nums ${
           urgent ? 'text-terminal-red animate-pulse' : 'text-terminal-yellow/80'
         }`}
-        title={`Próximo prazo: ${next.deadline.toLocaleString(localeAtivo())}`}
+        title={t('prazo.proximo', { quando: next.deadline.toLocaleString(localeAtivo()) })}
       >
         <Clock className="w-3 h-3" />
-        Fecha {label}
+        {t('prazo.fecha', { quando: label })}
       </span>
     );
   }
@@ -58,11 +63,11 @@ export const DeadlineBadge: React.FC<DeadlineBadgeProps> = ({ matches, mode, isC
           ? 'border-terminal-red/40 bg-terminal-red/10 text-terminal-red animate-pulse'
           : 'border-terminal-yellow/30 bg-terminal-yellow/5 text-terminal-yellow/90'
       }`}
-      title={`Próximo prazo: ${next.deadline.toLocaleString(localeAtivo())}`}
+      title={t('prazo.proximo', { quando: next.deadline.toLocaleString(localeAtivo()) })}
       aria-live="polite"
     >
       {urgent ? <AlertCircle className="w-3.5 h-3.5" /> : <Clock className="w-3.5 h-3.5" />}
-      <span>Fecha {label}</span>
+      <span>{t('prazo.fecha', { quando: label })}</span>
     </div>
   );
 };

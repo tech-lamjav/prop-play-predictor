@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Trophy,
@@ -65,6 +66,7 @@ function formatDeadline(matches: any[] | undefined, bolao: any) {
 }
 
 const BolaoHome: React.FC = () => {
+  const { t } = useTranslation('bolao');
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
@@ -98,7 +100,7 @@ const BolaoHome: React.FC = () => {
 
   // Lista de fases pra navegação por setas: Rodada 1/2/3 + mata-mata
   const phases = useMemo(() => {
-    if (!matches) return [] as { id: string; label: string; subLabel: string; matches: typeof matches }[];
+    if (!matches) return [] as { id: string; chave: string; matches: typeof matches }[];
 
     const byDateTime = (a: any, b: any) =>
       a.match_date.localeCompare(b.match_date) ||
@@ -137,24 +139,30 @@ const BolaoHome: React.FC = () => {
       });
     Object.values(byStage).forEach((rm) => rm.sort(byDateTime));
 
-    const knockoutLabels: Record<string, { label: string; subLabel: string }> = {
-      round_of_32: { label: 'Oitavas (32)', subLabel: '27 a 30 de junho' },
-      round_of_16: { label: '16 Avos', subLabel: '03 a 05 de julho' },
-      quarter: { label: 'Quartas', subLabel: '08 a 11 de julho' },
-      semi: { label: 'Semifinal', subLabel: '14 a 15 de julho' },
-      third_place: { label: '3º lugar', subLabel: '18 de julho' },
-      final: { label: 'Final', subLabel: '19 de julho' },
+    // ⚠️ Esta tabela guarda CHAVE de tradução, e não rótulo.
+    //
+    // O `stage` (round_of_32, quarter, …) é contrato de banco — vem de
+    // `wc_matches.stage` e fica em inglês, intocado. O que muda de idioma é só
+    // o rótulo, e ele é resolvido no render: guardar o texto aqui o congelaria
+    // no idioma em que o memo foi calculado, e a tela não acompanharia a troca.
+    const chaveDaFase: Record<string, string> = {
+      round_of_32: 'round32',
+      round_of_16: 'round16',
+      quarter: 'quartas',
+      semi: 'semi',
+      third_place: 'terceiro',
+      final: 'final',
     };
 
-    const list: { id: string; label: string; subLabel: string; matches: typeof matches }[] = [
-      { id: 'r1', label: 'Rodada 1', subLabel: '11 a 14 de junho', matches: round1 },
-      { id: 'r2', label: 'Rodada 2', subLabel: '15 a 18 de junho', matches: round2 },
-      { id: 'r3', label: 'Rodada 3', subLabel: '19 a 25 de junho', matches: round3 },
+    const list: { id: string; chave: string; matches: typeof matches }[] = [
+      { id: 'r1', chave: 'r1', matches: round1 },
+      { id: 'r2', chave: 'r2', matches: round2 },
+      { id: 'r3', chave: 'r3', matches: round3 },
     ];
     ['round_of_32', 'round_of_16', 'quarter', 'semi', 'third_place', 'final'].forEach((stage) => {
       const ms = byStage[stage] || [];
       if (ms.length > 0) {
-        list.push({ id: stage, ...knockoutLabels[stage], matches: ms });
+        list.push({ id: stage, chave: chaveDaFase[stage], matches: ms });
       }
     });
 
@@ -178,14 +186,17 @@ const BolaoHome: React.FC = () => {
         {
           onSuccess: (bolao) => {
             setShowCreate(false);
-            toast({ title: 'Bolão criado!', description: `Código: ${bolao.invite_code}` });
+            toast({
+              title: t('home.criacao.sucesso'),
+              description: t('home.criacao.codigo', { codigo: bolao.invite_code }),
+            });
             // /welcome guia o criador pelo proximo passo (convidar amigos)
             // e depois pelas configs opcionais. Antes caia direto em
             // ?settings=true, que era confuso pra primeiro contato.
             navigate(`/bolao/${bolao.id}/welcome`);
           },
           onError: (err: any) => {
-            toast({ title: 'Erro ao criar', description: err.message, variant: 'destructive' });
+            toast({ title: t('home.criacao.erro'), description: err.message, variant: 'destructive' });
           },
         }
       );
@@ -200,7 +211,7 @@ const BolaoHome: React.FC = () => {
         const {
           data: { session },
         } = await supabase.auth.getSession();
-        if (!session) throw new Error('Usuário não autenticado');
+        if (!session) throw new Error(t('home.criacao.naoAutenticado'));
         const { data: fnData, error } = await supabase.functions.invoke('stripe-create-checkout', {
           body: {
             priceId: BOLAO_PRO_PRICE_ID,
@@ -215,7 +226,7 @@ const BolaoHome: React.FC = () => {
         window.location.href = fnData.url;
       } catch (err: any) {
         setCheckoutRedirecting(false);
-        toast({ title: 'Erro ao iniciar checkout', description: err?.message, variant: 'destructive' });
+        toast({ title: t('home.criacao.erroCheckout'), description: err?.message, variant: 'destructive' });
       }
     } else {
       createBolao.mutate(
@@ -227,7 +238,7 @@ const BolaoHome: React.FC = () => {
             window.location.href = `${BOLAO_PRO_PAYMENT_LINK}?client_reference_id=${bolao.id}`;
           },
           onError: (err: any) => {
-            toast({ title: 'Erro ao criar bolão', description: err.message, variant: 'destructive' });
+            toast({ title: t('home.criacao.erroBolao'), description: err.message, variant: 'destructive' });
           },
         }
       );
@@ -240,14 +251,16 @@ const BolaoHome: React.FC = () => {
     joinBolao.mutate(code, {
       onSuccess: (result: any) => {
         if (result.success && result.bolao_id) {
-          toast({ title: result.message || 'Você entrou no bolão!' });
+          // `result.message` e `result.error` vêm do RPC `join_bolao_by_code`:
+          // são texto do servidor, não do catálogo. Só o recuo é traduzido.
+          toast({ title: result.message || t('home.entrada.sucesso') });
           navigate(`/bolao/${result.bolao_id}`);
         } else {
-          toast({ title: 'Erro', description: result.error, variant: 'destructive' });
+          toast({ title: t('home.entrada.erro'), description: result.error, variant: 'destructive' });
         }
       },
       onError: (err: any) => {
-        toast({ title: 'Erro ao entrar', description: err.message, variant: 'destructive' });
+        toast({ title: t('home.entrada.erroEntrar'), description: err.message, variant: 'destructive' });
       },
     });
   };
@@ -264,20 +277,24 @@ const BolaoHome: React.FC = () => {
         <div className="bg-forest text-white rounded-rebrand-xl p-7 relative overflow-hidden mb-8">
           <div className="absolute -right-16 -top-16 w-56 h-56 rounded-full bg-amber/10 pointer-events-none" />
           <div className="text-[11px] uppercase tracking-[0.14em] font-semibold opacity-60 mb-2">
-            Copa do Mundo 2026
+            {t('home.hero.selo')}
           </div>
           <h1 data-tour="bolao-hero" className="font-display text-[40px] sm:text-[48px] leading-[1.05] font-extrabold mb-2">
             {days > 0 ? (
-              <>
-                Faltam <span className="text-amber">{days} dias</span>.<br />
-                Já tá no bolão de quem?
-              </>
+              // Plural pelo `count`: o texto de antes dizia "Faltam 1 dias"
+              // na véspera da Copa.
+              <Trans
+                t={t}
+                i18nKey="home.hero.contagem"
+                count={days}
+                components={[<span className="text-amber" key="dias" />, <br key="quebra" />]}
+              />
             ) : (
-              <>A Copa começou.<br />Bora palpitar?</>
+              <Trans t={t} i18nKey="home.hero.comecou" components={[<br key="quebra" />]} />
             )}
           </h1>
           <p className="text-[13px] opacity-75 mb-5 max-w-[460px] leading-relaxed">
-            Crie um do zero pra galera ou entre no de um amigo com o código. EUA · México · Canadá · 48 seleções · 104 jogos.
+            {t('home.hero.chamada')}
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <Button
@@ -287,15 +304,15 @@ const BolaoHome: React.FC = () => {
               className="rounded-rebrand-md gap-1.5"
             >
               <Plus className="w-4 h-4" />
-              Criar bolão
+              {t('home.hero.criar')}
             </Button>
-            <span className="opacity-40 text-[12px] mx-1">ou</span>
+            <span className="opacity-40 text-[12px] mx-1">{t('home.hero.ou')}</span>
             <div className="flex items-center gap-1 bg-white/10 border border-white/20 rounded-rebrand-md p-1">
               <input
                 value={inviteCode}
                 onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
                 onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
-                placeholder="Código (ex: ABC123)"
+                placeholder={t('home.hero.codigoPlaceholder')}
                 maxLength={8}
                 className="bg-transparent px-3 h-9 text-[13px] text-white placeholder:text-white/40 focus:outline-none w-[160px] sm:w-[180px] font-mono"
               />
@@ -304,7 +321,7 @@ const BolaoHome: React.FC = () => {
                 disabled={inviteCode.trim().length < 4 || joinBolao.isPending}
                 className="h-9 px-3 text-[12px] font-semibold bg-white/15 hover:bg-white/25 text-white rounded inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
-                {joinBolao.isPending ? '...' : <>Entrar <ChevronRight className="w-3 h-3" /></>}
+                {joinBolao.isPending ? '...' : <>{t('home.hero.entrar')} <ChevronRight className="w-3 h-3" /></>}
               </button>
             </div>
           </div>
@@ -313,10 +330,10 @@ const BolaoHome: React.FC = () => {
         {/* ═══ MEUS BOLÕES ═══ */}
         <div className="mb-8">
           <div className="flex items-baseline gap-2 mb-4">
-            <h2 className="font-display text-[24px] font-bold">Meus bolões</h2>
+            <h2 className="font-display text-[24px] font-bold">{t('home.meus.titulo')}</h2>
             {!empty && boloes && (
               <span className="text-[12px] tabular-nums text-ink-2">
-                · {boloes.length} ativo{boloes.length !== 1 ? 's' : ''}
+                {t('home.meus.ativos', { count: boloes.length })}
               </span>
             )}
           </div>
@@ -337,32 +354,32 @@ const BolaoHome: React.FC = () => {
                 <div className="w-12 h-12 rounded-rebrand-md bg-canvas-2 border border-forest/20 grid place-items-center text-forest mb-3">
                   <Plus className="w-5 h-5" />
                 </div>
-                <h3 className="font-display text-[20px] font-bold mb-1.5 text-ink">Crie um do zero</h3>
+                <h3 className="font-display text-[20px] font-bold mb-1.5 text-ink">{t('home.vazio.criar.titulo')}</h3>
                 <p className="text-[13px] text-ink-2 leading-relaxed mb-4">
-                  Você é o dono. Define a pontuação, convida a galera, customiza com banner. Free pra até 20 pessoas, Premium pra ranking ilimitado e palpites especiais.
+                  {t('home.vazio.criar.texto')}
                 </p>
                 <Button
                   variant="forest"
                   onClick={() => setShowCreate(true)}
                   className="rounded-rebrand-md gap-1.5"
                 >
-                  Criar agora <ChevronRight className="w-4 h-4" />
+                  {t('home.vazio.criar.acao')} <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>
               <div className="bg-white border border-line rounded-rebrand-xl p-6">
                 <div className="w-12 h-12 rounded-rebrand-md bg-amber/10 border border-amber/30 grid place-items-center text-amber-2 mb-3">
                   <Users className="w-5 h-5" />
                 </div>
-                <h3 className="font-display text-[20px] font-bold mb-1.5 text-ink">Entre num bolão</h3>
+                <h3 className="font-display text-[20px] font-bold mb-1.5 text-ink">{t('home.vazio.entrar.titulo')}</h3>
                 <p className="text-[13px] text-ink-2 leading-relaxed mb-4">
-                  Pediu o código pro amigo? Cola aqui. Você entra direto, vê o ranking e começa a palpitar.
+                  {t('home.vazio.entrar.texto')}
                 </p>
                 <div className="flex items-center gap-2">
                   <input
                     value={inviteCode}
                     onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
                     onKeyDown={(e) => e.key === 'Enter' && handleJoin()}
-                    placeholder="Código (ex: ABC123)"
+                    placeholder={t('home.hero.codigoPlaceholder')}
                     maxLength={8}
                     className="flex-1 h-10 px-3 text-[13px] font-mono border border-line rounded-rebrand-md focus:outline-none focus:border-forest text-ink placeholder:text-ink-3"
                   />
@@ -372,7 +389,7 @@ const BolaoHome: React.FC = () => {
                     disabled={inviteCode.trim().length < 4 || joinBolao.isPending}
                     className="rounded-rebrand-md"
                   >
-                    Entrar
+                    {t('home.vazio.entrar.acao')}
                   </Button>
                 </div>
               </div>
@@ -421,7 +438,7 @@ const BolaoHome: React.FC = () => {
                           </h3>
                           {b.is_premium && (
                             <span className="text-[9px] font-bold tracking-wider px-1.5 py-0.5 rounded bg-amber/15 text-amber-2 border border-amber/30">
-                              PREMIUM
+                              {t('home.card.premium')}
                             </span>
                           )}
                         </div>
@@ -433,14 +450,14 @@ const BolaoHome: React.FC = () => {
                           <span className="font-mono opacity-70">#{b.invite_code}</span>
                           {isCreator && (
                             <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-canvas-2 text-ink-2 border border-line">
-                              dono
+                              {t('home.card.dono')}
                             </span>
                           )}
                         </div>
                       </div>
                       {/* Posição */}
                       <div className="text-right shrink-0">
-                        <div className="text-[10px] uppercase tracking-wider text-ink-2 mb-0.5">posição</div>
+                        <div className="text-[10px] uppercase tracking-wider text-ink-2 mb-0.5">{t('home.card.posicao')}</div>
                         <div
                           className={`font-display text-[22px] font-bold leading-none tabular-nums inline-flex items-center gap-1 ${
                             podio ? 'text-forest' : 'text-ink'
@@ -450,7 +467,7 @@ const BolaoHome: React.FC = () => {
                           {b.member_count > 1 ? `${b.user_rank}º` : '—'}
                         </div>
                         <div className="text-[11px] tabular-nums text-ink-2 mt-0.5">
-                          de {b.member_count}
+                          {t('home.card.de', { total: b.member_count })}
                         </div>
                       </div>
                     </div>
@@ -460,7 +477,7 @@ const BolaoHome: React.FC = () => {
                       <div className="mb-3">
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-[11px] uppercase tracking-wider font-semibold text-ink-2">
-                            Seus palpites
+                            {t('home.card.seusPalpites')}
                           </span>
                           <span className="text-[12px] tabular-nums">
                             <span className="font-semibold">{b.user_predictions}</span>
@@ -484,20 +501,20 @@ const BolaoHome: React.FC = () => {
                         {allDone ? (
                           <>
                             <Check className="w-3.5 h-3.5 text-status-success" />
-                            <span className="text-status-success font-medium">Tudo palpitado</span>
+                            <span className="text-status-success font-medium">{t('home.card.tudoPalpitado')}</span>
                           </>
                         ) : proxPrazo ? (
                           <>
                             <Clock className="w-3.5 h-3.5 text-status-warning" />
-                            <span className="text-ink-2">próx prazo</span>
+                            <span className="text-ink-2">{t('home.card.proxPrazo')}</span>
                             <span className="font-medium tabular-nums text-ink">{proxPrazo}</span>
                           </>
                         ) : (
-                          <span className="text-ink-2">Aguardando jogos</span>
+                          <span className="text-ink-2">{t('home.card.aguardandoJogos')}</span>
                         )}
                       </div>
                       <span className="text-ink-2 group-hover:text-forest transition-colors text-[12px] inline-flex items-center gap-0.5">
-                        Abrir <ChevronRight className="w-3.5 h-3.5" />
+                        {t('home.card.abrir')} <ChevronRight className="w-3.5 h-3.5" />
                       </span>
                     </div>
                   </button>
@@ -513,9 +530,9 @@ const BolaoHome: React.FC = () => {
             <div>
               <div className="flex items-center gap-2 mb-0.5">
                 <Trophy className="w-4 h-4 text-forest" />
-                <span className="font-display text-[18px] font-bold text-ink">Tabela da Copa</span>
+                <span className="font-display text-[18px] font-bold text-ink">{t('home.tabela.titulo')}</span>
               </div>
-              <div className="text-[12px] text-ink-2">104 jogos · 12 grupos · do dia 11/06 ao 19/07</div>
+              <div className="text-[12px] text-ink-2">{t('home.tabela.resumo')}</div>
             </div>
             <div className="flex items-center gap-2">
               <button
@@ -526,7 +543,7 @@ const BolaoHome: React.FC = () => {
                 className="h-8 px-2.5 text-[12px] font-medium text-ink-2 hover:text-ink border border-line rounded-rebrand-sm inline-flex items-center gap-1"
               >
                 <LayoutGrid className="w-3 h-3" />
-                Grupos
+                {t('home.tabela.grupos')}
               </button>
               <button
                 onClick={(e) => {
@@ -536,7 +553,7 @@ const BolaoHome: React.FC = () => {
                 className="h-8 px-2.5 text-[12px] font-medium text-ink-2 hover:text-ink border border-line rounded-rebrand-sm inline-flex items-center gap-1"
               >
                 <GitBranch className="w-3 h-3" />
-                Mata-mata
+                {t('home.tabela.mataMata')}
               </button>
               <ChevronRight className="w-4 h-4 text-ink-2 ml-1" />
             </div>
@@ -550,18 +567,18 @@ const BolaoHome: React.FC = () => {
                     type="button"
                     onClick={() => setPhaseIndex((i) => Math.max(0, i - 1))}
                     disabled={phaseIndex === 0}
-                    aria-label="Rodada anterior"
+                    aria-label={t('home.tabela.rodadaAnterior')}
                     className="w-9 h-9 grid place-items-center rounded-rebrand-sm text-forest hover:bg-forest/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </button>
                   <div className="flex-1 text-center min-w-0">
                     <div className="text-[11px] uppercase tracking-wider font-semibold text-forest">
-                      {currentPhase.label}
+                      {t(`home.fases.${currentPhase.chave}.rotulo`)}
                     </div>
-                    {currentPhase.subLabel && (
-                      <div className="text-[11px] text-ink-2 mt-0.5">{currentPhase.subLabel}</div>
-                    )}
+                    <div className="text-[11px] text-ink-2 mt-0.5">
+                      {t(`home.fases.${currentPhase.chave}.periodo`)}
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-[11px] tabular-nums text-ink-2 shrink-0">
@@ -571,7 +588,7 @@ const BolaoHome: React.FC = () => {
                       type="button"
                       onClick={() => setPhaseIndex((i) => Math.min(phases.length - 1, i + 1))}
                       disabled={phaseIndex === phases.length - 1}
-                      aria-label="Próxima rodada"
+                      aria-label={t('home.tabela.proximaRodada')}
                       className="w-9 h-9 grid place-items-center rounded-rebrand-sm text-forest hover:bg-forest/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                     >
                       <ChevronRight className="w-4 h-4" />
@@ -615,7 +632,7 @@ const BolaoHome: React.FC = () => {
               </>
             ) : (
               <div className="px-5 py-8 text-center text-ink-2 text-[12px]">
-                Carregando jogos…
+                {t('home.tabela.carregando')}
               </div>
             )}
           </div>
@@ -641,9 +658,9 @@ const BolaoHome: React.FC = () => {
         >
           <div className="bg-white border border-amber/40 rounded-rebrand-xl p-6 max-w-sm text-center">
             <div className="w-12 h-12 mx-auto mb-4 border-[3px] border-amber/30 border-t-amber rounded-full animate-spin" />
-            <p className="text-[15px] font-bold text-amber-2 mb-1">Redirecionando para pagamento</p>
+            <p className="text-[15px] font-bold text-amber-2 mb-1">{t('home.checkout.titulo')}</p>
             <p className="text-[12px] text-ink-2">
-              Aguarde a página da Stripe carregar. Não feche essa janela.
+              {t('home.checkout.texto')}
             </p>
           </div>
         </div>

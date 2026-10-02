@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 
 // ============================================================================
 // Tela pública não tem texto escrito direto no código (#532)
@@ -259,19 +259,10 @@ describe('tela pública não tem texto escrito direto no código', () => {
  * pertence. A lista só ENCURTA.
  */
 const BACKLOG_DA_AREA_LOGADA: Record<string, string> = {
-  // Bloco da NBA logada.
-  'src/pages/Picks.tsx': 'NBA logada',
-  'src/pages/Report.tsx': 'NBA logada',
-  // Bloco da Análise 360.
-  'src/pages/Analise360List.tsx': 'Análise 360',
-  'src/pages/Analise360Detail.tsx': 'Análise 360',
-  // Bloco do bolão logado.
-  'src/pages/BolaoDetail.tsx': 'bolão logado',
-  'src/pages/BolaoJoin.tsx': 'bolão logado',
-  'src/pages/BolaoWelcome.tsx': 'bolão logado',
-  'src/pages/BolaoPalpites.tsx': 'bolão logado',
-  // Bloco dos sócios, que é uso interno e vem por último.
-  'src/pages/AssinaturasDoCrm.tsx': 'sócios',
+  // Vazio, e isto é um marco: as nove telas logadas que estavam aqui foram
+  // migradas, e o segundo dente da catraca cobrou a saída de cada nome. O que
+  // falta agora não é tela, é o que a tela DESENHA — ver o backlog de
+  // componentes mais abaixo.
 };
 
 describe('a área logada tem catraca, e ela só aperta', () => {
@@ -314,6 +305,168 @@ describe('a área logada tem catraca, e ela só aperta', () => {
 
   it('o backlog não tem nome que não existe', () => {
     const fantasmas = Object.keys(BACKLOG_DA_AREA_LOGADA).filter(
+      (c) => !existsSync(resolve(RAIZ, c)),
+    );
+    expect(fantasmas, `arquivo inexistente no backlog: ${fantasmas.join(', ')}`).toEqual([]);
+  });
+});
+
+// ============================================================================
+// O que a tela DESENHA, e não só o arquivo da tela
+// ============================================================================
+// ⚠️ TERCEIRA VEZ QUE ESTA GUARDA MEDE MENOS DO QUE PARECE MEDIR, E A MAIOR.
+//
+// Primeiro ela media o catálogo, e catálogo certo não é tela certa. Depois
+// passou a ler as telas, e descartava as protegidas. Agora: ela lê o ARQUIVO DA
+// TELA, e a tela é feita de COMPONENTES.
+//
+// `BolaoDetail.tsx` está limpo. Dentro dele desenha `BolaoAdminPanel`, com
+// 84 kB de português. A tela passa verde e a pessoa vê português — exatamente o
+// mesmo engano das duas vezes anteriores, num nível mais fundo. Quem contou
+// foram 38 componentes de bolão achados à mão, não esta guarda.
+//
+// Então a varredura segue os IMPORTES, a partir de cada tela, até onde eles
+// levarem dentro de `src`. É mais caro e é o único alcance que corresponde ao
+// que alguém vê.
+// ============================================================================
+
+/** Resolve `@/x`, `./x` e `../x` num caminho de arquivo dentro de `src`. */
+function resolverImporte(de: string, especificador: string): string | null {
+  let base: string;
+  if (especificador.startsWith('@/')) base = join('src', especificador.slice(2));
+  else if (especificador.startsWith('.')) base = join(dirname(de), especificador);
+  else return null; // pacote do node_modules: não é nosso texto
+
+  base = base.split('\\').join('/');
+  for (const ext of ['.tsx', '.ts', '/index.tsx', '/index.ts']) {
+    if (existsSync(resolve(RAIZ, base + ext))) return base + ext;
+  }
+  return existsSync(resolve(RAIZ, base)) ? base : null;
+}
+
+/**
+ * Todo arquivo nosso que uma tela alcança, direta ou indiretamente.
+ *
+ * Transitivo de propósito: `BolaoDetail` importa `PredictionsList`, que importa
+ * `MatchPredictionCard`. Parar no primeiro nível deixaria o segundo invisível, e
+ * é no segundo que mora o texto.
+ */
+function fechamentoDeImportes(sementes: string[]): string[] {
+  const vistos = new Set<string>();
+  const fila = [...sementes];
+
+  while (fila.length) {
+    const atual = fila.shift();
+    if (!atual || vistos.has(atual) || !existsSync(resolve(RAIZ, atual))) continue;
+    vistos.add(atual);
+    for (const [, esp] of ler(atual).matchAll(/from\s+['"]([^'"]+)['"]/g)) {
+      const alvo = resolverImporte(atual, esp);
+      if (alvo && !vistos.has(alvo) && !/\.test\./.test(alvo)) fila.push(alvo);
+    }
+  }
+  return [...vistos];
+}
+
+/**
+ * Componentes que ainda não foram migrados, cada um com o bloco a que pertence.
+ * A lista só ENCURTA, e vale o mesmo aviso do backlog das telas.
+ */
+const BACKLOG_DE_COMPONENTES: Record<string, string> = {
+  // bolão: componentes (24)
+  'src/components/bolao/AchievementProvider.tsx': 'bolão: componentes',
+  'src/components/bolao/BolaoAdminPanel.tsx': 'bolão: componentes',
+  'src/components/bolao/BolaoEmptyState.tsx': 'bolão: componentes',
+  'src/components/bolao/BolaoRankingTable.tsx': 'bolão: componentes',
+  'src/components/bolao/BolaoShareButton.tsx': 'bolão: componentes',
+  'src/components/bolao/BolaoStatsPanel.tsx': 'bolão: componentes',
+  'src/components/bolao/BolaoStatsTopCards.tsx': 'bolão: componentes',
+  'src/components/bolao/ChampionHeroCard.tsx': 'bolão: componentes',
+  'src/components/bolao/ChampionPickModal.tsx': 'bolão: componentes',
+  'src/components/bolao/CopaBracketModal.tsx': 'bolão: componentes',
+  'src/components/bolao/CreateBolaoModal.tsx': 'bolão: componentes',
+  'src/components/bolao/GroupProjectionTable.tsx': 'bolão: componentes',
+  'src/components/bolao/InsightsBanner.tsx': 'bolão: componentes',
+  'src/components/bolao/MatchPredictionCard.tsx': 'bolão: componentes',
+  'src/components/bolao/MyBolaoStatsPanel.tsx': 'bolão: componentes',
+  'src/components/bolao/PlayerAwardsSection.tsx': 'bolão: componentes',
+  'src/components/bolao/PredictionsList.tsx': 'bolão: componentes',
+  'src/components/bolao/PredictionsModal.tsx': 'bolão: componentes',
+  'src/components/bolao/QuickPickInline.tsx': 'bolão: componentes',
+  'src/components/bolao/ShareCallout.tsx': 'bolão: componentes',
+  'src/components/bolao/SpecialPredictionsModal.tsx': 'bolão: componentes',
+  'src/components/bolao/SpecialPredictionsSection.tsx': 'bolão: componentes',
+  'src/components/bolao/UserPredictionsModal.tsx': 'bolão: componentes',
+  'src/components/bolao/useQuickPickUndo.ts': 'bolão: componentes',
+  // Betinho: painel (7)
+  'src/components/dashboard/BetinhoNarrative.tsx': 'Betinho: painel',
+  'src/components/dashboard/BigHeatmap.tsx': 'Betinho: painel',
+  'src/components/dashboard/CalendarHeatmap.tsx': 'Betinho: painel',
+  'src/components/dashboard/DrillDown.tsx': 'Betinho: painel',
+  'src/components/dashboard/HeroKPIMobile.tsx': 'Betinho: painel',
+  'src/components/dashboard/OddsHistogram.tsx': 'Betinho: painel',
+  'src/utils/dashboardAggregations.ts': 'Betinho: painel',
+  // avulso (3)
+  'src/components/FutebolDayStepper.tsx': 'avulso',
+  'src/components/Seo.tsx': 'avulso',
+  'src/components/UnitConfigurationModal.tsx': 'avulso',
+  // compartilhar (2)
+  'src/components/share/ShareBetsTable.tsx': 'compartilhar',
+  'src/components/share/ShareKpiCards.tsx': 'compartilhar',
+  // sócios (2)
+  'src/components/socios/DarAssinatura.tsx': 'sócios',
+  'src/components/socios/crm-assinatura-do-stripe.ts': 'sócios',
+  // futebol: frases de premissa (contrato do banco) (2)
+  'src/utils/futebol-evidencias.ts': 'futebol: frases de premissa (contrato do banco)',
+  'src/utils/futebol-premissas.ts': 'futebol: frases de premissa (contrato do banco)',
+  // futebol (1)
+  'src/components/futebol/MotivosJogoPorJogo.tsx': 'futebol',
+  // sócios: placar (1)
+  'src/components/placar/placar-periodo.ts': 'sócios: placar',
+};
+
+describe('o que a tela desenha também não tem texto cru', () => {
+  const todos = fechamentoDeImportes(
+    [...telas().publicas, ...telas().logadas]
+      .map((n) => `src/pages/${n}.tsx`)
+      .filter((c) => existsSync(resolve(RAIZ, c))),
+  );
+
+  // As telas têm os seus próprios testes acima; aqui é o que elas desenham.
+  const componentes = todos.filter((c) => !c.startsWith('src/pages/'));
+
+  it('o fechamento foi calculado de verdade', () => {
+    // Sem isto, um resolvedor de importe quebrado faria o teste abaixo passar
+    // por vacuidade — que é como esta guarda já falhou duas vezes.
+    expect(componentes.length, 'quase nenhum componente alcançado').toBeGreaterThan(150);
+  });
+
+  it('componente FORA do backlog não tem texto cru', () => {
+    const porArquivo: string[] = [];
+    for (const caminho of componentes.filter((c) => !(c in BACKLOG_DE_COMPONENTES))) {
+      const crus = [...new Set(candidatos(ler(caminho)).filter(ehPortugues))];
+      if (crus.length) porArquivo.push(`${caminho}\n  ${crus.slice(0, 5).join('\n  ')}`);
+    }
+    expect(
+      porArquivo,
+      `texto em português escrito direto em componente de tela:\n\n${porArquivo.join('\n\n')}\n\n` +
+        'Mova para o catálogo do idioma (src/i18n/locales) e use t().\n' +
+        '⚠️ NÃO acrescente o arquivo ao BACKLOG para calar isto.',
+    ).toEqual([]);
+  });
+
+  it('o backlog de componentes não tem nome a mais', () => {
+    const limpos = Object.keys(BACKLOG_DE_COMPONENTES).filter(
+      (c) => existsSync(resolve(RAIZ, c)) && !candidatos(ler(c)).some(ehPortugues),
+    );
+    expect(
+      limpos,
+      `estes componentes já estão limpos e continuam no backlog:\n  ${limpos.join('\n  ')}\n\n` +
+        'Apague a linha de cada um. A catraca só aperta.',
+    ).toEqual([]);
+  });
+
+  it('o backlog de componentes não tem nome que não existe', () => {
+    const fantasmas = Object.keys(BACKLOG_DE_COMPONENTES).filter(
       (c) => !existsSync(resolve(RAIZ, c)),
     );
     expect(fantasmas, `arquivo inexistente no backlog: ${fantasmas.join(', ')}`).toEqual([]);

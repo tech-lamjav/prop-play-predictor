@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
+import { useTranslation } from 'react-i18next';
 import { AlertCircle, ArrowRight, Calendar as CalendarIcon, ExternalLink, FileText, Loader2, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import AnalyticsNav from '@/components/AnalyticsNav';
@@ -44,6 +45,7 @@ interface ReportEntry {
 }
 
 export default function Report() {
+  const { t } = useTranslation('nba');
   const { hasAccess, isLoading: accessLoading } = useReportAccess();
   const navigate = useNavigate();
   const [reports, setReports] = useState<ReportEntry[]>([]);
@@ -51,6 +53,9 @@ export default function Report() {
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingPdf, setLoadingPdf] = useState(false);
+  // Guarda a CHAVE de tradução, não a frase: quem escreve aqui é um efeito,
+  // e frase traduzida dentro do efeito ficaria presa no idioma da hora da
+  // falha. O t() acontece no render, embaixo.
   const [error, setError] = useState<string | null>(null);
   const [noReportForDate, setNoReportForDate] = useState(false);
   const [calendarOpen, setCalendarOpen] = useState(false);
@@ -76,7 +81,7 @@ export default function Report() {
         .list('', { sortBy: { column: 'name', order: 'desc' } });
 
       if (listError) {
-        setError('Não foi possível carregar os relatórios. Tente novamente mais tarde.');
+        setError('relatorioPdf.erroLista');
         setLoading(false);
         return;
       }
@@ -122,7 +127,7 @@ export default function Report() {
         .createSignedUrl(filename, SIGNED_URL_EXPIRY);
 
       if (storageError || !data?.signedUrl) {
-        setError('Não foi possível carregar o relatório. Tente novamente mais tarde.');
+        setError('relatorioPdf.erroArquivo');
         setLoadingPdf(false);
         return;
       }
@@ -169,16 +174,16 @@ export default function Report() {
           <div className="w-16 h-16 bg-amber-100 border border-amber-200 rounded-full flex items-center justify-center">
             <Lock className="w-7 h-7 text-amber-700" />
           </div>
-          <h2 className="text-[20px] font-semibold tracking-tight text-ink">Acesso restrito</h2>
+          <h2 className="text-[20px] font-semibold tracking-tight text-ink">{t('relatorioPdf.semAcessoTitulo')}</h2>
           <p className="text-[13px] text-ink-2 max-w-md leading-relaxed">
-            Os relatórios estão disponíveis para assinantes premium e novos usuários em período de teste.
+            {t('relatorioPdf.semAcessoTexto')}
           </p>
           <button
             type="button"
             onClick={() => navigate('/planos')}
             className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-md bg-forest text-white text-[13px] font-semibold hover:bg-forest-soft transition-colors"
           >
-            Ver planos
+            {t('relatorioPdf.verPlanos')}
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>
@@ -189,7 +194,7 @@ export default function Report() {
   return (
     <>
       <Helmet>
-        <title>Relatório do dia — Smart Betting</title>
+        <title>{t('relatorioPdf.seoTitulo')}</title>
       </Helmet>
 
       <div className="theme-bolao min-h-screen bg-canvas text-ink">
@@ -205,10 +210,10 @@ export default function Report() {
                 </div>
                 <div className="min-w-0">
                   <h1 className="text-[22px] md:text-[28px] font-semibold tracking-tight text-ink leading-none">
-                    Relatório do dia
+                    {t('relatorioPdf.titulo')}
                   </h1>
                   <p className="text-[13px] text-ink-2 mt-1.5">
-                    Atualizado periodicamente pela equipe Smart Betting
+                    {t('relatorioPdf.subtitulo')}
                   </p>
                 </div>
               </div>
@@ -221,7 +226,7 @@ export default function Report() {
                       className="inline-flex items-center gap-1.5 px-3 py-2 border border-line bg-white rounded-md text-[12px] text-ink hover:border-forest/40 transition-colors shrink-0"
                     >
                       <CalendarIcon className="w-3.5 h-3.5 text-ink-2" />
-                      <span>{selectedDate ? formatDateLabel(selectedDate) : 'Selecione a data'}</span>
+                      <span>{selectedDate ? formatDateLabel(selectedDate) : t('relatorioPdf.selecioneData')}</span>
                     </button>
                   </PopoverTrigger>
                   <PopoverContent className="theme-rebrand w-auto p-0 bg-white border border-line text-ink" align="end">
@@ -270,20 +275,20 @@ export default function Report() {
           {isLoading && (
             <div className="bg-white border border-line rounded-xl p-16 flex flex-col items-center gap-3">
               <Loader2 className="w-6 h-6 animate-spin text-forest opacity-70" />
-              <p className="text-[13px] text-ink-2">Carregando relatório...</p>
+              <p className="text-[13px] text-ink-2">{t('relatorioPdf.carregando')}</p>
             </div>
           )}
 
           {error && !isLoading && (
             <div className="bg-white border border-status-danger/30 rounded-xl p-12 flex flex-col items-center gap-3 text-center">
               <AlertCircle className="w-8 h-8 text-status-danger" />
-              <p className="text-[13px] text-status-danger font-medium">{error}</p>
+              <p className="text-[13px] text-status-danger font-medium">{t(error)}</p>
               <button
                 type="button"
                 onClick={() => window.location.reload()}
                 className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-line bg-white text-[12px] text-ink hover:border-forest/40 transition-colors"
               >
-                Tentar novamente
+                {t('relatorioPdf.tentarNovamente')}
               </button>
             </div>
           )}
@@ -291,15 +296,15 @@ export default function Report() {
           {!loading && !error && reports.length === 0 && (
             <div className="bg-white border border-line rounded-xl p-16 flex flex-col items-center gap-3 text-center">
               <FileText className="w-8 h-8 text-ink-2/50" />
-              <p className="text-[13px] text-ink-2">Nenhum relatório disponível ainda.</p>
+              <p className="text-[13px] text-ink-2">{t('relatorioPdf.vazio')}</p>
             </div>
           )}
 
           {!isLoading && !error && noReportForDate && (
             <div className="bg-white border border-amber-200 rounded-xl p-12 flex flex-col items-center gap-3 text-center">
               <CalendarIcon className="w-8 h-8 text-amber-700" />
-              <p className="text-[13px] text-amber-800 font-semibold">Não há relatório para essa data.</p>
-              <p className="text-[12px] text-ink-2">Selecione uma data com o indicador verde no calendário.</p>
+              <p className="text-[13px] text-amber-800 font-semibold">{t('relatorioPdf.semData')}</p>
+              <p className="text-[12px] text-ink-2">{t('relatorioPdf.semDataAjuda')}</p>
             </div>
           )}
 
@@ -314,7 +319,7 @@ export default function Report() {
                   className="flex items-center justify-center gap-2 w-full py-3 rounded-lg bg-forest text-white text-[13px] font-semibold hover:bg-forest-soft transition-colors"
                 >
                   <ExternalLink className="w-4 h-4" />
-                  Abrir PDF em tela cheia
+                  {t('relatorioPdf.abrirPdf')}
                 </a>
               </div>
 
@@ -333,7 +338,7 @@ export default function Report() {
               >
                 <iframe
                   src={pdfUrl}
-                  title="Relatório"
+                  title={t('relatorioPdf.iframeTitulo')}
                   style={{
                     position: 'absolute',
                     top: 0,

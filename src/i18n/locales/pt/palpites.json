@@ -1,1 +1,35 @@
-{}
+{
+  "cabecalho": {
+    "voltar": "Voltar para o bolão",
+    "titulo": "Palpites"
+  },
+  "apagar": {
+    "titulo": "Apagar este palpite?",
+    "descricao": "O palpite vai voltar ao estado vazio (- x -). Você pode palpitar de novo enquanto o prazo estiver aberto.",
+    "confirmar": "Apagar",
+    "sucesso": "Palpite apagado",
+    "erro": "Erro ao apagar"
+  },
+  "quickPick": {
+    "erroBuscar": "Erro ao buscar palpites",
+    "nadaPreencher": "Nada pra preencher",
+    "nadaCopiar": "O bolão escolhido não tem palpites pra copiar nesses jogos.",
+    "nadaPendente": "Todos os jogos já têm palpite. Use \"Substituir todos\" se quiser refazer.",
+    "nadaAberto": "Todos os jogos já foram finalizados ou estão sem times definidos.",
+    "preenchidos_one": "{{count}} palpite preenchido!{{origem}}",
+    "preenchidos_other": "{{count}} palpites preenchidos!{{origem}}",
+    "origemCopia": " (de \"{{nome}}\")",
+    "pulados_one": "Edite os que quiser. {{count}} jogo foi pulado (prazo encerrado ou sem times).",
+    "pulados_other": "Edite os que quiser. {{count}} jogos foram pulados (prazo encerrado ou sem times).",
+    "editeNaLista": "Edite os que quiser na lista abaixo.",
+    "desfazer": "Desfazer",
+    "desfazerAlt": "Desfazer Quick Pick",
+    "erroPreencher": "Erro ao preencher"
+  },
+  "salvar": {
+    "erro": "Erro ao salvar palpite"
+  },
+  "erros": {
+    "tenteNovamente": "Tente novamente"
+  }
+}

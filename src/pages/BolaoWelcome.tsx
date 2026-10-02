@@ -1,4 +1,5 @@
 import React from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Trophy,
@@ -35,6 +36,7 @@ import { useToast } from '@/hooks/use-toast';
  * Quem NÃO cai aqui: usuários que entram via convite (vão pra /bolao/:id direto).
  */
 const BolaoWelcome: React.FC = () => {
+  const { t } = useTranslation('bolao');
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -59,12 +61,12 @@ const BolaoWelcome: React.FC = () => {
     try {
       await navigator.clipboard.writeText(inviteUrl);
       setCopied(true);
-      toast({ title: 'Link copiado!', description: 'Cola no grupo onde quiser.' });
+      toast({ title: t('boasVindas.copiado.titulo'), description: t('boasVindas.copiado.descricao') });
       setTimeout(() => setCopied(false), 2500);
     } catch {
       toast({
-        title: 'Não consegui copiar',
-        description: 'Selecione o link manualmente.',
+        title: t('boasVindas.erroCopiar.titulo'),
+        description: t('boasVindas.erroCopiar.descricao'),
         variant: 'destructive',
       });
     }
@@ -74,34 +76,27 @@ const BolaoWelcome: React.FC = () => {
   // Em desktop sem Web Share API, cai no fallback wa.me automaticamente.
   const handleShare = () => {
     void shareTextOrLink({
-      title: `Bolão "${bolao.name}" — Copa 2026`,
+      title: t('boasVindas.compartilhar.titulo', { nome: bolao.name }),
+      // ⚠️ O CORPO da mensagem continua em português: `SHARE_MESSAGES` é um
+      // módulo puro (`share-utils.ts`), compartilhado por quatro componentes
+      // que ainda não foram migrados, e ligá-lo à tradução é decisão de quem
+      // coordena o bloco — não dá para fazer só aqui sem duplicar o texto.
       text: SHARE_MESSAGES.invite(bolao.name, bolao.invite_code, inviteUrl),
     });
   };
 
   // Cards de personalização — todos apontam pro admin panel completo. Aba
   // específica pode ser refinada depois via query string (?settings=true&tab=X).
+  //
+  // ⚠️ `id` existe para ser a chave do React, e não o rótulo. Com
+  // `key={title}` o rótulo traduzido remontava os quatro cards inteiros a cada
+  // troca de idioma — perde foco, perde animação, e por nada: o conjunto é o
+  // mesmo. A chave do React tem de ser estável ENTRE idiomas.
   const personalizeCards = [
-    {
-      icon: Target,
-      title: 'Pontuação',
-      desc: 'Quanto vale acertar placar, vencedor, etc. Padrão: 3-2-1.',
-    },
-    {
-      icon: Clock,
-      title: 'Prazo de palpites',
-      desc: 'Até quando palpitar antes de cada jogo. Padrão: até o jogo começar.',
-    },
-    {
-      icon: Sparkles,
-      title: 'Modalidades',
-      desc: 'Habilitar palpites especiais: campeão, semifinalistas, mata-mata.',
-    },
-    {
-      icon: ImageIcon,
-      title: 'Logo e identidade',
-      desc: 'Adicionar logo do bolão e escolher tema visual.',
-    },
+    { id: 'pontuacao', icon: Target },
+    { id: 'prazo', icon: Clock },
+    { id: 'modalidades', icon: Sparkles },
+    { id: 'identidade', icon: ImageIcon },
   ];
 
   return (
@@ -114,27 +109,32 @@ const BolaoWelcome: React.FC = () => {
             <Trophy className="w-7 h-7" />
           </div>
           <h1 className="font-display text-[32px] sm:text-[40px] font-extrabold leading-[1.1] text-ink mb-2">
-            Boa! <span className="text-forest">"{bolao.name}"</span> tá no ar.
+            <Trans
+              t={t}
+              i18nKey="boasVindas.hero.titulo"
+              values={{ nome: bolao.name }}
+              components={[<span className="text-forest" key="nome" />]}
+            />
           </h1>
           <p className="text-[15px] text-ink-2 max-w-[520px] mx-auto leading-relaxed">
-            Agora bora chamar a galera pra palpitar — sem amigos no bolão, ele não rola.
+            {t('boasVindas.hero.texto')}
           </p>
         </div>
 
         {/* ═══ CONVITE — destaque ═══ */}
         <div className="bg-white border border-line rounded-rebrand-xl p-6 sm:p-7 mb-10 shadow-sm">
           <div className="text-[11px] uppercase tracking-[0.14em] font-semibold text-ink-2 mb-4">
-            Convidar amigos
+            {t('boasVindas.convite.etiqueta')}
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-4 sm:gap-8 sm:items-end mb-5">
             <div>
-              <div className="text-[12px] text-ink-2 mb-1">Código do bolão</div>
+              <div className="text-[12px] text-ink-2 mb-1">{t('boasVindas.convite.codigo')}</div>
               <div className="font-mono text-[34px] sm:text-[40px] font-bold tabular-nums text-forest leading-none tracking-wide">
                 #{bolao.invite_code}
               </div>
             </div>
             <div className="min-w-0">
-              <div className="text-[12px] text-ink-2 mb-1">Ou link direto</div>
+              <div className="text-[12px] text-ink-2 mb-1">{t('boasVindas.convite.link')}</div>
               <code className="text-[12px] text-ink font-mono break-all bg-canvas-2 px-2 py-1.5 rounded-rebrand-sm block">
                 {inviteUrl}
               </code>
@@ -149,11 +149,11 @@ const BolaoWelcome: React.FC = () => {
             >
               {copied ? (
                 <>
-                  <Check className="w-4 h-4" /> Copiado!
+                  <Check className="w-4 h-4" /> {t('boasVindas.convite.copiado')}
                 </>
               ) : (
                 <>
-                  <Copy className="w-4 h-4" /> Copiar link
+                  <Copy className="w-4 h-4" /> {t('boasVindas.convite.copiar')}
                 </>
               )}
             </Button>
@@ -164,7 +164,7 @@ const BolaoWelcome: React.FC = () => {
               className="rounded-rebrand-md gap-2 flex-1"
             >
               <Share2 className="w-4 h-4" />
-              Compartilhar
+              {t('boasVindas.convite.compartilhar')}
             </Button>
           </div>
         </div>
@@ -172,15 +172,15 @@ const BolaoWelcome: React.FC = () => {
         {/* ═══ PERSONALIZAR (opcional) ═══ */}
         <div className="mb-10">
           <h2 className="font-display text-[20px] font-bold text-ink mb-1">
-            Personalize (opcional)
+            {t('boasVindas.personalize.titulo')}
           </h2>
           <p className="text-[13px] text-ink-2 mb-4">
-            Defaults são bons. Mexa só no que quiser — dá pra mudar tudo depois, antes do 1º jogo.
+            {t('boasVindas.personalize.texto')}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {personalizeCards.map(({ icon: Icon, title, desc }) => (
+            {personalizeCards.map(({ id: cardId, icon: Icon }) => (
               <button
-                key={title}
+                key={cardId}
                 onClick={() => navigate(settingsUrl)}
                 className="bg-white border border-line rounded-rebrand-md p-4 text-left hover:border-forest/40 hover:shadow-sm transition-all group"
               >
@@ -190,10 +190,14 @@ const BolaoWelcome: React.FC = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2 mb-1">
-                      <span className="font-display text-[15px] font-bold text-ink">{title}</span>
+                      <span className="font-display text-[15px] font-bold text-ink">
+                        {t(`boasVindas.personalize.${cardId}.titulo`)}
+                      </span>
                       <ChevronRight className="w-3.5 h-3.5 text-ink-3 group-hover:text-forest transition-colors shrink-0" />
                     </div>
-                    <p className="text-[12px] text-ink-2 leading-relaxed">{desc}</p>
+                    <p className="text-[12px] text-ink-2 leading-relaxed">
+                      {t(`boasVindas.personalize.${cardId}.texto`)}
+                    </p>
                   </div>
                 </div>
               </button>
@@ -205,7 +209,7 @@ const BolaoWelcome: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-6 border-t border-line">
           <div className="text-[12px] text-ink-2 flex items-center gap-1.5 flex-wrap">
             <Settings className="w-3.5 h-3.5" />
-            Configs avançadas (inscrições, excluir) ficam no ícone dentro do bolão.
+            {t('boasVindas.rodape.configs')}
           </div>
           <Button
             variant="forest"
@@ -213,7 +217,7 @@ const BolaoWelcome: React.FC = () => {
             onClick={() => navigate(`/bolao/${bolao.id}`)}
             className="rounded-rebrand-md gap-1.5 self-end sm:self-auto"
           >
-            Ir pro bolão <ChevronRight className="w-4 h-4" />
+            {t('boasVindas.rodape.irProBolao')} <ChevronRight className="w-4 h-4" />
           </Button>
         </div>
       </div>

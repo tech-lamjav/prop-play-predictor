@@ -130,5 +130,302 @@
       }
     },
     "semCompromisso": "No te comprometes a nada. Lo borras después si quieres."
+  },
+  "home": {
+    "hero": {
+      "selo": "Mundial 2026",
+      "contagem_one": "Falta <0>{{count}} día</0>.<1></1>¿Ya estás en el Bolão de alguien?",
+      "contagem_other": "Faltan <0>{{count}} días</0>.<1></1>¿Ya estás en el Bolão de alguien?",
+      "comecou": "Empezó el Mundial.<0></0>¿Vamos a pronosticar?",
+      "chamada": "Crea uno desde cero para tu gente o entra en el de un amigo con el código. EE. UU. · México · Canadá · 48 selecciones · 104 partidos.",
+      "criar": "Crear Bolão",
+      "ou": "o",
+      "codigoPlaceholder": "Código (ej: ABC123)",
+      "entrar": "Entrar"
+    },
+    "meus": {
+      "titulo": "Mis Bolão",
+      "ativos_one": "· {{count}} activo",
+      "ativos_other": "· {{count}} activos"
+    },
+    "vazio": {
+      "criar": {
+        "titulo": "Crea uno desde cero",
+        "texto": "Eres el dueño. Defines la puntuación, invitas a tu gente, lo personalizas con banner. Free para hasta 20 personas, Premium para clasificación ilimitada y pronósticos especiales.",
+        "acao": "Crear ahora"
+      },
+      "entrar": {
+        "titulo": "Entra en un Bolão",
+        "texto": "¿Le pediste el código a tu amigo? Pégalo aquí. Entras directo, ves la clasificación y empiezas a pronosticar.",
+        "acao": "Entrar"
+      }
+    },
+    "card": {
+      "premium": "PREMIUM",
+      "dono": "dueño",
+      "posicao": "posición",
+      "de": "de {{total}}",
+      "seusPalpites": "Tus pronósticos",
+      "tudoPalpitado": "Todo pronosticado",
+      "proxPrazo": "próx. plazo",
+      "aguardandoJogos": "Esperando partidos",
+      "abrir": "Abrir"
+    },
+    "tabela": {
+      "titulo": "Calendario del Mundial",
+      "resumo": "104 partidos · 12 grupos · del 11/06 al 19/07",
+      "grupos": "Grupos",
+      "mataMata": "Eliminación directa",
+      "rodadaAnterior": "Fecha anterior",
+      "proximaRodada": "Fecha siguiente",
+      "carregando": "Cargando partidos…"
+    },
+    "fases": {
+      "r1": {
+        "rotulo": "Fecha 1",
+        "periodo": "del 11 al 14 de junio"
+      },
+      "r2": {
+        "rotulo": "Fecha 2",
+        "periodo": "del 15 al 18 de junio"
+      },
+      "r3": {
+        "rotulo": "Fecha 3",
+        "periodo": "del 19 al 25 de junio"
+      },
+      "round32": {
+        "rotulo": "Octavos (32)",
+        "periodo": "del 27 al 30 de junio"
+      },
+      "round16": {
+        "rotulo": "16avos",
+        "periodo": "del 03 al 05 de julio"
+      },
+      "quartas": {
+        "rotulo": "Cuartos",
+        "periodo": "del 08 al 11 de julio"
+      },
+      "semi": {
+        "rotulo": "Semifinal",
+        "periodo": "del 14 al 15 de julio"
+      },
+      "terceiro": {
+        "rotulo": "Tercer lugar",
+        "periodo": "18 de julio"
+      },
+      "final": {
+        "rotulo": "Final",
+        "periodo": "19 de julio"
+      }
+    },
+    "criacao": {
+      "sucesso": "¡Bolão creado!",
+      "codigo": "Código: {{codigo}}",
+      "erro": "Error al crear",
+      "erroBolao": "Error al crear el Bolão",
+      "erroCheckout": "Error al iniciar el checkout",
+      "naoAutenticado": "Usuario no autenticado"
+    },
+    "entrada": {
+      "sucesso": "¡Entraste en el Bolão!",
+      "erro": "Error",
+      "erroEntrar": "Error al entrar"
+    },
+    "checkout": {
+      "titulo": "Redirigiendo al pago",
+      "texto": "Espera a que cargue la página de Stripe. No cierres esta ventana."
+    }
+  },
+  "boasVindas": {
+    "copiado": {
+      "titulo": "¡Enlace copiado!",
+      "descricao": "Pégalo en el grupo que quieras."
+    },
+    "erroCopiar": {
+      "titulo": "No pude copiar",
+      "descricao": "Selecciona el enlace manualmente."
+    },
+    "compartilhar": {
+      "titulo": "Bolão \"{{nome}}\" — Mundial 2026"
+    },
+    "hero": {
+      "titulo": "¡Listo! <0>\"{{nome}}\"</0> ya está activo.",
+      "texto": "Ahora invita a tu gente a pronosticar — sin amigos, el Bolão no camina."
+    },
+    "convite": {
+      "etiqueta": "Invitar amigos",
+      "codigo": "Código del Bolão",
+      "link": "O enlace directo",
+      "copiar": "Copiar enlace",
+      "copiado": "¡Copiado!",
+      "compartilhar": "Compartir"
+    },
+    "personalize": {
+      "titulo": "Personaliza (opcional)",
+      "texto": "Los valores por defecto son buenos. Cambia solo lo que quieras — puedes ajustar todo después, antes del primer partido.",
+      "pontuacao": {
+        "titulo": "Puntuación",
+        "texto": "Cuánto vale acertar el marcador, el ganador, etc. Por defecto: 3-2-1."
+      },
+      "prazo": {
+        "titulo": "Plazo de pronósticos",
+        "texto": "Hasta cuándo se pronostica antes de cada partido. Por defecto: hasta que empiece el partido."
+      },
+      "modalidades": {
+        "titulo": "Modalidades",
+        "texto": "Habilitar pronósticos especiales: campeón, semifinalistas, eliminación directa."
+      },
+      "identidade": {
+        "titulo": "Logo e identidad",
+        "texto": "Agregar el logo del Bolão y elegir el tema visual."
+      }
+    },
+    "rodape": {
+      "configs": "Los ajustes avanzados (inscripciones, eliminar) están en el ícono dentro del Bolão.",
+      "irProBolao": "Ir al Bolão"
+    }
+  },
+  "entrar": {
+    "meta": {
+      "titulo": "Entrar en el Bolão del Mundial 2026 | Smart Betting",
+      "descricao": "Te invitaron a un Bolão del Mundial 2026. Entra en 1 clic y pronostica los 104 partidos.",
+      "ogTitulo": "Bolão Mundial 2026 — Entra a competir",
+      "ogDescricao": "104 partidos, pronóstico de campeón, clasificación en vivo."
+    },
+    "selo": "Bolão Mundial 2026",
+    "codigoInvalido": "Código de invitación no válido",
+    "erroEntrar": "Error al entrar en el Bolão",
+    "verificando": "Verificando la invitación…",
+    "codigo": "código",
+    "sucesso": {
+      "titulo": "¡Entraste!",
+      "texto": "Bienvenido al Bolão"
+    },
+    "premium": "Premium",
+    "participantes": "participantes",
+    "rotuloCodigo": "Código",
+    "pendentes_one": "Tienes {{count}} partido para pronosticar.",
+    "pendentes_other": "Tienes {{count}} partidos para pronosticar.",
+    "pendentesCta": "Empieza ahora — toma pocos minutos.",
+    "verDepois": "Ver después",
+    "fazerPalpites": "Hacer mis pronósticos",
+    "erro": {
+      "titulo": "Invitación no encontrada",
+      "texto": "Ese código puede haber <0>expirado</0>, o el dueño <1>cerró las inscripciones</1>. Pídele un enlace nuevo.",
+      "causasTitulo": "Por qué pudo fallar",
+      "causa1": "El Bolão tiene las inscripciones cerradas por el dueño",
+      "causa2": "Escribiste el código mal (revísalo con quien te invitó)",
+      "causa3": "El Bolão fue eliminado o está lleno",
+      "tentarOutro": "Probar otro código",
+      "placeholder": "ej: ABC12345",
+      "entrar": "Entrar",
+      "voltar": "Volver a mis Bolão"
+    }
+  },
+  "detalhe": {
+    "saiu": "Saliste del Bolão",
+    "erroSair": "Error al salir",
+    "tenteNovamente": "Intenta de nuevo",
+    "carregando": "Cargando...",
+    "naoEncontrado": "Bolão no encontrado",
+    "voltar": "Volver",
+    "abas": {
+      "ranking": "Clasificación",
+      "estatisticas": "Estadísticas",
+      "aria": "Secciones del Bolão"
+    },
+    "especiais": {
+      "etiqueta": "Pronósticos Especiales",
+      "campeao": "Campeón",
+      "mataMataReal": "Eliminación directa (partido real)",
+      "finalistas": "Finalistas",
+      "semis": "Semis",
+      "quartas": "Cuartos",
+      "oitavas": "Octavos",
+      "dezesseisAvos": "16avos",
+      "nenhum": "Ninguno habilitado",
+      "verPalpites": "Ver pronósticos →",
+      "palpitar": "Pronosticar →"
+    },
+    "jogador": {
+      "etiqueta": "Pronósticos de Jugador",
+      "premios": "Goleador, Mejor jugador, Arquero, Revelación",
+      "palpitar": "Pronosticar →"
+    },
+    "cabecalho": {
+      "logoAlt": "Logo",
+      "selo": "Bolão Mundial 2026",
+      "premium": "PREMIUM",
+      "jogadorUm": "{{count}} jugador",
+      "jogadoresMuitos": "{{count}} jugadores",
+      "copiarCodigo": "Copiar el código de invitación {{codigo}}",
+      "cliqueParaCopiar": "Haz clic para copiar",
+      "codigoCopiado": "Código copiado",
+      "erroCopiar": "Error al copiar",
+      "pontuacao": "Puntuación:",
+      "pontuacaoValor": "{{resultado}}pt resultado · {{exato}}pt marcador exacto",
+      "porFase": "· ×fase",
+      "configuracoes": "Ajustes",
+      "abrirConfiguracoes": "Abrir los ajustes del Bolão",
+      "sair": "Salir",
+      "sairDoBolao": "Salir del Bolão"
+    },
+    "onboarding": {
+      "titulo": "Haz tus pronósticos",
+      "texto": "Pronostica los 104 partidos antes de que empiece cada uno"
+    },
+    "share": {
+      "conteudoImagem": "Contenido de la imagen",
+      "top5": "Top 5",
+      "todos": "Todos",
+      "compartilhar": "Compartir:",
+      "whatsapp": "WhatsApp",
+      "whatsappAria": "Compartir la clasificación por WhatsApp (imagen + enlace)",
+      "stories": "Stories",
+      "storiesAria": "Compartir la clasificación en Stories (formato vertical)",
+      "baixar": "Descargar",
+      "baixarAria": "Descargar la imagen de la clasificación",
+      "imagemSalva": "¡Imagen guardada!",
+      "imagemSalvaTexto": "Arrástrala al chat de WhatsApp o adjúntala en la conversación",
+      "erroImagem": "Error al generar la imagen"
+    },
+    "webhook": {
+      "processando": "Pago en proceso",
+      "processandoTexto": "La confirmación está tardando más de lo normal. Recibirás un correo en cuanto se active, normalmente en pocos minutos.",
+      "continuar": "Seguir usando el Bolão",
+      "confirmando": "Confirmando el pago...",
+      "confirmandoTexto": "Espera hasta 30 segundos para que Stripe confirme."
+    },
+    "sairDialogo": {
+      "titulo": "¿Salir del Bolão?",
+      "texto": "Ya no vas a aparecer en la clasificación de <0>{{nome}}</0>.",
+      "aviso": "Se van a eliminar los pronósticos que ya hiciste. Para volver, necesitas el código de invitación otra vez.",
+      "confirmar": "Salir del Bolão"
+    }
+  },
+  "confirmacao": {
+    "confirmar": "Confirmar",
+    "cancelar": "Cancelar",
+    "processando": "Procesando..."
+  },
+  "progresso": {
+    "faltando_one": "falta {{count}} pronóstico — ver pendientes",
+    "faltando_other": "faltan {{count}} pronósticos — ver pendientes",
+    "feitos": "{{feitos}} de {{total}} pronósticos hechos ({{pct}}%)",
+    "verPendentes_one": "ver {{count}} pendiente",
+    "verPendentes_other": "ver {{count}} pendientes"
+  },
+  "sticky": {
+    "irProximo": "Ir al siguiente partido sin pronóstico",
+    "proximo": "Siguiente",
+    "faltando_one": "<0>{{count}}</0> <1>pronóstico pendiente</1>",
+    "faltando_other": "<0>{{count}}</0> <1>pronósticos pendientes</1>"
+  },
+  "prazo": {
+    "proximo": "Próximo plazo: {{quando}}",
+    "fecha": "Cierra {{quando}}"
+  },
+  "bandeira": {
+    "indisponivel": "Bandera de {{codigo}} (no disponible)"
   }
 }

@@ -1,1 +1,35 @@
-{}
+{
+  "cabecalho": {
+    "voltar": "Volver al Bolão",
+    "titulo": "Pronósticos"
+  },
+  "apagar": {
+    "titulo": "¿Borrar este pronóstico?",
+    "descricao": "El pronóstico vuelve al estado vacío (- x -). Puedes pronosticar de nuevo mientras el plazo esté abierto.",
+    "confirmar": "Borrar",
+    "sucesso": "Pronóstico borrado",
+    "erro": "Error al borrar"
+  },
+  "quickPick": {
+    "erroBuscar": "Error al buscar los pronósticos",
+    "nadaPreencher": "Nada que completar",
+    "nadaCopiar": "El Bolão elegido no tiene pronósticos que copiar en esos partidos.",
+    "nadaPendente": "Todos los partidos ya tienen pronóstico. Usa \"Reemplazar todos\" si quieres rehacerlos.",
+    "nadaAberto": "Todos los partidos ya terminaron o no tienen equipos definidos.",
+    "preenchidos_one": "¡{{count}} pronóstico completado!{{origem}}",
+    "preenchidos_other": "¡{{count}} pronósticos completados!{{origem}}",
+    "origemCopia": " (de \"{{nome}}\")",
+    "pulados_one": "Edita los que quieras. Se omitió {{count}} partido (plazo cerrado o sin equipos).",
+    "pulados_other": "Edita los que quieras. Se omitieron {{count}} partidos (plazo cerrado o sin equipos).",
+    "editeNaLista": "Edita los que quieras en la lista de abajo.",
+    "desfazer": "Deshacer",
+    "desfazerAlt": "Deshacer Quick Pick",
+    "erroPreencher": "Error al completar"
+  },
+  "salvar": {
+    "erro": "Error al guardar el pronóstico"
+  },
+  "erros": {
+    "tenteNovamente": "Intenta de nuevo"
+  }
+}

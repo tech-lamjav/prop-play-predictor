@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface PalpitesProgressProps {
   done: number;
@@ -20,6 +21,7 @@ interface PalpitesProgressProps {
  *  ████████░░░░░░░░░░░░░░░ 17%
  */
 export const PalpitesProgress: React.FC<PalpitesProgressProps> = ({ done, total, variant = 'modal', onClick }) => {
+  const { t } = useTranslation('bolao');
   const pct = total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0;
   const isComplete = total > 0 && done >= total;
   const clickable = !!onClick && !isComplete && total > 0;
@@ -39,8 +41,8 @@ export const PalpitesProgress: React.FC<PalpitesProgressProps> = ({ done, total,
       onClick={clickable ? onClick : undefined}
       aria-label={
         clickable
-          ? `${total - done} palpites faltando — ver pendentes`
-          : `${done} de ${total} palpites feitos (${pct}%)`
+          ? t('progresso.faltando', { count: total - done })
+          : t('progresso.feitos', { feitos: done, total, pct })
       }
       className={`flex flex-col items-end gap-1.5 w-32 ${
         clickable ? 'group cursor-pointer rounded-rebrand-md -m-1 p-1 hover:bg-canvas-2 transition-colors' : ''
@@ -68,7 +70,7 @@ export const PalpitesProgress: React.FC<PalpitesProgressProps> = ({ done, total,
       </div>
       {clickable && (
         <span className="text-[10px] font-semibold text-status-warning group-hover:underline underline-offset-2">
-          ver {total - done} pendente{total - done !== 1 ? 's' : ''}
+          {t('progresso.verPendentes', { count: total - done })}
         </span>
       )}
     </Tag>

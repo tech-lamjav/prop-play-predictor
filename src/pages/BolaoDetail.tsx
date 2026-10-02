@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { usePostHog } from '@posthog/react';
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
@@ -75,6 +76,7 @@ const THEME_ACCENT: Record<string, { badge: string; header: string }> = {
 
 // ── Component ──────────────────────────────────────────────────────
 const BolaoDetail: React.FC = () => {
+  const { t } = useTranslation('bolao');
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -87,11 +89,11 @@ const BolaoDetail: React.FC = () => {
     if (!id) return;
     leaveBolao.mutate(id, {
       onSuccess: () => {
-        toast({ title: 'Você saiu do bolão' });
+        toast({ title: t('detalhe.saiu') });
         navigate('/bolao');
       },
       onError: (err: any) => {
-        toast({ title: 'Erro ao sair', description: err?.message ?? 'Tente novamente', variant: 'destructive' });
+        toast({ title: t('detalhe.erroSair'), description: err?.message ?? t('detalhe.tenteNovamente'), variant: 'destructive' });
       },
     });
   };
@@ -335,11 +337,17 @@ const BolaoDetail: React.FC = () => {
       // Sheet abriu — user escolheu app
     } else if (result.method === 'download') {
       toast({
-        title: 'Imagem salva!',
-        description: 'Arraste no chat do WhatsApp ou anexe na conversa',
+        title: t('detalhe.share.imagemSalva'),
+        description: t('detalhe.share.imagemSalvaTexto'),
       });
+      // ⚠️ 'Cancelado' NÃO é texto de tela, é o sentinela que
+      // `share-utils.ts` devolve quando a pessoa fecha o share sheet
+      // (AbortError). Traduzir aqui criaria dois valores onde há um, e a
+      // comparação passaria a falhar em espanhol — a tela mostraria "erro"
+      // para quem só desistiu de compartilhar. Fica em português até o
+      // módulo devolver um código em vez de uma frase.
     } else if (result.error && result.error !== 'Cancelado') {
-      toast({ title: 'Erro ao gerar imagem', description: result.error, variant: 'destructive' });
+      toast({ title: t('detalhe.share.erroImagem'), description: result.error, variant: 'destructive' });
     }
   };
 
@@ -362,15 +370,17 @@ const BolaoDetail: React.FC = () => {
   // Theme accent
   const accent = bolao?.custom_color ? THEME_ACCENT[bolao.custom_color] : null;
 
-  const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
-    { key: 'ranking',      label: 'Ranking',      icon: <Trophy className="w-4 h-4" /> },
-    { key: 'estatisticas', label: 'Estatísticas',  icon: <BarChart3 className="w-4 h-4" /> },
+  // `key` é o valor interno da aba (e a chave do React); o rótulo sai do
+  // catálogo no render, para acompanhar a troca de idioma.
+  const tabs: { key: Tab; icon: React.ReactNode }[] = [
+    { key: 'ranking',      icon: <Trophy className="w-4 h-4" /> },
+    { key: 'estatisticas', icon: <BarChart3 className="w-4 h-4" /> },
   ];
 
   if (loadingBolao) {
     return (
       <div className="theme-bolao min-h-screen bg-canvas flex items-center justify-center">
-        <div className="animate-pulse text-ink-2 text-[14px]">Carregando...</div>
+        <div className="animate-pulse text-ink-2 text-[14px]">{t('detalhe.carregando')}</div>
       </div>
     );
   }
@@ -379,9 +389,9 @@ const BolaoDetail: React.FC = () => {
     return (
       <div className="theme-bolao min-h-screen bg-canvas flex items-center justify-center">
         <div className="text-center">
-          <p className="text-[16px] text-ink mb-4">Bolão não encontrado</p>
+          <p className="text-[16px] text-ink mb-4">{t('detalhe.naoEncontrado')}</p>
           <Button variant="ghost" onClick={() => navigate('/bolao')} className="text-ink-2 hover:text-ink hover:bg-canvas-2">
-            Voltar
+            {t('detalhe.voltar')}
           </Button>
         </div>
       </div>
@@ -513,25 +523,25 @@ const BolaoDetail: React.FC = () => {
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-ink-2">
-                  Palpites Especiais
+                  {t('detalhe.especiais.etiqueta')}
                 </p>
                 <p className="text-[12px] text-ink mt-0.5 truncate">
                   {(() => {
                     const labels: string[] = [];
-                    if (bolao.champion_enabled ?? true) labels.push('Campeão');
+                    if (bolao.champion_enabled ?? true) labels.push(t('detalhe.especiais.campeao'));
                     if (bolao.knockout_real_predictions_enabled) {
-                      labels.push('Mata-mata (jogo real)');
+                      labels.push(t('detalhe.especiais.mataMataReal'));
                     } else {
                       const cfg = normalizeSpecialConfig(bolao.special_predictions_config);
                       if (bolao.special_predictions_enabled ?? true) {
-                        if (cfg.finalist) labels.push('Finalistas');
-                        if (cfg.semifinalist) labels.push('Semis');
-                        if (cfg.quarterfinalist) labels.push('Quartas');
-                        if (cfg.round_of_16) labels.push('Oitavas');
-                        if (cfg.round_of_32) labels.push('16 avos');
+                        if (cfg.finalist) labels.push(t('detalhe.especiais.finalistas'));
+                        if (cfg.semifinalist) labels.push(t('detalhe.especiais.semis'));
+                        if (cfg.quarterfinalist) labels.push(t('detalhe.especiais.quartas'));
+                        if (cfg.round_of_16) labels.push(t('detalhe.especiais.oitavas'));
+                        if (cfg.round_of_32) labels.push(t('detalhe.especiais.dezesseisAvos'));
                       }
                     }
-                    return labels.join(', ') || 'Nenhum habilitado';
+                    return labels.join(', ') || t('detalhe.especiais.nenhum');
                   })()}
                 </p>
               </div>
@@ -540,7 +550,7 @@ const BolaoDetail: React.FC = () => {
               onClick={() => setSpecialPredictionsOpen(true)}
               className="text-[11px] font-semibold text-amber-2 hover:bg-amber/10 shrink-0 border border-amber/40 rounded-rebrand-sm px-2.5 py-1 transition-colors"
             >
-              {myChampionPick ? 'Ver palpites →' : 'Palpitar →'}
+              {myChampionPick ? t('detalhe.especiais.verPalpites') : t('detalhe.especiais.palpitar')}
             </button>
           </div>
         </div>
@@ -555,10 +565,10 @@ const BolaoDetail: React.FC = () => {
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-ink-2">
-                  Palpites de Jogador
+                  {t('detalhe.jogador.etiqueta')}
                 </p>
                 <p className="text-[12px] text-ink mt-0.5 truncate">
-                  Artilheiro, Craque, Goleiro, Revelação
+                  {t('detalhe.jogador.premios')}
                 </p>
               </div>
             </div>
@@ -566,7 +576,7 @@ const BolaoDetail: React.FC = () => {
               onClick={() => setPlayerAwardsOpen(true)}
               className="text-[11px] font-semibold text-amber-2 hover:bg-amber/10 shrink-0 border border-amber/40 rounded-rebrand-sm px-2.5 py-1 transition-colors"
             >
-              Palpitar →
+              {t('detalhe.jogador.palpitar')}
             </button>
           </div>
         </div>
@@ -585,7 +595,7 @@ const BolaoDetail: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate('/bolao')}
-            aria-label="Voltar"
+            aria-label={t('detalhe.voltar')}
             className="w-9 h-9 rounded-rebrand-md hover:bg-canvas-2 text-ink-2 flex items-center justify-center transition-colors shrink-0 mt-1"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -595,7 +605,7 @@ const BolaoDetail: React.FC = () => {
             <div className="w-16 h-16 rounded-rebrand-md border border-line bg-canvas-2 p-1.5 shrink-0 mt-0.5 flex items-center justify-center overflow-hidden">
               <img
                 src={bolao.custom_banner_url}
-                alt="Logo"
+                alt={t('detalhe.cabecalho.logoAlt')}
                 className="w-full h-full object-contain"
               />
             </div>
@@ -604,11 +614,11 @@ const BolaoDetail: React.FC = () => {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1 flex-wrap">
               <span className="text-[10px] uppercase tracking-[0.16em] font-semibold text-ink-2">
-                Bolão Copa 2026
+                {t('detalhe.cabecalho.selo')}
               </span>
               {bolao.is_premium && (
                 <span className="text-[10px] font-bold tracking-wider px-1.5 py-0.5 rounded bg-amber/15 text-amber-2 border border-amber/30">
-                  PREMIUM
+                  {t('detalhe.cabecalho.premium')}
                 </span>
               )}
             </div>
@@ -623,32 +633,40 @@ const BolaoDetail: React.FC = () => {
             <div className="flex items-center gap-3 mt-2 text-[12px] text-ink-2 flex-wrap">
               <span className="inline-flex items-center gap-1">
                 <Users className="w-3 h-3" />
-                {ranking?.length || 0} jogador{(ranking?.length ?? 0) !== 1 ? 'es' : ''}
+                {/* Duas chaves em vez de plural por `count`: em pt-BR o CLDR
+                    classifica 0 como singular, e a tela de hoje escreve
+                    "0 jogadores". Chave explícita preserva isso. */}
+                {(ranking?.length ?? 0) === 1
+                  ? t('detalhe.cabecalho.jogadorUm', { count: 1 })
+                  : t('detalhe.cabecalho.jogadoresMuitos', { count: ranking?.length || 0 })}
               </span>
               <button
                 type="button"
                 onClick={async () => {
                   try {
                     await navigator.clipboard.writeText(bolao.invite_code);
-                    toast({ title: 'Código copiado', description: bolao.invite_code });
+                    toast({ title: t('detalhe.cabecalho.codigoCopiado'), description: bolao.invite_code });
                   } catch {
-                    toast({ title: 'Erro ao copiar', variant: 'destructive' });
+                    toast({ title: t('detalhe.cabecalho.erroCopiar'), variant: 'destructive' });
                   }
                 }}
-                aria-label={`Copiar código de convite ${bolao.invite_code}`}
-                title="Clique para copiar"
+                aria-label={t('detalhe.cabecalho.copiarCodigo', { codigo: bolao.invite_code })}
+                title={t('detalhe.cabecalho.cliqueParaCopiar')}
                 className="inline-flex items-center gap-1 hover:text-forest transition-colors cursor-pointer"
               >
                 <Hash className="w-3 h-3 text-ink-3" />
                 <span className="font-mono">{bolao.invite_code}</span>
               </button>
               <span>
-                Pontuação:{' '}
+                {t('detalhe.cabecalho.pontuacao')}{' '}
                 <span className="text-ink">
-                  {bolao.scoring_result}pt resultado · {bolao.scoring_exact}pt placar exato
+                  {t('detalhe.cabecalho.pontuacaoValor', {
+                    resultado: bolao.scoring_result,
+                    exato: bolao.scoring_exact,
+                  })}
                 </span>
                 {bolao.scoring_preset === 'weighted_stages' && (
-                  <span className="ml-1 text-forest font-medium">· ×fase</span>
+                  <span className="ml-1 text-forest font-medium">{t('detalhe.cabecalho.porFase')}</span>
                 )}
               </span>
             </div>
@@ -667,11 +685,11 @@ const BolaoDetail: React.FC = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => setShowAdmin(true)}
-                  aria-label="Abrir configurações do bolão"
+                  aria-label={t('detalhe.cabecalho.abrirConfiguracoes')}
                   className="rounded-rebrand-md gap-1.5 bg-white border border-line text-ink-2 hover:bg-canvas-2 hover:text-ink"
                 >
                   <Settings className="w-4 h-4" />
-                  <span className="hidden sm:inline">Configurações</span>
+                  <span className="hidden sm:inline">{t('detalhe.cabecalho.configuracoes')}</span>
                 </Button>
                 {/* Sair so aparece pra membro (nao-dono) */}
                 {currentUserId !== bolao.owner_id && (
@@ -679,12 +697,12 @@ const BolaoDetail: React.FC = () => {
                     variant="ghost"
                     size="sm"
                     onClick={() => setConfirmLeaveOpen(true)}
-                    aria-label="Sair do bolão"
+                    aria-label={t('detalhe.cabecalho.sairDoBolao')}
                     className="rounded-rebrand-md gap-1.5 text-ink-2 hover:text-status-danger hover:bg-status-danger/10"
-                    title="Sair do bolão"
+                    title={t('detalhe.cabecalho.sairDoBolao')}
                   >
                     <LogOut className="w-4 h-4" />
-                    <span className="hidden sm:inline">Sair</span>
+                    <span className="hidden sm:inline">{t('detalhe.cabecalho.sair')}</span>
                   </Button>
                 )}
               </>
@@ -731,9 +749,9 @@ const BolaoDetail: React.FC = () => {
                 <Target className="w-4 h-4 text-forest" />
               </div>
               <div className="flex-1">
-                <p className="text-[14px] font-semibold text-ink">Faça seus palpites</p>
+                <p className="text-[14px] font-semibold text-ink">{t('detalhe.onboarding.titulo')}</p>
                 <p className="text-[12px] text-ink-2 mt-0.5">
-                  Palpite nos 104 jogos antes de cada partida começar
+                  {t('detalhe.onboarding.texto')}
                 </p>
               </div>
             </div>
@@ -746,7 +764,7 @@ const BolaoDetail: React.FC = () => {
           {/* ── Main content ── */}
           <div className="min-w-0">
             {/* Tabs (rebrand: forest underline + Inter) */}
-            <div role="tablist" aria-label="Seções do bolão" className="flex gap-1 mb-6 border-b border-line">
+            <div role="tablist" aria-label={t('detalhe.abas.aria')} className="flex gap-1 mb-6 border-b border-line">
               {tabs.map((tab) => {
                 const isActive = activeTab === tab.key;
                 return (
@@ -765,7 +783,7 @@ const BolaoDetail: React.FC = () => {
                     }`}
                   >
                     {tab.icon}
-                    {tab.label}
+                    {t(`detalhe.abas.${tab.key}`)}
                   </button>
                 );
               })}
@@ -784,44 +802,44 @@ const BolaoDetail: React.FC = () => {
                 )}
                 {ranking && ranking.length > 1 && (
                   <div className="flex items-center justify-end gap-3 mb-3 flex-wrap text-[12px] text-ink-2">
-                    <div className="inline-flex items-center rounded-rebrand-sm border border-line overflow-hidden mr-1" role="group" aria-label="Conteúdo da imagem">
+                    <div className="inline-flex items-center rounded-rebrand-sm border border-line overflow-hidden mr-1" role="group" aria-label={t('detalhe.share.conteudoImagem')}>
                       <button
                         onClick={() => setShareMode('top5')}
                         className={`px-2.5 py-1 font-semibold transition-colors ${shareMode === 'top5' ? 'bg-forest text-white' : 'text-ink-2 hover:bg-canvas-2'}`}
                       >
-                        Top 5
+                        {t('detalhe.share.top5')}
                       </button>
                       <button
                         onClick={() => setShareMode('all')}
                         className={`px-2.5 py-1 font-semibold transition-colors ${shareMode === 'all' ? 'bg-forest text-white' : 'text-ink-2 hover:bg-canvas-2'}`}
                       >
-                        Todos
+                        {t('detalhe.share.todos')}
                       </button>
                     </div>
-                    <span className="text-ink-3">Compartilhar:</span>
+                    <span className="text-ink-3">{t('detalhe.share.compartilhar')}</span>
                     <button
                       onClick={handleShareRanking}
-                      aria-label="Compartilhar ranking via WhatsApp (imagem + link)"
+                      aria-label={t('detalhe.share.whatsappAria')}
                       className="inline-flex items-center gap-1.5 hover:text-forest transition-colors"
                     >
                       <BrandIcon brand="whatsapp" className="w-3.5 h-3.5" />
-                      WhatsApp
+                      {t('detalhe.share.whatsapp')}
                     </button>
                     <button
                       onClick={handleShareRankingStories}
-                      aria-label="Compartilhar ranking nos Stories (formato vertical)"
+                      aria-label={t('detalhe.share.storiesAria')}
                       className="inline-flex items-center gap-1.5 hover:text-forest transition-colors"
                     >
                       <BrandIcon brand="instagram" className="w-3.5 h-3.5" />
-                      Stories
+                      {t('detalhe.share.stories')}
                     </button>
                     <button
                       onClick={handleDownloadRankingImage}
-                      aria-label="Baixar imagem do ranking"
+                      aria-label={t('detalhe.share.baixarAria')}
                       className="inline-flex items-center gap-1.5 hover:text-forest transition-colors"
                     >
                       <Download className="w-3.5 h-3.5" />
-                      Baixar
+                      {t('detalhe.share.baixar')}
                     </button>
                   </div>
                 )}
@@ -975,11 +993,10 @@ const BolaoDetail: React.FC = () => {
             {webhookTimedOut ? (
               <>
                 <p className="text-[16px] font-bold text-amber-2 mb-2">
-                  Pagamento sendo processado
+                  {t('detalhe.webhook.processando')}
                 </p>
                 <p className="text-[13px] text-ink-2 mb-4 leading-relaxed">
-                  A confirmação está demorando mais do que o normal.
-                  Você receberá um email assim que for ativado, normalmente em poucos minutos.
+                  {t('detalhe.webhook.processandoTexto')}
                 </p>
                 <button
                   type="button"
@@ -990,17 +1007,17 @@ const BolaoDetail: React.FC = () => {
                   }}
                   className="w-full h-11 rounded-rebrand-md bg-forest hover:bg-forest-2 text-white text-[13px] font-bold transition-colors"
                 >
-                  Continuar usando o bolão
+                  {t('detalhe.webhook.continuar')}
                 </button>
               </>
             ) : (
               <>
                 <div className="w-12 h-12 mx-auto mb-4 border-[3px] border-amber/30 border-t-amber rounded-full animate-spin" />
                 <p className="text-[16px] font-bold text-amber-2 mb-1">
-                  Confirmando pagamento...
+                  {t('detalhe.webhook.confirmando')}
                 </p>
                 <p className="text-[12px] text-ink-2">
-                  Aguarde até 30 segundos para a Stripe confirmar.
+                  {t('detalhe.webhook.confirmandoTexto')}
                 </p>
               </>
             )}
@@ -1012,18 +1029,23 @@ const BolaoDetail: React.FC = () => {
       <ConfirmDialog
         open={confirmLeaveOpen}
         onOpenChange={setConfirmLeaveOpen}
-        title="Sair do bolão?"
+        title={t('detalhe.sairDialogo.titulo')}
         description={
           <>
             <p className="mb-2">
-              Você não vai mais aparecer no ranking de <strong>{bolao.name}</strong>.
+              <Trans
+                t={t}
+                i18nKey="detalhe.sairDialogo.texto"
+                values={{ nome: bolao.name }}
+                components={[<strong key="nome" />]}
+              />
             </p>
             <p className="text-xs opacity-70">
-              Seus palpites já feitos serão removidos. Pra voltar, precisa do código de convite novamente.
+              {t('detalhe.sairDialogo.aviso')}
             </p>
           </>
         }
-        confirmLabel="Sair do bolão"
+        confirmLabel={t('detalhe.sairDialogo.confirmar')}
         variant="destructive"
         onConfirm={() => {
           handleLeaveBolao();

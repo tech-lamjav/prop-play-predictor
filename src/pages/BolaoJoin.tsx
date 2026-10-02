@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import {
@@ -17,6 +18,7 @@ import AnalyticsNav from '@/components/AnalyticsNav';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? '';
 
 const BolaoJoin: React.FC = () => {
+  const { t } = useTranslation('bolao');
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const joinBolao = useJoinBolao();
@@ -35,7 +37,7 @@ const BolaoJoin: React.FC = () => {
   useEffect(() => {
     if (!code) {
       setStatus('error');
-      setErrorMessage('Código de convite inválido');
+      setErrorMessage(t('entrar.codigoInvalido'));
       return;
     }
 
@@ -45,13 +47,15 @@ const BolaoJoin: React.FC = () => {
           setStatus('success');
           setBolaoId(result.bolao_id || null);
         } else {
+          // `result.error` vem do RPC `join_bolao_by_code`: é texto do
+          // servidor, não do catálogo. Só o recuo é traduzido.
           setStatus('error');
-          setErrorMessage(result.error || 'Erro ao entrar no bolão');
+          setErrorMessage(result.error || t('entrar.erroEntrar'));
         }
       },
       onError: (err: any) => {
         setStatus('error');
-        setErrorMessage(err.message || 'Erro ao entrar no bolão');
+        setErrorMessage(err.message || t('entrar.erroEntrar'));
       },
     });
   }, [code]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -72,16 +76,16 @@ const BolaoJoin: React.FC = () => {
     <>
       <AnalyticsNav variant="rebrand" />
       <Helmet>
-        <title>Entrar no Bolão Copa 2026 | Smart Betting</title>
-        <meta name="description" content="Você foi convidado pra um bolão da Copa 2026. Entre em 1 clique e palpite os 104 jogos." />
+        <title>{t('entrar.meta.titulo')}</title>
+        <meta name="description" content={t('entrar.meta.descricao')} />
         {ogImageUrl && (
           <>
             <meta property="og:image" content={ogImageUrl} />
             <meta property="og:image:width" content="1200" />
             <meta property="og:image:height" content="630" />
             <meta property="og:type" content="website" />
-            <meta property="og:title" content="Bolão Copa 2026 — Entre na disputa" />
-            <meta property="og:description" content="104 jogos, palpite de campeão, ranking ao vivo." />
+            <meta property="og:title" content={t('entrar.meta.ogTitulo')} />
+            <meta property="og:description" content={t('entrar.meta.ogDescricao')} />
             <meta name="twitter:card" content="summary_large_image" />
             <meta name="twitter:image" content={ogImageUrl} />
           </>
@@ -95,7 +99,7 @@ const BolaoJoin: React.FC = () => {
             <Trophy className="w-3.5 h-3.5" />
           </div>
           <span className="text-[11px] uppercase tracking-[0.14em] text-ink-2 font-semibold">
-            Bolão Copa do Mundo 2026
+            {t('entrar.selo')}
           </span>
         </div>
 
@@ -106,9 +110,9 @@ const BolaoJoin: React.FC = () => {
             <div className="flex items-center gap-3 mb-5">
               <div className="w-10 h-10 rounded-full border-[3px] border-line border-t-forest animate-spin shrink-0" />
               <div>
-                <p className="text-[15px] font-bold text-ink leading-tight">Verificando convite…</p>
+                <p className="text-[15px] font-bold text-ink leading-tight">{t('entrar.verificando')}</p>
                 <p className="text-[12px] text-ink-2 mt-0.5">
-                  código <span className="font-mono font-semibold text-ink">{code?.toUpperCase()}</span>
+                  {t('entrar.codigo')} <span className="font-mono font-semibold text-ink">{code?.toUpperCase()}</span>
                 </p>
               </div>
             </div>
@@ -131,8 +135,8 @@ const BolaoJoin: React.FC = () => {
                   <Check className="w-5 h-5" strokeWidth={3} />
                 </div>
                 <div>
-                  <p className="text-[15px] font-bold leading-tight">Você entrou!</p>
-                  <p className="text-[12px] opacity-80 mt-0.5">Bem-vindo ao bolão</p>
+                  <p className="text-[15px] font-bold leading-tight">{t('entrar.sucesso.titulo')}</p>
+                  <p className="text-[12px] opacity-80 mt-0.5">{t('entrar.sucesso.texto')}</p>
                 </div>
               </div>
             </div>
@@ -160,7 +164,7 @@ const BolaoJoin: React.FC = () => {
                       )}
                       {bolaoData.is_premium && (
                         <span className="inline-flex items-center gap-1 mt-1.5 text-[10px] font-bold uppercase tracking-[0.1em] text-amber-2 bg-amber/15 px-2 py-0.5 rounded">
-                          <Sparkles className="w-2.5 h-2.5" /> Premium
+                          <Sparkles className="w-2.5 h-2.5" /> {t('entrar.premium')}
                         </span>
                       )}
                     </div>
@@ -172,13 +176,13 @@ const BolaoJoin: React.FC = () => {
                         <span className="font-semibold tabular-nums">
                           {userBolao?.member_count ?? '—'}
                         </span>{' '}
-                        participantes
+                        {t('entrar.participantes')}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 text-ink">
                       <Clock className="w-3.5 h-3.5 text-ink-3 shrink-0" />
                       <span>
-                        Código{' '}
+                        {t('entrar.rotuloCodigo')}{' '}
                         <span className="font-mono font-semibold tabular-nums">
                           {bolaoData.invite_code}
                         </span>
@@ -200,9 +204,9 @@ const BolaoJoin: React.FC = () => {
                   <AlertCircle className="w-4 h-4 text-amber-2 mt-0.5 shrink-0" />
                   <p className="text-[12px] text-ink leading-snug">
                     <span className="font-semibold">
-                      Você tem {pendingPredictions} jogo{pendingPredictions !== 1 ? 's' : ''} para palpitar.
+                      {t('entrar.pendentes', { count: pendingPredictions })}
                     </span>{' '}
-                    Comece agora — leva poucos minutos.
+                    {t('entrar.pendentesCta')}
                   </p>
                 </div>
               )}
@@ -214,7 +218,7 @@ const BolaoJoin: React.FC = () => {
                   onClick={() => navigate(`/bolao/${bolaoId}`)}
                   className="flex-1 h-11 rounded-rebrand-md text-[13px] font-medium text-ink-2 hover:bg-canvas-2 border border-line transition-colors"
                 >
-                  Ver depois
+                  {t('entrar.verDepois')}
                 </button>
                 <Button
                   variant="forest"
@@ -222,7 +226,7 @@ const BolaoJoin: React.FC = () => {
                   className="flex-[2] h-11 rounded-rebrand-md text-[13px] gap-2"
                 >
                   <Target className="w-4 h-4" />
-                  Fazer meus palpites
+                  {t('entrar.fazerPalpites')}
                 </Button>
               </div>
             </div>
@@ -239,10 +243,10 @@ const BolaoJoin: React.FC = () => {
                   <AlertCircle className="w-5 h-5" />
                 </div>
                 <div>
-                  <p className="text-[15px] font-bold leading-tight">Convite não encontrado</p>
+                  <p className="text-[15px] font-bold leading-tight">{t('entrar.erro.titulo')}</p>
                   {code && (
                     <p className="text-[12px] opacity-60 mt-0.5">
-                      código <span className="font-mono">{code.toUpperCase()}</span>
+                      {t('entrar.codigo')} <span className="font-mono">{code.toUpperCase()}</span>
                     </p>
                   )}
                 </div>
@@ -252,30 +256,34 @@ const BolaoJoin: React.FC = () => {
             <div className="p-5 space-y-4">
               <p className="text-[13px] text-ink leading-relaxed">
                 {errorMessage || (
-                  <>
-                    Esse código pode ter <span className="font-semibold">expirado</span>, ou o dono{' '}
-                    <span className="font-semibold">encerrou as inscrições</span>. Pede pra ele um link novo.
-                  </>
+                  <Trans
+                    t={t}
+                    i18nKey="entrar.erro.texto"
+                    components={[
+                      <span className="font-semibold" key="expirado" />,
+                      <span className="font-semibold" key="encerrou" />,
+                    ]}
+                  />
                 )}
               </p>
 
               {/* Possíveis causas */}
               <div className="rounded-rebrand-md border border-line bg-canvas p-3.5 space-y-2">
                 <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-ink-2">
-                  Por que pode ter dado erro
+                  {t('entrar.erro.causasTitulo')}
                 </p>
                 <ul className="text-[12px] text-ink space-y-1.5">
                   <li className="flex items-start gap-2">
                     <span className="text-ink-3 mt-0.5">·</span>
-                    O bolão está com inscrições encerradas pelo dono
+                    {t('entrar.erro.causa1')}
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-ink-3 mt-0.5">·</span>
-                    Você digitou o código errado (cheque com quem te chamou)
+                    {t('entrar.erro.causa2')}
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-ink-3 mt-0.5">·</span>
-                    O bolão foi deletado ou está cheio
+                    {t('entrar.erro.causa3')}
                   </li>
                 </ul>
               </div>
@@ -286,7 +294,7 @@ const BolaoJoin: React.FC = () => {
                   htmlFor="retry-code"
                   className="text-[11px] font-medium uppercase tracking-[0.1em] text-ink-2 mb-1.5 block"
                 >
-                  Tentar outro código
+                  {t('entrar.erro.tentarOutro')}
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -294,7 +302,7 @@ const BolaoJoin: React.FC = () => {
                     value={retryCode}
                     onChange={(e) => setRetryCode(e.target.value.toUpperCase())}
                     onKeyDown={(e) => e.key === 'Enter' && handleRetry()}
-                    placeholder="ex: ABC12345"
+                    placeholder={t('entrar.erro.placeholder')}
                     maxLength={8}
                     className="flex-1 h-11 px-3.5 rounded-rebrand-md border border-line bg-white text-[14px] text-ink font-mono uppercase tracking-wider placeholder:text-ink-3 placeholder:font-sans placeholder:normal-case placeholder:tracking-normal focus:border-forest focus:ring-2 focus:ring-forest/15 focus:outline-none"
                   />
@@ -304,7 +312,7 @@ const BolaoJoin: React.FC = () => {
                     disabled={retryCode.trim().length < 4}
                     className="h-11 px-4 rounded-rebrand-md text-[13px]"
                   >
-                    Entrar
+                    {t('entrar.erro.entrar')}
                   </Button>
                 </div>
               </div>
@@ -314,7 +322,7 @@ const BolaoJoin: React.FC = () => {
                 onClick={() => navigate('/bolao')}
                 className="w-full h-10 rounded-rebrand-md text-[12px] text-ink-2 hover:bg-canvas-2 border border-line transition-colors"
               >
-                Voltar para meus bolões
+                {t('entrar.erro.voltar')}
               </button>
             </div>
           </div>
