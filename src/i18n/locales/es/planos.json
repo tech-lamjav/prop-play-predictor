@@ -299,7 +299,9 @@
     "loginTitulo": "Hace falta iniciar sesión",
     "loginTexto": "Por favor, inicia sesión para continuar con el pago.",
     "erroTitulo": "Error al procesar el pago",
-    "erroTexto": "Ocurrió un error al iniciar el pago. Inténtalo de nuevo."
+    "erroTexto": "Ocurrió un error al iniciar el pago. Inténtalo de nuevo.",
+    "whatsappUpgradeBetinho": "Hola, quiero mejorar mi plan Betinho (registro de apuestas)",
+    "whatsappUpgradePlataforma": "Hola, quiero mejorar mi plan en la Plataforma de Análisis"
   },
   "paywall": {
     "titulo": "¡Llegaste al límite del plan gratis!",

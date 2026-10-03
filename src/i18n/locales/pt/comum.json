@@ -74,6 +74,8 @@
     "whatsapp": "WhatsApp (opcional)",
     "beneficios": "Benefícios da lista de espera:",
     "prioridade": "Acesso prioritário no lançamento",
-    "ligas": "Brasileirão, Copa do Brasil e ligas europeias"
+    "ligas": "Brasileirão, Copa do Brasil e ligas europeias",
+    "sucessoTitulo": "Sucesso!",
+    "sucessoTexto": "Você foi adicionado à lista de espera. Em breve entraremos em contato!"
   }
 }

@@ -156,14 +156,51 @@ const NAO_E_TEXTO_DE_TELA = [
   'Smart Betting Grátis',
 ];
 
+/**
+ * Tira as linhas de `console`: elas falam com quem PROGRAMA, não com quem usa.
+ *
+ * "Erro ao verificar sessão" e "VITE_STRIPE_PRICE_ID_FUTEBOL não configurado"
+ * são diagnóstico, e traduzir diagnóstico só dificulta a vida de quem for ler
+ * o console às duas da manhã. Entrou junto com a varredura de literais, que
+ * passou a enxergar esse tipo de texto pela primeira vez.
+ */
+function semConsole(codigo: string): string {
+  return codigo.replace(/console.(log|warn|error|info|debug)([^;]*);?/g, '');
+}
+
 /** Tira comentário: o código é comentado EM PORTUGUÊS, e isso é correto. */
 function semComentarios(codigo: string): string {
   return codigo.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 }
 
+/**
+ * Um literal de string é TEXTO, e não identificador?
+ *
+ * ⚠️ O TERCEIRO BURACO DO EXTRATOR, e ele deixou cinco arquivos de um bloco
+ * inteiro passarem. `{allDone ? 'Análise pronta' : '…'}` não é texto solto de
+ * JSX nem propriedade nomeada — é literal dentro de expressão, e o extrator
+ * não olhava para lá. Quem contou foi quem migrou o bloco, não a guarda.
+ *
+ * Olhar TODO literal, porém, mede ruído: a varredura saltou de 52 para 194
+ * arquivos, e o que entrou foi caminho de importe (`./pages/FutebolHoje`),
+ * nome de área (`apostas`) e evento de analytics
+ * (`crosssell_futebol_preview_open`) — todos casando por conterem "futebol"
+ * ou "apostas". Uma guarda que grita assim é desligada na terceira vez.
+ *
+ * Então o literal só conta se PARECER FRASE: tem espaço, não começa como
+ * caminho e não é um identificador pontuado. Com a régua, 52 vira 89 — e os
+ * 37 são texto de tela de verdade, incluindo o FAQ da landing.
+ */
+function ehFrase(valor: string): boolean {
+  if (!valor.includes(' ')) return false;
+  if (/^[.@~/]|^https?:/.test(valor)) return false;
+  if (/^[a-z0-9_]+(\.[a-z0-9_]+)*$/i.test(valor)) return false;
+  return /[a-zA-ZÀ-ÿ]{3}/.test(valor);
+}
+
 /** O que a pessoa lê: texto solto no JSX e as props que viram rótulo. */
 function candidatos(codigo: string): string[] {
-  const limpo = semComentarios(codigo);
+  const limpo = semConsole(semComentarios(codigo));
   const achados: string[] = [];
 
   for (const [, texto] of limpo.matchAll(/>([^<>{}\n]{4,80})</g)) achados.push(texto.trim());
@@ -176,6 +213,13 @@ function candidatos(codigo: string): string[] {
   )) {
     achados.push(texto.trim());
   }
+  // Literal dentro de expressão — ternário, objeto, argumento. Só o que
+  // passa por `ehFrase`, senão a varredura vira ruído.
+  for (const [, , texto] of limpo.matchAll(/(['"])([^'"\n]{4,80})\1/g)) {
+    const valor = texto.trim();
+    if (ehFrase(valor)) achados.push(valor);
+  }
+
   return achados.filter(Boolean);
 }
 
@@ -207,7 +251,10 @@ const FORMA_DE_CHAVE = /^[a-z][A-Za-z0-9]*(\.[A-Za-z0-9_]+)+$/;
  * palavra de texto cru. Operador lógico e de igualdade não aparecem em frase
  * de interface, então servem de assinatura do que é código.
  */
-const PARECE_CODIGO = /(\|\||&&|=>|===|!==|==|!=)/;
+// `??` e `?.` não existem em frase; `palavra(` é chamada de função. Entraram
+// quando o detector passou a olhar literal de string e trouxe junto um
+// pedaço de `.localeCompare(y.jogos[0]?.kickoff_utc ??`.
+const PARECE_CODIGO = /(\|\||&&|=>|===|!==|==|!=|\?\?|\?\.|\w\()/;
 function ehPortugues(texto: string): boolean {
   if (NAO_E_TEXTO_DE_TELA.some((t) => texto.includes(t))) return false;
   if (FORMA_DE_CHAVE.test(texto)) return false;
@@ -279,10 +326,10 @@ describe('tela pública não tem texto escrito direto no código', () => {
  * pertence. A lista só ENCURTA.
  */
 const BACKLOG_DA_AREA_LOGADA: Record<string, string> = {
-  // Vazio, e isto é um marco: as nove telas logadas que estavam aqui foram
-  // migradas, e o segundo dente da catraca cobrou a saída de cada nome. O que
-  // falta agora não é tela, é o que a tela DESENHA — ver o backlog de
-  // componentes mais abaixo.
+  // As nove telas que estavam aqui foram migradas, e o segundo dente da catraca
+  // cobrou a saída de cada nome. Esta voltou quando o detector passou a olhar
+  // literal de string: o texto dela nunca esteve solto no JSX.
+  'src/pages/Bets.tsx': 'Betinho: apostas',
 };
 
 describe('a área logada tem catraca, e ela só aperta', () => {
@@ -381,7 +428,14 @@ function fechamentoDeImportes(sementes: string[]): string[] {
     vistos.add(atual);
     for (const [, esp] of ler(atual).matchAll(/from\s+['"]([^'"]+)['"]/g)) {
       const alvo = resolverImporte(atual, esp);
-      if (alvo && !vistos.has(alvo) && !/\.test\./.test(alvo)) fila.push(alvo);
+      // Só CÓDIGO. Esta guarda se chama "texto escrito direto no código", e
+      // arquivo de dados é outro problema: `src/seo/public-routes.json` tem os
+      // títulos das rotas públicas em português — achado de verdade, e que não
+      // se conserta com `t()`, porque quem o lê é buscador e não componente.
+      // Pela mesma régua, os próprios catálogos são JSON.
+      if (alvo && !vistos.has(alvo) && /\.tsx?$/.test(alvo) && !/\.test\./.test(alvo)) {
+        fila.push(alvo);
+      }
     }
   }
   return [...vistos];
@@ -392,6 +446,47 @@ function fechamentoDeImportes(sementes: string[]): string[] {
  * A lista só ENCURTA, e vale o mesmo aviso do backlog das telas.
  */
 const BACKLOG_DE_COMPONENTES: Record<string, string> = {
+  'src/hooks/use-bets.ts': 'mensagem de erro de hook e serviço',
+  'src/hooks/use-capital-movements.ts': 'mensagem de erro de hook e serviço',
+  'src/hooks/use-futebol-publication-alerts.ts': 'mensagem de erro de hook e serviço',
+  'src/hooks/use-settings-data.ts': 'mensagem de erro de hook e serviço',
+  'src/hooks/use-share-link.ts': 'mensagem de erro de hook e serviço',
+  'src/hooks/use-share-resolve.ts': 'mensagem de erro de hook e serviço',
+  'src/hooks/use-user-unit.ts': 'mensagem de erro de hook e serviço',
+  'src/services/bolao.service.ts': 'mensagem de erro de hook e serviço',
+  // ⚠️ ACHADOS QUANDO O DETECTOR PASSOU A OLHAR LITERAL DE STRING.
+  // Nenhum deles é regressão: o texto sempre esteve aí, dentro de ternário,
+  // de objeto ou de argumento, onde a varredura não olhava. A lista só
+  // encurta — SALVO quando o alcance da guarda cresce, que é este caso e está
+  // registrado aqui de propósito.
+
+  // sócios: módulos de apoio (6)
+  'src/components/socios/crm-acesso.ts': 'sócios: módulos de apoio',
+  'src/components/socios/crm-cobranca.ts': 'sócios: módulos de apoio',
+  'src/components/socios/crm-etiquetas.ts': 'sócios: módulos de apoio',
+  'src/components/socios/crm-ficha.ts': 'sócios: módulos de apoio',
+  'src/components/socios/crm-linha-do-tempo.ts': 'sócios: módulos de apoio',
+  'src/components/socios/crm-mensagens.ts': 'sócios: módulos de apoio',
+  // futebol: frases de premissa, que são contrato do banco (8)
+  'src/utils/futebol-criterio.ts': 'futebol: frases de premissa (contrato do banco)',
+  'src/utils/futebol-desfalques.ts': 'futebol: frases de premissa (contrato do banco)',
+  'src/utils/futebol-estado-da-premissa.ts': 'futebol: frases de premissa (contrato do banco)',
+  'src/utils/futebol-historico.ts': 'futebol: frases de premissa (contrato do banco)',
+  'src/utils/futebol-insumo-medido.ts': 'futebol: frases de premissa (contrato do banco)',
+  'src/utils/futebol-motivos.ts': 'futebol: frases de premissa (contrato do banco)',
+  'src/utils/futebol-score.ts': 'futebol: frases de premissa (contrato do banco)',
+  'src/utils/futebol-tendencias.ts': 'futebol: frases de premissa (contrato do banco)',
+  // demo do tour (2)
+  'src/components/onboarding/demo/betinho.ts': 'demo do tour',
+  'src/components/onboarding/demo/futebol.ts': 'demo do tour',
+  // bolão: componentes (2)
+  'src/components/bolao/BolaoHandoffCard.tsx': 'bolão: componentes',
+  'src/components/bolao/useRankingShareImage.ts': 'bolão: componentes',
+  // avulsos (4)
+  'src/components/ReferralModal.tsx': 'avulso',
+  'src/components/share/ShareErrorState.tsx': 'compartilhar',
+  'src/components/placar/placar-por-premissa.ts': 'sócios: placar',
+  'src/utils/rolagem.ts': 'avulso',
   // bolão: componentes (24)
   'src/components/bolao/AchievementProvider.tsx': 'bolão: componentes',
   'src/components/bolao/BolaoAdminPanel.tsx': 'bolão: componentes',

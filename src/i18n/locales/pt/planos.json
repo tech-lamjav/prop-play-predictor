@@ -299,7 +299,9 @@
     "loginTitulo": "Login necessário",
     "loginTexto": "Por favor, faça login para continuar com o pagamento.",
     "erroTitulo": "Erro ao processar pagamento",
-    "erroTexto": "Ocorreu um erro ao iniciar o checkout. Tente novamente."
+    "erroTexto": "Ocorreu um erro ao iniciar o checkout. Tente novamente.",
+    "whatsappUpgradeBetinho": "Oi, gostaria de fazer upgrade do meu plano Betinho (registro de apostas)",
+    "whatsappUpgradePlataforma": "Oi, gostaria de fazer upgrade do meu plano na Plataforma de Análise"
   },
   "paywall": {
     "titulo": "Você chegou ao limite do plano gratuito!",

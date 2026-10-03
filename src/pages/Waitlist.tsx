@@ -46,8 +46,8 @@ const Waitlist = () => {
       } else {
         setSubmitted(true);
         toast({
-          title: "Sucesso!",
-          description: "Você foi adicionado à lista de espera. Em breve entraremos em contato!",
+          title: tComum('espera.sucessoTitulo'),
+          description: tComum('espera.sucessoTexto'),
         });
       }
     } catch (error) {

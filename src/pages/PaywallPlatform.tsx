@@ -142,7 +142,7 @@ export default function PaywallPlatform() {
       console.error('Error creating checkout session:', error);
       toast({
         title: t('checkout.erroTitulo'),
-        description: error instanceof Error ? error.message : t('checkout.erroTexto'),
+        description: t('checkout.erroTexto'),
         variant: "destructive",
       });
     } finally {
@@ -152,7 +152,7 @@ export default function PaywallPlatform() {
 
   const handleUpgrade = () => {
     // Open WhatsApp with pre-filled message for upgrade (Plataforma de Análise)
-    const message = "Oi, gostaria de fazer upgrade do meu plano na Plataforma de Análise";
+    const message = t('checkout.whatsappUpgradePlataforma');
     const whatsappUrl = whatsappDoTime(message);
 
     // Open WhatsApp with pre-filled message
