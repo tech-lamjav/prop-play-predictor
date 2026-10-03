@@ -417,14 +417,6 @@ const BACKLOG_DE_COMPONENTES: Record<string, string> = {
   'src/components/bolao/SpecialPredictionsSection.tsx': 'bolão: componentes',
   'src/components/bolao/UserPredictionsModal.tsx': 'bolão: componentes',
   'src/components/bolao/useQuickPickUndo.ts': 'bolão: componentes',
-  // Betinho: painel (7)
-  'src/components/dashboard/BetinhoNarrative.tsx': 'Betinho: painel',
-  'src/components/dashboard/BigHeatmap.tsx': 'Betinho: painel',
-  'src/components/dashboard/CalendarHeatmap.tsx': 'Betinho: painel',
-  'src/components/dashboard/DrillDown.tsx': 'Betinho: painel',
-  'src/components/dashboard/HeroKPIMobile.tsx': 'Betinho: painel',
-  'src/components/dashboard/OddsHistogram.tsx': 'Betinho: painel',
-  'src/utils/dashboardAggregations.ts': 'Betinho: painel',
   // avulso (5)
   'src/components/FutebolDayStepper.tsx': 'avulso',
   'src/components/Seo.tsx': 'avulso',

@@ -392,6 +392,252 @@
           "texto": "Alertas sobre cuándo apuestas montos muy distintos y rangos de cuota fuera de la zona estable."
         }
       }
+    },
+    "narrativa": {
+      "personalizar": "Personalizar",
+      "personalizarTitulo": "Personalizar análisis (período + foco)",
+      "semPadroes": "Sin patrones lo bastante fuertes para destacar.",
+      "eyebrow": "Análisis · {{periodo}}",
+      "semDados": {
+        "titulo": "Pocos datos para un análisis sólido.",
+        "texto_zero": "Tienes {{count}} apuestas cerradas en el período. Registra al menos 5 apuestas para empezar a ver patrones.",
+        "texto_one": "Tienes {{count}} apuesta cerrada en el período. Registra al menos 5 apuestas para empezar a ver patrones.",
+        "texto_other": "Tienes {{count}} apuestas cerradas en el período. Registra al menos 5 apuestas para empezar a ver patrones."
+      },
+      "headline": {
+        "solido": "Tuviste un período sólido.",
+        "solidoDestaque": "sólido",
+        "positivo": "Período en positivo, pero se puede subir el ROI.",
+        "positivoDestaque": "en positivo",
+        "neutro": "Período prácticamente neutro.",
+        "recuperavel": "Período negativo, pero recuperable.",
+        "recuperavelDestaque": "recuperable",
+        "dificil": "Período difícil. Vale revisar la estrategia.",
+        "dificilDestaque": "difícil"
+      },
+      "corpo": {
+        "comRoi": " con ROI ",
+        "emApostas_one": " en {{count}} apuesta.",
+        "emApostas_other": " en {{count}} apuestas.",
+        "puxou_one": " {{liga}} ({{mercado}}) empujó: {{count}} apuesta, ",
+        "puxou_other": " {{liga}} ({{mercado}}) empujó: {{count}} apuestas, "
+      },
+      "bullets": {
+        "mantenhaRitmo": "{{roi}} ROI · mantén el ritmo.",
+        "considerePausar": "{{roi}} ROI · considera pausar.",
+        "stakeOscilando": "Stake oscilando:",
+        "variacao": "variación de {{pct}} · estandariza para reducir riesgo.",
+        "oddMedia": "Cuota media:",
+        "oddDentro": "{{odd}} · dentro de la zona estable.",
+        "oddFora": "{{odd}} · fuera de la zona estable (1.5–2.5)."
+      }
+    },
+    "insights": {
+      "etiqueta": "Plan de acción",
+      "titulo_one": "{{count}} movimiento que aumentaría tu ROI",
+      "titulo_other": "{{count}} movimientos que aumentarían tu ROI",
+      "cta": {
+        "verFatia": "Ver segmento en el mapa",
+        "revisarDisciplina": "Revisar disciplina"
+      },
+      "oportunidade": {
+        "etiqueta": "Oportunidad",
+        "texto_one": "{{roi}} de ROI en {{count}} apuesta ({{valor}}). Sigue apostando aquí.",
+        "texto_other": "{{roi}} de ROI en {{count}} apuestas ({{valor}}). Sigue apostando aquí."
+      },
+      "vazamento": {
+        "etiqueta": "Fuga",
+        "texto_one": "{{roi}} de ROI en {{count}} apuesta ({{valor}}). Considera pausar o ajustar el criterio.",
+        "texto_other": "{{roi}} de ROI en {{count}} apuestas ({{valor}}). Considera pausar o ajustar el criterio."
+      },
+      "disciplina": {
+        "etiqueta": "Disciplina",
+        "stakeVariaTitulo": "El stake varía mucho",
+        "stakeVariaTexto": "Tu stake varía {{pct}} respecto a la media ({{media}}). Estandarizar reduce riesgo.",
+        "oddAltaTitulo": "Cuota media alta",
+        "oddAltaTexto": "Cuota media {{odd}} es arriesgada. Las apuestas con cuota 1.5–2.1 tienden a tener un ROI más estable.",
+        "oddBaixaTitulo": "Cuota media baja",
+        "oddBaixaTexto": "Cuota media {{odd}} es conservadora. Poco upside por apuesta — vale revisar el criterio de selección."
+      }
+    },
+    "mapa": {
+      "etiqueta": "ROI por liga × mercado",
+      "legenda": "En positivo = ganancia · en negativo = pérdida · gris = sin apuestas",
+      "vazio": "Ninguna apuesta cerrada en el período",
+      "desmarcar": "Haz clic de nuevo para desmarcar",
+      "tocarDetalhes": "Toca un cuadrito para ver detalles",
+      "clicarDetalhes": "Haz clic en un cuadrito para ver detalles al lado",
+      "mostrarTudo": "Mostrar todo",
+      "esconderVazios": "Ocultar vacíos",
+      "esconderVaziosTitulo": "Ocultar filas y columnas vacías",
+      "ocultas_zero": "{{count}} filas/columnas ocultas. Haz clic para mostrar todas.",
+      "ocultas_one": "{{count}} fila/columna oculta. Haz clic para mostrar todas.",
+      "ocultas_other": "{{count}} filas/columnas ocultas. Haz clic para mostrar todas.",
+      "metrica": {
+        "roi": "ROI",
+        "lucro": "Ganancia",
+        "quantidade": "Cantidad",
+        "lucroCurto": "R$",
+        "quantidadeCurto": "Cant"
+      },
+      "semDados": "sin datos",
+      "apostas": "apuestas",
+      "celulaSemDados": "{{liga}} · {{mercado}} — sin datos",
+      "celula_one": "{{liga}} · {{mercado}} — {{count}} apuesta, ROI {{roi}}, {{valor}}",
+      "celula_other": "{{liga}} · {{mercado}} — {{count}} apuestas, ROI {{roi}}, {{valor}}"
+    },
+    "fatia": {
+      "selecione": "Selecciona un segmento",
+      "selecioneTexto": "Haz clic en una celda del mapa para ver las apuestas, cuándo apuestas y estadísticas de ese segmento.",
+      "etiqueta": "Segmento seleccionado",
+      "vazia": "Ninguna apuesta en este segmento en el período.",
+      "resumo_one": "{{count}} apuesta · stake {{stake}}",
+      "resumo_other": "{{count}} apuestas · stake {{stake}}",
+      "greens": "Ganadas",
+      "reds": "Perdidas",
+      "outras": "Otras",
+      "tendencia": "Tendencia (semanal)",
+      "ultimas_one": "Última apuesta",
+      "ultimas_other": "Últimas {{count}} apuestas",
+      "gerarAnalise": "Generar análisis de ese segmento",
+      "analiseEmBreve": "Análisis en breve",
+      "analiseNoPro": "Análisis de ese segmento · Disponible en Pro",
+      "ver_one": "Ver la apuesta",
+      "ver_other": "Ver todas las {{count}} apuestas"
+    },
+    "faixaDeOdd": {
+      "etiqueta": "Rango de cuota",
+      "titulo": "Dónde crece tu bankroll (y dónde pierdes dinero)",
+      "vazio": "Ninguna apuesta cerrada en el período",
+      "mostrarTudo": "Mostrar todo",
+      "esconderVazios": "Ocultar vacíos",
+      "mostrarTudoTitulo": "Mostrar todos los rangos (incluso los vacíos)",
+      "esconderVaziosTitulo": "Ocultar rangos sin datos",
+      "barraSemDados": "{{faixa}}: sin datos",
+      "barra_one": "{{faixa}}: {{count}} apuesta, ROI {{roi}}, {{valor}}",
+      "barra_other": "{{faixa}}: {{count}} apuestas, ROI {{roi}}, {{valor}}",
+      "volumeELucro": "<0>Rango más rentable:</0> las apuestas entre <1>{{faixa}}</1> representan <2>{{volume}}</2> del volumen y <3>{{lucro}}</3> de la ganancia.",
+      "volumeEGanho": "<0>Rango más rentable:</0> las apuestas entre <1>{{faixa}}</1> representan <2>{{volume}}</2> del volumen y generan <3>{{valor}}</3> de ganancia (por encima de la media).",
+      "volumeERoi": "<0>Rango más rentable:</0> las apuestas entre <1>{{faixa}}</1> representan <2>{{volume}}</2> del volumen con ROI <3>{{roi}}</3>.",
+      "semFaixa": "Ningún rango de cuota con volumen mínimo (≥3 apuestas) y ROI positivo en el período."
+    },
+    "atividade": {
+      "etiqueta": "Actividad",
+      "titulo": "Cuándo apuestas",
+      "vazio": "Ninguna apuesta registrada",
+      "mesAnterior": "Mes anterior",
+      "mesSeguinte": "Mes siguiente",
+      "nenhumaAposta": "ninguna apuesta",
+      "apostas_one": "{{count}} apuesta",
+      "apostas_other": "{{count}} apuestas",
+      "maisAtivo": "Más activo",
+      "fimDeSemana": "Fin de semana",
+      "dasApostas": "de las apuestas",
+      "sequencia": "Secuencia",
+      "dias_zero": "{{count}} días",
+      "dias_one": "{{count}} día",
+      "dias_other": "{{count}} días",
+      "recorde": "récord del período",
+      "menos": "Menos",
+      "mais": "Más",
+      "diasAtivos_zero": "{{count}} días activos",
+      "diasAtivos_one": "{{count}} día activo",
+      "diasAtivos_other": "{{count}} días activos",
+      "totalApostas_zero": "{{count}} apuestas",
+      "totalApostas_one": "{{count}} apuesta",
+      "totalApostas_other": "{{count}} apuestas"
+    },
+    "heroMobile": {
+      "lucro": "Ganancia",
+      "taxaDeAcerto": "Tasa de acierto",
+      "apostas": "Apuestas",
+      "chips": {
+        "d7": "7d",
+        "d30": "30d",
+        "d90": "90d"
+      }
+    },
+    "analiseFatia": {
+      "eyebrow": "Análisis del segmento",
+      "eyebrowTag": "Análisis de la etiqueta",
+      "eyebrowTags": "Análisis de las etiquetas",
+      "descricao": "Análisis hecho a partir de tus apuestas",
+      "vazia": "Ninguna apuesta en este segmento en el período seleccionado.",
+      "vaziaTags": "Ninguna apuesta con esas etiquetas en el período seleccionado.",
+      "maisTags_one": "{{primeira}} + {{count}} etiqueta más",
+      "maisTags_other": "{{primeira}} + {{count}} etiquetas más",
+      "metrica": {
+        "roi": "ROI",
+        "lucro": "Ganancia",
+        "acerto": "Acierto",
+        "apostas": "Apuestas"
+      },
+      "paragrafo_one": "Tienes {{count}} apuesta en {{liga}} ({{mercado}}), con {{roi}} de ROI y {{lucro}} de ganancia en el período.",
+      "paragrafo_other": "Tienes {{count}} apuestas en {{liga}} ({{mercado}}), con {{roi}} de ROI y {{lucro}} de ganancia en el período.",
+      "paragrafoTag_one": "Tienes {{count}} apuesta {{escopo}}, con {{roi}} de ROI y {{lucro}} de ganancia en el período.",
+      "paragrafoTag_other": "Tienes {{count}} apuestas {{escopo}}, con {{roi}} de ROI y {{lucro}} de ganancia en el período.",
+      "escopoUmaTag": "con la etiqueta {{tag}}",
+      "escopoVariasTags": "con las etiquetas {{tags}}",
+      "acertoEm": "Acierto en {{acertos}} de {{total}} ({{taxa}}), con cuota media {{odd}} y stake medio {{stake}}.",
+      "sequenciaGreen_one": "Secuencia actual: {{count}} ganada consecutiva. Momento positivo.",
+      "sequenciaGreen_other": "Secuencia actual: {{count}} ganadas consecutivas. Momento positivo.",
+      "sequenciaRed_one": "Secuencia actual: {{count}} perdida consecutiva. Cuidado con el tilt.",
+      "sequenciaRed_other": "Secuencia actual: {{count}} perdidas consecutivas. Cuidado con el tilt.",
+      "oddEstavel": "Cuota media {{odd}} está en la zona estable (1.5–2.1).",
+      "oddConservadora": "Cuota media {{odd}} es conservadora — poco upside por apuesta.",
+      "oddArriscada": "Cuota media {{odd}} es arriesgada — varianza alta.",
+      "maiorGreenRed": "Mayor ganancia {{maior}} · mayor pérdida {{menor}}.",
+      "pontosDeAtencao": "Puntos de atención"
+    },
+    "novaAnalise": {
+      "eyebrow": "Nuevo análisis · Betinho",
+      "titulo": "¿Qué período quieres analizar?",
+      "descricao": "Análisis hecho a partir de tus apuestas",
+      "periodosSugeridos": "Períodos sugeridos",
+      "presets": {
+        "d7": "7 días",
+        "d30": "30 días",
+        "d90": "90 días",
+        "tudo": "Todo"
+      },
+      "contagem_zero": "{{count}} apuestas",
+      "contagem_one": "{{count}} apuesta",
+      "contagem_other": "{{count}} apuestas",
+      "foco": "Foco del análisis",
+      "focoOpcional": "(opcional · elige 1 o más)",
+      "limpar": "Limpiar",
+      "ligas": "Ligas",
+      "etiquetas": "Etiquetas",
+      "resumo_one": "El Betinho va a analizar <0>{{count}} apuesta</0> del período. Eso tarda 3–5 segundos.",
+      "resumo_other": "El Betinho va a analizar <0>{{count}} apuestas</0> del período. Eso tarda 3–5 segundos.",
+      "semApostas": "Ninguna apuesta cerrada en ese período. Prueba otro intervalo.",
+      "cancelar": "Cancelar",
+      "analisar": "Analizar",
+      "analisarContagem_one": "Analizar {{count}} apuesta",
+      "analisarContagem_other": "Analizar {{count}} apuestas"
+    },
+    "analisando": {
+      "pronta": "Análisis listo",
+      "emCurso": "El Betinho está analizando…",
+      "processadas_zero": "{{count}} apuestas procesadas",
+      "processadas_one": "{{count}} apuesta procesada",
+      "processadas_other": "{{count}} apuestas procesadas",
+      "cruzando_zero": "Cruzando {{count}} apuestas del período",
+      "cruzando_one": "Cruzando {{count}} apuesta del período",
+      "cruzando_other": "Cruzando {{count}} apuestas del período",
+      "passos": {
+        "historico": "Cargando historial",
+        "roi": "Calculando ROI por liga × mercado",
+        "padroes": "Detectando patrones y fugas",
+        "recomendacoes": "Generando recomendaciones"
+      },
+      "pronto": "¡Listo!",
+      "duracao": "Normalmente tarda 3–5 segundos"
+    },
+    "foco": {
+      "todos": "todos los ámbitos",
+      "maisOutros_one": "{{primeiro}} + {{count}} más",
+      "maisOutros_other": "{{primeiro}} + {{count}} más"
     }
   },
   "banca": {

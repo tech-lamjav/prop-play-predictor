@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { SlidersHorizontal } from 'lucide-react';
 import type { Narrative } from '@/utils/dashboardAggregations';
 import { InsightIcon } from './InsightIcon';
@@ -24,6 +25,7 @@ const splitHeadline = (
 };
 
 export const BetinhoNarrative: React.FC<BetinhoNarrativeProps> = ({ narrative, onRefresh }) => {
+  const { t } = useTranslation('apostas');
   const split = splitHeadline(narrative.headline, narrative.headlineHighlight);
   const highlightTone = narrative.headlineHighlight?.tone ?? 'positive';
   const highlightColor = highlightTone === 'negative' ? 'text-rose-300' : 'text-amber-400';
@@ -53,10 +55,10 @@ export const BetinhoNarrative: React.FC<BetinhoNarrativeProps> = ({ narrative, o
               type="button"
               onClick={onRefresh}
               className="h-8 px-3 rounded-md bg-amber-400 hover:bg-amber-300 text-forest font-extrabold text-[11px] flex items-center gap-1.5 transition-colors shrink-0"
-              title="Personalizar análise (período + foco)"
+              title={t('painel.narrativa.personalizarTitulo')}
             >
               <SlidersHorizontal className="w-3 h-3" />
-              <span className="hidden sm:inline">Personalizar</span>
+              <span className="hidden sm:inline">{t('painel.narrativa.personalizar')}</span>
             </button>
           )}
         </div>
@@ -135,7 +137,7 @@ export const BetinhoNarrative: React.FC<BetinhoNarrativeProps> = ({ narrative, o
               })}
               {narrative.bullets.length === 0 && (
                 <div className="text-[12px] text-white/60 italic">
-                  Sem padrões suficientemente fortes pra destacar.
+                  {t('painel.narrativa.semPadroes')}
                 </div>
               )}
             </div>

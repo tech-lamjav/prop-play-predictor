@@ -234,28 +234,37 @@ export default function BettingDashboard() {
           winRate: focusedStats.winRate,
         },
         focusedHeatmap,
-        isEmptyFocus(currentFocus) ? periodLabel : `${focusLabel(currentFocus)} · ${periodLabel}`,
+        isEmptyFocus(currentFocus)
+          ? periodLabel
+          : `${focusLabel(currentFocus, t)} · ${periodLabel}`,
+        t,
         formatValue
       ),
-    [focusedBets, focusedStats, focusedHeatmap, currentFocus, periodLabel, formatValue]
+    [focusedBets, focusedStats, focusedHeatmap, currentFocus, periodLabel, t, formatValue]
   );
   const insights = useMemo(
-    () => deriveInsights(focusedBets, focusedHeatmap, formatValue),
-    [focusedBets, focusedHeatmap, formatValue]
+    () => deriveInsights(focusedBets, focusedHeatmap, t, formatValue),
+    [focusedBets, focusedHeatmap, t, formatValue]
   );
   const sliceNarrative = useMemo(
     () =>
       selectedCell
-        ? composeSliceNarrative(currentBets, selectedCell.league, selectedCell.market, formatValue)
+        ? composeSliceNarrative(
+            currentBets,
+            selectedCell.league,
+            selectedCell.market,
+            t,
+            formatValue,
+          )
         : null,
-    [selectedCell, currentBets, formatValue]
+    [selectedCell, currentBets, t, formatValue]
   );
   const tagNarrative = useMemo(
     () =>
       tagAnalysisTags.length > 0
-        ? composeTagNarrative(currentBetsWithTags, tagAnalysisTags, formatValue)
+        ? composeTagNarrative(currentBetsWithTags, tagAnalysisTags, t, formatValue)
         : null,
-    [tagAnalysisTags, currentBetsWithTags, formatValue]
+    [tagAnalysisTags, currentBetsWithTags, t, formatValue]
   );
 
   // Reset selected cell when period changes (cell indices may not match new heatmap).
