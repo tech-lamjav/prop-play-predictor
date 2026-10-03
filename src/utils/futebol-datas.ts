@@ -11,7 +11,7 @@
 // regra em `public.futebol_dia_brt` (migration 092) e a RPC da agenda já devolve
 // `day_brt` pronto; estas funções são pro que o front calcula por conta.
 
-import { localeAtivo } from '@/utils/idioma-ativo';
+import { localeAtivo, RELOGIO_DE_24H } from '@/utils/idioma-ativo';
 
 export const SAO_PAULO_TZ = 'America/Sao_Paulo';
 
@@ -134,7 +134,7 @@ export function fmtTime(raw: string | null | undefined): string {
   if (!d) return '';
   return formatadorDeData(localeAtivo(), {
     timeZone: SAO_PAULO_TZ,
-    hour: '2-digit',
+    hour: '2-digit', hourCycle: RELOGIO_DE_24H,
     minute: '2-digit',
   }).format(d);
 }

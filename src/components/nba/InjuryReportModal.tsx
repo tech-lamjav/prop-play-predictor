@@ -7,7 +7,7 @@ import { getTeamLogoUrl } from '@/utils/team-logos';
 import { Loader2, Star, ArrowRight, Check } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useNavigate } from 'react-router-dom';
-import { localeAtivo } from '@/utils/idioma-ativo';
+import { localeAtivo, RELOGIO_DE_24H } from '@/utils/idioma-ativo';
 
 const STATUSES = ['probable', 'questionable', 'doubtful', 'out'] as const;
 type Status = typeof STATUSES[number];
@@ -135,7 +135,7 @@ export function InjuryReportModal({ open, onClose, games, opportunities }: Props
         label: `${g.visitor_team_abbreviation} vs ${g.home_team_abbreviation}`,
         time: g.game_datetime_brasilia
           ? new Date(g.game_datetime_brasilia).toLocaleTimeString(localeAtivo(), {
-              timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit',
+              timeZone: 'America/Sao_Paulo', hour: '2-digit', hourCycle: RELOGIO_DE_24H, minute: '2-digit',
             })
           : '',
         home: {

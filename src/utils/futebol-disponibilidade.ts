@@ -1,7 +1,7 @@
 import type { FutebolFixtureDisponibilidade } from '@/services/futebol-data.service';
 import { mesmaLinha } from '@/utils/futebol-leitura';
 import { formatadorDeData, parseUtc } from '@/utils/futebol-datas';
-import { localeAtivo } from '@/utils/idioma-ativo';
+import { localeAtivo, RELOGIO_DE_24H } from '@/utils/idioma-ativo';
 
 /**
  * "Disponível desde" da saída analisada (issue #300).
@@ -42,7 +42,7 @@ export function rotuloDisponivelDesde(disponivelDesde: string | null | undefined
     timeZone: 'America/Sao_Paulo',
     day: '2-digit',
     month: '2-digit',
-    hour: '2-digit',
+    hour: '2-digit', hourCycle: RELOGIO_DE_24H,
     minute: '2-digit',
   })
     .format(quando)

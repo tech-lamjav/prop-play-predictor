@@ -372,13 +372,19 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
             {/* Bloco de CTAs — empurrado para o fim do card via mt-auto, evita gap visual */}
             <div className="mt-auto flex flex-col gap-2">
 
+            {/* ⚠️ ALTURA MÍNIMA, E NÃO ALTURA FIXA. Os dois botões tinham altura
+                travada em 32px, e em português o rótulo cabia numa linha. "Ver el bankroll
+                completo" quebra em duas, e dentro de 32px fixos a segunda linha
+                não tinha para onde ir — o texto encostava na borda. Botão de
+                altura travada com texto traduzível quebra no primeiro idioma
+                que tiver palavra maior, e o espanhol quase sempre tem. */}
             {/* Gerenciar banca — dropdown agrupando aporte/resgate/edição da banca inicial */}
             {(onAporte || onResgate) && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    className="h-8 px-3 inline-flex items-center justify-center gap-1.5 text-[12px] font-medium text-forest border border-forest/30 hover:bg-forest-tint rounded-md transition-colors"
+                    className="min-h-[32px] px-3 py-1.5 inline-flex items-center justify-center gap-1.5 text-[12px] font-medium text-forest border border-forest/30 hover:bg-forest-tint rounded-md transition-colors text-center leading-tight"
                   >
                     {t('evolucao.gerenciarBanca')}
                   </button>
@@ -419,7 +425,7 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
               <button
                 type="button"
                 onClick={() => navigate('/bankroll')}
-                className="h-8 px-3 inline-flex items-center justify-center gap-1.5 text-[12px] font-medium text-ink-2 hover:text-forest hover:bg-forest-tint border border-line hover:border-forest/30 rounded-md transition-colors"
+                className="min-h-[32px] px-3 py-1.5 inline-flex items-center justify-center gap-1.5 text-[12px] font-medium text-ink-2 hover:text-forest hover:bg-forest-tint border border-line hover:border-forest/30 rounded-md transition-colors text-center leading-tight"
               >
                 {t('evolucao.verBancaCompleta')}
                 <ArrowRight className="w-3.5 h-3.5" />

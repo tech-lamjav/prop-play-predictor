@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { ChevronRight, AlertTriangle } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { getTeamLogoUrl } from '@/utils/team-logos';
-import { localeAtivo } from '@/utils/idioma-ativo';
+import { localeAtivo, RELOGIO_DE_24H } from '@/utils/idioma-ativo';
 
 export interface GameAngle {
   /** Time alvo do ângulo (geralmente o oponente de quem vai render o pick) */
@@ -85,7 +85,7 @@ function formatTime(iso: string | null, semHorario: string): string {
   if (!iso) return semHorario;
   return new Date(iso).toLocaleTimeString(localeAtivo(), {
     timeZone: 'America/Sao_Paulo',
-    hour: '2-digit',
+    hour: '2-digit', hourCycle: RELOGIO_DE_24H,
     minute: '2-digit',
   });
 }

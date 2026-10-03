@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { brtDateStr, brtDayOf, fmtDayHeader, fmtDayShort } from './futebol-datas';
+import { brtDateStr, brtDayOf, fmtDayHeader, fmtDayShort, fmtTime } from './futebol-datas';
 import { definirLocaleAtivo, LOCALE_PADRAO } from './idioma-ativo';
 
 // ============================================================================
@@ -117,5 +117,50 @@ describe('as duas pontas de um intervalo de datas combinam', () => {
     // justamente o tipo de coisa que ninguém confere.
     expect(fmtDayShort('2026-12-02')).toBe('02 de dez');
     expect(fmtDayShort('2027-05-30', true)).toBe('30 de mai de 2027');
+  });
+});
+
+// ============================================================================
+// O relógio é de 24 horas, em qualquer idioma
+// ============================================================================
+// A lista de jogos escrevia "03:45 p.m." em espanhol e "15:45" em português,
+// para o MESMO jogo. Ninguém decidiu isso: todo espanhol da América Latina pede
+// 12 horas no CLDR, e o `Intl` obedeceu o idioma novo.
+//
+// É da mesma família do hífen da tela de campeonatos — a troca de idioma
+// mexendo numa régua que não é de idioma. A diferença é que esta aparecia em
+// toda linha de toda grade de jogos.
+// ============================================================================
+
+describe('o relógio não muda com o idioma', () => {
+  afterEach(() => definirLocaleAtivo(LOCALE_PADRAO));
+
+  // 18:45 UTC é 15:45 em Brasília, a hora que vira "03:45 p.m." no relógio de 12.
+  const TARDE = '2026-10-03T18:45:00Z';
+
+  for (const locale of ['pt-BR', 'es-419', 'es-PE', 'es-AR', 'es-MX', 'es-CL']) {
+    it(`escreve 24 horas em ${locale}`, () => {
+      definirLocaleAtivo(locale);
+      expect(fmtTime(TARDE)).toBe('15:45');
+    });
+  }
+
+  it('não escreve a.m. nem p.m. em nenhum idioma', () => {
+    for (const locale of ['pt-BR', 'es-419', 'es-PE', 'es-AR']) {
+      definirLocaleAtivo(locale);
+      const manha = fmtTime('2026-10-03T12:30:00Z');
+      const tarde = fmtTime(TARDE);
+      expect(`${manha} ${tarde}`.toLowerCase(), `${locale} escreveu meio-dia`).not.toMatch(
+        /a\.?\s?m\.?|p\.?\s?m\./,
+      );
+    }
+  });
+
+  it('a hora é a mesma em português e em espanhol', () => {
+    // O critério que o usuário enxerga: a mesma grade, dois idiomas, uma hora.
+    definirLocaleAtivo('pt-BR');
+    const emPortugues = fmtTime(TARDE);
+    definirLocaleAtivo('es-419');
+    expect(fmtTime(TARDE), 'o mesmo jogo mudou de hora ao trocar de idioma').toBe(emPortugues);
   });
 });

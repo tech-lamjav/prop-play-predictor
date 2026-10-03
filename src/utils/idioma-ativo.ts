@@ -34,3 +34,24 @@ export function definirLocaleAtivo(locale: string): void {
 export function localeAtivo(): string {
   return atual;
 }
+
+/**
+ * O relógio é de 24 horas, em qualquer idioma.
+ *
+ * ⚠️ SEM ISTO O ESPANHOL TROCA O RELÓGIO SOZINHO. Todo espanhol da América
+ * Latina pede 12 horas no CLDR, e a lista de jogos passava a escrever
+ * "03:45 p.m." onde o português escreve "15:45" — para o mesmo jogo, na mesma
+ * tela. Não foi decisão de ninguém: foi o `Intl` obedecendo o idioma novo.
+ *
+ *   pt-BR    15:45          es-PE    03:45 p. m.
+ *   es-419   03:45 p.m.     es-AR    03:45 p. m.
+ *   es-ES    15:45          es-CL    03:45 p. m.
+ *
+ * A régua da casa é 24 horas: é o que o produto já escrevia, é o que a grade
+ * de jogos precisa para alinhar a coluna, e `fmtTime` promete `HH:MM` na
+ * própria assinatura — promessa que o idioma novo quebrava calado.
+ *
+ * Fica aqui, e não repetido em cada chamada, pelo mesmo motivo do idioma
+ * ativo: a régua é do PRODUTO e não de cada tela.
+ */
+export const RELOGIO_DE_24H = 'h23' as const;

@@ -35,7 +35,7 @@ import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
 import { demoFixtureDetail, demoTeamSeason, demoAwaySeason } from '@/components/onboarding/demo/futebol';
 import { useDemoFixtureValueRows } from '@/components/onboarding/demo/use-demo-futebol';
 import { fmtDecimal } from '@/utils/formato';
-import { localeAtivo } from '@/utils/idioma-ativo';
+import { localeAtivo, RELOGIO_DE_24H } from '@/utils/idioma-ativo';
 
 /**
  * A bancada fica lado a lado a partir de 1280px (o breakpoint `xl` do grid). O
@@ -86,7 +86,7 @@ function fmtDataEHora(raw: string | null): { data: string; hora: string } {
     formatadorDeData(localeAtivo(), { timeZone: SAO_PAULO_TZ, ...opcoes }).format(d);
   return {
     data: parte({ day: '2-digit', month: '2-digit' }),
-    hora: parte({ hour: '2-digit', minute: '2-digit' }),
+    hora: parte({ hour: '2-digit', hourCycle: RELOGIO_DE_24H, minute: '2-digit' }),
   };
 }
 

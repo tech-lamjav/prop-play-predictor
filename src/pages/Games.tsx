@@ -21,7 +21,7 @@ import { nbaDataService, type Game } from '@/services/nba-data.service';
 import { useAnalise360Data } from '@/hooks/use-analise360';
 import { getPlayerPhotoUrl, getTeamLogoUrl, teamAbbrToName, tryNextPlayerPhotoUrl } from '@/utils/team-logos';
 import { fmtDecimal, fmtLinhaAnalisada, fmtPct } from '@/utils/formato';
-import { localeAtivo } from '@/utils/idioma-ativo';
+import { localeAtivo, RELOGIO_DE_24H } from '@/utils/idioma-ativo';
 
 // ─── Constants ───────────────────────────────────────────────────────────
 
@@ -142,7 +142,7 @@ function GameCard({ game, onClick }: { game: Game; onClick: () => void }) {
   const shortDate = formatShortDateBR(game.game_date);
   const time = game.game_datetime_brasilia
     ? new Date(game.game_datetime_brasilia).toLocaleTimeString(localeAtivo(), {
-        timeZone: SAO_PAULO_TIMEZONE, hour: '2-digit', minute: '2-digit',
+        timeZone: SAO_PAULO_TIMEZONE, hour: '2-digit', hourCycle: RELOGIO_DE_24H, minute: '2-digit',
       })
     : null;
   const countdown = !finished && game.game_datetime_brasilia ? timeUntil(game.game_datetime_brasilia) : null;

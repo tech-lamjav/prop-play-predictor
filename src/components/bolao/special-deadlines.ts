@@ -1,5 +1,5 @@
 import type { WcMatch, SpecialDeadlinesConfig } from '@/services/bolao.service';
-import { localeAtivo } from '@/utils/idioma-ativo';
+import { localeAtivo, RELOGIO_DE_24H } from '@/utils/idioma-ativo';
 
 /**
  * Prazos dos palpites especiais — espelha a função SQL
@@ -117,7 +117,7 @@ export function formatDeadlineLabel(
   const fmt = new Intl.DateTimeFormat(localeAtivo(), {
     day: '2-digit',
     month: '2-digit',
-    hour: '2-digit',
+    hour: '2-digit', hourCycle: RELOGIO_DE_24H,
     timeZone: 'America/Sao_Paulo',
   });
   // "28/06, 16" → "fecha 28/06 16h"

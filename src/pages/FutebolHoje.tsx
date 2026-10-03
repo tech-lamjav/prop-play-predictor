@@ -51,14 +51,14 @@ import { estadoDosMotivos, explicacaoDaLeitura, type MotivoExibivel as Motivo } 
 import { ladoDaSaida } from '@/utils/futebol-evidencias';
 import { useNow } from '@/hooks/use-now';
 import { comDia, useDiaNaUrl } from '@/hooks/use-dia-na-url';
-import { localeAtivo } from '@/utils/idioma-ativo';
+import { localeAtivo, RELOGIO_DE_24H } from '@/utils/idioma-ativo';
 // Quantos dias futuros (com jogos) o navegador mostra — janela curta, não a temporada toda.
 const DAY_WINDOW = 8;
 
 function fmtDayTime(raw: string | null): string {
   const d = parseUtc(raw);
   if (!d) return '—';
-  const s = formatadorDeData(localeAtivo(), { timeZone: SAO_PAULO_TZ, weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).format(d);
+  const s = formatadorDeData(localeAtivo(), { timeZone: SAO_PAULO_TZ, weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', hourCycle: RELOGIO_DE_24H, minute: '2-digit' }).format(d);
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 function fmtTodayHeader(d: Date): string {
