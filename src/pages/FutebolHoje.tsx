@@ -309,7 +309,7 @@ function OppCard({ o, to, aoClicar, aoAparecer }: { o: FutebolValueBoardRow; to:
     // quebra em duas linhas ("Mais de 2,5 gols" contra o nome de dois times
     // longos) empurrava só o botão dela. Com o botão em `mt-auto`, a fileira
     // inteira termina na mesma linha.
-    <Link ref={refDeImpressao} to={to} onClick={aoClicar} className={`${CARD} group flex h-full flex-col p-4 text-left hover:shadow-sm hover:border-line-2 transition w-full`}>
+    <Link ref={refDeImpressao} to={to} onClick={aoClicar} className={`${CARD} group flex h-full flex-col p-4 text-left hover:shadow-sm hover:border-line-2 transition w-full min-w-0`}>
       {/* O cartão é de DUAS COLUNAS, e a da esquerda leva o texto inteiro —
           etiquetas, competição, aposta, times e data.
 
@@ -321,7 +321,17 @@ function OppCard({ o, to, aoClicar, aoAparecer }: { o: FutebolValueBoardRow; to:
           lado, cada coluna tem a própria altura e não há vão nenhum. */}
       <div className="flex items-start justify-between gap-3 sm:grow">
         <div className="min-w-0">
-          <div className="flex items-center gap-1.5">
+          {/* ⚠️ AS ETIQUETAS PRECISAM PODER DESCER DE LINHA. Elas não quebram
+              nem truncam, então sozinhas sustentam a largura mínima do cartão —
+              e o cartão é item de grade, que sem `min-w-0` faz a COLUNA crescer
+              até caber. A 320px a coluna ficava com 310px dentro de uma grade de
+              273px e a página passava a rolar na horizontal.
+
+              Em português já acontecia, de leve. O espanhol escancarou: com
+              "Probabilidad" e "Cuota" no lugar de "Chance" e "Odd", a coluna da
+              direita vai de 84px para 119px e o mínimo do cartão sobe para
+              345px. */}
+          <div className="flex flex-wrap items-center gap-1.5">
             <span className="px-1.5 h-5 inline-flex items-center rounded text-[10px] font-semibold uppercase tracking-[0.1em] bg-canvas-2 text-ink-2">{copy.mercadoLongo(o.market)}</span>
             <span className={`px-1.5 h-5 inline-flex items-center rounded text-[10px] font-bold uppercase tracking-[0.1em] ${faixaBadgeCls(o.faixa)}`}>{copy.palavraDaFaixa(o.faixa)}</span>
           </div>

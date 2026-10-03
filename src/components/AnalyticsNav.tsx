@@ -273,7 +273,17 @@ export default function AnalyticsNav({
 
           {/* Direita: assinatura + conta */}
           <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-            {futebolActive && <FutebolTrialChip />}
+            {/* ⚠️ O CHIP SAI NAS TELAS ESTREITAS. Com ele, este bloco mede 319px
+                e, somado à logo, empurrava a PÁGINA INTEIRA para rolar na
+                horizontal a 320px — a 305px úteis o documento ia a 351px.
+
+                Ele é o único item daqui que não é AÇÃO: diz quanto tempo de
+                teste resta, e a mesma informação espera do outro lado do
+                botão. Entre perder o aviso e deixar a página rolar de lado,
+                perde o aviso. O espanhol tornou isso visível porque
+                "Suscribirse" e "Iniciar sesión" são mais largos que "Assinar"
+                e "Entrar". */}
+            <span className="hidden sm:contents">{futebolActive && <FutebolTrialChip />}</span>
 
             {user ? (
               <>
@@ -318,8 +328,13 @@ export default function AnalyticsNav({
                   onClick={() => navigate('/auth')}
                   className="h-9 text-xs text-white/80 hover:text-white hover:bg-white/10"
                 >
-                  <LogIn className="w-3 h-3 mr-1" />
-                  {tComum('acoes.entrar')}
+                  {/* ⚠️ NO ESTREITO O "ENTRAR" FICA SÓ COM O ÍCONE. Os dois
+                      botões mais o seletor somam 319px numa barra de 273, e era
+                      isso que punha a página inteira para rolar de lado a 320px.
+                      O ícone de porta é reconhecível sozinho, e assim nenhuma
+                      das duas ações desaparece — só a palavra. */}
+                  <LogIn className="w-3 h-3 sm:mr-1" />
+                  <span className="hidden sm:inline">{tComum('acoes.entrar')}</span>
                 </Button>
               </div>
             )}

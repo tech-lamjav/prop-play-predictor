@@ -45,6 +45,10 @@ const LEGITIMAS = new Set([
   // Todas medidas nos catálogos deste produto; a lista cresce por medição.
   'cancela', 'cancelas', 'cancelo', 'empate', 'escala', 'modelo',
   'oscila', 'promete', 'señala', 'señalan',
+  // Substantivo comum terminado em vogal + pronome aparente. A regra de
+  // plural resolve os plurais; para o singular não há regra, e o arquivo já
+  // diz por quê — a lista é o preço de a morfologia ser ambígua.
+  'intervalo',
   // ⚠️ VERBO COM RADICAL TERMINADO EM "L", que é a classe que mais aparece
   // aqui. "cancelar" e "señalar" fazem "cancel+e" e "señal+e", e o "l" do
   // radical cola na desinência virando "le" — a mesma forma de um pronome
