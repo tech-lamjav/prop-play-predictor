@@ -64,7 +64,7 @@ export function SeletorDeMoeda({
             {escolhida ? nomeDaMoeda(escolhida.codigo, locale) : valor}
           </span>
           {escolhida && <span className="text-ink-2 tabular-nums">{escolhida.simbolo}</span>}
-          <ChevronsUpDown className="w-4 h-4 text-ink-3 shrink-0" />
+          <ChevronsUpDown className="w-4 h-4 text-ink-2 shrink-0" />
         </button>
       </PopoverTrigger>
 
@@ -74,9 +74,9 @@ export function SeletorDeMoeda({
           // Busca sem acento, como no seletor de país: "dolar" acha "Dólar".
           filter={(valorDoItem, busca) => (casaBusca(valorDoItem, busca) ? 1 : 0)}
         >
-          <CommandInput placeholder={t('unidade.moedaBusca')} className="h-10 text-ink placeholder:text-ink-3" />
+          <CommandInput placeholder={t('unidade.moedaBusca')} className="h-10 text-ink placeholder:text-ink-2" />
           <CommandList className="max-h-[280px] bg-white">
-            <CommandEmpty className="py-6 text-center text-sm text-ink-3">{t('unidade.moedaVazio')}</CommandEmpty>
+            <CommandEmpty className="py-6 text-center text-sm text-ink-2">{t('unidade.moedaVazio')}</CommandEmpty>
             <CommandGroup>
               {MOEDAS.map((m) => {
                 const nome = nomeDaMoeda(m.codigo, locale);
@@ -94,7 +94,7 @@ export function SeletorDeMoeda({
                     <BandeiraDoPais codigo={m.bandeira} nome={nome} />
                     <span className="flex-1">{nome}</span>
                     <span className="text-[12px] text-ink-2 tabular-nums">{m.simbolo}</span>
-                    <span className="w-9 text-right text-[10px] text-ink-3 tracking-wide">{m.codigo}</span>
+                    <span className="w-9 text-right text-[10px] text-ink-2 tracking-wide">{m.codigo}</span>
                     <Check className={`w-4 h-4 text-forest ${m.codigo === valor ? '' : 'invisible'}`} />
                   </CommandItem>
                 );

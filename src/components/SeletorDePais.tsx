@@ -61,7 +61,7 @@ export function SeletorDePais({
           <span className="flex-1 text-left">
             {escolhido ? nome(escolhido.codigo) : t('campos.paisEscolha')}
           </span>
-          <ChevronsUpDown className="w-4 h-4 text-ink-3 shrink-0" />
+          <ChevronsUpDown className="w-4 h-4 text-ink-2 shrink-0" />
         </button>
       </PopoverTrigger>
 
@@ -89,10 +89,10 @@ export function SeletorDePais({
         >
           <CommandInput
             placeholder={t('campos.paisBusca')}
-            className="h-10 text-ink placeholder:text-ink-3"
+            className="h-10 text-ink placeholder:text-ink-2"
           />
           <CommandList className="max-h-[260px] bg-white">
-            <CommandEmpty className="py-6 text-center text-sm text-ink-3">
+            <CommandEmpty className="py-6 text-center text-sm text-ink-2">
               {t('campos.paisVazio')}
             </CommandEmpty>
             <CommandGroup>
@@ -117,7 +117,7 @@ export function SeletorDePais({
                 >
                   <BandeiraDoPais codigo={p.codigo} nome={nome(p.codigo)} />
                   <span className="flex-1">{nome(p.codigo)}</span>
-                  <span className="text-[11px] text-ink-3 tabular-nums">{p.ddi}</span>
+                  <span className="text-[11px] text-ink-2 tabular-nums">{p.ddi}</span>
                   {p.codigo === valor && <Check className="w-4 h-4 text-forest" />}
                 </CommandItem>
               ))}
