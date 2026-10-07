@@ -43,7 +43,11 @@
 export { LOCALE_PADRAO, definirLocaleAtivo, localeAtivo } from './idioma-ativo';
 import { LOCALE_PADRAO, localeAtivo } from './idioma-ativo';
 
-export const MOEDA_PADRAO = 'BRL';
+// A moeda padrão mora em `config/moedas.ts`, junto da tabela de país para
+// moeda. Reexportada para quem já importava daqui.
+export { MOEDA_PADRAO } from '@/config/moedas';
+import { MOEDA_PADRAO } from '@/config/moedas';
+import { localeDaMoedaAtiva, moedaAtiva } from '@/utils/moeda-ativa';
 
 /** Ausência. Nunca "0", que afirmaria um valor, nem "NaN", que vaza defeito. */
 const TRACO = '—';
@@ -76,12 +80,17 @@ export function fmtOdd(odd: number | null | undefined): string {
 /**
  * Dinheiro com o símbolo da moeda, na formatação da MOEDA.
  *
- * ⚠️ O dinheiro é a única régua que NÃO segue o idioma ativo, e isso é
- * decisão, não esquecimento. O preço do produto é cobrado em real. Trocar só o
- * separador porque a tela está em espanhol produziria "R$ 1,234.50" — símbolo
- * brasileiro com separador estrangeiro, coisa que não existe em lugar nenhum.
- * Dinheiro segue o país da MOEDA, e a moeda só muda quando houver decisão de
- * preço por país, que está fora do escopo do #532.
+ * ⚠️ O dinheiro NÃO segue o idioma ativo, e isso continua sendo decisão. Trocar
+ * só o separador porque a tela está em espanhol produziria "R$ 1,234.50" —
+ * símbolo brasileiro com separador estrangeiro, coisa que não existe em lugar
+ * nenhum. Dinheiro segue o país da MOEDA.
+ *
+ * O que mudou é que a moeda deixou de ser fixa: a pessoa escolhe em que moeda
+ * quer LER o próprio dinheiro, e o padrão vem do país do cadastro. Ver
+ * `utils/moeda-ativa.ts`.
+ *
+ * ⚠️ TROCAR A MOEDA NÃO CONVERTE NADA. O número é o mesmo; muda o símbolo e a
+ * pontuação. É decisão de produto, e está escrita em `config/moedas.ts`.
  *
  * `casas` existe por dois motivos reais, e não por generalidade: eixo de
  * gráfico pede valor sem centavo, e o peso chileno NÃO TEM centavo. Deixar em
@@ -90,8 +99,8 @@ export function fmtOdd(odd: number | null | undefined): string {
 export function fmtDinheiro(
   valor: number | null | undefined,
   {
-    locale = LOCALE_PADRAO,
-    moeda = MOEDA_PADRAO,
+    moeda = moedaAtiva(),
+    locale = localeDaMoedaAtiva(),
     casas,
   }: { locale?: string; moeda?: string; casas?: number } = {},
 ): string {

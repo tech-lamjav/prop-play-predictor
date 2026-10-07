@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AchievementProvider } from "@/components/bolao/AchievementProvider";
 import { ReferralProvider } from "@/components/ReferralProvider";
 import { BrowserRouter, Routes, Route, Outlet, Navigate } from "react-router-dom";
+import { MoedaProvider } from "@/config/MoedaProvider";
 import { BolaoLayout } from "@/components/bolao/BolaoLayout";
 import LandingEcossistema from "./pages/LandingEcossistema";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -141,6 +142,11 @@ const App = () => (
         {/* O porteiro NÃO é vizinho dos sentinelas acima: ele embrulha as
             rotas porque precisa poder aparecer no lugar delas. Os outros
             desenham por cima do produto; este substitui o produto. (#551) */}
+        {/* A moeda é da PESSOA, como o título da aba: por isso mora aqui e não
+            pendurada numa tela. Ela embrulha as rotas porque precisa poder
+            repintar o dinheiro já desenhado quando alguém troca — `fmtDinheiro`
+            lê estado de módulo, que o React não enxerga. Ver MoedaProvider. */}
+        <MoedaProvider>
         <Porteiro>
         <Suspense fallback={<LazyFallback />}>
           <Routes>
@@ -321,6 +327,7 @@ const App = () => (
           <Footer />
         </Suspense>
         </Porteiro>
+        </MoedaProvider>
       </BrowserRouter>
       </ReferralProvider>
       </AchievementProvider>

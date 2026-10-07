@@ -877,5 +877,30 @@
     "cadastrarOutra": "Registrar otra después de guardar",
     "cancelar": "Cancelar",
     "salvar": "Guardar la apuesta"
+  },
+  "unidade": {
+    "sobretitulo": "Sistema de unidades",
+    "titulo": "Configurar la unidad",
+    "descricao": "Define cuánto vale 1 unidad para ver tus métricas en unidades además de los montos.",
+    "salvo": "¡Configuración guardada!",
+    "abaDireto": "Valor directo",
+    "abaDivisao": "División del bankroll",
+    "valorDaUnidade": "Valor de 1 unidad ({{simbolo}})",
+    "ajudaDireto": "Indica directamente cuánto vale 1 unidad.",
+    "valorDaBanca": "Valor del bankroll ({{simbolo}})",
+    "divisor": "Divisor",
+    "ajudaDivisao": "El bankroll se divide por este número para calcular el valor de 1 unidad.",
+    "calculado": "Valor calculado de 1 unidad",
+    "limpando": "Borrando…",
+    "limpar": "Borrar configuración",
+    "salvando": "Guardando…",
+    "salvar": "Guardar configuración",
+    "moeda": "Moneda",
+    "moedaAjuda": "Solo cambia el símbolo en pantalla. Ningún monto se convierte.",
+    "erroUnidadeZero": "El valor de la unidad debe ser mayor que cero",
+    "erroBancaZero": "El valor del bankroll debe ser mayor que cero",
+    "erroDivisorZero": "El divisor debe ser mayor que cero",
+    "erroSalvar": "No pudimos guardar la configuración. Inténtalo de nuevo.",
+    "erroLimpar": "No pudimos borrar la configuración. Inténtalo de nuevo."
   }
 }

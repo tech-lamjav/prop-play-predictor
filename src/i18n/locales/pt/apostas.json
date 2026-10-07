@@ -877,5 +877,30 @@
     "cadastrarOutra": "Cadastrar outra após salvar",
     "cancelar": "Cancelar",
     "salvar": "Salvar aposta"
+  },
+  "unidade": {
+    "sobretitulo": "Sistema de unidades",
+    "titulo": "Configurar unidade",
+    "descricao": "Configure o valor de 1 unidade pra visualizar suas métricas em unidades além dos valores monetários.",
+    "salvo": "Configuração salva com sucesso!",
+    "abaDireto": "Valor direto",
+    "abaDivisao": "Divisão da banca",
+    "valorDaUnidade": "Valor de 1 unidade ({{simbolo}})",
+    "ajudaDireto": "Informe diretamente quanto vale 1 unidade.",
+    "valorDaBanca": "Valor da banca ({{simbolo}})",
+    "divisor": "Divisor",
+    "ajudaDivisao": "A banca será dividida por este número pra calcular o valor de 1 unidade.",
+    "calculado": "Valor calculado de 1 unidade",
+    "limpando": "Limpando…",
+    "limpar": "Limpar configuração",
+    "salvando": "Salvando…",
+    "salvar": "Salvar configuração",
+    "moeda": "Moeda",
+    "moedaAjuda": "Só muda o símbolo na tela. Nenhum valor é convertido.",
+    "erroUnidadeZero": "O valor da unidade deve ser maior que zero",
+    "erroBancaZero": "O valor da banca deve ser maior que zero",
+    "erroDivisorZero": "O divisor deve ser maior que zero",
+    "erroSalvar": "Erro ao salvar configuração. Tente novamente.",
+    "erroLimpar": "Erro ao limpar configuração. Tente novamente."
   }
 }

@@ -515,7 +515,6 @@ const BACKLOG_DE_COMPONENTES: Record<string, string> = {
   // avulso (5)
   'src/components/FutebolDayStepper.tsx': 'avulso',
   'src/components/Seo.tsx': 'avulso',
-  'src/components/UnitConfigurationModal.tsx': 'avulso',
   'src/utils/futebol-escalacao.ts': 'avulso',
   'src/utils/perfil-declarado.ts': 'avulso',
   // compartilhar (2)
