@@ -10,7 +10,10 @@
 // ============================================================
 import { useEffect, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { fmtDinheiro, fmtOdd } from '@/utils/formato';
+import { simboloDaMoeda } from '@/config/moedas';
+import { moedaAtiva } from '@/utils/moeda-ativa';
+import { fmtDinheiroDaPessoa, fmtOdd } from '@/utils/formato';
+import { useMoeda } from '@/hooks/use-moeda';
 import { Link } from 'react-router-dom';
 import { Receipt, Check, Loader2, ArrowRight } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
@@ -72,6 +75,8 @@ export function RegistrarApostaModal({
   origem?: OrigemDoJogo;
 }) {
   const { t } = useTranslation('futebol');
+  // Assina a moeda: sem isto a tela não repinta quando a pessoa troca.
+  useMoeda();
   const copy = useCopyDoFutebol();
   const { user } = useAuth();
   const { data: acesso } = useFutebolAccess();
@@ -200,7 +205,7 @@ export function RegistrarApostaModal({
               <Trans
                 t={t}
                 i18nKey="registrar.sucessoTexto"
-                values={{ pick, valor: fmtDinheiro(stakeN), odd: fmtOdd(oddN) }}
+                values={{ pick, valor: fmtDinheiroDaPessoa(stakeN), odd: fmtOdd(oddN) }}
                 components={[<b className="text-ink" key="pick" />]}
               />
             </p>
@@ -226,7 +231,7 @@ export function RegistrarApostaModal({
             {/* Stake + Odd */}
             <div className="grid grid-cols-2 gap-3">
               <label className="flex flex-col gap-1.5">
-                <span className="text-[11px] uppercase tracking-[0.12em] font-bold text-ink-3">{t('registrar.valor')}</span>
+                <span className="text-[11px] uppercase tracking-[0.12em] font-bold text-ink-3">{t('registrar.valor', { simbolo: simboloDaMoeda(moedaAtiva()) })}</span>
                 <input
                   type="number" inputMode="decimal" step="0.01" min="0" placeholder="0,00"
                   value={stake} onChange={(e) => setStake(e.target.value)} autoFocus
@@ -256,13 +261,13 @@ export function RegistrarApostaModal({
                     <span className="sm:hidden">
                       {t('registrar.atalho', {
                         rotulo: atalho.unidades === 1 ? t('registrar.unidadeUmaCurta') : t('registrar.unidadeMeiaCurta'),
-                        valor: fmtDinheiro(atalho.valor),
+                        valor: fmtDinheiroDaPessoa(atalho.valor),
                       })}
                     </span>
                     <span className="hidden sm:inline">
                       {t('registrar.atalho', {
                         rotulo: atalho.unidades === 1 ? t('registrar.unidadeUma') : t('registrar.unidadeMeia'),
-                        valor: fmtDinheiro(atalho.valor),
+                        valor: fmtDinheiroDaPessoa(atalho.valor),
                       })}
                     </span>
                   </button>
@@ -280,7 +285,7 @@ export function RegistrarApostaModal({
             {/* Retorno potencial */}
             <div className="flex items-center justify-between rounded-rebrand-sm bg-forest/5 border border-forest/15 px-3.5 py-2.5">
               <span className="text-[12px] text-ink-2">{t('registrar.retorno')}</span>
-              <span className="text-[16px] font-bold tabular-nums text-forest">{retorno != null ? fmtDinheiro(retorno) : '—'}</span>
+              <span className="text-[16px] font-bold tabular-nums text-forest">{retorno != null ? fmtDinheiroDaPessoa(retorno) : '—'}</span>
             </div>
 
             {error && <p className="text-[12px] text-status-danger">{error}</p>}
@@ -338,6 +343,8 @@ export function RegistrarApostaCTA({
   larguraTotal?: boolean;
 }) {
   const { t } = useTranslation('futebol');
+  // Assina a moeda: sem isto a tela não repinta quando a pessoa troca.
+  useMoeda();
   const [open, setOpen] = useState(false);
   const { data: acesso } = useFutebolAccess();
   const trigger = (e: React.MouseEvent) => {

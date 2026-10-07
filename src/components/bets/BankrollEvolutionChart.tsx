@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { fmtDinheiro, fmtPct } from '@/utils/formato';
+import { fmtDinheiroDaPessoa, fmtPct } from '@/utils/formato';
+import { useMoeda } from '@/hooks/use-moeda';
 import {
   XAxis,
   YAxis,
@@ -59,6 +60,8 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
   formatValue: formatValueProp,
 }) => {
   const { t } = useTranslation('apostas');
+  // Assina a moeda: sem isto a tela não repinta quando a pessoa troca.
+  useMoeda();
   const navigate = useNavigate();
   const [isEditing, setIsEditing] = useState(false);
   const [tempBankroll, setTempBankroll] = useState<string>('');
@@ -155,7 +158,7 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
   // Sem prop: fallback BRL com prefixo R$.
   const formatV = (value: number): string => {
     if (formatValueProp) return formatValueProp(value);
-    return fmtDinheiro(value);
+    return fmtDinheiroDaPessoa(value);
   };
   // Versão short pra eixos/labels do chart — sem centavos quando inteiro.
   const formatVShort = (value: number): string => {
@@ -164,7 +167,7 @@ export const BankrollEvolutionChart: React.FC<BankrollEvolutionChartProps> = ({
       const f = formatValueProp(value);
       return f.replace(/[,.]00\b/, '');
     }
-    return fmtDinheiro(value, { casas: 0 });
+    return fmtDinheiroDaPessoa(value, { casas: 0 });
   };
 
   const lineColor = totalProfit >= 0 ? '#0a3d2e' : '#be123c';

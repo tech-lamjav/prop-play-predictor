@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { definirMoedaAtiva, moedaAtiva, moedaEscolhida, localeDaMoedaAtiva } from './moeda-ativa';
 import { MOEDA_PADRAO, MOEDAS, moedaDoPais } from '@/config/moedas';
-import { fmtDinheiro } from './formato';
+import { fmtDinheiro, fmtDinheiroDaPessoa } from './formato';
 
 // ============================================================================
 // A moeda é preferência de EXIBIÇÃO
@@ -65,9 +65,9 @@ describe('a moeda que a tela escreve', () => {
     const soNumeros = (s: string) => s.replace(/[^\d]/g, '');
 
     definirMoedaAtiva('BRL');
-    const emReal = fmtDinheiro(1500.5);
+    const emReal = fmtDinheiroDaPessoa(1500.5);
     definirMoedaAtiva('PEN');
-    const emSol = fmtDinheiro(1500.5);
+    const emSol = fmtDinheiroDaPessoa(1500.5);
 
     expect(soNumeros(emSol), `"${emReal}" virou "${emSol}"`).toBe(soNumeros(emReal));
     expect(emSol).not.toBe(emReal); // o símbolo mudou, senão nada aconteceu
@@ -78,6 +78,16 @@ describe('a moeda que a tela escreve', () => {
     definirMoedaAtiva(MOEDA_PADRAO);
     // O `Intl` separa símbolo e número com espaço NÃO SEPARÁVEL, que é
     // invisível na comparação e faz duas strings idênticas na tela reprovarem.
-    expect(fmtDinheiro(1500.5).replace(/ /g, ' ')).toBe('R$ 1.500,50');
+    expect(fmtDinheiroDaPessoa(1500.5).replace(/\u00a0/g, ' ')).toBe('R$ 1.500,50');
+  });
+
+  it('⚠️ dinheiro de moeda FIXA continua em real, seja qual for a escolha', () => {
+    // O defeito que este teste segura: o padrão do formatador chegou a seguir
+    // a moeda escolhida, e a receita do Stripe no CRM — real de verdade —
+    // saía com "S/" para quem tivesse escolhido sol. Rotular real como outra
+    // moeda é pior que não traduzir.
+    definirMoedaAtiva('PEN');
+    expect(fmtDinheiro(1500.5).replace(/\u00a0/g, ' ')).toBe('R$ 1.500,50');
+    expect(fmtDinheiroDaPessoa(1500.5)).toContain('S/');
   });
 });

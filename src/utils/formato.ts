@@ -85,12 +85,17 @@ export function fmtOdd(odd: number | null | undefined): string {
  * símbolo brasileiro com separador estrangeiro, coisa que não existe em lugar
  * nenhum. Dinheiro segue o país da MOEDA.
  *
- * O que mudou é que a moeda deixou de ser fixa: a pessoa escolhe em que moeda
- * quer LER o próprio dinheiro, e o padrão vem do país do cadastro. Ver
- * `utils/moeda-ativa.ts`.
+ * ⚠️ O PADRÃO É REAL, E FOI DECISÃO DEPOIS DE UM DEFEITO. Uma versão anterior
+ * fez este padrão seguir a moeda que a pessoa escolheu — e com isso TODO
+ * dinheiro passou a seguir a preferência, inclusive o que tem moeda fixa: a
+ * receita do Stripe no CRM, que é real de verdade, saía com "S/" para um sócio
+ * que tivesse escolhido sol. Rotular real como outra moeda é pior que não
+ * traduzir.
  *
- * ⚠️ TROCAR A MOEDA NÃO CONVERTE NADA. O número é o mesmo; muda o símbolo e a
- * pontuação. É decisão de produto, e está escrita em `config/moedas.ts`.
+ * Então o padrão é real, e quem mostra dinheiro DA PRÓPRIA PESSOA — banca,
+ * apostas, unidade — pede a moeda dela explicitamente, por
+ * `fmtDinheiroDaPessoa`. Uma chamada esquecida fica como sempre foi, em vez de
+ * rotular errado.
  *
  * `casas` existe por dois motivos reais, e não por generalidade: eixo de
  * gráfico pede valor sem centavo, e o peso chileno NÃO TEM centavo. Deixar em
@@ -99,8 +104,8 @@ export function fmtOdd(odd: number | null | undefined): string {
 export function fmtDinheiro(
   valor: number | null | undefined,
   {
-    moeda = moedaAtiva(),
-    locale = localeDaMoedaAtiva(),
+    moeda = MOEDA_PADRAO,
+    locale = LOCALE_PADRAO,
     casas,
   }: { locale?: string; moeda?: string; casas?: number } = {},
 ): string {
@@ -110,6 +115,25 @@ export function fmtDinheiro(
     currency: moeda,
     ...(casas == null ? {} : { minimumFractionDigits: casas, maximumFractionDigits: casas }),
   }).format(valor);
+}
+
+/**
+ * O dinheiro DA PRÓPRIA PESSOA — banca, apostas, unidade —, na moeda em que ela
+ * escolheu ler.
+ *
+ * ⚠️ TROCAR A MOEDA NÃO CONVERTE NADA. O número é o mesmo; muda o símbolo e a
+ * pontuação. É decisão de produto, e está escrita em `config/moedas.ts`.
+ *
+ * Lê o estado de módulo, que o React não enxerga. Componente que chama isto
+ * precisa ASSINAR a moeda com `useMoeda()` — senão a tela não repinta quando a
+ * pessoa troca. Função pura chamada durante a pintura de um componente que
+ * assina está coberta.
+ */
+export function fmtDinheiroDaPessoa(
+  valor: number | null | undefined,
+  { casas }: { casas?: number } = {},
+): string {
+  return fmtDinheiro(valor, { moeda: moedaAtiva(), locale: localeDaMoedaAtiva(), casas });
 }
 
 /** Uma taxa de 0 a 1 em porcentagem, na formatação do país. */

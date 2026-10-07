@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSimboloDaMoeda } from '@/hooks/use-moeda';
 import { fmtPct } from '@/utils/formato';
 import { useAuth } from '../hooks/use-auth';
 import AnalyticsNav from '@/components/AnalyticsNav';
@@ -83,6 +84,8 @@ const formatDateToString = (date: Date | undefined): string => {
 
 export default function Bankroll() {
   const { t } = useTranslation('apostas');
+  // O símbolo da moeda escolhida — era "R$" escrito à mão.
+  const simbolo = useSimboloDaMoeda();
   const { user, isLoading: authLoading } = useAuth();
   const { config, formatCurrency } = useUserUnit();
   const { movements: capitalMovements, addMovement, updateMovement, deleteMovement, fetchMovements } = useCapitalMovements(user?.id);
@@ -370,7 +373,7 @@ export default function Bankroll() {
             <div className="space-y-1.5">
               <Label htmlFor="amount" className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-2">{t('banca.modal.valor')}</Label>
               <div className="flex items-center h-10 bg-canvas border border-line rounded-md focus-within:border-forest/50 focus-within:ring-2 focus-within:ring-forest/10">
-                <span className="pl-3 pr-1 text-[13px] text-ink-2 font-medium">R$</span>
+                <span className="pl-3 pr-1 text-[13px] text-ink-2 font-medium">{simbolo}</span>
                 <Input
                   id="amount"
                   type="number"

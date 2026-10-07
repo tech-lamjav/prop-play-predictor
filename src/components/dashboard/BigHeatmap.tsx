@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { fmtPct } from '@/utils/formato';
+import { simboloDaMoeda } from '@/config/moedas';
+import { moedaAtiva } from '@/utils/moeda-ativa';
+import { fmtPct, fmtDinheiroDaPessoa } from '@/utils/formato';
 import { compactify, type HeatmapData, type HeatmapCell } from '@/utils/dashboardAggregations';
 
 export type HeatmapMetric = 'roi' | 'profit' | 'volume';
@@ -90,7 +92,7 @@ export const BigHeatmap: React.FC<BigHeatmapProps> = ({
   onSelectCell,
   metric = 'roi',
   onMetricChange,
-  formatValue = (v) => `R$ ${v.toFixed(0)}`,
+  formatValue = (v) => fmtDinheiroDaPessoa(v, { casas: 0 }),
   compact = false,
 }) => {
   const { t } = useTranslation('apostas');
@@ -225,7 +227,7 @@ export const BigHeatmap: React.FC<BigHeatmapProps> = ({
                       : 'bg-white text-ink-2 border border-line hover:bg-canvas-2'
                   }`}
                 >
-                  {t(compact ? chaveCurta : chave)}
+                  {t(compact ? chaveCurta : chave, { simbolo: simboloDaMoeda(moedaAtiva()) })}
                 </button>
               ))}
             </div>

@@ -281,8 +281,10 @@ consultado; o mercado escreve "ganada" e "perdida". _Avoid_: verde, rojo.
 **A cotação e a linha usam PONTO, em qualquer país.** Confirmado em fonte de
 operador: a central de ajuda da Betano **Argentina** — país que escreve dinheiro
 com vírgula — publica "Más 2.5 goles" com ponto. O mesmo vale para linha de
-córner, hándicap e métricas como xG e posse. Dinheiro segue o país; cotação
-segue o setor. A régua está em `src/utils/formato.ts`.
+córner, hándicap e métricas como xG e posse. Cotação segue o setor. Dinheiro
+da própria pessoa — banca, apostas, unidade — segue a moeda que ela escolheu
+ler; preço do produto e receita seguem o real, que é a moeda em que se cobra.
+Trocar a moeda não converte nada. A régua está em `src/utils/formato.ts`.
 
 ### O que ficou sem fonte
 

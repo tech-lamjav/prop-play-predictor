@@ -89,7 +89,11 @@ describe('todo idioma tem exatamente as chaves da referência', () => {
 });
 
 describe('nenhuma chave tem valor vazio', () => {
-  // Vazio é pior que ausente: ausente cai no português, vazio mostra nada.
+  // Vazio é pior que ausente: ausente aparece como o CÓDIGO da chave — o recuo
+  // para o português está desligado em `init.ts`, porque ligado fazia quem lê
+  // em espanhol baixar os dois catálogos —, e vazio não mostra nada. É por isso
+  // que a guarda de paridade acima existe: com o recuo desligado, é ela que
+  // impede uma chave de faltar.
   for (const idioma of IDIOMAS) {
     it(`idioma "${idioma}"`, async () => {
       for (const area of AREAS) {

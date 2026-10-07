@@ -596,7 +596,7 @@
     "sucessoTexto": "<0>{{pick}}</0> · {{valor}} @ {{odd}} já está no seu Betinho como pendente.",
     "fechar": "Fechar",
     "verNoBetinho": "Ver no Betinho",
-    "valor": "Valor (R$)",
+    "valor": "Valor ({{simbolo}})",
     "unidade": "Unidade",
     "unidadeUmaCurta": "1 un.",
     "unidadeMeiaCurta": "½ un.",

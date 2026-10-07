@@ -229,7 +229,7 @@
       "adicionar": "＋ Adicionar \"{{valor}}\"",
       "valor": "Valor",
       "odds": "Odds",
-      "retornoPago": "Retorno pago (R$)",
+      "retornoPago": "Retorno pago ({{simbolo}})",
       "retornoPagoAjuda": "A casa pagou diferente por causa de bônus? Ajuste o valor pago aqui — a odd se reajusta sozinha pra bater com a banca.",
       "creditoDeApostas": "Crédito de apostas",
       "dataDaAposta": "Data da Aposta",
@@ -477,7 +477,7 @@
         "roi": "ROI",
         "lucro": "Lucro",
         "quantidade": "Quantidade",
-        "lucroCurto": "R$",
+        "lucroCurto": "{{simbolo}}",
         "quantidadeCurto": "Qtd"
       },
       "semDados": "sem dados",

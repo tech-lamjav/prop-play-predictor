@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { fmtDinheiro } from '@/utils/formato';
+import { fmtDinheiroDaPessoa } from '@/utils/formato';
+import { useMoeda } from '@/hooks/use-moeda';
 import { createClient } from '../integrations/supabase/client';
 import { useAuth } from './use-auth';
 
@@ -22,6 +23,9 @@ export interface UnitConfigInput {
  * Hook to manage user unit configuration
  */
 export function useUserUnit() {
+  // Assina a moeda: as telas que formatam dinheiro por aqui repintam quando a
+  // pessoa troca, sem remontar nada.
+  useMoeda();
   const { user } = useAuth();
   const supabase = createClient();
   const [config, setConfig] = useState<UserUnitConfig>({
@@ -215,7 +219,7 @@ export function useUserUnit() {
    * direto é limpeza de outro dia; o que importava era acabar com a quinta
    * cópia da regra de moeda, e essa acabou.
    */
-  const formatCurrency = (value: number): string => fmtDinheiro(value);
+  const formatCurrency = (value: number): string => fmtDinheiroDaPessoa(value);
 
   /**
    * Check if unit system is configured

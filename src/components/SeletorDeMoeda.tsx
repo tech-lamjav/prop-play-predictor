@@ -11,7 +11,7 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { BandeiraDoPais } from '@/components/BandeiraDoPais';
-import { MOEDAS, casaBusca, nomeDaMoeda, textoDeBusca } from '@/config/moedas';
+import { MOEDAS, casaBusca, moedaPorCodigo, nomeDaMoeda, textoDeBusca } from '@/config/moedas';
 import { nomeDoPais } from '@/config/paises';
 import { LOCALE_DO_IDIOMA } from '@/i18n/idiomas';
 import { idiomaAtivo } from '@/i18n/init';
@@ -45,7 +45,7 @@ export function SeletorDeMoeda({
   const { t } = useTranslation('apostas');
   const [aberto, setAberto] = useState(false);
   const locale = LOCALE_DO_IDIOMA[idiomaAtivo()];
-  const escolhida = MOEDAS.find((m) => m.codigo === valor);
+  const escolhida = moedaPorCodigo(valor);
 
   return (
     <Popover open={aberto} onOpenChange={setAberto}>

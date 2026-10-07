@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { fmtDinheiro } from '@/utils/formato';
+import { fmtDinheiroDaPessoa } from '@/utils/formato';
+import { useMoeda } from '@/hooks/use-moeda';
 import {
   Dialog,
   DialogContent,
@@ -12,9 +13,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useTranslation } from 'react-i18next';
-import { MOEDAS } from '@/config/moedas';
+import { simboloDaMoeda } from '@/config/moedas';
 import { SeletorDeMoeda } from '@/components/SeletorDeMoeda';
-import { useMoeda } from '@/config/MoedaProvider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useUserUnit } from '@/hooks/use-user-unit';
@@ -31,7 +31,7 @@ export function UnitConfigurationModal({
 }: UnitConfigurationModalProps) {
   const { t } = useTranslation('apostas');
   const { moeda, trocarMoeda } = useMoeda();
-  const simboloDaMoeda = MOEDAS.find((m) => m.codigo === moeda)?.simbolo ?? moeda;
+  const simbolo = simboloDaMoeda(moeda);
   const { config, isLoading, error, updateConfig, clearConfig, isConfigured } = useUserUnit();
   const [activeTab, setActiveTab] = useState<'direct' | 'division'>('direct');
   const [formData, setFormData] = useState({
@@ -246,7 +246,7 @@ export function UnitConfigurationModal({
           </TabsList>
 
           <TabsContent value="direct" className="space-y-2 mt-4">
-            <Label htmlFor="directValue" className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('unidade.valorDaUnidade', { simbolo: simboloDaMoeda })}</Label>
+            <Label htmlFor="directValue" className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('unidade.valorDaUnidade', { simbolo })}</Label>
             <Input
               id="directValue"
               type="number"
@@ -265,7 +265,7 @@ export function UnitConfigurationModal({
 
           <TabsContent value="division" className="space-y-3 mt-4">
             <div className="space-y-2">
-              <Label htmlFor="bankAmount" className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('unidade.valorDaBanca', { simbolo: simboloDaMoeda })}</Label>
+              <Label htmlFor="bankAmount" className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('unidade.valorDaBanca', { simbolo })}</Label>
               <Input
                 id="bankAmount"
                 type="number"
@@ -302,7 +302,7 @@ export function UnitConfigurationModal({
           <div className="rounded-md bg-forest-tint border border-forest/20 p-3">
             <p className="text-[10px] uppercase tracking-[0.14em] text-forest font-semibold">{t('unidade.calculado')}</p>
             <p className="text-[20px] font-semibold text-forest tabular tracking-tight mt-0.5">
-              {fmtDinheiro(calculatedUnitValue)}
+              {fmtDinheiroDaPessoa(calculatedUnitValue)}
             </p>
           </div>
         )}

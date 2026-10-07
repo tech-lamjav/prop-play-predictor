@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { fmtDinheiro } from '@/utils/formato';
+import { fmtDinheiroDaPessoa } from '@/utils/formato';
+import { useMoeda, useSimboloDaMoeda } from '@/hooks/use-moeda';
 import { format, parse, isValid, isBefore } from 'date-fns';
 import { Calendar as CalendarIcon, ChevronDown, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -91,6 +92,10 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
   onTagsUpdated,
 }) => {
   const { t } = useTranslation('apostas');
+  // O símbolo da moeda escolhida — era "R$" escrito à mão.
+  const simbolo = useSimboloDaMoeda();
+  // Assina a moeda: sem isto a tela não repinta quando a pessoa troca.
+  useMoeda();
   const [formData, setFormData] = useState<CreateBetFormState>(getDefaultFormState());
   const [stayOpen, setStayOpen] = useState(false);
   const [isCreateDatePopoverOpen, setIsCreateDatePopoverOpen] = useState(false);
@@ -721,7 +726,7 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
               </button>
             </div>
             <div className="flex items-center h-10 bg-canvas border border-line rounded-md focus-within:border-forest/50 focus-within:ring-2 focus-within:ring-forest/10">
-              <span className="pl-3 text-[12px] text-ink-2 font-medium">R$</span>
+              <span className="pl-3 text-[12px] text-ink-2 font-medium">{simbolo}</span>
               <input
                 type="number"
                 step="0.01"
@@ -909,19 +914,19 @@ export const CreateBetModal: React.FC<CreateBetModalProps> = ({
             <div>
               <div className="text-[10px] uppercase tracking-[0.12em] text-forest/70 font-semibold">{t('novaAposta.resumo.stake')}</div>
               <div className="text-[16px] font-semibold tabular text-ink mt-0.5">
-                {summary ? fmtDinheiro(summary.stake) : '—'}
+                {summary ? fmtDinheiroDaPessoa(summary.stake) : '—'}
               </div>
             </div>
             <div>
               <div className="text-[10px] uppercase tracking-[0.12em] text-forest/70 font-semibold">{t('novaAposta.resumo.retornoPotencial')}</div>
               <div className="text-[16px] font-semibold tabular text-forest mt-0.5">
-                {summary ? fmtDinheiro(summary.retorno) : '—'}
+                {summary ? fmtDinheiroDaPessoa(summary.retorno) : '—'}
               </div>
             </div>
             <div>
               <div className="text-[10px] uppercase tracking-[0.12em] text-forest/70 font-semibold">{t('novaAposta.resumo.lucroPotencial')}</div>
               <div className="text-[16px] font-semibold tabular text-status-success mt-0.5">
-                {summary ? `+ ${fmtDinheiro(summary.lucro)}` : '—'}
+                {summary ? `+ ${fmtDinheiroDaPessoa(summary.lucro)}` : '—'}
               </div>
             </div>
           </div>

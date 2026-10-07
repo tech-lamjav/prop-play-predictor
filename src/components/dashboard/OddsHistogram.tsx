@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
-import { fmtPct } from '@/utils/formato';
+import { fmtPct, fmtDinheiroDaPessoa } from '@/utils/formato';
 import type { OddsBucket } from '@/utils/dashboardAggregations';
 
 interface OddsHistogramProps {
@@ -10,7 +10,7 @@ interface OddsHistogramProps {
 
 export const OddsHistogram: React.FC<OddsHistogramProps> = ({
   data,
-  formatValue = (v) => `R$ ${v.toFixed(0)}`,
+  formatValue = (v) => fmtDinheiroDaPessoa(v, { casas: 0 }),
 }) => {
   const { t } = useTranslation('apostas');
   const filledBuckets = data.filter((b) => b.n > 0);

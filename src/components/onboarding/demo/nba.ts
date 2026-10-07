@@ -35,18 +35,36 @@ const NBA_OFFSEASON_MONTHS = new Set([7, 8, 9]);
  */
 const CHAVE_DEMO_FORCADA = 'smartbetting.demoNba';
 
-function demoForcadaEmDesenvolvimento(): boolean {
-  if (!import.meta.env.DEV) return false;
+// O pedido na URL é lido UMA vez, quando o módulo carrega — e não dentro do
+// predicado abaixo, que é chamado a cada pintura e não deve gravar nada. Como
+// a leitura é no carregamento, o pedido vale ao ABRIR o endereço com
+// `?demo=nba`; navegar dentro do app não relê a URL.
+if (import.meta.env.DEV) {
   try {
     const pedido = new URLSearchParams(window.location.search).get('demo');
     if (pedido === 'nba') localStorage.setItem(CHAVE_DEMO_FORCADA, '1');
     if (pedido === 'off') localStorage.removeItem(CHAVE_DEMO_FORCADA);
+  } catch {
+    // Navegador sem armazenamento: a demonstração forçada só não liga.
+  }
+}
+
+function demoForcadaEmDesenvolvimento(): boolean {
+  if (!import.meta.env.DEV) return false;
+  try {
     return localStorage.getItem(CHAVE_DEMO_FORCADA) === '1';
   } catch {
     return false;
   }
 }
 
+/**
+ * A NBA deve se comportar como em recesso — mostrar a demonstração?
+ *
+ * Responde sim nos três meses sem jogo nenhum e, só em desenvolvimento, quando a
+ * demonstração foi forçada. Os dois casos pedem a mesma coisa da tela, e por
+ * isso a pergunta é uma só. Não grava nada: é predicado.
+ */
 export function isNbaOffSeason(): boolean {
   return NBA_OFFSEASON_MONTHS.has(saoPauloMonth()) || demoForcadaEmDesenvolvimento();
 }

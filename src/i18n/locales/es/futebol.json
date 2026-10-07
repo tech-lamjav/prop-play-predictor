@@ -596,7 +596,7 @@
     "sucessoTexto": "<0>{{pick}}</0> · {{valor}} @ {{odd}} ya está en tu Betinho como pendiente.",
     "fechar": "Cerrar",
     "verNoBetinho": "Ver en Betinho",
-    "valor": "Importe (R$)",
+    "valor": "Importe ({{simbolo}})",
     "unidade": "Unidad",
     "unidadeUmaCurta": "1 un.",
     "unidadeMeiaCurta": "½ un.",

@@ -1,6 +1,6 @@
 import type { TFunction } from 'i18next';
 import type { Bet } from '@/hooks/use-bets';
-import { fmtDinheiro, fmtOdd, fmtDecimal, fmtPct } from '@/utils/formato';
+import { fmtDinheiroDaPessoa, fmtOdd, fmtDecimal, fmtPct } from '@/utils/formato';
 import { localeAtivo } from '@/utils/idioma-ativo';
 
 /**
@@ -569,7 +569,8 @@ interface StatsSummary {
 const MIN_SLICE_N = 3;
 
 /** Formatter padrão pra moeda — strip ",00" final quando inteiro. */
-const defaultMoneyFmt = (v: number): string => fmtDinheiro(v, { casas: 0 });
+// Dinheiro da pessoa. Função pura: quem a chama na pintura já assinou a moeda.
+const defaultMoneyFmt = (v: number): string => fmtDinheiroDaPessoa(v, { casas: 0 });
 
 /** Strip trailing ",00" se aparecer (útil quando o formatter da página adiciona centavos). */
 const cleanCents = (s: string): string => s.replace(/[,.]00\b/, '');

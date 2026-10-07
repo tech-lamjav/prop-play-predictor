@@ -36,8 +36,11 @@ import { PAIS_PADRAO, paisPorCodigo } from '@/config/paises';
  * evidência de terceiro. As duas discordam com frequência e com razão, e é por
  * isso que ficam guardadas separadas.
  *
- * O que esta função devolve é um PALPITE DE FORMULÁRIO, e não entra nessa
- * conversa: ninguém prova nada com ele, e a pessoa troca com um clique. Também
+ * O que esta função devolve é um PALPITE, e não entra nessa conversa: ninguém
+ * prova nada com ele, e a pessoa troca com um clique. Ele tem dois usos, os
+ * dois de valor inicial: o campo de país do cadastro, e a moeda de quem criou
+ * conta antes de esse campo existir (`utils/moeda-ativa.ts`). Nos dois, a
+ * escolha explícita da pessoa vence o palpite. Também
  * não é segundo juiz de nada — quem decide acesso é o porteiro, uma vez por
  * sessão e do lado do servidor, e a tela só obedece.
  */

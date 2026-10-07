@@ -63,9 +63,14 @@ export type Area = (typeof AREAS)[number];
  * traria convenções que não são as de lá.
  *
  * ⚠️ Isto é IDIOMA, não país. Argentina e Chile escrevem decimal com vírgula e
- * Peru e México com ponto — `es-419` resolve com ponto. Acertar por país exige
- * saber o país, e a detecção por país está fora do escopo do #532. Enquanto
- * ela não existir, `es-419` é a escolha neutra honesta.
+ * Peru e México com ponto — `es-419` resolve com ponto, e é a escolha neutra
+ * honesta.
+ *
+ * O produto passou a SABER o país — pelo cadastro, e pelo fuso como palpite —,
+ * mas usa isso só para sugerir a MOEDA. A pontuação de número continua
+ * seguindo o idioma, de propósito: trocar o separador decimal pelo país de
+ * quem lê faria a mesma tela em espanhol escrever "28,4" para um argentino e
+ * "28.4" para um peruano, e isso é decisão de produto que ninguém tomou.
  */
 export const LOCALE_DO_IDIOMA: Record<Idioma, string> = {
   pt: 'pt-BR',

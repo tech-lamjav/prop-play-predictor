@@ -229,7 +229,7 @@
       "adicionar": "＋ Agregar \"{{valor}}\"",
       "valor": "Monto",
       "odds": "Cuota",
-      "retornoPago": "Retorno pagado (R$)",
+      "retornoPago": "Retorno pagado ({{simbolo}})",
       "retornoPagoAjuda": "¿La casa pagó distinto por un bono? Ajusta aquí el monto pagado y la cuota se reajusta sola para cuadrar con el bankroll.",
       "creditoDeApostas": "Crédito de apuestas",
       "dataDaAposta": "Fecha de la apuesta",
@@ -477,7 +477,7 @@
         "roi": "ROI",
         "lucro": "Ganancia",
         "quantidade": "Cantidad",
-        "lucroCurto": "R$",
+        "lucroCurto": "{{simbolo}}",
         "quantidadeCurto": "Cant"
       },
       "semDados": "sin datos",

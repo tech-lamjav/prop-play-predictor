@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
+import { useSimboloDaMoeda } from '@/hooks/use-moeda';
 import { fmtDecimal, fmtOdd, fmtPct } from '@/utils/formato';
 import { useAuth } from '../hooks/use-auth';
 import { createClient } from '../integrations/supabase/client';
@@ -696,6 +697,8 @@ function captureBetSettled(
 
 export default function Bets() {
   const { t } = useTranslation('apostas');
+  // O símbolo da moeda escolhida — era "R$" escrito à mão.
+  const simbolo = useSimboloDaMoeda();
   const { user, isLoading: authLoading } = useAuth();
   const { isPremium: isBetinhoPremium, isFree: isBetinhoFree } = useBetinhoPremium();
   const { isConfigured, toUnits, formatUnits, config, updateConfig, formatCurrency, refetchConfig } = useUserUnit();
@@ -2374,7 +2377,7 @@ export default function Bets() {
         <div>
           <label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('lista.filtros.stakeMinimo')}</label>
           <div className="mt-2 flex items-center h-10 bg-white border border-line rounded-md focus-within:border-forest/40">
-            <span className="pl-3 text-[12px] text-ink-2">R$</span>
+            <span className="pl-3 text-[12px] text-ink-2">{simbolo}</span>
             <input
               type="number"
               inputMode="decimal"
@@ -2513,7 +2516,7 @@ export default function Bets() {
                   !showUnitsView ? 'bg-white text-ink shadow-sm border border-line' : 'text-ink-2 hover:text-ink'
                 }`}
               >
-                R$
+                {simbolo}
               </button>
               <button
                 type="button"
@@ -3637,7 +3640,7 @@ export default function Bets() {
               <div className="space-y-2">
                 <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('lista.cashout.valor')}</Label>
                 <div className="flex items-center h-12 bg-white border-2 border-forest/30 focus-within:border-forest rounded-md">
-                  <span className="pl-4 text-[14px] text-ink-2 font-medium">R$</span>
+                  <span className="pl-4 text-[14px] text-ink-2 font-medium">{simbolo}</span>
                   <input
                     type="number"
                     step="0.01"
@@ -4198,7 +4201,7 @@ export default function Bets() {
               {/* Retorno pago editável — casa às vezes paga diferente de stake×odd
                   (bônus de odd alta). Editar o retorno reajusta a odd pra enquadrar. */}
               <div className="space-y-2">
-                <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('lista.edicao.retornoPago')}</Label>
+                <Label className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('lista.edicao.retornoPago', { simbolo })}</Label>
                 <Input
                   type="number"
                   value={editModal.formData.potential_return}

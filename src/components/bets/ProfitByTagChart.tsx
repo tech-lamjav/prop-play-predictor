@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { fmtDinheiro, fmtPct } from '@/utils/formato';
+import { fmtDinheiroDaPessoa, fmtPct } from '@/utils/formato';
+import { useMoeda } from '@/hooks/use-moeda';
 import { Sparkles } from 'lucide-react';
 import { Bet } from '@/hooks/use-bets';
 import { aggregateTagPivot, type BetWithTags } from '@/utils/dashboardAggregations';
@@ -20,10 +21,12 @@ const MAX_DEFAULT = 8;
 
 export const ProfitByTagChart: React.FC<ProfitByTagChartProps> = ({
   bets,
-  formatValue = (v) => fmtDinheiro(v, { casas: 0 }),
+  formatValue = (v) => fmtDinheiroDaPessoa(v, { casas: 0 }),
   onAnalyzeTags,
 }) => {
   const { t } = useTranslation('apostas');
+  // Assina a moeda: sem isto a tela não repinta quando a pessoa troca.
+  useMoeda();
   const allEntries = useMemo(() => aggregateTagPivot(bets), [bets]);
   const [selectedTagNames, setSelectedTagNames] = useState<string[]>([]);
 

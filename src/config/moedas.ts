@@ -198,3 +198,18 @@ export function casaBusca(texto: string, busca: string): boolean {
   const limpar = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   return limpar(texto).includes(limpar(busca));
 }
+
+/**
+ * A moeda pelo código, no molde de `paisPorCodigo`.
+ *
+ * Existe porque `MOEDAS.find((m) => m.codigo === ...)` estava escrito em dois
+ * lugares — o seletor e o modal da unidade.
+ */
+export function moedaPorCodigo(codigo: string): Moeda | undefined {
+  return MOEDAS.find((m) => m.codigo === codigo);
+}
+
+/** O símbolo da moeda — "R$", "S/" —, ou o código quando ela não estiver na lista. */
+export function simboloDaMoeda(codigo: string): string {
+  return moedaPorCodigo(codigo)?.simbolo ?? codigo;
+}

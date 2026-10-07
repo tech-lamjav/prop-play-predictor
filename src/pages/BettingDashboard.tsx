@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Trans, useTranslation } from 'react-i18next';
+import { useSimboloDaMoeda } from '@/hooks/use-moeda';
 import { fmtPct } from '@/utils/formato';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
@@ -85,6 +86,8 @@ const PRECO_PRO = 'R$ 14,90';
 
 export default function BettingDashboard() {
   const { t } = useTranslation('apostas');
+  // O símbolo da moeda escolhida — era "R$" escrito à mão.
+  const simbolo = useSimboloDaMoeda();
   const { user, isLoading: authLoading } = useAuth();
   const { bets: realBets, isLoading: betsLoading } = useBets(user?.id ?? '');
   const { toUnits, formatUnits, formatCurrency, isConfigured, refetchConfig, config } = useUserUnit();
@@ -371,7 +374,7 @@ export default function BettingDashboard() {
                   !showUnitsView ? 'bg-white text-ink shadow-sm border border-line' : 'text-ink-2 hover:text-ink'
                 }`}
               >
-                R$
+                {simbolo}
               </button>
               <button
                 type="button"

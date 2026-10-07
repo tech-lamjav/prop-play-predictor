@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { fmtPct } from '@/utils/formato';
+import { fmtPct, fmtDinheiroDaPessoa } from '@/utils/formato';
 import { Sparkles, ArrowRight, MousePointer2 } from 'lucide-react';
 import { Sparkline } from './Sparkline';
 import { computeDrillDown } from '@/utils/dashboardAggregations';
@@ -22,7 +22,7 @@ export const DrillDown: React.FC<DrillDownProps> = ({
   bets,
   selectedCell,
   isPremium,
-  formatValue = (v) => `R$ ${v.toFixed(2)}`,
+  formatValue = (v) => fmtDinheiroDaPessoa(v),
   onViewAllBets,
   onAnalyzeWithAI,
   onUpgrade,
