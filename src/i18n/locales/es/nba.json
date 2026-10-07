@@ -435,7 +435,8 @@
     "lesoesEtiqueta": "Lesiones",
     "lesoesTitulo": "Lesiones de los partidos de hoy",
     "relatorioEtiqueta": "Informe del día",
-    "relatorioTitulo": "Mira las mejores props"
+    "relatorioTitulo": "Mira las mejores props",
+    "contagemDiasHoras": "EN {{d}}D {{h}}H"
   },
   "jogo": {
     "seoTituloPadrao": "Partido",
@@ -566,7 +567,11 @@
     "insightConfirmadaVarias": "Con <0>{{gatilho}}</0> fuera, los promedios de {{jogador}} suben en <1>{{n}} categorías</1>",
     "insightDuvidaVarias": "Si se confirma que <0>{{gatilho}}</0> está fuera, los promedios de {{jogador}} pueden subir en <1>{{n}} categorías</1>",
     "insightMediaNormal": "promedio normal → sin {{gatilho}}",
-    "insightCliqueFiltrar": "Haz clic para filtrar el gráfico"
+    "insightCliqueFiltrar": "Haz clic para filtrar el gráfico",
+    "ultimoJogoHaDias_one": "Último partido: hace {{count}} día",
+    "ultimoJogoHaDias_other": "Último partido: hace {{count}} días",
+    "ultimoJogoHoje": "Último partido: hoy",
+    "ultimoJogoOntem": "Último partido: ayer"
   },
   "zonas": {
     "titulo": "Zonas de tiro",

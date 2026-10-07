@@ -65,13 +65,13 @@ function renderLastFiveWithColors(lastFive: string | null, semDado: string) {
   );
 }
 
-function TeamBlock({ logo, abbr, record, b2b }: { logo: string; abbr: string; record: string; b2b: boolean }) {
+function TeamBlock({ logo, abbr, record, b2b }: { logo: string; abbr: string | null; record: string; b2b: boolean }) {
   return (
     <div className="flex flex-col items-center gap-1.5 shrink-0">
       <div className="w-12 h-12 relative">
         <img
           src={logo}
-          alt={abbr}
+          alt={abbr ?? ''}
           className="w-full h-full object-contain"
           loading="lazy"
           onError={(e) => {
@@ -79,7 +79,14 @@ function TeamBlock({ logo, abbr, record, b2b }: { logo: string; abbr: string; re
             target.style.display = 'none';
             const parent = target.parentElement;
             if (parent) {
-              parent.innerHTML = `<span class="text-[11px] font-bold text-ink">${abbr}</span>`;
+              // ⚠️ Era `innerHTML` com a sigla interpolada. Fora da temporada não
+              // há próximo adversário, a sigla chega nula, e a tela escrevia a
+              // palavra "null" no lugar do time. Além disso, interpolar dado do
+              // banco em HTML é a porta errada: `textContent` não interpreta nada.
+              const sigla = document.createElement('span');
+              sigla.className = 'text-[11px] font-bold text-ink';
+              sigla.textContent = abbr || '—';
+              parent.replaceChildren(sigla);
               parent.className = "w-12 h-12 flex items-center justify-center bg-canvas-2 rounded-full border border-line";
             }
           }}

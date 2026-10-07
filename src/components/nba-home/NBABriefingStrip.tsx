@@ -1,6 +1,7 @@
 import React from 'react';
 import { Trans, useTranslation } from 'react-i18next';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { nomeDoDiaDaSemana, nomeDoMes } from '@/utils/nomes-de-data';
 
 export interface BriefingKPIs {
   games: number;
@@ -21,16 +22,15 @@ interface NBABriefingStripProps {
   searchSlot?: React.ReactNode;
 }
 
-const PT_WEEKDAYS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-const PT_MONTHS = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
-const PT_MONTHS_SHORT = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+// Dia e mês vêm do `Intl` no idioma ativo. Eram três tabelas escritas em
+// português, e a home em espanhol dizia "Terça, 6 de outubro".
 
 export const NBABriefingStrip: React.FC<NBABriefingStripProps> = ({ date, kpis, updatedAt, nextUpdateMin, searchSlot }) => {
   const { t } = useTranslation('nba');
   const isMobile = useIsMobile();
-  const weekday = PT_WEEKDAYS[date.getDay()];
+  const weekday = nomeDoDiaDaSemana(date.getDay());
   const day = date.getDate();
-  const month = isMobile ? PT_MONTHS_SHORT[date.getMonth()] : PT_MONTHS[date.getMonth()];
+  const month = nomeDoMes(date.getMonth(), isMobile ? 'short' : 'long');
 
   if (isMobile) {
     return (

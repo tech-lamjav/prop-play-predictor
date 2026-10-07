@@ -24,6 +24,7 @@ import { gamesCache } from '@/pages/Games';
 import { useAnalise360Data } from '@/hooks/use-analise360';
 import { getPlayerPhotoUrl, getTeamLogoUrl, tryNextPlayerPhotoUrl } from '@/utils/team-logos';
 import { localeAtivo, RELOGIO_DE_24H } from '@/utils/idioma-ativo';
+import { nomeDoDiaDaSemana } from '@/utils/nomes-de-data';
 
 const SAO_PAULO_TZ = 'America/Sao_Paulo';
 
@@ -70,15 +71,25 @@ function formatTimeBR(iso: string | null): string | null {
   });
 }
 
-function timeUntilKickoff(iso: string | null): string | null {
+/**
+ * Quanto falta para o jogo, como CHAVE e valores — a frase sai na pintura.
+ *
+ * ⚠️ A frase era montada aqui, em português, e a tela em espanhol dizia "EM 23H
+ * 37MIN" enquanto a lista de jogos, ao lado, já dizia "EN". As chaves são as
+ * mesmas da lista; esta tela mostra também as horas quando falta mais de um
+ * dia, e por isso tem uma a mais.
+ */
+type Contagem = { chave: string; valores: Record<string, number> } | null;
+
+function timeUntilKickoff(iso: string | null): Contagem {
   if (!iso) return null;
   const diff = new Date(iso).getTime() - Date.now();
   if (diff <= 0) return null;
   const h = Math.floor(diff / (60 * 60 * 1000));
   const m = Math.floor((diff % (60 * 60 * 1000)) / (60 * 1000));
-  if (h >= 24) return `EM ${Math.floor(h / 24)}D ${h % 24}H`;
-  if (h > 0) return `EM ${h}H ${m}MIN`;
-  return `EM ${m}MIN`;
+  if (h >= 24) return { chave: 'jogos.contagemDiasHoras', valores: { d: Math.floor(h / 24), h: h % 24 } };
+  if (h > 0) return { chave: 'jogos.contagemHoras', valores: { h, m } };
+  return { chave: 'jogos.contagemMinutos', valores: { m } };
 }
 
 function formatPct(val: number | null): string {
@@ -289,7 +300,7 @@ function HeroCard({
           {countdown && (
             <div className="mt-1.5">
               <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-700 uppercase tracking-wide">
-                {countdown}
+                {t(countdown.chave, countdown.valores)}
               </span>
             </div>
           )}
@@ -542,9 +553,9 @@ function B2BAlertCard({
 }) {
   const { t } = useTranslation('nba');
   const won = summary.teamScore != null && summary.opponentScore != null && summary.teamScore > summary.opponentScore;
-  const weekdayLabels = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
   const prevDate = summary.gameDateISO ? new Date(`${summary.gameDateISO}T12:00:00-03:00`) : null;
-  const weekday = prevDate ? weekdayLabels[prevDate.getDay()] : null;
+  // Em minúscula, como a tabela antiga escrevia: "terça", "martes".
+  const weekday = prevDate ? nomeDoDiaDaSemana(prevDate.getDay()).toLowerCase() : null;
   const dayMonth = summary.gameDateISO ? summary.gameDateISO.split('-').reverse().slice(0, 2).join('/') : null;
   const prevTime = summary.gameDatetimeBrasilia
     ? new Date(summary.gameDatetimeBrasilia).toLocaleTimeString(localeAtivo(), { timeZone: SAO_PAULO_TZ, hour: '2-digit', hourCycle: RELOGIO_DE_24H, minute: '2-digit' })

@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Player } from '@/services/nba-data.service';
+import { ultimoJogoNoIdioma } from '@/utils/ultimo-jogo';
 import { Star } from 'lucide-react';
 import { getTeamLogoUrl, getPlayerPhotoUrl, tryNextPlayerPhotoUrl } from '@/utils/team-logos';
 
@@ -41,7 +42,7 @@ function statusLabel(status: string | undefined): { id: string | null; cls: stri
 }
 
 export const PlayerHeader: React.FC<PlayerHeaderProps> = ({ player, seasonAverages, isLoading }) => {
-  const { t } = useTranslation('nba');
+  const { t, i18n } = useTranslation('nba');
 
   if (isLoading) {
     return (
@@ -160,7 +161,8 @@ export const PlayerHeader: React.FC<PlayerHeaderProps> = ({ player, seasonAverag
             {player.last_game_text && (
               <>
                 <span className="text-ink-dim">·</span>
-                <span>{player.last_game_text}</span>
+                {/* Chega PRONTO do banco, em português — ver ultimo-jogo.ts. */}
+                <span>{ultimoJogoNoIdioma(player.last_game_text, i18n.language, t)}</span>
               </>
             )}
           </div>

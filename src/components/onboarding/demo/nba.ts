@@ -20,8 +20,35 @@ function saoPauloMonth(): number {
 // (ex.: All-Star break em fevereiro) — aí o estado vazio honesto é que vale.
 // Quem consome combina isto com "o feed real está vazio" antes de exibir demo.
 const NBA_OFFSEASON_MONTHS = new Set([7, 8, 9]);
+
+/**
+ * Liga a demonstração fora do recesso, SÓ em desenvolvimento.
+ *
+ * ⚠️ EXISTE PORQUE A DEMONSTRAÇÃO ERA INVISÍVEL PARA QUEM REVISA. Ela só liga em
+ * julho, agosto e setembro; no resto do ano, quem quisesse conferir o texto que
+ * o assinante vê no recesso — a tradução, por exemplo — via tela vazia. Fora do
+ * recesso e antes de a temporada começar, a tela fica vazia de verdade, e a
+ * revisão não tinha o que olhar.
+ *
+ * Abre com `?demo=nba` na URL e fica lembrado no navegador; `?demo=off` desliga.
+ * Em produção não faz nada: `import.meta.env.DEV` é falso no build.
+ */
+const CHAVE_DEMO_FORCADA = 'smartbetting.demoNba';
+
+function demoForcadaEmDesenvolvimento(): boolean {
+  if (!import.meta.env.DEV) return false;
+  try {
+    const pedido = new URLSearchParams(window.location.search).get('demo');
+    if (pedido === 'nba') localStorage.setItem(CHAVE_DEMO_FORCADA, '1');
+    if (pedido === 'off') localStorage.removeItem(CHAVE_DEMO_FORCADA);
+    return localStorage.getItem(CHAVE_DEMO_FORCADA) === '1';
+  } catch {
+    return false;
+  }
+}
+
 export function isNbaOffSeason(): boolean {
-  return NBA_OFFSEASON_MONTHS.has(saoPauloMonth());
+  return NBA_OFFSEASON_MONTHS.has(saoPauloMonth()) || demoForcadaEmDesenvolvimento();
 }
 
 const game = (over: Partial<Game>): Game => ({

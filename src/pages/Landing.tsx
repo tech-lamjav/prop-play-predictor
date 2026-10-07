@@ -124,10 +124,18 @@ const Landing = () => {
     const values = baseValues.slice(0, gamesWindow);
     const games = baseGames.slice(0, gamesWindow);
     const over = values.filter((v) => v > statData.line).length;
-    const hitRate = fmtPct(over / values.length, 1);
+    // ⚠️ O MEMO GUARDA NÚMERO, E NÃO TEXTO FORMATADO. A versão anterior
+    // guardava "66,7%" pronto, e isso dava três defeitos de uma vez:
+    //   - a tela somava outro "%" e escrevia "66.7%%";
+    //   - `hitRateGood` fazia parseFloat do texto, e em português "66,7%" para
+    //     na vírgula e vira 66 — acertava o limite de 50 só por sorte;
+    //   - o memo não tem o idioma nas dependências, então trocar de idioma
+    //     deixava o número no formato antigo. É a armadilha avisada no topo de
+    //     `utils/idioma-ativo.ts`: guarde o número e formate na pintura.
+    const taxa = over / values.length;
     const maxVal = Math.ceil((Math.max(...values) + 3) / 2) * 2;
-    const avg = fmtDecimal(values.reduce((a, b) => a + b, 0) / values.length, 1);
-    return { values, games, over, total: values.length, hitRate, maxVal, avg };
+    const media = values.reduce((a, b) => a + b, 0) / values.length;
+    return { values, games, over, total: values.length, taxa, maxVal, media };
   }, [statData, gamesWindow, triggerFilter]);
 
   // Tabela "Jogos Recentes" no formato do dashboard real (até 10 jogos).
@@ -158,7 +166,7 @@ const Landing = () => {
     document.getElementById('lp-grafico-desempenho')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
 
-  const hitRateGood = parseFloat(windowed.hitRate) >= 50;
+  const hitRateGood = windowed.taxa >= 0.5;
   const linePct = (statData.line / windowed.maxVal) * 100;
 
   const statPill = (s: { id: string; stat: string }) => {
@@ -436,7 +444,7 @@ const Landing = () => {
                       <span className="text-ink-2">
                         {t('landing.demo.taxaAcerto')}{' '}
                         <span className={`font-semibold tabular-nums ${hitRateGood ? 'text-forest' : 'text-status-danger'}`}>
-                          {windowed.hitRate}%
+                          {fmtPct(windowed.taxa, 1)}
                         </span>{' '}
                         <span className="text-ink-3 tabular-nums">({windowed.over}/{windowed.total})</span>
                       </span>
@@ -531,7 +539,7 @@ const Landing = () => {
                       </span>
                     </div>
                     <div className="flex items-center gap-3 tabular-nums">
-                      <span>{t('landing.demo.media')} <span className="font-semibold text-ink">{windowed.avg}</span></span>
+                      <span>{t('landing.demo.media')} <span className="font-semibold text-ink">{fmtDecimal(windowed.media, 1)}</span></span>
                       <span>{t('landing.demo.mediaTemporada')} <span className="font-semibold text-ink">{statData.seasonAvg}</span></span>
                     </div>
                   </div>

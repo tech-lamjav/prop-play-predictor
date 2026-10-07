@@ -435,7 +435,8 @@
     "lesoesEtiqueta": "Lesões",
     "lesoesTitulo": "Lesões dos jogos de hoje",
     "relatorioEtiqueta": "Relatório do dia",
-    "relatorioTitulo": "Veja as melhores props"
+    "relatorioTitulo": "Veja as melhores props",
+    "contagemDiasHoras": "EM {{d}}D {{h}}H"
   },
   "jogo": {
     "seoTituloPadrao": "Jogo",
@@ -566,7 +567,11 @@
     "insightConfirmadaVarias": "Com <0>{{gatilho}}</0> fora, as médias de {{jogador}} sobem em <1>{{n}} categorias</1>",
     "insightDuvidaVarias": "Se <0>{{gatilho}}</0> for confirmado fora, as médias de {{jogador}} podem subir em <1>{{n}} categorias</1>",
     "insightMediaNormal": "média normal → sem {{gatilho}}",
-    "insightCliqueFiltrar": "Clique para filtrar o gráfico"
+    "insightCliqueFiltrar": "Clique para filtrar o gráfico",
+    "ultimoJogoHaDias_one": "Último jogo: há {{count}} dia",
+    "ultimoJogoHaDias_other": "Último jogo: há {{count}} dias",
+    "ultimoJogoHoje": "Último jogo: hoje",
+    "ultimoJogoOntem": "Último jogo: ontem"
   },
   "zonas": {
     "titulo": "Zonas de arremesso",

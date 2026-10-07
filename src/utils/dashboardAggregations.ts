@@ -13,47 +13,10 @@ import { localeAtivo } from '@/utils/idioma-ativo';
  */
 type T = TFunction<'apostas'>;
 
-/**
- * Formatador de dia da semana reaproveitado.
- *
- * ⚠️ Mesmo motivo do cache de `futebol-datas.ts`: construir um
- * `Intl.DateTimeFormat` custa 66 vezes mais que reusá-lo, e isto é chamado
- * dentro da agregação do calendário.
- */
-const formatadoresDeDia = new Map<string, Intl.DateTimeFormat>();
-function formatadorDeDia(locale: string, largura: 'long' | 'short'): Intl.DateTimeFormat {
-  const chave = `${locale}|${largura}`;
-  const guardado = formatadoresDeDia.get(chave);
-  if (guardado) return guardado;
-  const novo = new Intl.DateTimeFormat(locale, { weekday: largura, timeZone: 'UTC' });
-  formatadoresDeDia.set(chave, novo);
-  return novo;
-}
-
-/**
- * O nome do dia da semana (0 = domingo) no idioma ativo.
- *
- * ⚠️ VEM DO `Intl`, E NÃO DE UMA TABELA ESCRITA À MÃO. Havia duas tabelas em
- * português — esta, com os nomes longos, e a dos rótulos da coluna do
- * calendário. Dia e mês são dado do CLDR e não texto de produto: sete chaves
- * no catálogo seriam sete traduções para o que o navegador já sabe, e o mês
- * ao lado já vinha do `Intl`.
- *
- * O corte no hífen é o que mantém o PORTUGUÊS como estava. O `pt-BR` escreve
- * "sexta-feira" e esta tela sempre disse "Sexta". Em espanhol não existe hífen
- * nessa posição, então o corte não faz nada: "viernes" sai "Viernes".
- */
-export function nomeDoDiaDaSemana(
-  diaDaSemana: number,
-  largura: 'long' | 'short' = 'long',
-  locale = localeAtivo(),
-): string {
-  // 01/02/2026 é um domingo: somar o índice dá o dia pedido, em UTC para o
-  // fuso de quem lê não escorregar o rótulo para o dia vizinho.
-  const d = new Date(Date.UTC(2026, 1, 1 + diaDaSemana));
-  const bruto = formatadorDeDia(locale, largura).format(d).replace('.', '').split('-')[0];
-  return bruto.charAt(0).toUpperCase() + bruto.slice(1);
-}
+// O nome do dia da semana mudou para `utils/nomes-de-data.ts`, porque a home
+// da NBA precisa da mesma função. Reexportado para quem já importava daqui.
+export { nomeDoDiaDaSemana } from '@/utils/nomes-de-data';
+import { nomeDoDiaDaSemana } from '@/utils/nomes-de-data';
 
 export type BetWithTags = Bet & { tags?: { id: string; name: string; color?: string }[] };
 
