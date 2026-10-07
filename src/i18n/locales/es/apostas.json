@@ -901,6 +901,8 @@
     "erroBancaZero": "El valor del bankroll debe ser mayor que cero",
     "erroDivisorZero": "El divisor debe ser mayor que cero",
     "erroSalvar": "No pudimos guardar la configuración. Inténtalo de nuevo.",
-    "erroLimpar": "No pudimos borrar la configuración. Inténtalo de nuevo."
+    "erroLimpar": "No pudimos borrar la configuración. Inténtalo de nuevo.",
+    "moedaBusca": "Buscar moneda o país…",
+    "moedaVazio": "No encontramos esa moneda."
   }
 }

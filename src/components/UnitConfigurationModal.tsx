@@ -11,9 +11,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useTranslation } from 'react-i18next';
 import { MOEDAS } from '@/config/moedas';
+import { SeletorDeMoeda } from '@/components/SeletorDeMoeda';
 import { useMoeda } from '@/config/MoedaProvider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -223,19 +223,10 @@ export function UnitConfigurationModal({
           <Label htmlFor="moeda" className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">
             {t('unidade.moeda')}
           </Label>
-          <Select value={moeda} onValueChange={trocarMoeda}>
-            <SelectTrigger id="moeda" className="h-10 bg-white border-line text-ink">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="bg-white text-ink">
-              {MOEDAS.map((m) => (
-                <SelectItem key={m.codigo} value={m.codigo} className="data-[selected=true]:bg-sand-100">
-                  {m.simbolo} · {m.codigo}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-[11px] text-ink-3">{t('unidade.moedaAjuda')}</p>
+          <SeletorDeMoeda id="moeda" valor={moeda} aoEscolher={trocarMoeda} />
+          {/* O aviso tinha `text-ink-3` em 11px e ficava quase invisível — e é a
+              frase que impede alguém de achar que o dinheiro foi convertido. */}
+          <p className="text-[12px] text-ink-2">{t('unidade.moedaAjuda')}</p>
         </div>
 
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'direct' | 'division')}>

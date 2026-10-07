@@ -106,7 +106,24 @@ export interface Moeda {
   codigo: string;
   /** Como ela se escreve, para a pessoa reconhecer na lista: "R$", "S/". */
   simbolo: string;
+  /** O país cuja bandeira representa a moeda no seletor. */
+  bandeira: string;
+  /** Todos os países que usam a moeda — é por eles que a busca também acha. */
+  paises: string[];
 }
+
+/**
+ * A bandeira de quem a moeda é, quando ela não é de um país só.
+ *
+ * ⚠️ SEM ISTO O DÓLAR SAÍA COM A BANDEIRA DO EQUADOR. A lista deriva dos países
+ * na ordem do cadastro, e o Equador vem antes dos Estados Unidos porque a
+ * América Latina abre a fila. O euro tem a bandeira da União Europeia, e não a
+ * de Portugal, que seria o primeiro da lista.
+ */
+const BANDEIRA_DA_MOEDA: Record<string, string> = {
+  USD: 'US',
+  EUR: 'EU',
+};
 
 function simboloDe(moeda: string): string {
   try {
@@ -123,13 +140,61 @@ function simboloDe(moeda: string): string {
 }
 
 export const MOEDAS: Moeda[] = (() => {
-  const vistas = new Set<string>();
-  const lista: Moeda[] = [];
+  const porCodigo = new Map<string, Moeda>();
   for (const pais of PAISES) {
     const codigo = moedaDoPais(pais.codigo);
-    if (vistas.has(codigo)) continue;
-    vistas.add(codigo);
-    lista.push({ codigo, simbolo: simboloDe(codigo) });
+    const existente = porCodigo.get(codigo);
+    if (existente) {
+      existente.paises.push(pais.codigo);
+      continue;
+    }
+    porCodigo.set(codigo, {
+      codigo,
+      simbolo: simboloDe(codigo),
+      bandeira: BANDEIRA_DA_MOEDA[codigo] ?? pais.codigo,
+      paises: [pais.codigo],
+    });
   }
-  return lista;
+  return [...porCodigo.values()];
 })();
+
+/**
+ * O nome da moeda no idioma da TELA: "sol peruano", "Novo sol peruano".
+ *
+ * Vem do navegador, pelo mesmo motivo que o nome do país vem: uma lista escrita
+ * à mão ficaria em português, e o `Intl` já sabe o nome em todo idioma. Sai com
+ * a primeira letra em maiúscula porque em espanhol o CLDR escreve minúsculo, e
+ * numa lista um item começando em minúscula parece erro.
+ */
+const nomesEmCache = new Map<string, Intl.DisplayNames>();
+
+export function nomeDaMoeda(codigo: string, locale: string): string {
+  try {
+    let nomes = nomesEmCache.get(locale);
+    if (!nomes) {
+      nomes = new Intl.DisplayNames([locale], { type: 'currency' });
+      nomesEmCache.set(locale, nomes);
+    }
+    const nome = nomes.of(codigo) ?? codigo;
+    return nome.charAt(0).toUpperCase() + nome.slice(1);
+  } catch {
+    return codigo;
+  }
+}
+
+/**
+ * Tudo pelo que a pessoa pode procurar uma moeda, numa string só: o nome no
+ * idioma da tela, o código, o símbolo e o nome de cada país que a usa.
+ *
+ * Fica aqui, e não no componente, para poder ser testado sem navegador — a
+ * busca é a promessa do seletor, e é ela que precisa de prova.
+ */
+export function textoDeBusca(moeda: Moeda, locale: string, nomeDoPais: (codigo: string) => string): string {
+  return [nomeDaMoeda(moeda.codigo, locale), moeda.codigo, moeda.simbolo, ...moeda.paises.map(nomeDoPais)].join(' ');
+}
+
+/** A comparação da busca: sem acento e sem caixa. "dolar" acha "Dólar". */
+export function casaBusca(texto: string, busca: string): boolean {
+  const limpar = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  return limpar(texto).includes(limpar(busca));
+}

@@ -901,6 +901,8 @@
     "erroBancaZero": "O valor da banca deve ser maior que zero",
     "erroDivisorZero": "O divisor deve ser maior que zero",
     "erroSalvar": "Erro ao salvar configuração. Tente novamente.",
-    "erroLimpar": "Erro ao limpar configuração. Tente novamente."
+    "erroLimpar": "Erro ao limpar configuração. Tente novamente.",
+    "moedaBusca": "Buscar moeda ou país…",
+    "moedaVazio": "Nenhuma moeda encontrada."
   }
 }
