@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Seo } from '@/components/Seo';
 import {
@@ -15,10 +16,15 @@ import {
 
 /**
  * Landing pública do Bolão Copa 2026 — visível em /bolao quando user
- * está deslogado. Copy casual brasileira, foco em conversão pra signup
- * + SEO meta tags. Paleta "Direção A" (canvas/forest/amber).
+ * está deslogado. Foco em conversão pra signup + SEO meta tags. Paleta
+ * "Direção A" (canvas/forest/amber).
+ *
+ * A copy vem do catálogo `bolao` no idioma ativo (#539), e não mais de texto
+ * fixo aqui: esta é uma das duas telas públicas do bolão, e é a porta de
+ * entrada de quem chega de Peru, Argentina, México ou Chile.
  */
 const LandingBolao: React.FC = () => {
+  const { t } = useTranslation('bolao');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -48,15 +54,16 @@ const LandingBolao: React.FC = () => {
           <div className="relative max-w-4xl mx-auto px-4 sm:px-6 pt-16 pb-12 sm:pt-24 sm:pb-20 text-center">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-[0.12em] bg-amber/[0.18] text-amber border border-amber/40 mb-5">
               <Trophy className="w-3.5 h-3.5" />
-              Copa do Mundo 2026
+              {t('landing.selo')}
             </span>
             <h1 className="font-display text-4xl sm:text-6xl font-black leading-tight mb-4">
-              O bolão da galera.<br />
-              <span className="text-amber">Sem planilha do Excel.</span>
+              {/* Duas FRASES inteiras, uma por linha — e não uma frase cortada
+                  ao meio. Por isso são duas chaves, e não um `Trans`. */}
+              {t('landing.titulo')}<br />
+              <span className="text-amber">{t('landing.tituloDestaque')}</span>
             </h1>
             <p className="text-base sm:text-xl text-white/80 max-w-2xl mx-auto mb-8 leading-relaxed">
-              Cria em 30 segundos, manda o link no grupo, e pronto.
-              A gente cuida do ranking, dos placares e dos palpites de campeão.
+              {t('landing.chamada')}
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <button
@@ -64,11 +71,11 @@ const LandingBolao: React.FC = () => {
                 onClick={() => handleCTA('hero_primary')}
                 className="inline-flex items-center gap-2 h-12 px-6 rounded-rebrand-md bg-amber text-white hover:bg-amber-2 font-bold text-[15px] shadow-md transition-colors"
               >
-                Criar meu bolão grátis
+                {t('acoes.criarGratis')}
                 <ArrowRight className="w-4 h-4" />
               </button>
               <p className="text-[12px] text-white/60 mt-1 sm:mt-0 sm:ml-2">
-                Sem cartão · Sem cadastro complicado
+                {t('landing.semBurocracia')}
               </p>
             </div>
 
@@ -76,15 +83,15 @@ const LandingBolao: React.FC = () => {
             <div className="mt-10 grid grid-cols-3 gap-4 max-w-md mx-auto">
               <div className="text-center">
                 <p className="text-2xl sm:text-3xl font-black text-amber tabular-nums">104</p>
-                <p className="text-[10px] sm:text-[11px] text-white/60 uppercase tracking-[0.12em] mt-1">jogos</p>
+                <p className="text-[10px] sm:text-[11px] text-white/60 uppercase tracking-[0.12em] mt-1">{t('landing.numeros.jogos')}</p>
               </div>
               <div className="text-center">
                 <p className="text-2xl sm:text-3xl font-black text-amber tabular-nums">48</p>
-                <p className="text-[10px] sm:text-[11px] text-white/60 uppercase tracking-[0.12em] mt-1">seleções</p>
+                <p className="text-[10px] sm:text-[11px] text-white/60 uppercase tracking-[0.12em] mt-1">{t('landing.numeros.selecoes')}</p>
               </div>
               <div className="text-center">
                 <p className="text-2xl sm:text-3xl font-black text-amber tabular-nums">12</p>
-                <p className="text-[10px] sm:text-[11px] text-white/60 uppercase tracking-[0.12em] mt-1">grupos</p>
+                <p className="text-[10px] sm:text-[11px] text-white/60 uppercase tracking-[0.12em] mt-1">{t('landing.numeros.grupos')}</p>
               </div>
             </div>
           </div>
@@ -94,10 +101,10 @@ const LandingBolao: React.FC = () => {
         <section className="max-w-4xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
           <div className="text-center mb-10">
             <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-forest mb-2">
-              Como funciona
+              {t('comoFunciona.etiqueta')}
             </p>
             <h2 className="font-display text-2xl sm:text-3xl font-black text-ink">
-              3 passos. Sem complicação.
+              {t('comoFunciona.titulo')}
             </h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -105,20 +112,20 @@ const LandingBolao: React.FC = () => {
               {
                 num: '1',
                 icon: Trophy,
-                title: 'Cria o bolão',
-                text: 'Dá um nome (ex: "Bolão da firma"). Em 30s tá pronto.',
+                title: t('landing.passos.criar.titulo'),
+                text: t('landing.passos.criar.texto'),
               },
               {
                 num: '2',
                 icon: MessageCircle,
-                title: 'Manda o link',
-                text: 'Cola no grupo do WhatsApp. A galera entra em 1 clique.',
+                title: t('landing.passos.convidar.titulo'),
+                text: t('landing.passos.convidar.texto'),
               },
               {
                 num: '3',
                 icon: Target,
-                title: 'Palpita',
-                text: 'Cada jogador palpita os 104 jogos antes de começarem. A gente faz o ranking sozinho.',
+                title: t('landing.passos.palpitar.titulo'),
+                text: t('landing.passos.palpitar.texto'),
               },
             ].map((step) => (
               <div
@@ -142,35 +149,40 @@ const LandingBolao: React.FC = () => {
         <section className="max-w-4xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
           <div className="text-center mb-10">
             <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-forest mb-2">
-              Planos
+              {t('landing.planos.etiqueta')}
             </p>
             <h2 className="font-display text-2xl sm:text-3xl font-black text-ink mb-2">
-              Tudo grátis até 20 pessoas.
+              {t('landing.planos.titulo')}
             </h2>
             <p className="text-[13px] text-ink-2">
-              Mesmas features nos dois planos. Pra grupo maior, sobe pro Premium — pagamento único, sem mensalidade.
+              {t('landing.planos.chamada')}
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Free */}
             <div className="rounded-rebrand-lg border border-line bg-white p-6">
               <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-ink-2 mb-2">
-                Grátis
+                {t('landing.planos.free.nome')}
               </p>
+              {/* O preço NÃO passa pelo catálogo: a #532 mantém a cobrança em
+                  real e na régua brasileira, e símbolo de moeda dentro de
+                  texto traduzido é convite a alguém trocar o R$ por outro. */}
               <p className="font-display text-3xl font-black text-ink mb-1">R$ 0</p>
-              <p className="text-[12px] text-ink-3 mb-5">pra sempre · até 20 pessoas</p>
+              <p className="text-[12px] text-ink-3 mb-5">{t('landing.planos.free.condicao')}</p>
               <ul className="space-y-2.5 text-[13px]">
+                {/* A chave de React é o NOME do item, e não o texto: o texto
+                    muda ao trocar de idioma, e a lista inteira remontaria. */}
                 {[
-                  'Até 20 participantes',
-                  'Pontuação 100% customizável',
-                  'Multiplicador por fase (Final vale até 5×)',
-                  'Palpites especiais (campeão, finalistas, semis, quartas)',
-                  'Ranking por fase + destaques',
-                  'Logo e cor próprios do bolão',
-                ].map((f) => (
-                  <li key={f} className="flex items-start gap-2">
+                  'participantes',
+                  'pontuacao',
+                  'multiplicador',
+                  'especiais',
+                  'ranking',
+                  'identidade',
+                ].map((item) => (
+                  <li key={item} className="flex items-start gap-2">
                     <CheckCircle2 className="w-4 h-4 text-forest shrink-0 mt-0.5" />
-                    <span className="text-ink-2">{f}</span>
+                    <span className="text-ink-2">{t(`landing.planos.free.itens.${item}`)}</span>
                   </li>
                 ))}
               </ul>
@@ -179,28 +191,28 @@ const LandingBolao: React.FC = () => {
             {/* Premium */}
             <div className="rounded-rebrand-lg border-2 border-amber/50 bg-amber/[0.06] p-6 relative">
               <span className="absolute -top-3 left-6 text-[10px] px-2 py-0.5 bg-amber text-white font-bold uppercase tracking-[0.12em] rounded-full shadow-sm">
-                Pra grupo grande
+                {t('landing.planos.premium.selo')}
               </span>
               <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-amber-2 mb-2">
-                Premium
+                {t('landing.planos.premium.nome')}
               </p>
               <p className="font-display text-3xl font-black text-amber-2 mb-1">R$ 19,90</p>
-              <p className="text-[12px] text-ink-2 mb-5">pagamento único · sem assinatura</p>
+              <p className="text-[12px] text-ink-2 mb-5">{t('landing.planos.premium.condicao')}</p>
               <ul className="space-y-2.5 text-[13px]">
                 {[
-                  { text: 'Participantes ilimitados (20+)', strong: true },
-                  { text: 'Tudo do Free incluído', strong: true },
+                  { chave: 'ilimitado', strong: true },
+                  { chave: 'tudoDoFree', strong: true },
                 ].map((f) => (
-                  <li key={f.text} className="flex items-start gap-2">
+                  <li key={f.chave} className="flex items-start gap-2">
                     <CheckCircle2 className="w-4 h-4 text-amber-2 shrink-0 mt-0.5" />
                     <span className={f.strong ? 'font-bold text-ink' : 'text-ink-2'}>
-                      {f.text}
+                      {t(`landing.planos.premium.itens.${f.chave}`)}
                     </span>
                   </li>
                 ))}
               </ul>
               <p className="text-[11px] text-ink-3 mt-4 leading-snug">
-                Mesmas features do Free. Diferença é só o tamanho do grupo.
+                {t('landing.planos.premium.rodape')}
               </p>
             </div>
           </div>
@@ -211,22 +223,25 @@ const LandingBolao: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
             {[
               {
+                chave: 'cadastro',
                 icon: Users,
-                title: 'Sem cadastro chato',
-                text: 'Login com Google, e tá dentro. Cada amigo entra com 1 clique no link.',
+                title: t('landing.diferenciais.cadastro.titulo'),
+                text: t('landing.diferenciais.cadastro.texto'),
               },
               {
+                chave: 'automatico',
                 icon: Zap,
-                title: 'Tudo automático',
-                text: 'Placares atualizam sozinho via API oficial. Você só palpita e acompanha.',
+                title: t('landing.diferenciais.automatico.titulo'),
+                text: t('landing.diferenciais.automatico.texto'),
               },
               {
+                chave: 'regras',
                 icon: Shield,
-                title: 'Seu bolão, suas regras',
-                text: 'Ajuste pontuação, multiplicador por fase, prazos de palpite. Sem briga.',
+                title: t('landing.diferenciais.regras.titulo'),
+                text: t('landing.diferenciais.regras.texto'),
               },
             ].map((b) => (
-              <div key={b.title} className="text-center">
+              <div key={b.chave} className="text-center">
                 <div className="w-12 h-12 rounded-rebrand-md bg-forest/[0.08] border border-forest/30 flex items-center justify-center mx-auto mb-3">
                   <b.icon className="w-5 h-5 text-forest" />
                 </div>
@@ -241,46 +256,30 @@ const LandingBolao: React.FC = () => {
         <section className="max-w-3xl mx-auto px-4 sm:px-6 py-12 sm:py-16 border-t border-line">
           <div className="text-center mb-8">
             <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-forest mb-2">
-              Perguntas frequentes
+              {t('landing.faq.etiqueta')}
             </p>
-            <h2 className="font-display text-2xl sm:text-3xl font-black text-ink">Bora tirar dúvida</h2>
+            <h2 className="font-display text-2xl sm:text-3xl font-black text-ink">{t('landing.faq.titulo')}</h2>
           </div>
           <div className="space-y-3">
             {[
-              {
-                q: 'É grátis mesmo? Tem pegadinha?',
-                a: 'É grátis pra criar, entrar e usar todas as features (pontuação custom, palpites especiais, multiplicador por fase). O Premium (R$ 19,90 único) só é necessário se o seu bolão passa de 20 pessoas. Sem mensalidade, sem trial.',
-              },
-              {
-                q: 'Como meus amigos entram?',
-                a: 'Você cria o bolão e gera um link tipo smartbetting.app/bolao/entrar/ABC12345. Manda no WhatsApp, eles clicam, fazem login com Google, tá dentro.',
-              },
-              {
-                q: 'E se eu quiser sair de um bolão?',
-                a: 'Tem botão "Sair" na página do bolão. Seus palpites somem, você não aparece no ranking. Pra voltar, precisa do link de novo.',
-              },
-              {
-                q: 'Como vocês atualizam os placares?',
-                a: 'API oficial da FIFA + nossa equipe revisando. Após cada jogo, o ranking recalcula sozinho.',
-              },
-              {
-                q: 'Posso criar mais de 1 bolão?',
-                a: 'Quantos quiser. Bolão da firma, bolão da família, bolão dos amigos da escola. Cada um separado.',
-              },
-              {
-                q: 'Premium vale só pra um bolão?',
-                a: 'Sim — o pagamento de R$ 19,90 vale pro bolão que você escolheu Premium na criação (libera mais de 20 participantes). Outros bolões seus continuam Free. Não tem assinatura — é pagamento por bolão.',
-              },
-            ].map((item) => (
+              'gratuidade',
+              'convite',
+              'sair',
+              'placares',
+              'varios',
+              'premium',
+            ].map((chave) => (
               <details
-                key={item.q}
+                key={chave}
                 className="group rounded-rebrand-md border border-line bg-white px-5 py-4 cursor-pointer hover:border-line-2 transition-colors"
               >
                 <summary className="flex items-center justify-between gap-3 list-none font-bold text-[14px] text-ink">
-                  {item.q}
+                  {t(`landing.faq.${chave}.pergunta`)}
                   <ArrowRight className="w-4 h-4 text-ink-3 group-open:rotate-90 transition-transform shrink-0" />
                 </summary>
-                <p className="text-[13px] text-ink-2 mt-3 leading-relaxed">{item.a}</p>
+                <p className="text-[13px] text-ink-2 mt-3 leading-relaxed">
+                  {t(`landing.faq.${chave}.resposta`)}
+                </p>
               </details>
             ))}
           </div>
@@ -293,18 +292,17 @@ const LandingBolao: React.FC = () => {
             <div className="relative">
               <Crown className="w-12 h-12 text-amber mx-auto mb-4" />
               <h2 className="font-display text-2xl sm:text-3xl font-black mb-3">
-                Bora montar o bolão da Copa?
+                {t('landing.fechamento.titulo')}
               </h2>
               <p className="text-[15px] text-white/80 mb-6 max-w-lg mx-auto leading-relaxed">
-                30 segundos pra criar. 1 link pra mandar pra galera.
-                Em junho/2026 tá todo mundo no grupo torcendo junto.
+                {t('landing.fechamento.texto')}
               </p>
               <button
                 type="button"
                 onClick={() => handleCTA('footer_cta')}
                 className="inline-flex items-center gap-2 h-12 px-8 rounded-rebrand-md bg-amber text-white hover:bg-amber-2 font-bold text-[15px] shadow-md transition-colors"
               >
-                Criar meu bolão grátis
+                {t('acoes.criarGratis')}
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>

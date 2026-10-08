@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AlertTriangle } from 'lucide-react';
 
 import { acessoAtual, estadoDoTeste, PRODUTOS_EDITAVEIS, type ProdutoEditavel } from './crm-acesso';
@@ -49,6 +50,7 @@ function LinhaDoProduto({
   escrita: EstadoDaEscrita;
   aoSalvar: (mudanca: MudancaDeAcesso) => void;
 }) {
+  const { t } = useTranslation('socios');
   const atual = acessoAtual(pessoa, produto.id);
   const [ativo, setAtivo] = useState(atual.ativo);
   const [ate, setAte] = useState(atual.ate);
@@ -81,7 +83,9 @@ function LinhaDoProduto({
             checked={ativo}
             disabled={salvando}
             onChange={(e) => setAtivo(e.target.checked)}
-            aria-label={`Acesso ao ${produto.nome}`}
+            // ⚠️ `produto.nome` continua em PORTUGUÊS: vem de `PRODUTOS_EDITAVEIS`,
+            // em `crm-acesso.ts`, que não entrou nesta migração.
+            aria-label={t('dinheiro.acesso.ariaAcessoAo', { produto: produto.nome })}
           />
           <span className="truncate text-[13.5px] font-bold text-ink">{produto.nome}</span>
         </label>
@@ -92,7 +96,7 @@ function LinhaDoProduto({
             value={ate}
             disabled={salvando || !ativo}
             onChange={(e) => setAte(e.target.value)}
-            aria-label={`Acesso ao ${produto.nome} até`}
+            aria-label={t('dinheiro.acesso.ariaAcessoAoAte', { produto: produto.nome })}
             className="h-8 w-[132px] shrink-0 rounded-rebrand-sm border border-line-2 bg-white px-2 text-[12.5px] text-ink disabled:opacity-40"
           />
         )}
@@ -106,11 +110,11 @@ function LinhaDoProduto({
             onClick={() => aoSalvar({ produto: produto.id, ativo, ate: ativo && ate ? ate : null })}
             className="h-8 shrink-0 rounded-rebrand-sm bg-forest px-3 text-[12.5px] font-bold text-white disabled:opacity-50"
           >
-            {salvando ? 'Gravando…' : 'Salvar'}
+            {salvando ? t('dinheiro.comum.gravando') : t('dinheiro.acesso.salvar')}
           </button>
         ) : (
           <span className="shrink-0 text-[12.5px] text-ink-dim">
-            {ativo ? 'liberado' : 'sem acesso'}
+            {ativo ? t('dinheiro.acesso.liberado') : t('dinheiro.acesso.semAcesso')}
           </span>
         )}
       </div>
@@ -118,13 +122,16 @@ function LinhaDoProduto({
       {/* O motivo de não ter prazo fica ONDE o sócio escolhe: depois de digitar
           uma data que seria descartada já é tarde. E vem do produto, porque os
           dois que não têm prazo não têm pelo mesmo motivo. */}
+      {/* ⚠️ Em PORTUGUÊS: a frase mora em `PRODUTOS_EDITAVEIS`, em
+          `crm-acesso.ts`, que não entrou nesta migração. */}
       {produto.semPrazoPorque && (
         <p className="mt-1 pl-6 text-[11.5px] text-ink-dim">{produto.semPrazoPorque}</p>
       )}
 
       {falhou && (
         <p className="mt-1.5 pl-6 text-[12.5px] font-bold text-ink">
-          {escrita.tipo === 'erro' ? escrita.recado : ''} O acesso continua como estava.
+          {escrita.tipo === 'erro' ? escrita.recado : ''}{' '}
+          {t('dinheiro.acesso.continuaComoEstava')}
         </p>
       )}
     </div>
@@ -156,18 +163,20 @@ export function TesteDoFutebol({
   escrita: EstadoDaEscrita;
   aoDefinir: (ligado: boolean) => void;
 }) {
+  const { t } = useTranslation('socios');
   const estado = estadoDoTeste(pessoa);
   const salvando = escrita.tipo === 'salvando' && escrita.alvo === 'teste';
   const falhou = escrita.tipo === 'erro' && escrita.alvo === 'teste';
 
   const situacao =
     estado.tipo === 'nunca'
-      ? 'Nunca usou o teste.'
+      ? t('dinheiro.acesso.teste.nunca')
       : estado.tipo === 'correndo'
-        ? `Correndo, termina em ${formatarDia(estado.terminaEm)} (${estado.diasRestantes} ${
-            estado.diasRestantes === 1 ? 'dia' : 'dias'
-          }).`
-        : `Já usou. Terminou em ${formatarDia(estado.terminouEm)}.`;
+        ? t('dinheiro.acesso.teste.correndo', {
+            count: estado.diasRestantes,
+            dia: formatarDia(estado.terminaEm),
+          })
+        : t('dinheiro.acesso.teste.vencido', { dia: formatarDia(estado.terminouEm) });
 
   const ligado = estado.tipo === 'correndo';
 
@@ -177,7 +186,8 @@ export function TesteDoFutebol({
 
       {falhou && (
         <p className="mt-2 text-[13px] font-bold text-ink">
-          {escrita.tipo === 'erro' ? escrita.recado : ''} O teste continua como estava.
+          {escrita.tipo === 'erro' ? escrita.recado : ''}{' '}
+          {t('dinheiro.acesso.teste.continuaComoEstava')}
         </p>
       )}
 
@@ -188,12 +198,12 @@ export function TesteDoFutebol({
         className="mt-2 h-9 rounded-rebrand-sm border border-line-2 bg-white px-3 text-[13px] font-bold text-ink hover:border-forest hover:text-forest disabled:opacity-40"
       >
         {salvando
-          ? 'Gravando…'
+          ? t('dinheiro.comum.gravando')
           : ligado
-            ? 'Encerrar o teste agora'
+            ? t('dinheiro.acesso.teste.encerrarAgora')
             : estado.tipo === 'vencido'
-              ? 'Dar outro teste'
-              : 'Começar o teste agora'}
+              ? t('dinheiro.acesso.teste.darOutro')
+              : t('dinheiro.acesso.teste.comecarAgora')}
       </button>
     </div>
   );
@@ -229,14 +239,13 @@ export function EditorDeAcesso({
   escrita: EstadoDaEscrita;
   aoSalvar: (mudanca: MudancaDeAcesso) => void;
 }) {
+  const { t } = useTranslation('socios');
+
   return (
     <div className="border-t border-line-2 pt-3">
       <p className="mb-3 mt-3 flex gap-2 rounded-rebrand-sm bg-amber-400/10 p-2.5 text-[12px] text-ink">
         <AlertTriangle aria-hidden className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-        <span>
-          Vale até o Stripe falar sobre esta pessoa. Quando ela assinar ou cancelar, o que vier de
-          lá manda. Toda mudança fica registrada na linha do tempo.
-        </span>
+        <span>{t('dinheiro.acesso.avisoDoStripe')}</span>
       </p>
 
       {PRODUTOS_EDITAVEIS.map((produto) => (

@@ -5,6 +5,7 @@ import { FilterScroller } from '@/components/bolao/FilterScroller';
 import { GroupProjectionTable } from '@/components/bolao/GroupProjectionTable';
 import { computeGroupProjection, type PredictionMap } from '@/components/bolao/group-projection';
 import type { WcMatch, BolaoPrediction } from '@/services/bolao.service';
+import { localeAtivo } from '@/utils/idioma-ativo';
 
 interface PredictionsListProps {
   bolaoId: string;
@@ -64,20 +65,20 @@ function formatDateLabel(iso: string): string {
 function formatDayOfWeekShort(iso: string): string {
   // 'YYYY-MM-DD' → 'Qua' (capitalizado, sem ponto)
   const d = new Date(iso + 'T00:00:00');
-  const wk = d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace(/\./g, '');
+  const wk = d.toLocaleDateString(localeAtivo(), { weekday: 'short' }).replace(/\./g, '');
   return wk.charAt(0).toUpperCase() + wk.slice(1);
 }
 
 function formatLongDateLabel(iso: string): string {
   // 'YYYY-MM-DD' → 'qua, 11 jun'
   const d = new Date(iso + 'T00:00:00');
-  return d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' });
+  return d.toLocaleDateString(localeAtivo(), { weekday: 'short', day: '2-digit', month: 'short' });
 }
 
 function formatRichDateLabel(iso: string): string {
   // 'YYYY-MM-DD' → 'Quarta, 11 de junho'
   const d = new Date(iso + 'T00:00:00');
-  const formatted = d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
+  const formatted = d.toLocaleDateString(localeAtivo(), { weekday: 'long', day: '2-digit', month: 'long' });
   // Capitaliza primeira letra ('quarta-feira, 11 de junho' → 'Quarta-feira, 11 de junho')
   return formatted.charAt(0).toUpperCase() + formatted.slice(1);
 }

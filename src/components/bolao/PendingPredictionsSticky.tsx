@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { ArrowDown } from 'lucide-react';
 
 interface PendingPredictionsStickyProps {
@@ -26,6 +27,7 @@ export const PendingPredictionsSticky: React.FC<PendingPredictionsStickyProps> =
   nextMatchId,
   scrollThreshold = 240,
 }) => {
+  const { t } = useTranslation('bolao');
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -66,10 +68,15 @@ export const PendingPredictionsSticky: React.FC<PendingPredictionsStickyProps> =
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2 mb-1">
             <p className="text-[12px] font-semibold text-ink">
-              <span className="text-forest">{pending}</span>{' '}
-              <span className="text-ink-2 font-medium">
-                {pending === 1 ? 'palpite faltando' : 'palpites faltando'}
-              </span>
+              <Trans
+                t={t}
+                i18nKey="sticky.faltando"
+                count={pending}
+                components={[
+                  <span className="text-forest" key="quantos" />,
+                  <span className="text-ink-2 font-medium" key="rotulo" />,
+                ]}
+              />
             </p>
             <span className="text-[10px] text-ink-3 tabular-nums shrink-0">
               {totalDone}/{totalAvailable} ({pct}%)
@@ -86,11 +93,11 @@ export const PendingPredictionsSticky: React.FC<PendingPredictionsStickyProps> =
           <button
             type="button"
             onClick={handleNext}
-            aria-label="Ir para o próximo jogo sem palpite"
+            aria-label={t('sticky.irProximo')}
             className="shrink-0 flex items-center gap-1.5 h-9 px-3 rounded-rebrand-md bg-forest text-white hover:bg-forest-2 text-[12px] font-bold transition-colors"
           >
             <ArrowDown className="w-3.5 h-3.5" />
-            Próximo
+            {t('sticky.proximo')}
           </button>
         )}
       </div>

@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { CartaoDoGrupo } from './CartaoDoGrupo';
 import { apostasEmPalavras, epPct, roiPct, taxaPct, tomDoRoi } from './placar-formato';
@@ -13,11 +14,16 @@ import {
 import type { Eixo } from './placar-periodo';
 import type { Quebra } from './placar-quebras';
 
-/** O cabeçalho da lista do tempo, do jeito que se fala dela. */
-const O_TEMPO_EM_LISTA: Record<Granularidade, string> = {
-  mes: 'Mês a mês',
-  semana: 'Semana a semana',
-  dia: 'Dia a dia',
+/**
+ * O cabeçalho da lista do tempo, do jeito que se fala dela.
+ *
+ * Guarda CHAVE e não texto: a tabela é avaliada na carga do módulo, e texto
+ * aqui congelaria o idioma da primeira renderização. O `t()` é no render.
+ */
+const CHAVE_DO_TEMPO_EM_LISTA: Record<Granularidade, string> = {
+  mes: 'quebras.linha.tempo.mes',
+  semana: 'quebras.linha.tempo.semana',
+  dia: 'quebras.linha.tempo.dia',
 };
 
 /** Uma ficha aberta: o caminho até ela, a linha, e o degrau que ela ainda abre. */
@@ -65,6 +71,7 @@ export function FichaDaLinha({
   aoAbrirApostas: (titulo: string, celula: CelulaDaMatriz) => void;
   aoAbrirDegrau: (ficha: FichaAberta) => void;
 }) {
+  const { t } = useTranslation('socios');
   const sub = aberta?.dentro
     ? matriz(aberta.linha.total.linhas, aberta.dentro, granularidade, eixo)
     : null;
@@ -90,7 +97,7 @@ export function FichaDaLinha({
                     className="-ml-1 flex items-center gap-0.5 py-1 text-[13px] font-bold text-ink-2"
                   >
                     <ChevronLeft className="h-4 w-4" />
-                    Voltar
+                    {t('quebras.linha.voltar')}
                   </button>
                 ) : (
                   <span />
@@ -98,7 +105,7 @@ export function FichaDaLinha({
                 <button
                   type="button"
                   onClick={aoFechar}
-                  aria-label="Fechar"
+                  aria-label={t('quebras.linha.fechar')}
                   className="-mr-1 p-1 text-ink-dim"
                 >
                   <X className="h-5 w-5" />
@@ -115,8 +122,10 @@ export function FichaDaLinha({
               >
                 {roiPct(aberta.linha.total.celula.roi)}
               </p>
+              {/* `apostasEmPalavras` segue em português: ele mora em
+                  `placar-formato.ts`, fora deste passo da migração. */}
               <p className="mt-1.5 text-[12px] text-ink-dim">
-                {taxaPct(aberta.linha.total.celula.taxa)} de acerto ·{' '}
+                {t('quebras.deAcerto', { taxa: taxaPct(aberta.linha.total.celula.taxa) })} ·{' '}
                 {apostasEmPalavras(aberta.linha.total.celula.n)} · ±{' '}
                 {epPct(aberta.linha.total.celula.ep)}
               </p>
@@ -125,18 +134,21 @@ export function FichaDaLinha({
             <div className="flex flex-col gap-5 px-4 py-4">
               <button
                 type="button"
-                onClick={() => aoAbrirApostas(`${aberta.caminho} · período inteiro`, aberta.linha.total)}
+                onClick={() =>
+                  aoAbrirApostas(
+                    `${aberta.caminho} · ${t('quebras.periodoInteiro')}`,
+                    aberta.linha.total,
+                  )
+                }
                 className="flex items-center justify-between rounded-rebrand-md border border-line-2 bg-white px-4 py-3 text-left text-[14px] font-bold text-ink"
               >
-                {aberta.linha.total.celula.n === 1
-                  ? 'Ver a aposta'
-                  : `Ver as ${aberta.linha.total.celula.n} apostas`}
+                {t('quebras.linha.verApostas', { count: aberta.linha.total.celula.n })}
                 <ChevronRight className="h-4 w-4 text-ink-dim" />
               </button>
 
               <section>
                 <h3 className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-ink-dim">
-                  {O_TEMPO_EM_LISTA[granularidade]}
+                  {t(CHAVE_DO_TEMPO_EM_LISTA[granularidade])}
                 </h3>
                 <ul className="mt-2 divide-y divide-line-2 rounded-rebrand-md border border-line-2 bg-white">
                   {[...gavetas]
@@ -172,6 +184,8 @@ export function FichaDaLinha({
 
               {aberta.dentro && sub && sub.linhas.length > 0 && (
                 <section>
+                  {/* O título da quebra vem de `placar-quebras.ts` e segue em
+                      português: aquele arquivo está fora deste passo. */}
                   <h3 className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-ink-dim">
                     {aberta.dentro.titulo}
                   </h3>

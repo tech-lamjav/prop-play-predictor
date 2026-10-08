@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { usePostHog } from '@posthog/react';
 import { useAuth } from '@/hooks/use-auth';
 import { Helmet } from 'react-helmet-async';
@@ -42,6 +43,7 @@ function slugify(name: string) {
 // --- Player Photo ---
 
 function PlayerPhoto({ name, teamAbbr, size = 'md' }: { name: string; teamAbbr: string; size?: 'sm' | 'md' | 'lg' }) {
+  const { t } = useTranslation('nba');
   const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   const sizeClass = size === 'lg' ? 'w-12 h-12' : size === 'md' ? 'w-10 h-10' : 'w-8 h-8';
   const textClass = size === 'lg' ? 'text-sm' : size === 'md' ? 'text-[10px]' : 'text-[9px]';
@@ -49,7 +51,7 @@ function PlayerPhoto({ name, teamAbbr, size = 'md' }: { name: string; teamAbbr: 
     <div className={`${sizeClass} rounded-full overflow-hidden bg-canvas-2 border border-line shrink-0 flex items-center justify-center`}>
       <img
         src={getPlayerPhotoUrl(name, teamAbbr)}
-        alt={`Foto de ${name}`}
+        alt={t('home.fotoDe', { nome: name })}
         className="w-full h-full object-cover object-top"
         loading="lazy"
         data-player-photo-index="0"
@@ -104,6 +106,7 @@ function SectionHeader({ eyebrow, title, count, actionLabel, onAction, actionHre
 // --- Main Page ---
 
 export default function HomeNBA() {
+  const { t } = useTranslation('nba');
   const navigate = useNavigate();
   const posthog = usePostHog();
   const { user, isLoading: authLoading } = useAuth();
@@ -244,24 +247,6 @@ export default function HomeNBA() {
 
   // Onda 4 — enriquecer cada jogo com angle + highlights + injuries vindos de opportunities
   const richGames = useMemo<RichGame[]>(() => {
-    const STAT_DEF_LABEL: Record<string, string> = {
-      player_points: 'Defesa de pontos',
-      player_assists: 'Defesa de assist.',
-      player_rebounds: 'Reb. cedidos',
-      player_threes: 'Defesa de 3pts',
-      player_steals: 'Defesa de roubos',
-      player_blocks: 'Defesa de blocks',
-      player_points_rebounds_assists: 'Defesa de PRA',
-      player_points_assists: 'Defesa de PA',
-      player_points_rebounds: 'Defesa de PR',
-      player_rebounds_assists: 'Defesa de RA',
-    };
-    const STAT_SHORT: Record<string, string> = {
-      player_points: 'pts', player_assists: 'ast', player_rebounds: 'reb',
-      player_threes: '3pts', player_steals: 'stl', player_blocks: 'blk',
-      player_points_rebounds_assists: 'pra', player_points_assists: 'pa',
-      player_points_rebounds: 'pr', player_rebounds_assists: 'ra',
-    };
 
     return games.map<RichGame>(game => {
       const finished = game.winner_team_id !== null;
@@ -282,7 +267,7 @@ export default function HomeNBA() {
           playerName: o.backup_player_name,
           teamAbbr: o.trigger_team_abbr,
           stars: o.rating_stars,
-          statShort: STAT_SHORT[o.stat_type] ?? o.stat_type,
+          statShort: t(`estatisticas.sigla.${o.stat_type}`, { defaultValue: o.stat_type }),
           gapPct: o.gap_pct,
         }));
 
@@ -293,7 +278,7 @@ export default function HomeNBA() {
       const angle = angleOpp
         ? {
             teamAbbr: angleOpp.opponent_abbr!,
-            metricLabel: STAT_DEF_LABEL[angleOpp.stat_type] ?? 'Defesa',
+            metricLabel: t(`estatisticas.defesa.${angleOpp.stat_type}`, { defaultValue: t('estatisticas.defesa.padrao') }),
             rank: angleOpp.opponent_def_rank!,
           }
         : null;
@@ -339,7 +324,7 @@ export default function HomeNBA() {
         injuries,
       };
     });
-  }, [games, opportunities]);
+  }, [games, opportunities, t]);
 
   // KPIs do BriefingStrip
   const briefingKpis = useMemo(() => {
@@ -361,8 +346,8 @@ export default function HomeNBA() {
   return (
     <div className="theme-bolao w-full min-h-screen bg-canvas text-ink">
       <Helmet>
-        <title>Lesões NBA Hoje e Oportunidades de Apostas do Dia | Smart Betting</title>
-        <meta name="description" content="Lesões chave da NBA hoje com impacto nos companheiros, oportunidades de prop bets selecionadas e jogos do dia. Atualizado diariamente." />
+        <title>{t('home.seoTitulo')}</title>
+        <meta name="description" content={t('home.seoDescricao')} />
       </Helmet>
       {/* backTo fixo no hub, igual ao /futebol: /home-nba é home de produto,
           então "voltar" significa trocar de produto, não desfazer o passo. */}
@@ -379,7 +364,7 @@ export default function HomeNBA() {
             <div data-tour="nba-hero" className="relative w-full md:w-80">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-2" />
               <Input
-                placeholder="Buscar jogador..."
+                placeholder={t('home.buscarPlaceholder')}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onBlur={() => setTimeout(() => setSearchTerm(''), 200)}
@@ -416,7 +401,7 @@ export default function HomeNBA() {
               )}
               {searchTerm.length >= 2 && searchResults.length === 0 && !isLoading && (
                 <div className="absolute top-full mt-1 left-0 w-full bg-white border border-line rounded-lg shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)] z-50 px-3 py-3 text-[12px] text-ink-2 text-center">
-                  Nenhum jogador encontrado
+                  {t('home.buscarVazio')}
                 </div>
               )}
             </div>
@@ -449,11 +434,11 @@ export default function HomeNBA() {
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 items-start">
             {/* Left: Outras oportunidades quentes (3 cards + CTA no slot 4 do grid 2x2) */}
             <div data-tour="nba-hots" className="lg:col-span-3 flex flex-col gap-3">
-              <div className="text-[11px] uppercase tracking-[0.2em] font-semibold text-ink-2">Outras oportunidades quentes</div>
+              <div className="text-[11px] uppercase tracking-[0.2em] font-semibold text-ink-2">{t('home.quentesTitulo')}</div>
 
               {hotOppsData.length === 0 ? (
                 <div className="bg-white border border-line rounded-xl p-6 text-center text-[13px] text-ink-2">
-                  Sem oportunidades adicionais hoje
+                  {t('home.quentesVazio')}
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -480,14 +465,14 @@ export default function HomeNBA() {
                         <LayoutGrid className="w-5 h-5" />
                       </div>
                       <div className="text-[14px] font-semibold tracking-tight text-forest leading-tight">
-                        As {opportunities.length} oportunidades de hoje
+                        {t('home.quentesCtaTitulo', { n: opportunities.length })}
                       </div>
                     </div>
                     <div className="text-[12px] text-ink-2 leading-relaxed flex-1">
-                      Compare lado a lado e ordene por score, vantagem ou linha.
+                      {t('home.quentesCtaTexto')}
                     </div>
                     <div className="h-10 rounded-md text-[13px] font-semibold inline-flex items-center justify-center gap-2 bg-amber-400 text-ink group-hover:bg-amber-300 transition-colors w-full">
-                      <span>Ver oportunidades</span>
+                      <span>{t('home.quentesCtaBotao')}</span>
                       <ArrowRight className="w-4 h-4" />
                     </div>
                   </a>
@@ -510,9 +495,9 @@ export default function HomeNBA() {
         {/* Onda 4: Jogos de hoje — rich rows (desktop) / stacked cards (mobile) */}
         <div data-tour="nba-jogos">
           <SectionHeader
-            eyebrow="Jogos de hoje"
-            title={`${games.length || 0} ${games.length === 1 ? 'partida' : 'partidas'}`}
-            actionLabel="Ver todos"
+            eyebrow={t('home.jogosEtiqueta')}
+            title={t('home.jogosContagem', { count: games.length || 0 })}
+            actionLabel={t('home.jogosVerTodos')}
             actionHref="/home-games"
             onAction={() => navigate('/home-games')}
           />
@@ -533,7 +518,7 @@ export default function HomeNBA() {
 
         {/* Acesso rápido — Relatório do dia (Injury Report agora vive dentro do KeyInjuriesRail) */}
         <div data-tour="nba-relatorio">
-          <div className="text-[11px] uppercase tracking-[0.2em] font-semibold text-ink-2 mb-3">Acesso rápido</div>
+          <div className="text-[11px] uppercase tracking-[0.2em] font-semibold text-ink-2 mb-3">{t('home.rapidoEtiqueta')}</div>
           <a
             href="/report"
             onClick={(e) => { if (!e.ctrlKey && !e.metaKey && e.button === 0) { e.preventDefault(); navigate('/report'); } }}
@@ -543,8 +528,8 @@ export default function HomeNBA() {
               <FileText className="w-5 h-5" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-[13px] font-semibold tracking-tight text-ink">Relatório do dia</div>
-              <div className="text-[11px] mt-0.5 text-ink-2">Resumo com as melhores análises e picks</div>
+              <div className="text-[13px] font-semibold tracking-tight text-ink">{t('home.rapidoRelatorioTitulo')}</div>
+              <div className="text-[11px] mt-0.5 text-ink-2">{t('home.rapidoRelatorioTexto')}</div>
             </div>
             <ChevronRight className="w-4 h-4 text-ink-2/40 shrink-0" />
           </a>

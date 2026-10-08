@@ -1,6 +1,7 @@
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { Clock } from 'lucide-react';
-import { DIAS_PARA_ESTAR_PARADO, ROTULO_DA_POSICAO, TOM_DA_POSICAO, type Lead } from './crm-painel';
+import { CHAVE_DA_POSICAO, DIAS_PARA_ESTAR_PARADO, TOM_DA_POSICAO, type Lead } from './crm-painel';
 import { NOME_DO_GANCHO } from './crm-ficha';
 import { ROTA_DO_CRM } from './crm-vocabulario';
 import { EtiquetaDoLead } from './EtiquetaDoLead';
@@ -32,6 +33,8 @@ function iniciais(nome: string): string {
  * descer a lista.
  */
 export function TabelaDeLeads({ leads, vazio }: { leads: Lead[]; vazio: string }) {
+  const { t } = useTranslation('socios');
+
   if (leads.length === 0) {
     return <p className="px-5 py-8 text-[14px] text-ink-2">{vazio}</p>;
   }
@@ -41,10 +44,12 @@ export function TabelaDeLeads({ leads, vazio }: { leads: Lead[]; vazio: string }
       <table className="w-full border-collapse text-left">
         <thead>
           <tr className="border-b border-line-2 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim">
-            <th className="px-5 py-2.5 font-bold">Pessoa</th>
-            <th className="px-5 py-2.5 font-bold">Etapa</th>
-            <th className="px-5 py-2.5 font-bold">Gancho</th>
-            <th className="px-5 py-2.5 text-right font-bold">Parado</th>
+            <th className="px-5 py-2.5 font-bold">{t('painel.tabela.colunas.pessoa')}</th>
+            <th className="px-5 py-2.5 font-bold">{t('painel.tabela.colunas.etapa')}</th>
+            <th className="px-5 py-2.5 font-bold">{t('painel.tabela.colunas.gancho')}</th>
+            <th className="px-5 py-2.5 text-right font-bold">
+              {t('painel.tabela.colunas.parado')}
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -106,7 +111,7 @@ export function TabelaDeLeads({ leads, vazio }: { leads: Lead[]; vazio: string }
                       aria-hidden
                       className={`h-2 w-2 rounded-full ${TOM_DA_POSICAO[lead.posicao]}`}
                     />
-                    {ROTULO_DA_POSICAO[lead.posicao]}
+                    {t(CHAVE_DA_POSICAO[lead.posicao])}
                   </span>
                 </td>
                 <td className="px-5 py-3 text-[13px] text-ink-2">
@@ -116,14 +121,16 @@ export function TabelaDeLeads({ leads, vazio }: { leads: Lead[]; vazio: string }
                   {/* Sem data nem toque não há conta a fazer, e um zero ali seria
                       resposta inventada. */}
                   {lead.diasParado === null ? (
-                    <span className="text-ink-dim">sem data</span>
+                    <span className="text-ink-dim">{t('painel.tabela.semData')}</span>
                   ) : parado ? (
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-400/15 px-2 py-1 font-bold text-ink">
                       <Clock aria-hidden className="h-3 w-3" />
-                      {lead.diasParado}d
+                      {t('painel.dias', { dias: lead.diasParado })}
                     </span>
                   ) : (
-                    <span className="pr-2 text-ink-2">{lead.diasParado}d</span>
+                    <span className="pr-2 text-ink-2">
+                      {t('painel.dias', { dias: lead.diasParado })}
+                    </span>
                   )}
                 </td>
               </tr>

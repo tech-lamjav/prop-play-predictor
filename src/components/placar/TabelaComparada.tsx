@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { Celula } from './placar-agregacao';
 import { comparar, type Comparacao } from './placar-comparacao';
 import { emN, epPct, roiPct, taxaPct, tomDoRoi } from './placar-formato';
@@ -6,8 +7,10 @@ import { CelulaDoGrupo } from './CelulaDoGrupo';
 
 /** O par de números de um lado, empilhado para caber no celular. */
 function Lado({ celula }: { celula: Celula | null }) {
+  const { t } = useTranslation('socios');
+
   if (!celula) {
-    return <span className="text-[13px] text-ink-dim">sem aposta</span>;
+    return <span className="text-[13px] text-ink-dim">{t('quebras.semAposta')}</span>;
   }
 
   return (
@@ -17,7 +20,8 @@ function Lado({ celula }: { celula: Celula | null }) {
       </span>
       <span className="text-[12px] text-ink-dim">
         {taxaPct(celula.taxa)} · {emN(celula.n)} · ± {epPct(celula.ep)}
-        {celula.anuladas > 0 && ` · ${celula.anuladas} anulada${celula.anuladas > 1 ? 's' : ''}`}
+        {celula.anuladas > 0 &&
+          ` · ${t('quebras.comparada.anuladas', { count: celula.anuladas })}`}
       </span>
     </span>
   );
@@ -25,6 +29,8 @@ function Lado({ celula }: { celula: Celula | null }) {
 
 /** O veredito da diferença: um número, ou a frase que impede a conclusão. */
 function Diferenca({ c }: { c: Comparacao }) {
+  const { t } = useTranslation('socios');
+
   if (c.diferencaRoi === null) {
     return <span className="text-[13px] text-ink-dim">—</span>;
   }
@@ -32,7 +38,7 @@ function Diferenca({ c }: { c: Comparacao }) {
   if (c.dentroDoRuido) {
     return (
       <span className="flex flex-col">
-        <span className="text-[13px] text-ink-2">dentro do ruído</span>
+        <span className="text-[13px] text-ink-2">{t('quebras.ruido')}</span>
         <span className="text-[12px] tabular-nums text-ink-dim">
           {roiPct(c.diferencaRoi)} ± {epPct(c.erroDaDiferenca ?? 0)}
         </span>
@@ -79,29 +85,30 @@ export function TabelaComparada({
   rotuloDeA: string;
   rotuloDeB: string;
 }) {
+  const { t } = useTranslation('socios');
   const linhas = comparar(a, b, quebra.ordem);
   const rotulo = quebra.rotulo ?? ((chave: string) => chave);
 
   return (
     <section className="rounded-rebrand-md border border-line-2 bg-white">
+      {/* `titulo` e `explicacao` vêm de `placar-quebras.ts` e seguem em
+          português: aquele arquivo está fora deste passo da migração. */}
       <header className="border-b border-line-2 px-5 py-3">
         <h2 className="font-display text-[17px] font-black text-ink">{quebra.titulo}</h2>
         <p className="mt-1 text-[13px] text-ink-2">{quebra.explicacao}</p>
       </header>
 
       {linhas.length === 0 ? (
-        <p className="px-5 py-8 text-[14px] text-ink-2">
-          Nenhuma oportunidade liquidada em nenhum dos dois períodos.
-        </p>
+        <p className="px-5 py-8 text-[14px] text-ink-2">{t('quebras.vazioComparado')}</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-left">
             <thead>
               <tr className="border-b border-line-2 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim">
-                <th className="px-5 py-2.5 font-bold">Grupo</th>
+                <th className="px-5 py-2.5 font-bold">{t('quebras.colunaGrupo')}</th>
                 <th className="px-5 py-2.5 font-bold">{rotuloDeA}</th>
                 <th className="px-5 py-2.5 font-bold">{rotuloDeB}</th>
-                <th className="px-5 py-2.5 font-bold">Diferença</th>
+                <th className="px-5 py-2.5 font-bold">{t('quebras.comparada.diferenca')}</th>
               </tr>
             </thead>
             <tbody>

@@ -1,0 +1,209 @@
+{
+  "menu": {
+    "rotulo": "Perfil",
+    "aria": "Menú de la cuenta",
+    "semNome": "Usuario",
+    "renovaEm": "renueva {{data}}",
+    "usoInterno": "Uso interno",
+    "sair": "Cerrar sesión",
+    "idioma": "Idioma"
+  },
+  "itens": {
+    "configuracoes": "Configuración",
+    "planos": "Planes y precios",
+    "indicar": "Invita a un amigo",
+    "comoUsar": "Cómo usar",
+    "falarComOTime": "Hablar con el equipo",
+    "crm": "CRM",
+    "metodologia": "Metodología"
+  },
+  "inicio": {
+    "titulo": "¿Por dónde vamos?",
+    "ola": "Hola, {{nome}}",
+    "bemVindo": "Bienvenido de vuelta",
+    "futebol": {
+      "titulo": "Fútbol",
+      "sub": "Oportunidades de valor"
+    },
+    "betinho": {
+      "titulo": "Betinho",
+      "sub": "Gestión de apuestas"
+    },
+    "nba": {
+      "titulo": "Análisis NBA",
+      "sub": "Props y paneles"
+    },
+    "bolao": {
+      "titulo": "Bolão del Mundial",
+      "sub": "Pronósticos y clasificación"
+    }
+  },
+  "chegada": {
+    "etiqueta": {
+      "alertas": "Alertas de oportunidades",
+      "padrao": "Conoce a Betinho"
+    },
+    "titulo": {
+      "alertas": "Recibe las nuevas oportunidades en <destaque>Telegram.</destaque>",
+      "padrao": "Tu asistente de apuestas, directo en <destaque>Telegram.</destaque>"
+    },
+    "chamada": {
+      "alertas": "Conecta Telegram y Betinho te avisa cuando entre una oportunidad nueva en el panel, antes de que empiece el partido. Puedes pausar las alertas cuando quieras.",
+      "padrao": "Mandas la apuesta por captura o texto y Betinho la registra solo. Calcula tu ROI de verdad y además te avisa de las oportunidades del día, en el chat donde ya conversas."
+    },
+    "beneficios": {
+      "registro": {
+        "titulo": "Registra con la captura",
+        "descricao": "Manda una captura o escribe la apuesta. Betinho la lee y la registra solo."
+      },
+      "roi": {
+        "titulo": "Tu ROI de verdad",
+        "descricao": "Liquidación, bankroll y resultado real por deporte, sin planilla."
+      },
+      "alertas": {
+        "titulo": "El día llega a tu chat",
+        "descricao": "Oportunidades del día, avisos de resultado y novedades en Telegram."
+      },
+      "alertasDeOportunidade": {
+        "titulo": "Cada oportunidad nueva, al instante",
+        "descricao": "El aviso de cada oportunidad en cuanto entra en el panel, antes del partido — y el resumen del día incluido."
+      }
+    },
+    "carrossel": {
+      "anterior": "Diapositiva anterior",
+      "proximo": "Diapositiva siguiente",
+      "irPara": "Ir a la diapositiva {{numero}}"
+    },
+    "slides": {
+      "print": "Registra solo mandando la captura",
+      "oportunidade": "Las oportunidades del día llegan a ti",
+      "resultado": "Y el resultado se liquida solo"
+    },
+    "mock": {
+      "online": "en línea",
+      "comprovante": "Comprobante",
+      "pick": "Gana Flamengo",
+      "aposta": "Apuesta",
+      "printEnviado": "captura enviada",
+      "registrado": "¡Leí la captura y la registré!",
+      "retornoPotencial": "Retorno potencial",
+      "oportunidadeDeHoje": "Oportunidad de hoy",
+      "mercado": "Más de 2.5 goles",
+      "score": "Score 82",
+      "valorNaOdd": "valor +14% en la cuota",
+      "querRegistrar": "¿Quieres registrarla? Solo mándala por aquí.",
+      "bateu": "¡Ganada!",
+      "resultado": "Flamengo le ganó a Palmeiras",
+      "roiDoMes": "ROI del mes"
+    },
+    "conectar": "Conectar mi Telegram",
+    "conectarAjuda": "Abre Telegram, toca en <destaque>Iniciar</destaque> y listo. Sin teclear nada.",
+    "pular": "Saltar por ahora",
+    "erroLink": "No pude generar tu enlace ahora. Inténtalo de nuevo en unos instantes.",
+    "conectando": {
+      "titulo": "Esperando a Telegram…",
+      "texto": "En el Telegram que se abrió, toca en <destaque>Iniciar</destaque>. En cuanto conectes, esta pantalla lo confirma sola.",
+      "gerarDeNovo": "¿No se abrió Telegram? Generar el enlace de nuevo"
+    },
+    "conectado": {
+      "titulo": "¡Conectado!",
+      "alertas": "Las alertas de oportunidades nuevas ya están activadas. Puedes pausarlas cuando quieras, en el sitio o por Telegram.",
+      "padrao": "Betinho ya te mandó un mensaje en Telegram. Mándale tu primera apuesta por allí (captura o texto) cuando quieras.",
+      "continuar": "Continuar"
+    },
+    "timeout": {
+      "titulo": "Todavía no se conectó",
+      "texto": "Sin problema. Haz clic de nuevo aquí abajo y toca en <destaque>Iniciar</destaque> en Telegram.",
+      "tentarDeNovo": "Intentar de nuevo"
+    }
+  },
+  "configuracoes": {
+    "titulo": "Configuración",
+    "carregando": "Cargando...",
+    "salvando": "Guardando...",
+    "erro": "Error",
+    "secoes": {
+      "perfil": {
+        "rotulo": "Perfil",
+        "resumo": "Nombre, correo y Telegram"
+      },
+      "alertas": {
+        "rotulo": "Alertas",
+        "resumo": "Oportunidades en Telegram"
+      },
+      "assinatura": {
+        "rotulo": "Suscripción",
+        "resumo": "Planes y pagos"
+      },
+      "tour": {
+        "rotulo": "Tour guiado",
+        "resumo": "Ver de nuevo la presentación"
+      }
+    },
+    "perfil": {
+      "titulo": "Perfil",
+      "descricao": "Tu información personal",
+      "nome": "Nombre",
+      "nomeExemplo": "Tu nombre",
+      "email": "Correo electrónico",
+      "emailExemplo": "tu@correo.com",
+      "telefone": "Teléfono / Telegram ID",
+      "ressincronizarAviso": "Si cambiaste tu número en Telegram, toca para volver a sincronizar.",
+      "ressincronizar": "Volver a sincronizar Telegram",
+      "contaCriadaEm": "Cuenta creada el",
+      "salvar": "Guardar cambios",
+      "sucesso": "Cambios guardados correctamente.",
+      "toastSucesso": "Listo",
+      "toastSucessoTexto": "Perfil actualizado.",
+      "toastErroTexto": "No se pudieron guardar los cambios."
+    },
+    "alertas": {
+      "titulo": "Alertas de oportunidades",
+      "descricao": "Recibe un aviso en Telegram cuando entre una oportunidad nueva en el panel.",
+      "semAcesso": "No disponibles mientras tu acceso al Fútbol esté inactivo. Tu preferencia está {{estado}} y se mantiene para cuando vuelvas.",
+      "estadoAtivada": "activada",
+      "estadoPausada": "pausada",
+      "pausarParaDepois": "Pausar para cuando vuelvas",
+      "retomarParaDepois": "Reanudar para cuando vuelvas",
+      "convite": "Conecta tu Telegram para elegir si quieres recibir estas alertas.",
+      "conectar": "Conectar Telegram",
+      "ativos": "Activas",
+      "pausados": "Pausadas",
+      "ativosTexto": "Te avisamos de las oportunidades nuevas antes del partido.",
+      "pausadosTexto": "No se envía ninguna oportunidad nueva hasta que lo reanudes.",
+      "pausar": "Pausar alertas",
+      "retomar": "Reanudar alertas",
+      "toastRetomados": "Alertas reanudadas",
+      "toastRetomadosTexto": "Las próximas oportunidades publicadas pueden llegar a tu Telegram.",
+      "toastPausados": "Alertas pausadas",
+      "toastPausadosTexto": "No recibirás oportunidades nuevas hasta que lo reanudes.",
+      "toastErro": "No se pudo guardar",
+      "toastErroTexto": "Inténtalo de nuevo."
+    },
+    "assinatura": {
+      "titulo": "Suscripción",
+      "descricao": "Gestiona tu plan y tus pagos",
+      "plataformaNba": "Plataforma de Análisis NBA",
+      "plano": "Plan",
+      "proximaCobranca": "Próximo cobro",
+      "cancelaEm": "Se cancela el",
+      "gerenciar": "Gestionar suscripción",
+      "abrindo": "Abriendo...",
+      "semPlano": "Suscríbete a un plan para gestionar tu suscripción.",
+      "toastErroTexto": "No se pudo abrir el portal."
+    },
+    "tour": {
+      "titulo": "Tour guiado",
+      "descricao": "Ver de nuevo la presentación de las áreas y de los productos de la plataforma",
+      "texto": "Reinicia el tour guiado: la presentación del inicio reaparece ahora, y la de cada producto (Fútbol, Betinho, NBA, Bolão) vuelve a aparecer la próxima vez que abras la pantalla.",
+      "botao": "Ver de nuevo el tour guiado"
+    }
+  },
+  "perfil": {
+    "kpis": {
+      "apostas": "Apuestas",
+      "acerto": "Acierto",
+      "roi": "ROI"
+    }
+  }
+}

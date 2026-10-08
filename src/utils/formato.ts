@@ -9,15 +9,17 @@
 //
 // REGRA: não existe uma régua, existem QUATRO, e elas discordam de propósito.
 //
-//   1. A ODD SEGUE O SETOR. Ponto, sempre, em qualquer país. Casa de aposta
-//      escreve "cuota de 2.10" e "10.000 CLP" na MESMA página para o mesmo
-//      chileno — a cotação não recebe o separador do país. Por isso `fmtOdd`
-//      não aceita idioma: a regra é a AUSÊNCIA da escolha.
-//   2. O DINHEIRO SEGUE O PAÍS. Peru e México com ponto, Argentina e Chile com
-//      vírgula, e o peso chileno sem centavos.
-//   3. PORCENTAGEM E DECIMAL SEGUEM O PAÍS.
-//   4. A LINHA ANALISADA ainda não tem régua decidida. Hoje segue o país,
-//      como já seguia. Ver `fmtLinhaAnalisada`.
+//   1. A ODD SEGUE O SETOR. Ponto, sempre, em qualquer país. Confirmado em
+//      fonte de operador: a central de ajuda da Betano ARGENTINA publica
+//      "Más 2.5 goles" com ponto, num país que escreve dinheiro com vírgula.
+//      Por isso `fmtOdd` não aceita idioma: a regra é a AUSÊNCIA da escolha.
+//   2. O DINHEIRO SEGUE A MOEDA, e não o idioma da tela. O preço é cobrado em
+//      real; trocar o separador porque a tela está em espanhol daria
+//      "R$ 1,234.50", que não existe em lugar nenhum. Ver `fmtDinheiro`.
+//   3. PORCENTAGEM, DECIMAL e NÚMERO SEGUEM O IDIOMA ATIVO, que a camada de
+//      tradução empurra para cá. Ver `definirLocaleAtivo`.
+//   4. A LINHA ANALISADA ainda não tem régua decidida. Hoje segue o idioma,
+//      como já seguia o país. Ver `fmtLinhaAnalisada`.
 //
 // ⚠️ NUNCA escreva `toFixed(...).replace('.', ',')` de novo, nem construa um
 // `Intl.NumberFormat` dentro de função chamada em laço. O motivo do cache está
@@ -30,9 +32,22 @@
 // ANALISADA — o modelo calcula premissas para ela tendo ou não cotação.
 // ============================================================================
 
-/** O que muda no dia em que o produto falar espanhol. Uma linha, e não 46. */
-export const LOCALE_PADRAO = 'pt-BR';
-export const MOEDA_PADRAO = 'BRL';
+/**
+ * O idioma ativo vive em `idioma-ativo.ts`, e não aqui.
+ *
+ * Saiu deste arquivo quando a costura de DATA (#530) precisou do mesmo valor:
+ * manter o estado no módulo de número obrigaria o de data a importar o de
+ * número para saber em que língua escrever "quinta-feira". Reexportado para
+ * quem já importava daqui — é o mesmo vínculo, não uma cópia.
+ */
+export { LOCALE_PADRAO, definirLocaleAtivo, localeAtivo } from './idioma-ativo';
+import { LOCALE_PADRAO, localeAtivo } from './idioma-ativo';
+
+// A moeda padrão mora em `config/moedas.ts`, junto da tabela de país para
+// moeda. Reexportada para quem já importava daqui.
+export { MOEDA_PADRAO } from '@/config/moedas';
+import { MOEDA_PADRAO } from '@/config/moedas';
+import { localeDaMoedaAtiva, moedaAtiva } from '@/utils/moeda-ativa';
 
 /** Ausência. Nunca "0", que afirmaria um valor, nem "NaN", que vaza defeito. */
 const TRACO = '—';
@@ -63,7 +78,24 @@ export function fmtOdd(odd: number | null | undefined): string {
 }
 
 /**
- * Dinheiro com o símbolo da moeda, na formatação do país.
+ * Dinheiro com o símbolo da moeda, na formatação da MOEDA.
+ *
+ * ⚠️ O dinheiro NÃO segue o idioma ativo, e isso continua sendo decisão. Trocar
+ * só o separador porque a tela está em espanhol produziria "R$ 1,234.50" —
+ * símbolo brasileiro com separador estrangeiro, coisa que não existe em lugar
+ * nenhum. Dinheiro segue o país da MOEDA.
+ *
+ * ⚠️ O PADRÃO É REAL, E FOI DECISÃO DEPOIS DE UM DEFEITO. Uma versão anterior
+ * fez este padrão seguir a moeda que a pessoa escolheu — e com isso TODO
+ * dinheiro passou a seguir a preferência, inclusive o que tem moeda fixa: a
+ * receita do Stripe no CRM, que é real de verdade, saía com "S/" para um sócio
+ * que tivesse escolhido sol. Rotular real como outra moeda é pior que não
+ * traduzir.
+ *
+ * Então o padrão é real, e quem mostra dinheiro DA PRÓPRIA PESSOA — banca,
+ * apostas, unidade — pede a moeda dela explicitamente, por
+ * `fmtDinheiroDaPessoa`. Uma chamada esquecida fica como sempre foi, em vez de
+ * rotular errado.
  *
  * `casas` existe por dois motivos reais, e não por generalidade: eixo de
  * gráfico pede valor sem centavo, e o peso chileno NÃO TEM centavo. Deixar em
@@ -72,8 +104,8 @@ export function fmtOdd(odd: number | null | undefined): string {
 export function fmtDinheiro(
   valor: number | null | undefined,
   {
-    locale = LOCALE_PADRAO,
     moeda = MOEDA_PADRAO,
+    locale = LOCALE_PADRAO,
     casas,
   }: { locale?: string; moeda?: string; casas?: number } = {},
 ): string {
@@ -85,11 +117,30 @@ export function fmtDinheiro(
   }).format(valor);
 }
 
+/**
+ * O dinheiro DA PRÓPRIA PESSOA — banca, apostas, unidade —, na moeda em que ela
+ * escolheu ler.
+ *
+ * ⚠️ TROCAR A MOEDA NÃO CONVERTE NADA. O número é o mesmo; muda o símbolo e a
+ * pontuação. É decisão de produto, e está escrita em `config/moedas.ts`.
+ *
+ * Lê o estado de módulo, que o React não enxerga. Componente que chama isto
+ * precisa ASSINAR a moeda com `useMoeda()` — senão a tela não repinta quando a
+ * pessoa troca. Função pura chamada durante a pintura de um componente que
+ * assina está coberta.
+ */
+export function fmtDinheiroDaPessoa(
+  valor: number | null | undefined,
+  { casas }: { casas?: number } = {},
+): string {
+  return fmtDinheiro(valor, { moeda: moedaAtiva(), locale: localeDaMoedaAtiva(), casas });
+}
+
 /** Uma taxa de 0 a 1 em porcentagem, na formatação do país. */
 export function fmtPct(
   taxa: number | null | undefined,
   casas = 0,
-  locale = LOCALE_PADRAO,
+  locale = localeAtivo(),
 ): string {
   if (vazio(taxa)) return TRACO;
   const n = formatador(locale, {
@@ -110,7 +161,7 @@ export function fmtPct(
 export function fmtDecimal(
   valor: number | null | undefined,
   casas = 1,
-  locale = LOCALE_PADRAO,
+  locale = localeAtivo(),
 ): string {
   if (vazio(valor)) return TRACO;
   return formatador(locale, {
@@ -132,7 +183,7 @@ export function fmtDecimal(
  * `Intl` padrão corta em 3 casas e agrupa milhar, e as duas coisas mudariam a
  * saída de hoje.
  */
-export function fmtExato(valor: number | null | undefined, locale = LOCALE_PADRAO): string {
+export function fmtExato(valor: number | null | undefined, locale = localeAtivo()): string {
   if (vazio(valor)) return TRACO;
   return formatador(locale, { maximumFractionDigits: 20, useGrouping: false }).format(valor);
 }
@@ -147,7 +198,7 @@ export function fmtExato(valor: number | null | undefined, locale = LOCALE_PADRA
  */
 export function fmtNumero(
   valor: number | null | undefined,
-  { casas, locale = LOCALE_PADRAO }: { casas?: number; locale?: string } = {},
+  { casas, locale = localeAtivo() }: { casas?: number; locale?: string } = {},
 ): string {
   if (vazio(valor)) return TRACO;
   return formatador(locale, {
@@ -159,7 +210,7 @@ export function fmtNumero(
 export function fmtDecimalAte(
   valor: number | null | undefined,
   maxCasas = 2,
-  locale = LOCALE_PADRAO,
+  locale = localeAtivo(),
 ): string {
   if (vazio(valor)) return TRACO;
   return formatador(locale, {
@@ -181,13 +232,13 @@ export function fmtDecimalAte(
  * mercado internacional escreve "Over 2.5", com ponto.
  *
  * Hoje ela segue o PAÍS, que é o que o produto já fazia em português. Se a
- * decisão for que ela segue o setor, muda aqui, uma vez, e os seis lugares que
+ * decisão for que ela segue o setor, muda aqui, uma vez, e os 11 lugares que
  * a desenham acompanham. Era exatamente essa caçada que o #529 existe para
  * evitar.
  */
 export function fmtLinhaAnalisada(
   linha: number | null | undefined,
-  locale = LOCALE_PADRAO,
+  locale = localeAtivo(),
 ): string {
   if (vazio(linha)) return TRACO;
   return fmtExato(linha, locale);

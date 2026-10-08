@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Sparkles, X, ArrowRight } from 'lucide-react';
 import { compactify, type SliceNarrative } from '@/utils/dashboardAggregations';
@@ -23,6 +24,8 @@ export const SliceAnalysisModal: React.FC<SliceAnalysisModalProps> = ({
   narrative,
   onViewAllBets,
 }) => {
+  const { t } = useTranslation('apostas');
+
   if (!narrative) return null;
 
   return (
@@ -49,14 +52,14 @@ export const SliceAnalysisModal: React.FC<SliceAnalysisModalProps> = ({
                 {narrative.title}
               </DialogTitle>
               <DialogDescription className="text-[11px] text-white/65 mt-1">
-                Análise feita a partir das suas apostas
+                {t('painel.analiseFatia.descricao')}
               </DialogDescription>
             </div>
             <button
               type="button"
               onClick={() => onOpenChange(false)}
               className="w-7 h-7 rounded-md bg-white/10 hover:bg-white/20 grid place-items-center shrink-0 transition-colors"
-              aria-label="Fechar"
+              aria-label={t('painel.acoes.fechar')}
             >
               <X className="w-3.5 h-3.5 text-white" />
             </button>
@@ -93,7 +96,7 @@ export const SliceAnalysisModal: React.FC<SliceAnalysisModalProps> = ({
               {narrative.insights.length > 0 && (
                 <div className="mt-5 pt-5 border-t border-line space-y-2">
                   <div className="text-[10px] uppercase tracking-[0.14em] text-amber-700 font-bold">
-                    Pontos de atenção
+                    {t('painel.analiseFatia.pontosDeAtencao')}
                   </div>
                   {narrative.insights.map((ins, i) => {
                     const iconColor =
@@ -125,7 +128,7 @@ export const SliceAnalysisModal: React.FC<SliceAnalysisModalProps> = ({
                   onClick={() => onOpenChange(false)}
                   className="h-10 px-4 rounded-md border border-line text-[12px] font-bold text-ink-2 hover:text-ink hover:bg-canvas-2 transition-colors flex-1"
                 >
-                  Fechar
+                  {t('painel.acoes.fechar')}
                 </button>
                 {onViewAllBets && (
                   <button
@@ -137,7 +140,7 @@ export const SliceAnalysisModal: React.FC<SliceAnalysisModalProps> = ({
                     className="h-10 px-5 rounded-md bg-amber-400 text-forest font-bold text-[12px] hover:bg-amber-300 transition-colors flex-[2] flex items-center justify-center gap-1.5"
                   >
                     <Sparkles className="w-3.5 h-3.5" />
-                    {narrative.totalBets === 1 ? 'Ver a aposta' : `Ver todas as ${narrative.totalBets} apostas`}
+                    {t('painel.fatia.ver', { count: narrative.totalBets })}
                     <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 )}

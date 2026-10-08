@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { usePostHog } from '@posthog/react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -17,26 +18,40 @@ import { Drawer, DrawerContent, DrawerTrigger, DrawerClose } from '@/components/
 import { useSubscription } from '@/hooks/use-subscription';
 import { DemoRibbon } from '@/components/onboarding/DemoRibbon';
 import { demoNbaOpportunities, isNbaOffSeason } from '@/components/onboarding/demo/nba';
+import { fmtDecimal, fmtLinhaAnalisada, fmtPct } from '@/utils/formato';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Constants
 // ──────────────────────────────────────────────────────────────────────────────
 
-const STAT_LABELS: Record<string, string> = {
-  player_points: 'Pontos',
-  player_assists: 'Assistências',
-  player_rebounds: 'Rebotes',
-  player_threes: '3 Pontos',
-  player_steals: 'Roubos',
-  player_blocks: 'Bloqueios',
-  player_turnovers: 'Turnovers',
-  player_minutes: 'Minutos',
-  player_points_assists: 'Pts + Ast',
-  player_points_rebounds: 'Pts + Reb',
-  player_rebounds_assists: 'Reb + Ast',
-  player_points_rebounds_assists: 'PRA',
-  player_blocks_steals: 'Blk + Stl',
+// ⚠️ A CHAVE desta tabela é o valor da coluna `stat_type` que vem do banco, e
+// por isso continua em inglês; o VALOR é a chave de tradução, e não o rótulo.
+// Tabela declarada fora do componente não pode guardar texto: o `t()` acontece
+// no render, em `rotuloDaEstatistica`.
+const CHAVE_DA_ESTATISTICA: Record<string, string> = {
+  player_points: 'picks.estatisticaNome.player_points',
+  player_assists: 'picks.estatisticaNome.player_assists',
+  player_rebounds: 'picks.estatisticaNome.player_rebounds',
+  player_threes: 'picks.estatisticaNome.player_threes',
+  player_steals: 'picks.estatisticaNome.player_steals',
+  player_blocks: 'picks.estatisticaNome.player_blocks',
+  player_turnovers: 'picks.estatisticaNome.player_turnovers',
+  player_minutes: 'picks.estatisticaNome.player_minutes',
+  player_points_assists: 'picks.estatisticaNome.player_points_assists',
+  player_points_rebounds: 'picks.estatisticaNome.player_points_rebounds',
+  player_rebounds_assists: 'picks.estatisticaNome.player_rebounds_assists',
+  player_points_rebounds_assists: 'picks.estatisticaNome.player_points_rebounds_assists',
+  player_blocks_steals: 'picks.estatisticaNome.player_blocks_steals',
 };
+
+/**
+ * O rótulo da estatística. Sem chave na tabela devolve o valor do banco, que é
+ * exatamente o que o `?? s` fazia antes.
+ */
+function rotuloDaEstatistica(t: (chave: string) => string, stat: string): string {
+  const chave = CHAVE_DA_ESTATISTICA[stat];
+  return chave ? t(chave) : stat;
+}
 
 // Paleta fixa de 9 cores — cada gatilho ganha uma cor estável por hash do player_id
 const TRIGGER_PALETTE = [
@@ -48,21 +63,25 @@ function getTriggerColor(triggerId: number): string {
   return TRIGGER_PALETTE[Math.abs(triggerId) % TRIGGER_PALETTE.length];
 }
 
-function statusBadgeMeta(status: string): { text: string; cls: string } {
+// O selo curto. Devolve CHAVE e não texto — o `status` que entra é o valor do
+// banco, e só a classe de cor sai daqui pronta.
+function statusBadgeMeta(status: string): { chave: string; cls: string } {
   const s = (status ?? '').toLowerCase();
-  if (s === 'out' || s.includes('out')) return { text: 'OUT', cls: 'bg-rose-100 text-rose-700' };
-  if (s.includes('doubtful')) return { text: 'DTD', cls: 'bg-orange-100 text-orange-700' };
-  return { text: 'Q', cls: 'bg-amber-100 text-amber-700' };
+  if (s === 'out' || s.includes('out')) return { chave: 'picks.selo.out', cls: 'bg-rose-100 text-rose-700' };
+  if (s.includes('doubtful')) return { chave: 'picks.selo.doubtful', cls: 'bg-orange-100 text-orange-700' };
+  return { chave: 'picks.selo.questionable', cls: 'bg-amber-100 text-amber-700' };
 }
 
-// Versão por extenso em pt-BR — usada quando há espaço pra ler o status completo
-function statusFullPT(status: string): { label: string; cls: string } {
+// Versão por extenso — usada quando há espaço pra ler o status completo. As
+// chaves são as de `estado.longo`, que o resto da área NBA já usa: um estado só
+// pode ter um nome no produto.
+function statusPorExtenso(status: string): { chave: string; cls: string } {
   const s = (status ?? '').toLowerCase();
-  if (s.includes('out for season')) return { label: 'Fora da temporada', cls: 'text-rose-700' };
-  if (s === 'out' || s.includes('out')) return { label: 'Fora', cls: 'text-rose-700' };
-  if (s.includes('doubtful')) return { label: 'Duvidoso', cls: 'text-orange-700' };
-  if (s.includes('probable')) return { label: 'Provável', cls: 'text-emerald-700' };
-  return { label: 'Questionável', cls: 'text-amber-700' };
+  if (s.includes('out for season')) return { chave: 'estado.longo.out_for_season', cls: 'text-rose-700' };
+  if (s === 'out' || s.includes('out')) return { chave: 'estado.longo.out', cls: 'text-rose-700' };
+  if (s.includes('doubtful')) return { chave: 'estado.longo.doubtful', cls: 'text-orange-700' };
+  if (s.includes('probable')) return { chave: 'estado.longo.probable', cls: 'text-emerald-700' };
+  return { chave: 'estado.longo.questionable', cls: 'text-amber-700' };
 }
 
 function scoreBadgeCls(score: number | null): { cls: string; tone: 'green' | 'tint' | 'amber' | 'gray' } {
@@ -162,6 +181,7 @@ function PopoverChip({
   onClear?: () => void;
   children: React.ReactNode;
 }) {
+  const { t } = useTranslation('nba');
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -189,7 +209,7 @@ function PopoverChip({
                 }
               }}
               className="inline-flex items-center justify-center rounded hover:bg-white/20 -mr-1 w-4 h-4"
-              aria-label="Limpar filtro"
+              aria-label={t('picks.limparFiltro')}
             >
               <XIcon className="w-3 h-3 opacity-80" />
             </span>
@@ -227,9 +247,10 @@ function RangeField({
   value: number;
   onChange: (v: number) => void;
 }) {
+  const { t } = useTranslation('nba');
   const valueLabel = value > 0
     ? suffix === '%+' ? `≥ ${value}%` : `${value}+`
-    : 'Todos';
+    : t('picks.todos');
   return (
     <div className="flex flex-col gap-3">
       <div>
@@ -260,7 +281,7 @@ function RangeField({
             value === 0 ? 'bg-forest text-white' : 'bg-canvas-2 text-ink-2 hover:bg-canvas-3'
           }`}
         >
-          Todos
+          {t('picks.todos')}
         </button>
       </div>
     </div>
@@ -274,19 +295,20 @@ function StatField({
   selected: string[];
   onChange: (v: string[]) => void;
 }) {
+  const { t } = useTranslation('nba');
   const toggle = (s: string) => {
     onChange(selected.includes(s) ? selected.filter(x => x !== s) : [...selected, s]);
   };
   return (
     <div className="flex flex-col gap-1 max-h-72 overflow-y-auto">
-      <div className="text-[11px] uppercase tracking-[0.14em] font-semibold text-ink-2 pb-2">Estatística</div>
+      <div className="text-[11px] uppercase tracking-[0.14em] font-semibold text-ink-2 pb-2">{t('picks.estatistica')}</div>
       {options.length === 0 && (
-        <div className="text-[12px] text-ink-2/70 py-2">Nenhuma estatística disponível</div>
+        <div className="text-[12px] text-ink-2/70 py-2">{t('picks.estatisticaVazia')}</div>
       )}
       {options.map((s) => (
         <label key={s} className="flex items-center gap-2 py-1.5 px-1 rounded hover:bg-canvas-2 cursor-pointer">
           <Checkbox checked={selected.includes(s)} onCheckedChange={() => toggle(s)} />
-          <span className="text-[12px] text-ink">{STAT_LABELS[s] ?? s}</span>
+          <span className="text-[12px] text-ink">{rotuloDaEstatistica(t, s)}</span>
         </label>
       ))}
     </div>
@@ -300,14 +322,15 @@ function GameField({
   selected: number[];
   onChange: (v: number[]) => void;
 }) {
+  const { t } = useTranslation('nba');
   const toggle = (id: number) => {
     onChange(selected.includes(id) ? selected.filter(x => x !== id) : [...selected, id]);
   };
   return (
     <div className="flex flex-col gap-1 max-h-72 overflow-y-auto">
-      <div className="text-[11px] uppercase tracking-[0.14em] font-semibold text-ink-2 pb-2">Jogo</div>
+      <div className="text-[11px] uppercase tracking-[0.14em] font-semibold text-ink-2 pb-2">{t('picks.jogo')}</div>
       {options.length === 0 && (
-        <div className="text-[12px] text-ink-2/70 py-2">Nenhum jogo disponível</div>
+        <div className="text-[12px] text-ink-2/70 py-2">{t('picks.jogoVazio')}</div>
       )}
       {options.map((g) => (
         <label key={g.id} className="flex items-center gap-2 py-1.5 px-1 rounded hover:bg-canvas-2 cursor-pointer">
@@ -323,15 +346,16 @@ function GameField({
 // ── Popovers (desktop) ────────────────────────────────────────────────────
 
 function EdgePopover({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const { t } = useTranslation('nba');
   return (
     <PopoverChip
       active={value > 0}
-      label={value > 0 ? `Vantagem ≥ ${value}%` : 'Vantagem'}
+      label={value > 0 ? t('picks.vantagemChip', { valor: value }) : t('picks.vantagem')}
       onClear={value > 0 ? () => onChange(0) : undefined}
     >
       <RangeField
-        label="Vantagem mínima"
-        helpText="Diferença % entre média sem o gatilho e a linha da casa."
+        label={t('picks.vantagemMinima')}
+        helpText={t('picks.vantagemAjuda')}
         min={0} max={100} step={5}
         presets={EDGE_PRESETS} suffix="%+"
         value={value} onChange={onChange}
@@ -341,14 +365,15 @@ function EdgePopover({ value, onChange }: { value: number; onChange: (v: number)
 }
 
 function ScorePopover({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const { t } = useTranslation('nba');
   return (
     <PopoverChip
       active={value > 0}
-      label={value > 0 ? `Score ${value}+` : 'Score'}
+      label={value > 0 ? t('picks.scoreChip', { valor: value }) : t('picks.score')}
       onClear={value > 0 ? () => onChange(0) : undefined}
     >
       <RangeField
-        label="Score mínimo"
+        label={t('picks.scoreMinimo')}
         min={0} max={95} step={5}
         presets={SCORE_PRESETS} suffix="+"
         value={value} onChange={onChange}
@@ -364,12 +389,13 @@ function StatPopover({
   selected: string[];
   onChange: (v: string[]) => void;
 }) {
+  const { t } = useTranslation('nba');
   const active = selected.length > 0;
   const label = active
     ? selected.length === 1
-      ? (STAT_LABELS[selected[0]] ?? selected[0])
-      : `${selected.length} estatísticas`
-    : 'Estatística';
+      ? rotuloDaEstatistica(t, selected[0])
+      : t('picks.estatisticasSelecionadas', { n: selected.length })
+    : t('picks.estatistica');
   return (
     <PopoverChip active={active} label={label} onClear={active ? () => onChange([]) : undefined}>
       <StatField options={options} selected={selected} onChange={onChange} />
@@ -384,12 +410,13 @@ function GamePopover({
   selected: number[];
   onChange: (v: number[]) => void;
 }) {
+  const { t } = useTranslation('nba');
   const active = selected.length > 0;
   const label = active
     ? selected.length === 1
-      ? (options.find(o => o.id === selected[0])?.label ?? 'Jogo')
-      : `${selected.length} jogos`
-    : 'Jogo';
+      ? (options.find(o => o.id === selected[0])?.label ?? t('picks.jogo'))
+      : t('picks.jogosSelecionados', { n: selected.length })
+    : t('picks.jogo');
   return (
     <PopoverChip active={active} label={label} onClear={active ? () => onChange([]) : undefined}>
       <GameField options={options} selected={selected} onChange={onChange} />
@@ -404,6 +431,7 @@ function GamePopover({
 type ViewMode = 'score' | 'trigger';
 
 export default function Picks() {
+  const { t } = useTranslation('nba');
   const navigate = useNavigate();
   const posthog = usePostHog();
   const { isPremium } = useSubscription();
@@ -447,7 +475,9 @@ export default function Picks() {
         setOpportunities(data);
       } catch (err) {
         console.error('Error loading opportunities:', err);
-        setError('Falha ao carregar oportunidades');
+        // Guarda a CHAVE: quem escreve é um efeito, e frase traduzida ali
+        // ficaria presa no idioma da hora da falha. O t() fica no render.
+        setError('picks.erroCarregar');
       } finally {
         setIsLoading(false);
       }
@@ -458,8 +488,10 @@ export default function Picks() {
   // Listas únicas (calculadas antes do filter pra popular os selects)
   const availableStats = useMemo(() => {
     const set = new Set(opportunities.map(o => o.stat_type));
-    return Array.from(set).sort((a, b) => (STAT_LABELS[a] ?? a).localeCompare(STAT_LABELS[b] ?? b));
-  }, [opportunities]);
+    return Array.from(set).sort((a, b) =>
+      rotuloDaEstatistica(t, a).localeCompare(rotuloDaEstatistica(t, b)),
+    );
+  }, [opportunities, t]);
 
   const availableGames = useMemo(() => {
     const map = new Map<number, { id: number; label: string; time: string | null }>();
@@ -570,12 +602,12 @@ export default function Picks() {
         <div className="flex items-center justify-center py-20">
           <div className="text-center">
             <AlertTriangle className="w-8 h-8 text-status-danger mx-auto mb-4" />
-            <p className="text-status-danger text-sm mb-4">{error}</p>
+            <p className="text-status-danger text-sm mb-4">{t(error)}</p>
             <button
               onClick={() => window.location.reload()}
               className="px-4 py-2 rounded-md text-sm font-semibold bg-forest text-white hover:bg-forest-soft transition-colors"
             >
-              Tentar novamente
+              {t('picks.tentarNovamente')}
             </button>
           </div>
         </div>
@@ -586,8 +618,8 @@ export default function Picks() {
   return (
     <div className="theme-bolao min-h-screen bg-canvas text-ink">
       <Helmet>
-        <title>Oportunidades do dia · Smart Betting NBA</title>
-        <meta name="description" content="Quem se beneficia quando um titular não joga — ranqueado por score de confiança." />
+        <title>{t('picks.seoTitulo')}</title>
+        <meta name="description" content={t('picks.seoDescricao')} />
       </Helmet>
       <AnalyticsNav variant="rebrand" showBack />
 
@@ -595,22 +627,22 @@ export default function Picks() {
       <div className="bg-white border-b border-line">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 md:py-7">
           <h1 className="text-[26px] md:text-[32px] font-semibold tracking-tight text-ink">
-            Oportunidades do dia
+            {t('picks.titulo')}
           </h1>
           <p className="text-[13px] md:text-[14px] mt-1.5 text-ink-2">
-            Quem se beneficia quando um titular não joga · ranqueado por score de confiança
+            {t('picks.subtitulo')}
           </p>
 
           {!isLoading && (
             <div className="flex items-center gap-2 mt-3 flex-wrap">
               <span className="px-2 h-6 inline-flex items-center rounded text-[11px] font-semibold tabular bg-canvas-2 text-ink">
-                {totals.games} jogos · {totals.opps} oportunidades
+                {t('picks.resumoJogos', { jogos: totals.games, opps: totals.opps })}
               </span>
               <span className="px-2 h-6 inline-flex items-center rounded text-[11px] font-semibold bg-emerald-100 text-forest">
-                ★ {totals.highConf} alta confiança
+                {t('picks.resumoAlta', { n: totals.highConf })}
               </span>
               <span className="px-2 h-6 inline-flex items-center rounded text-[11px] font-semibold bg-amber-100 text-amber-700">
-                {totals.triggers} gatilhos ativos
+                {t('picks.resumoGatilhos', { n: totals.triggers })}
               </span>
             </div>
           )}
@@ -628,7 +660,7 @@ export default function Picks() {
                 className="h-9 px-3 inline-flex items-center gap-1.5 rounded-md bg-forest text-white text-[12px] font-semibold shadow-sm hover:bg-forest-soft transition-colors"
               >
                 <Filter className="w-3.5 h-3.5" />
-                <span>Filtros</span>
+                <span>{t('picks.filtros')}</span>
                 {activeFilterCount > 0 && (
                   <span className="ml-1 px-1.5 h-4 inline-flex items-center justify-center rounded text-[9px] font-bold tabular bg-amber-300 text-forest">
                     {activeFilterCount}
@@ -639,34 +671,34 @@ export default function Picks() {
             <DrawerContent className="bg-white">
               <div className="max-h-[80vh] overflow-y-auto px-4 pb-6 pt-2">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-[15px] font-semibold tracking-tight text-ink">Filtros</h2>
+                  <h2 className="text-[15px] font-semibold tracking-tight text-ink">{t('picks.filtros')}</h2>
                   {activeFilterCount > 0 && (
                     <button
                       type="button"
                       onClick={clearAllFilters}
                       className="text-[12px] font-semibold text-ink-2 hover:text-ink"
                     >
-                      Limpar tudo
+                      {t('picks.limparTudo')}
                     </button>
                   )}
                 </div>
                 <div className="flex flex-col gap-6">
                   <RangeField
-                    label="Score mínimo"
+                    label={t('picks.scoreMinimo')}
                     min={0} max={95} step={5}
                     presets={SCORE_PRESETS} suffix="+"
                     value={minScore} onChange={setMinScore}
                   />
                   <label className="flex items-center justify-between gap-3 py-1 cursor-pointer">
                     <div className="flex flex-col">
-                      <span className="text-[11px] uppercase tracking-[0.14em] font-semibold text-ink-2">Confiança</span>
-                      <span className="text-[13px] text-ink mt-0.5">Só ★ 3 estrelas</span>
+                      <span className="text-[11px] uppercase tracking-[0.14em] font-semibold text-ink-2">{t('picks.confianca')}</span>
+                      <span className="text-[13px] text-ink mt-0.5">{t('picks.tresEstrelas')}</span>
                     </div>
                     <Checkbox checked={threeStars} onCheckedChange={(v) => setThreeStars(v === true)} />
                   </label>
                   <RangeField
-                    label="Vantagem mínima"
-                    helpText="Diferença % entre média sem o gatilho e a linha da casa."
+                    label={t('picks.vantagemMinima')}
+                    helpText={t('picks.vantagemAjuda')}
                     min={0} max={100} step={5}
                     presets={EDGE_PRESETS} suffix="%+"
                     value={minEdge} onChange={setMinEdge}
@@ -687,7 +719,7 @@ export default function Picks() {
                     type="button"
                     className="mt-6 w-full h-10 rounded-md bg-forest text-white text-[13px] font-semibold"
                   >
-                    Ver {filtered.length} {filtered.length === 1 ? 'oportunidade' : 'oportunidades'}
+                    {t('picks.verResultados', { count: filtered.length })}
                   </button>
                 </DrawerClose>
               </div>
@@ -704,7 +736,7 @@ export default function Picks() {
               }`}
             >
               <List className="w-3 h-3" />
-              <span>Por Score</span>
+              <span>{t('picks.porScore')}</span>
             </button>
             <button
               type="button"
@@ -716,7 +748,7 @@ export default function Picks() {
               }`}
             >
               <LayoutGrid className="w-3 h-3" />
-              <span>Por Gatilho</span>
+              <span>{t('picks.porGatilho')}</span>
             </button>
           </div>
         </div>
@@ -726,7 +758,7 @@ export default function Picks() {
           <Filter className="w-3.5 h-3.5 text-ink-2/60 ml-1 shrink-0" />
           <ScorePopover value={minScore} onChange={setMinScore} />
           <FilterChip active={threeStars} removable onClick={() => setThreeStars(v => !v)}>
-            ★ 3 estrelas
+            {t('picks.chipTresEstrelas')}
           </FilterChip>
           <EdgePopover value={minEdge} onChange={setMinEdge} />
           <StatPopover
@@ -752,7 +784,7 @@ export default function Picks() {
               }`}
             >
               <List className="w-3 h-3" />
-              <span>Por Score</span>
+              <span>{t('picks.porScore')}</span>
             </button>
             <button
               type="button"
@@ -764,7 +796,7 @@ export default function Picks() {
               }`}
             >
               <LayoutGrid className="w-3 h-3" />
-              <span>Por Gatilho</span>
+              <span>{t('picks.porGatilho')}</span>
             </button>
           </div>
         </div>
@@ -773,9 +805,7 @@ export default function Picks() {
         {viewMode === 'score' && !isLoading && filtered.length > 0 && (
           <div className="text-[11px] flex items-center gap-2 text-ink-2">
             <Info className="w-3.5 h-3.5 text-ink-2/60 shrink-0" />
-            <span>
-              Cada gatilho tem uma cor própria. A faixa lateral colorida agrupa visualmente as oportunidades da mesma cadeia, mesmo quando elas aparecem misturadas pelo score.
-            </span>
+            <span>{t('picks.dicaCores')}</span>
           </div>
         )}
 
@@ -783,14 +813,13 @@ export default function Picks() {
         {!isDemo && !isPremium && !isLoading && filtered.length > FREE_VISIBLE_COUNT && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 flex items-center justify-between gap-3">
             <p className="text-[12px] text-amber-700">
-              Você vê as primeiras {FREE_VISIBLE_COUNT} oportunidades.
-              Dados de score, médias e gaps das demais são exclusivos para assinantes Premium.
+              {t('picks.paywallTexto', { n: FREE_VISIBLE_COUNT })}
             </p>
             <button
               onClick={() => navigate('/planos')}
               className="text-[12px] font-semibold text-amber-700 hover:text-amber-900 shrink-0 inline-flex items-center gap-1"
             >
-              Assinar
+              {t('picks.paywallBotao')}
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -806,7 +835,7 @@ export default function Picks() {
         ) : filtered.length === 0 ? (
           <div className="rounded-xl bg-white border border-line p-12 text-center">
             <p className="text-[13px] text-ink-2">
-              Nenhuma oportunidade encontrada com os filtros atuais.
+              {t('picks.vazio')}
             </p>
           </div>
         ) : (
@@ -816,13 +845,13 @@ export default function Picks() {
               {/* Headers */}
               <div className="grid grid-cols-[4px_64px_140px_180px_1fr_110px_180px_140px_92px] gap-3 items-center pr-4 py-2.5 text-[10px] uppercase tracking-[0.14em] font-semibold text-ink-2/70 bg-canvas-2 border-b border-line">
                 <div />
-                <div className="ml-0.5">Score ↓</div>
-                <div>Jogo</div>
-                <div>Gatilho</div>
-                <div>Jogador</div>
-                <div>Estatística</div>
-                <div>Com → Sem</div>
-                <div>vs Linha</div>
+                <div className="ml-0.5">{t('picks.thScore')}</div>
+                <div>{t('picks.thJogo')}</div>
+                <div>{t('picks.thGatilho')}</div>
+                <div>{t('picks.thJogador')}</div>
+                <div>{t('picks.thEstatistica')}</div>
+                <div>{t('picks.thComSem')}</div>
+                <div>{t('picks.thVsLinha')}</div>
                 <div />
               </div>
 
@@ -880,7 +909,7 @@ export default function Picks() {
         )}
 
         <div className="text-center text-[11px] py-2 text-ink-2/70">
-          Metodologia: análise 360° com vs sem · Score automático (gap + amostra + freshness + matchup)
+          {t('picks.metodologia')}
         </div>
       </main>
     </div>
@@ -900,11 +929,12 @@ interface OppRowProps {
 }
 
 function OppRow({ opp, collapsedTrigger, blur, free, onAnalyze }: OppRowProps) {
+  const { t } = useTranslation('nba');
   const color = getTriggerColor(opp.trigger_player_id);
   const scoreMeta = scoreBadgeCls(opp.score);
-  const statusFull = statusFullPT(opp.trigger_status);
+  const statusFull = statusPorExtenso(opp.trigger_status);
   const triggerLast = lastName(opp.trigger_name);
-  const statLabel = STAT_LABELS[opp.stat_type] ?? opp.stat_type;
+  const statLabel = rotuloDaEstatistica(t, opp.stat_type);
 
   return (
     <div className="grid grid-cols-[4px_64px_140px_180px_1fr_110px_180px_140px_92px] gap-3 items-center pr-4 py-3.5 border-t border-line hover:bg-canvas-2/50 transition-colors">
@@ -933,7 +963,7 @@ function OppRow({ opp, collapsedTrigger, blur, free, onAnalyze }: OppRowProps) {
       {collapsedTrigger ? (
         <div className="flex items-center gap-2 text-ink-2/70">
           <span className="text-[11px]">↳</span>
-          <span className="text-[11px] truncate italic">mesmo gatilho</span>
+          <span className="text-[11px] truncate italic">{t('picks.mesmoGatilho')}</span>
         </div>
       ) : (
         <div className="min-w-0">
@@ -941,9 +971,9 @@ function OppRow({ opp, collapsedTrigger, blur, free, onAnalyze }: OppRowProps) {
             {triggerLast}
           </div>
           <div className="text-[11px] mt-0.5 flex items-center gap-1.5 truncate">
-            <span className={`font-semibold ${statusFull.cls}`}>{statusFull.label}</span>
+            <span className={`font-semibold ${statusFull.cls}`}>{t(statusFull.chave)}</span>
             {opp.trigger_days_out != null && (
-              <span className="tabular text-ink-2/70">· {opp.trigger_days_out}d fora</span>
+              <span className="tabular text-ink-2/70">{t('picks.diasFora', { n: opp.trigger_days_out })}</span>
             )}
           </div>
         </div>
@@ -965,13 +995,13 @@ function OppRow({ opp, collapsedTrigger, blur, free, onAnalyze }: OppRowProps) {
 
       {/* Com → Sem (gap) */}
       <div className={`tabular text-[12px] flex items-center gap-1.5 text-ink-2 ${blur}`}>
-        <span title={`com ${triggerLast}`}>{opp.avg_com?.toFixed(1) ?? '—'}</span>
+        <span title={t('picks.tituloCom', { gatilho: triggerLast })}>{fmtDecimal(opp.avg_com, 1)}</span>
         <ArrowRight className="w-3.5 h-3.5 text-ink-2/70 shrink-0" aria-hidden="true" />
-        <span className="font-semibold text-[14px] text-ink" title={`sem ${triggerLast}`}>
-          {opp.avg_sem?.toFixed(1) ?? '—'}
+        <span className="font-semibold text-[14px] text-ink" title={t('picks.tituloSem', { gatilho: triggerLast })}>
+          {fmtDecimal(opp.avg_sem, 1)}
         </span>
         <span className="px-1.5 h-5 inline-flex items-center rounded text-[11px] font-semibold tabular bg-emerald-100 text-forest">
-          +{opp.gap_pct?.toFixed(1) ?? '—'}%
+          +{fmtPct(opp.gap_pct == null ? null : opp.gap_pct / 100, 1)}
         </span>
       </div>
 
@@ -982,9 +1012,9 @@ function OppRow({ opp, collapsedTrigger, blur, free, onAnalyze }: OppRowProps) {
         ) : (
           <>
             <div className="flex items-center gap-2">
-              <span className="text-ink-2/70">{opp.line_value.toFixed(1)}</span>
+              <span className="text-ink-2/70">{fmtLinhaAnalisada(opp.line_value)}</span>
               <span className={`font-semibold text-[14px] ${opp.gap_vs_line_pct > 0 ? 'text-forest' : 'text-status-danger'}`}>
-                {opp.gap_vs_line_pct > 0 ? '+' : ''}{opp.gap_vs_line_pct.toFixed(1)}%
+                {opp.gap_vs_line_pct > 0 ? '+' : ''}{fmtPct(opp.gap_vs_line_pct / 100, 1)}
               </span>
             </div>
             <div className="mt-1 h-1.5 rounded-full overflow-hidden bg-canvas-2">
@@ -1004,7 +1034,7 @@ function OppRow({ opp, collapsedTrigger, blur, free, onAnalyze }: OppRowProps) {
           onClick={onAnalyze}
           className="h-7 px-2.5 text-[11px] font-semibold rounded-md inline-flex items-center gap-1 bg-white border border-line text-ink hover:border-forest/30 hover:bg-canvas-2 transition-colors"
         >
-          <span>{free ? 'Analisar' : 'Premium'}</span>
+          <span>{free ? t('picks.analisar') : t('picks.premium')}</span>
           <ArrowRight className="w-3 h-3" />
         </button>
       </div>
@@ -1013,6 +1043,7 @@ function OppRow({ opp, collapsedTrigger, blur, free, onAnalyze }: OppRowProps) {
 }
 
 function GroupHeader({ trigger, count }: { trigger: DailyOpportunity; count: number }) {
+  const { t } = useTranslation('nba');
   const color = getTriggerColor(trigger.trigger_player_id);
   const statusMeta = statusBadgeMeta(trigger.trigger_status);
   return (
@@ -1024,15 +1055,15 @@ function GroupHeader({ trigger, count }: { trigger: DailyOpportunity; count: num
         </div>
         <div className="flex items-center gap-1.5 min-w-0">
           <span className={`px-1.5 h-4 inline-flex items-center rounded text-[9px] font-bold tabular ${statusMeta.cls}`}>
-            {statusMeta.text}
+            {t(statusMeta.chave)}
           </span>
           <span className="text-[14px] font-semibold tracking-tight text-ink truncate">{trigger.trigger_name}</span>
           {trigger.trigger_days_out != null && (
-            <span className="text-[11px] tabular text-ink-2/70">· {trigger.trigger_days_out}d</span>
+            <span className="text-[11px] tabular text-ink-2/70">{t('picks.dias', { n: trigger.trigger_days_out })}</span>
           )}
         </div>
         <span className="text-[11px] ml-auto text-ink-2 shrink-0">
-          {count} {count === 1 ? 'oportunidade destravada' : 'oportunidades destravadas'}
+          {t('picks.destravadas', { count })}
         </span>
       </div>
     </div>
@@ -1052,11 +1083,12 @@ interface MobileOppCardProps {
 }
 
 function MobileOppCard({ opp, hideTrigger, blur, free, onAnalyze }: MobileOppCardProps) {
+  const { t } = useTranslation('nba');
   const color = getTriggerColor(opp.trigger_player_id);
   const scoreMeta = scoreBadgeCls(opp.score);
-  const statusFull = statusFullPT(opp.trigger_status);
+  const statusFull = statusPorExtenso(opp.trigger_status);
   const triggerLast = lastName(opp.trigger_name);
-  const statLabel = STAT_LABELS[opp.stat_type] ?? opp.stat_type;
+  const statLabel = rotuloDaEstatistica(t, opp.stat_type);
 
   return (
     <div
@@ -1078,15 +1110,15 @@ function MobileOppCard({ opp, hideTrigger, blur, free, onAnalyze }: MobileOppCar
       {hideTrigger ? (
         <div className="px-3 py-1.5 flex items-center gap-2 bg-canvas-2 border-b border-line text-ink-2/70">
           <span className="text-[11px]">↳</span>
-          <span className="text-[11px] italic">mesmo gatilho · {triggerLast}</span>
+          <span className="text-[11px] italic">{t('picks.mesmoGatilhoNome', { gatilho: triggerLast })}</span>
         </div>
       ) : (
         <div className="px-3 py-2 bg-canvas-2 border-b border-line flex items-center gap-1.5 truncate">
-          <span className="text-[10px] uppercase tracking-[0.14em] font-bold text-ink-2/70 shrink-0">Gatilho</span>
+          <span className="text-[10px] uppercase tracking-[0.14em] font-bold text-ink-2/70 shrink-0">{t('picks.gatilhoEtiqueta')}</span>
           <span className="text-[13px] font-semibold tracking-tight text-ink truncate">{triggerLast}</span>
-          <span className={`text-[11px] font-semibold shrink-0 ${statusFull.cls}`}>{statusFull.label}</span>
+          <span className={`text-[11px] font-semibold shrink-0 ${statusFull.cls}`}>{t(statusFull.chave)}</span>
           {opp.trigger_days_out != null && (
-            <span className="text-[10px] tabular text-ink-2/70 shrink-0">· {opp.trigger_days_out}d</span>
+            <span className="text-[10px] tabular text-ink-2/70 shrink-0">{t('picks.dias', { n: opp.trigger_days_out })}</span>
           )}
         </div>
       )}
@@ -1118,12 +1150,12 @@ function MobileOppCard({ opp, hideTrigger, blur, free, onAnalyze }: MobileOppCar
           {statLabel}
         </span>
         <span className="text-[11px] tabular flex items-center gap-1.5 text-ink-2">
-          <span>{opp.avg_com?.toFixed(1) ?? '—'}</span>
+          <span>{fmtDecimal(opp.avg_com, 1)}</span>
           <ArrowRight className="w-3.5 h-3.5 text-ink-2/70 shrink-0" aria-hidden="true" />
-          <span className="font-semibold text-[13px] text-ink">{opp.avg_sem?.toFixed(1) ?? '—'}</span>
+          <span className="font-semibold text-[13px] text-ink">{fmtDecimal(opp.avg_sem, 1)}</span>
         </span>
         <span className="px-1.5 h-5 inline-flex items-center rounded text-[10px] font-semibold tabular bg-emerald-100 text-forest">
-          +{opp.gap_pct?.toFixed(0) ?? '—'}%
+          +{fmtPct(opp.gap_pct == null ? null : opp.gap_pct / 100, 0)}
         </span>
       </div>
 
@@ -1131,9 +1163,9 @@ function MobileOppCard({ opp, hideTrigger, blur, free, onAnalyze }: MobileOppCar
       {opp.line_value != null && opp.gap_vs_line_pct != null && (
         <div className={`px-3 pb-3 pt-1 border-t border-line ${blur}`}>
           <div className="flex items-baseline justify-between text-[11px] mt-2">
-            <span className="text-ink-2/70">Linha {opp.line_value.toFixed(1)}</span>
+            <span className="text-ink-2/70">{t('picks.linhaValor', { valor: fmtLinhaAnalisada(opp.line_value) })}</span>
             <span className={`font-semibold tabular ${opp.gap_vs_line_pct > 0 ? 'text-forest' : 'text-status-danger'}`}>
-              {opp.gap_vs_line_pct > 0 ? '+' : ''}{opp.gap_vs_line_pct.toFixed(1)}% vs linha
+              {t('picks.vsLinha', { pct: `${opp.gap_vs_line_pct > 0 ? '+' : ''}${fmtDecimal(opp.gap_vs_line_pct, 1)}` })}
             </span>
           </div>
           <div className="mt-1.5 h-1.5 rounded-full overflow-hidden bg-canvas-2">
@@ -1149,14 +1181,14 @@ function MobileOppCard({ opp, hideTrigger, blur, free, onAnalyze }: MobileOppCar
       {free ? (
         <div className="px-3 py-2.5 border-t border-line flex items-center justify-end">
           <span className="text-[12px] font-semibold text-forest inline-flex items-center gap-1">
-            Ver análise completa
+            {t('picks.verAnalise')}
             <ArrowRight className="w-3.5 h-3.5" />
           </span>
         </div>
       ) : (
         <div className="px-3 py-2.5 border-t border-line bg-amber-50 flex items-center justify-end">
           <span className="text-[12px] font-semibold text-amber-700 inline-flex items-center gap-1">
-            Desbloquear com Premium
+            {t('picks.desbloquear')}
             <ChevronRight className="w-3.5 h-3.5" />
           </span>
         </div>
@@ -1166,6 +1198,7 @@ function MobileOppCard({ opp, hideTrigger, blur, free, onAnalyze }: MobileOppCar
 }
 
 function MobileGroupHeader({ trigger, count }: { trigger: DailyOpportunity; count: number }) {
+  const { t } = useTranslation('nba');
   const color = getTriggerColor(trigger.trigger_player_id);
   const statusMeta = statusBadgeMeta(trigger.trigger_status);
   return (
@@ -1177,15 +1210,15 @@ function MobileGroupHeader({ trigger, count }: { trigger: DailyOpportunity; coun
         </div>
         <div className="flex items-center gap-1.5 min-w-0">
           <span className={`px-1.5 h-4 inline-flex items-center rounded text-[9px] font-bold tabular shrink-0 ${statusMeta.cls}`}>
-            {statusMeta.text}
+            {t(statusMeta.chave)}
           </span>
           <span className="text-[13px] font-semibold tracking-tight truncate text-ink">{trigger.trigger_name}</span>
           {trigger.trigger_days_out != null && (
-            <span className="text-[11px] tabular text-ink-2/70 shrink-0">· {trigger.trigger_days_out}d</span>
+            <span className="text-[11px] tabular text-ink-2/70 shrink-0">{t('picks.dias', { n: trigger.trigger_days_out })}</span>
           )}
         </div>
         <span className="ml-auto text-[10px] text-ink-2 shrink-0">
-          {count} {count === 1 ? 'opp.' : 'opps.'}
+          {t('picks.oppCurto', { count })}
         </span>
       </div>
     </div>

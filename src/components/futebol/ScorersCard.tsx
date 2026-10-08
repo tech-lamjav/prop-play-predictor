@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronDown } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getFutebolPlayerPhotoUrl, crestInitials } from '@/utils/futebol-logos';
@@ -53,6 +54,7 @@ export function ScorersCard({
   loading: boolean;
   vazio?: { titulo: string; texto: string };
 }) {
+  const { t } = useTranslation('futebol');
   const [tudo, setTudo] = useState(false);
   const todos = leaders?.scorers ?? [];
   const lista = todos.slice(0, tudo ? TOTAL : TOPO);
@@ -70,9 +72,9 @@ export function ScorersCard({
   if (!todos.length) {
     return (
       <div className="bg-white rounded-rebrand-lg px-6 py-9 text-center" style={{ border: '1px dashed #ded2b6' }}>
-        <div className="text-[14px] font-semibold text-ink">{vazio?.titulo ?? 'Artilheiros não disponíveis'}</div>
+        <div className="text-[14px] font-semibold text-ink">{vazio?.titulo ?? t('artilheiros.vazioTitulo')}</div>
         <div className="mt-1.5 text-[12.5px] leading-relaxed" style={{ color: '#8d8672' }}>
-          {vazio?.texto ?? 'Entram assim que a competição passar pela coleta.'}
+          {vazio?.texto ?? t('artilheiros.vazioTexto')}
         </div>
       </div>
     );
@@ -85,14 +87,16 @@ export function ScorersCard({
         style={{ background: '#f4eddc', borderBottom: '1px solid #ded2b6' }}
       >
         <span className="text-[10.5px] uppercase tracking-[0.16em] font-bold" style={{ color: '#6b6350' }}>
-          Artilheiros
+          {t('artilheiros.titulo')}
         </span>
         {todos.length > TOPO && (
           <button
             onClick={() => setTudo((v) => !v)}
             className="text-[11px] font-semibold text-forest inline-flex items-center gap-1"
           >
-            {tudo ? `ver só o top ${TOPO}` : `ver os ${Math.min(TOTAL, todos.length)}`}
+            {tudo
+              ? t('artilheiros.verTop', { count: TOPO })
+              : t('artilheiros.verTodos', { count: Math.min(TOTAL, todos.length) })}
             <ChevronDown className={`w-3 h-3 transition-transform ${tudo ? 'rotate-180' : ''}`} />
           </button>
         )}
@@ -116,7 +120,7 @@ export function ScorersCard({
           </span>
           <span className="text-[14px] font-bold tabular-nums text-forest">{s.goals}</span>
           <span className="text-[10px]" style={{ color: '#8d8672' }}>
-            gols
+            {t('artilheiros.gols')}
           </span>
         </div>
       ))}

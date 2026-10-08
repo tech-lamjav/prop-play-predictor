@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronRight } from 'lucide-react';
 import { DropdownMenuCheckboxItem } from '@/components/ui/dropdown-menu';
 import { Chip } from './Chip';
@@ -11,16 +12,18 @@ type SelectOption = { value: string; label: string };
 
 const LABEL = 'text-[10px] uppercase tracking-[0.14em] font-bold text-ink-3';
 
-const MARKET_ITEMS: { value: MarketFilter; label: string }[] = [
-  { value: 'all', label: 'Todos' },
-  { value: 'match_winner', label: 'Resultado' },
-  { value: 'goals_over_under', label: 'Gols' },
-  { value: 'btts', label: 'Ambos marcam' },
-  { value: 'asian_handicap', label: 'Handicap' },
-  { value: 'double_chance', label: 'Dupla chance' },
+/** Valor e CHAVE do catálogo: o texto de cada mercado mora no catálogo. */
+const MARKET_ITEMS: { value: MarketFilter; chave: string }[] = [
+  { value: 'all', chave: 'filtros.mercado.todos' },
+  { value: 'match_winner', chave: 'filtros.mercado.resultado' },
+  { value: 'goals_over_under', chave: 'filtros.mercado.gols' },
+  { value: 'btts', chave: 'filtros.mercado.ambosMarcam' },
+  { value: 'asian_handicap', chave: 'filtros.mercado.handicap' },
+  { value: 'double_chance', chave: 'filtros.mercado.duplaChance' },
 ];
 
 function MarketChips({ value, onChange }: { value: MarketFilter; onChange: (m: MarketFilter) => void }) {
+  const { t } = useTranslation('futebol');
   const ref = useRef<HTMLDivElement>(null);
   const [more, setMore] = useState(false);
   useEffect(() => {
@@ -34,17 +37,17 @@ function MarketChips({ value, onChange }: { value: MarketFilter; onChange: (m: M
   }, []);
   return (
     <div className="flex items-center gap-2.5 min-w-0 sm:flex-1">
-      <span className={`${LABEL} shrink-0`}>Mercado</span>
+      <span className={`${LABEL} shrink-0`}>{t('filtros.mercadoRotulo')}</span>
       <div className="relative min-w-0 flex-1">
         <div ref={ref} className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide -my-1 py-1 pr-7">
           {MARKET_ITEMS.map((m) => (
-            <Chip key={m.value} ativo={value === m.value} onClick={() => onChange(m.value)}>{m.label}</Chip>
+            <Chip key={m.value} ativo={value === m.value} onClick={() => onChange(m.value)}>{t(m.chave)}</Chip>
           ))}
         </div>
         {more && (
           <button
             type="button"
-            aria-label="Ver mais mercados"
+            aria-label={t('filtros.verMais')}
             onClick={() => ref.current?.scrollBy({ left: 160, behavior: 'smooth' })}
             className="absolute right-0 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white border border-line grid place-items-center shadow-sm hover:bg-canvas-2"
           >
@@ -83,6 +86,7 @@ function MultiSelect<T extends string>({
   largura: string;
   align?: 'start' | 'end';
 }) {
+  const { t } = useTranslation('futebol');
   const todos = opcoes.map((opcao) => opcao.value);
   const marcadas = opcoes.filter((opcao) => selecionadas.includes(opcao.value));
   const tudo = marcadas.length === opcoes.length;
@@ -95,8 +99,8 @@ function MultiSelect<T extends string>({
         // "Alta e Média" em vez de "2 faixas": com três opções o nome cabe e diz
         // mais. De três para cima a contagem fica mais curta que a enumeração.
         : marcadas.length === 2 && opcoes.length <= 3
-          ? `${marcadas[0].label} e ${marcadas[1].label}`
-          : `${marcadas.length} ${plural}`;
+          ? t('filtros.doisRotulos', { primeiro: marcadas[0].label, segundo: marcadas[1].label })
+          : t('filtros.varios', { quantidade: marcadas.length, plural });
   // A saída mantém a ordem da LISTA, não a ordem dos cliques: o resumo do botão
   // lê "Alta e Média" sempre, e não "Média e Alta" dependendo de por onde a
   // pessoa passou.
@@ -135,25 +139,26 @@ function MultiSelect<T extends string>({
   );
 }
 
-const FAIXAS: { value: Faixa; label: string }[] = [
-  { value: 'alta', label: 'Alta' },
-  { value: 'media', label: 'Média' },
-  { value: 'baixa', label: 'Baixa' },
+/** Valor e CHAVE do catálogo, como nos mercados: o texto não mora aqui. */
+const FAIXAS: { value: Faixa; chave: string }[] = [
+  { value: 'alta', chave: 'faixa.alta' },
+  { value: 'media', chave: 'faixa.media' },
+  { value: 'baixa', chave: 'faixa.baixa' },
 ];
 
-const ESTADOS: { value: EstadoDoJogo; label: string }[] = [
-  { value: 'aberto', label: 'Em aberto' },
-  { value: 'ao_vivo', label: 'Ao vivo' },
-  { value: 'encerrado', label: 'Encerrado' },
+const ESTADOS: { value: EstadoDoJogo; chave: string }[] = [
+  { value: 'aberto', chave: 'filtros.estado.aberto' },
+  { value: 'ao_vivo', chave: 'filtros.estado.aoVivo' },
+  { value: 'encerrado', chave: 'filtros.estado.encerrado' },
 ];
 
 /**
  * A competição fala `null` com a tela, e lista com o seletor.
  *
  * `null` é "todas", e acompanha as ligas do dia sozinho em vez de congelar a
- * lista de hoje — um dia com liga nova continua com todas marcadas. A tradução
- * mora aqui, e não no seletor genérico, que não tem por que conhecer essa
- * conveniência.
+ * lista de hoje — um dia com liga nova continua com todas marcadas. A conversão
+ * entre `null` e lista mora aqui, e não no seletor genérico, que não tem por que
+ * conhecer essa conveniência.
  */
 function CompeticaoMultiSelect({
   options, selecionadas, onChange,
@@ -162,6 +167,7 @@ function CompeticaoMultiSelect({
   selecionadas: readonly string[] | null;
   onChange: (value: string[] | null) => void;
 }) {
+  const { t } = useTranslation('futebol');
   const todas = options.map((option) => option.value);
   // Dia sem competição nenhuma não ganha seletor. Com a lista vazia o menu
   // abria sem itens, com "Todas" marcada por vacuidade (zero de zero), e o
@@ -169,13 +175,13 @@ function CompeticaoMultiSelect({
   if (options.length === 0) return null;
   return (
     <MultiSelect
-      rotulo="Competição"
+      rotulo={t('filtros.competicaoRotulo')}
       opcoes={options}
       selecionadas={selecionadas ?? todas}
       onChange={(proxima) => onChange(proxima.length === todas.length ? null : proxima)}
-      tudoLabel="Todas"
-      nadaLabel="Nenhuma"
-      plural="campeonatos"
+      tudoLabel={t('filtros.todas')}
+      nadaLabel={t('filtros.nenhuma')}
+      plural={t('filtros.plural.campeonatos')}
       largura="sm:w-[208px]"
       align="end"
     />
@@ -193,6 +199,11 @@ export function OportunidadesFiltros({
   faixasSelecionadas: readonly Faixa[]; onFaixasChange: (value: Faixa[]) => void;
   competicoesSelecionadas: readonly string[] | null; onCompeticoesChange: (value: string[] | null) => void; competicaoOptions: SelectOption[];
 }) {
+  const { t } = useTranslation('futebol');
+  // As opções nascem traduzidas aqui, e não em constante de módulo: o rótulo
+  // acompanha o idioma ativo, que só existe dentro do componente.
+  const estados = ESTADOS.map(({ value, chave }) => ({ value, label: t(chave) }));
+  const faixas = FAIXAS.map(({ value, chave }) => ({ value, label: t(chave) }));
   return (
     <div data-tour="fut-opp-filtros" className="rounded-rebrand-md p-3 bg-white border border-line flex flex-col sm:flex-row sm:items-center gap-3">
       <div data-testid="filtros-mercado" className="min-w-0 sm:flex-1">
@@ -209,23 +220,23 @@ export function OportunidadesFiltros({
           segura o caso extremo sem obrigar ninguém a arrastar no caso normal. */}
       <div data-testid="filtros-visualizacao" className="flex items-center gap-2 overflow-x-auto scrollbar-hide -my-1 py-1 sm:overflow-visible sm:shrink-0">
         <MultiSelect
-          rotulo="Estado"
-          opcoes={ESTADOS}
+          rotulo={t('filtros.estadoRotulo')}
+          opcoes={estados}
           selecionadas={estadosSelecionados}
           onChange={onEstadosChange}
-          tudoLabel="Todos"
-          nadaLabel="Nenhum"
-          plural="estados"
+          tudoLabel={t('filtros.todos')}
+          nadaLabel={t('filtros.nenhum')}
+          plural={t('filtros.plural.estados')}
           largura="sm:w-[184px]"
         />
         <MultiSelect
-          rotulo="Faixa"
-          opcoes={FAIXAS}
+          rotulo={t('filtros.faixaRotulo')}
+          opcoes={faixas}
           selecionadas={faixasSelecionadas}
           onChange={onFaixasChange}
-          tudoLabel="Todas"
-          nadaLabel="Nenhuma"
-          plural="faixas"
+          tudoLabel={t('filtros.todas')}
+          nadaLabel={t('filtros.nenhuma')}
+          plural={t('filtros.plural.faixas')}
           largura="sm:w-[168px]"
         />
         <CompeticaoMultiSelect options={competicaoOptions} selecionadas={competicoesSelecionadas} onChange={onCompeticoesChange} />

@@ -1,7 +1,8 @@
+import { useTranslation } from 'react-i18next';
 import {
+  CHAVE_DA_POSICAO,
   POSICOES,
   POSICOES_CALCULADAS,
-  ROTULO_DA_POSICAO,
   TOM_DA_POSICAO,
   type Posicao,
 } from './crm-painel';
@@ -26,12 +27,13 @@ export function FaixaDoFunil({
   selecionada: Posicao | null;
   aoSelecionar: (posicao: Posicao | null) => void;
 }) {
+  const { t } = useTranslation('socios');
   const maior = Math.max(1, ...POSICOES.map((p) => contagem[p]));
 
   return (
     <section
       role="region"
-      aria-label="Funil"
+      aria-label={t('painel.funil.aria')}
       className="rounded-rebrand-md border border-line-2 bg-white p-4"
     >
       <div className="flex items-end gap-2 overflow-x-auto">
@@ -62,11 +64,11 @@ export function FaixaDoFunil({
                 />
               </div>
               <p className="mt-2 text-[12px] font-bold leading-tight text-ink">
-                {ROTULO_DA_POSICAO[posicao]}
+                {t(CHAVE_DA_POSICAO[posicao])}
               </p>
               {calculada && (
                 <p className="mt-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-ink-dim">
-                  o banco responde
+                  {t('painel.oBancoResponde')}
                 </p>
               )}
             </button>

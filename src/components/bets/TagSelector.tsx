@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X, Plus, Info } from 'lucide-react';
 import { createClient } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/use-auth';
@@ -49,6 +50,7 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
   onTagsUpdated,
   availableTags: controlledTags,
 }) => {
+  const { t } = useTranslation('apostas');
   const { user } = useAuth();
   const supabase = createClient();
   const [internalTags, setInternalTags] = useState<Tag[]>([]);
@@ -171,7 +173,7 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
               <PopoverTrigger asChild>
                 <button
                   type="button"
-                  aria-label={`Alterar cor da tag ${tag.name}`}
+                  aria-label={t('etiquetas.alterarCor', { nome: tag.name })}
                   className="hover:opacity-80 cursor-pointer"
                 >
                   {tag.name}
@@ -181,7 +183,7 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
                 type="button"
                 onClick={() => handleTagToggle(tag)}
                 className="opacity-60 md:opacity-0 md:group-hover:opacity-60 hover:!opacity-100 hover:!text-status-danger transition-all -mr-0.5 inline-flex items-center justify-center w-5 h-5 md:w-auto md:h-auto md:px-0.5"
-                aria-label={`Remover tag ${tag.name}`}
+                aria-label={t('etiquetas.remover', { nome: tag.name })}
               >
                 <X className="w-3 h-3 md:w-2.5 md:h-2.5" />
               </button>
@@ -191,14 +193,14 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
               sideOffset={4}
               className="theme-rebrand w-auto p-2 bg-white border-line text-ink shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)] rounded-md"
             >
-              <p className="text-[10px] text-ink-2 uppercase tracking-[0.12em] font-semibold mb-2">Cor da tag</p>
+              <p className="text-[10px] text-ink-2 uppercase tracking-[0.12em] font-semibold mb-2">{t('etiquetas.corDaTag')}</p>
               <div className="flex flex-wrap gap-1.5 max-w-[168px]">
                 {TAG_COLORS.map(color => (
                   <button
                     key={color}
                     type="button"
                     onClick={() => updateTagColor(tag.id, color)}
-                    aria-label={`Definir cor ${color} para ${tag.name}`}
+                    aria-label={t('etiquetas.definirCor', { cor: color, nome: tag.name })}
                     className={`w-5 h-5 rounded-full border-2 transition-all ${
                       tag.color === color ? 'border-ink scale-110' : 'border-transparent opacity-60 hover:opacity-100'
                     }`}
@@ -227,7 +229,7 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
                 className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] border border-line text-ink-2 hover:border-forest hover:text-forest transition-colors"
               >
                 <Plus className="w-2.5 h-2.5" />
-                <span>Tag</span>
+                <span>{t('etiquetas.botao')}</span>
               </button>
             </PopoverTrigger>
             <PopoverContent
@@ -240,7 +242,7 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
                 <div className="flex items-start gap-2 mb-2">
                   <Info className="w-4 h-4 text-forest mt-0.5 flex-shrink-0" />
                   <p className="text-xs text-ink-2">
-                    Crie tags para organizar suas apostas como preferir. Exemplos: Casa de Aposta, Banca, Tipster, Estratégia, etc.
+                    {t('etiquetas.ajuda')}
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -249,7 +251,7 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
                     value={newTagName}
                     onChange={(e) => setNewTagName(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && createTag()}
-                    placeholder="Nova tag..."
+                    placeholder={t('etiquetas.nova')}
                     className="flex-1 bg-canvas border border-line text-ink text-xs px-2 py-1 rounded-md focus:border-forest focus:bg-white outline-none"
                     maxLength={50}
                   />
@@ -268,7 +270,7 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
                       key={color}
                       type="button"
                       onClick={() => setSelectedColor(color)}
-                      aria-label={`Cor ${color}`}
+                      aria-label={t('etiquetas.cor', { cor: color })}
                       className={`w-5 h-5 rounded-full border-2 transition-all ${
                         selectedColor === color ? 'border-ink scale-110' : 'border-transparent opacity-60 hover:opacity-100'
                       }`}
@@ -281,7 +283,7 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
               {/* Available Tags */}
               {availableTags.length > 0 && (
                 <div className="border-t border-line pt-2">
-                  <div className="text-[10px] text-ink-2 uppercase tracking-[0.12em] font-semibold mb-2">Selecionar</div>
+                  <div className="text-[10px] text-ink-2 uppercase tracking-[0.12em] font-semibold mb-2">{t('etiquetas.selecionar')}</div>
                   <div className="space-y-1 max-h-40 overflow-y-auto">
                     {availableTags.map(tag => (
                       <div key={tag.id} className="space-y-1">
@@ -293,7 +295,7 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
                                 e.stopPropagation();
                                 setEditingColorTagId(prev => prev === tag.id ? null : tag.id);
                               }}
-                              aria-label={`Alterar cor da tag ${tag.name}`}
+                              aria-label={t('etiquetas.alterarCor', { nome: tag.name })}
                               className={`w-3 h-3 rounded-full flex-shrink-0 border-2 transition-all ${
                                 editingColorTagId === tag.id ? 'border-ink scale-110' : 'border-transparent'
                               }`}
@@ -322,7 +324,7 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
                                 key={color}
                                 type="button"
                                 onClick={() => updateTagColor(tag.id, color)}
-                                aria-label={`Definir cor ${color} para ${tag.name}`}
+                                aria-label={t('etiquetas.definirCor', { cor: color, nome: tag.name })}
                                 className={`w-5 h-5 rounded-full border-2 transition-all ${
                                   tag.color === color ? 'border-ink scale-110' : 'border-transparent opacity-60 hover:opacity-100'
                                 }`}
@@ -340,7 +342,7 @@ export const TagSelector: React.FC<TagSelectorProps> = ({
               {/* Tag Limit Warning */}
               {selectedTags.length >= 10 && (
                 <div className="mt-2 text-xs text-status-danger">
-                  Máximo de 10 tags por aposta
+                  {t('etiquetas.limite')}
                 </div>
               )}
             </PopoverContent>

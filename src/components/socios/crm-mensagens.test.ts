@@ -10,7 +10,7 @@ import {
   modelosDeAbordagem,
   type ContextoDaMensagem,
 } from './crm-mensagens';
-import { ETAPAS, ROTULO_DA_ETAPA } from './crm-vocabulario';
+import { CHAVE_DA_ETAPA, ETAPAS } from './crm-vocabulario';
 import type { TipoDeGancho } from './crm-ficha';
 
 const GANCHOS: TipoDeGancho[] = ['betinho', 'futebol', 'nba', 'indefinido'];
@@ -275,7 +275,7 @@ describe('o catálogo para trocar de mensagem', () => {
     const grupos = modelosDeAbordagem('Maria')
       .map((m) => m.grupo)
       .filter((g, i, todos) => todos.indexOf(g) === i);
-    expect(grupos).toEqual(ETAPAS.map((e) => ROTULO_DA_ETAPA[e]));
+    expect(grupos).toEqual(ETAPAS.map((e) => CHAVE_DA_ETAPA[e]));
   });
 
   it('usa o nome, e sem nome não deixa vírgula solta', () => {

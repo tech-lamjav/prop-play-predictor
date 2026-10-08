@@ -1,5 +1,6 @@
 import type { FutebolFixturePremissas } from '@/services/futebol-data.service';
 import { fmtLinhaAnalisada } from '@/utils/formato';
+import { preencher, type CopyComParametros } from '@/utils/futebol-copy';
 import { linhaDaSaida, mesmaLinha, type Saida } from '@/utils/futebol-saida';
 
 // Catálogo das premissas do Score: rótulo, peso e agrupamento.
@@ -104,11 +105,66 @@ const P = (
 /**
  * O rótulo da premissa para o mando da aposta. Só muda onde o mando importa; nas
  * outras a frase já serve para os dois.
+ *
+ * ⚠️ ELA CONTINUA DEVOLVENDO PORTUGUÊS, E ISSO É DECISÃO (#544). Estas frases
+ * são contrato com o banco: a migration semeia `futebol_premissa_copy` a partir
+ * de `copyDeServing()`, as três RPCs leem de lá e é de lá que sai a DM do
+ * Telegram. Trocar o texto por chave de tradução aqui reprovaria na guarda de
+ * paridade da copy — corretamente — e, contornada a guarda, mandaria chave crua
+ * ou português divergente para quem paga. Quem traduz é a TELA, pedindo a frase
+ * por `chaveDaPremissa`.
  */
 export function rotuloPremissa(p: Premissa, lado: 'home' | 'away' | null, negativo = false): string {
   if (lado === 'home') return (negativo ? p.negativoCasa : p.labelCasa) ?? (negativo ? p.negativo : p.label);
   if (lado === 'away') return (negativo ? p.negativoFora : p.labelFora) ?? (negativo ? p.negativo : p.label);
   return negativo ? p.negativo : p.label;
+}
+
+/**
+ * O mando a que a FRASE de uma premissa pertence.
+ *
+ * `any` é o texto neutro, e é o que vale quando o mando não muda a frase. A
+ * regra é a mesma de `numerar`, que é quem monta a tabela de apoio do banco: a
+ * variante só existe quando o texto é DIFERENTE do neutro. Perceber isso pelo
+ * `!= null` do campo não serviria — `adversario_fragil_fora` e `mando_forte`
+ * declaram `negativoFora` com o mesmo texto do neutro, e ali não há variante.
+ *
+ * Comparar texto aqui não é comparar copy traduzida: os dois lados da igualdade
+ * saem da MESMA função, no mesmo idioma, e o que sai daqui é um identificador.
+ */
+export function mandoDaCopy(
+  p: Premissa,
+  lado: 'home' | 'away' | null,
+  negativo = false,
+): MandoCopy {
+  if (lado == null) return 'any';
+  const neutro = negativo ? p.negativo : p.label;
+  return rotuloPremissa(p, lado, negativo) === neutro ? 'any' : lado;
+}
+
+/**
+ * A chave de idioma da frase de uma premissa.
+ *
+ * `market` entra na chave porque o mesmo slug existe em dois mercados com pesos
+ * diferentes (`defesas_vazaveis` em Gols e em Ambos marcam), e é assim que a
+ * tabela de apoio do banco também o endereça. A chave não muda quando a copy
+ * muda, que é a propriedade inteira: reescrever uma premissa continua sendo
+ * cobrado pela guarda de paridade da copy no SQL e pela guarda de paridade do
+ * catálogo no espanhol, sem tocar em tela.
+ */
+export function chaveDaPremissa(
+  market: string,
+  p: Premissa,
+  lado: 'home' | 'away' | null,
+  negativo = false,
+): string {
+  const polaridade = negativo ? 'negativo' : 'label';
+  return `premissa.${market}.${p.slug}.${polaridade}.${mandoDaCopy(p, lado, negativo)}`;
+}
+
+/** A chave do "por que vale pouco" de uma premissa. Null quando ela não tem. */
+export function chaveDoMotivoDaPremissa(market: string, p: Premissa): string | null {
+  return p.motivo == null ? null : `premissa.${market}.${p.slug}.motivo`;
 }
 
 /** Resultado (1X2). Teto de premissa 51 → 30, de 7 ativas para 4. */
@@ -363,21 +419,79 @@ export function mercadoDe(slug: string): MercadoInfo | null {
   return MERCADOS.find((m) => m.slug === slug) ?? null;
 }
 
+/**
+ * A chave de idioma do nome do mercado NESTE catálogo.
+ *
+ * É família própria, separada de `mercado.longo` e `mercado.curto` do
+ * `futebol-score.ts`, porque os três textos são diferentes em português — "Gols
+ * (mais ou menos)" aqui, "Gols (Over/Under)" no longo, "Gols" no curto. Juntá-los
+ * numa chave só obrigaria a escolher qual dos três sobrevive, e isso mudaria o
+ * português.
+ */
+export function chaveDoMercadoNoCatalogo(slug: string): string {
+  return `mercado.catalogo.${slug}`;
+}
+
 /** Número da linha em pt-BR: 1,5 e não 1.5. */
 function fmtLinha(line: number): string {
   return fmtLinhaAnalisada(line);
 }
 
-/** Rótulo da saída da aposta, na linguagem do apostador. */
-export function outcomeLabel(s: Saida, home: string, away: string): string {
+/**
+ * Os moldes do rótulo da saída, por identificador.
+ *
+ * O texto em português mora AQUI e em nenhum outro lugar: `outcomeLabel` monta a
+ * frase a partir deste mapa, e o catálogo de idioma em português é GERADO dele.
+ * Assim os dois não podem divergir — que é o mesmo motivo de a copy da premissa
+ * ter uma fonte única.
+ *
+ * ⚠️ `over`/`under` continuam com o duplo espaço quando a linha é nula, porque a
+ * frase montada era essa antes do #544 e este ticket não muda uma vírgula do
+ * português.
+ */
+export const COPY_DA_SAIDA = {
+  vitoriaDe: 'Vitória do {{time}}',
+  empate: 'Empate',
+  over: 'Mais de {{linha}} gols',
+  under: 'Menos de {{linha}} gols',
+  handicap: '{{time}} {{linha}}',
+  time: '{{time}}',
+  // O nome da casa de apostas, igual ao `pickLabel` e à DM. O rótulo anterior
+  // para o "não" — "Não marcam os dois" — além de destoar, descrevia OUTRA
+  // aposta: aquilo é o 0 a 0, e BTTS No cobre também o 1 a 0.
+  bttsSim: 'Ambos marcam: Sim',
+  bttsNao: 'Ambos marcam: Não',
+  ladoOuEmpate: '{{time}} ou empate',
+  umOuOutro: '{{time}} ou {{outro}}',
+  // A saída que o catálogo não conhece sai como veio. Não é texto de idioma
+  // nenhum, e virar chave só para ter chave esconderia o defeito de dado.
+  cru: '{{outcome}}',
+} as const;
+
+/** O identificador de um molde de rótulo de saída. */
+export type CopyDaSaida = keyof typeof COPY_DA_SAIDA;
+
+/**
+ * A chave e os parâmetros do rótulo da saída, sem uma palavra de idioma dentro.
+ *
+ * É o que a tela pede quando o idioma não é o português. `outcomeLabel` é a
+ * mesma função com o molde em português já preenchido.
+ */
+export function copyDaSaida(s: Saida, home: string, away: string): CopyComParametros {
   const { market, outcome, line_value: line } = s;
+  const chave = (id: CopyDaSaida, params?: Record<string, string | number>) => ({
+    chave: `saida.${id}`,
+    params,
+  });
+
   if (market === 'match_winner') {
-    if (outcome === 'Home') return `Vitória do ${home}`;
-    if (outcome === 'Away') return `Vitória do ${away}`;
-    return 'Empate';
+    if (outcome === 'Home') return chave('vitoriaDe', { time: home });
+    if (outcome === 'Away') return chave('vitoriaDe', { time: away });
+    return chave('empate');
   }
   if (market === 'goals_over_under') {
-    return `${outcome === 'Over' ? 'Mais' : 'Menos'} de ${line != null ? fmtLinha(line) : ''} gols`;
+    const linha = line != null ? fmtLinha(line) : '';
+    return chave(outcome === 'Over' ? 'over' : 'under', { linha });
   }
   if (market === 'asian_handicap') {
     // `line` vem na ótica do mandante (mesma convenção do pickLabel e da liquidação):
@@ -385,18 +499,25 @@ export function outcomeLabel(s: Saida, home: string, away: string): string {
     // numa linha em que ele recebe +1,5.
     const daSaida = linhaDaSaida(s);
     const time = outcome === 'Home' ? home : away;
-    return daSaida != null ? `${time} ${daSaida > 0 ? '+' : '−'}${fmtLinha(Math.abs(daSaida))}` : time;
+    if (daSaida == null) return chave('time', { time });
+    return chave('handicap', {
+      time,
+      linha: `${daSaida > 0 ? '+' : '−'}${fmtLinha(Math.abs(daSaida))}`,
+    });
   }
-  // O nome da casa de apostas, igual ao `pickLabel` e à DM. O rótulo anterior
-  // para o "não" — "Não marcam os dois" — além de destoar, descrevia OUTRA
-  // aposta: aquilo é o 0 a 0, e BTTS No cobre também o 1 a 0.
-  if (market === 'btts') return outcome === 'Yes' ? 'Ambos marcam: Sim' : 'Ambos marcam: Não';
+  if (market === 'btts') return chave(outcome === 'Yes' ? 'bttsSim' : 'bttsNao');
   if (market === 'double_chance') {
-    if (outcome === '1X') return `${home} ou empate`;
-    if (outcome === 'X2') return `${away} ou empate`;
-    return `${home} ou ${away}`;
+    if (outcome === '1X') return chave('ladoOuEmpate', { time: home });
+    if (outcome === 'X2') return chave('ladoOuEmpate', { time: away });
+    return chave('umOuOutro', { time: home, outro: away });
   }
-  return outcome;
+  return chave('cru', { outcome });
+}
+
+/** Rótulo da saída da aposta, na linguagem do apostador. Em português. */
+export function outcomeLabel(s: Saida, home: string, away: string): string {
+  const { chave, params } = copyDaSaida(s, home, away);
+  return preencher(COPY_DA_SAIDA[chave.slice('saida.'.length) as CopyDaSaida], params);
 }
 
 /**
@@ -523,11 +644,33 @@ export function contaQueValem(s: SaidaComAcesas): number {
  * "não se aplica a este mercado" — outra coisa (#357).
  */
 export function pesoPalavra(p: Premissa): string {
-  if (p.peso == null) return 'Peso a calibrar';
-  if (p.peso >= 10) return 'Pesa muito';
-  if (p.peso >= 5) return 'Pesa';
-  if (p.peso === 0) return 'Não ajuda';
-  return 'Pesa pouco';
+  return COPY_DO_PESO[seloDePeso(p)];
+}
+
+/** O selo de peso de uma premissa, como identificador. */
+export type SeloDePeso = 'aCalibrar' | 'pesaMuito' | 'pesa' | 'naoAjuda' | 'pesaPouco';
+
+/** Em que selo o peso cai. A régua, separada da palavra. */
+export function seloDePeso(p: Premissa): SeloDePeso {
+  if (p.peso == null) return 'aCalibrar';
+  if (p.peso >= 10) return 'pesaMuito';
+  if (p.peso >= 5) return 'pesa';
+  if (p.peso === 0) return 'naoAjuda';
+  return 'pesaPouco';
+}
+
+/** A palavra de cada selo de peso. Fonte única: o catálogo pt é gerado daqui. */
+export const COPY_DO_PESO: Record<SeloDePeso, string> = {
+  aCalibrar: 'Peso a calibrar',
+  pesaMuito: 'Pesa muito',
+  pesa: 'Pesa',
+  naoAjuda: 'Não ajuda',
+  pesaPouco: 'Pesa pouco',
+};
+
+/** A chave de idioma do selo de peso. */
+export function chaveDoPeso(p: Premissa): string {
+  return `peso.${seloDePeso(p)}`;
 }
 
 /** Premissa que de fato decide (peso calibrado e relevante). */
@@ -545,12 +688,34 @@ export function pesoForte(p: Premissa): boolean {
  */
 export function contextoDoMercado(acesasFortes: number, semCalibragem: boolean): {
   label: string;
-  tone: 'forte' | 'parcial' | 'fraco' | 'semcal';
+  tone: SeloDaLeitura;
 } {
-  if (semCalibragem) return { label: 'Mercado em revisão', tone: 'semcal' };
-  if (acesasFortes >= 2) return { label: 'Leitura forte', tone: 'forte' };
-  if (acesasFortes === 1) return { label: 'Leitura parcial', tone: 'parcial' };
-  return { label: 'Leitura fraca', tone: 'fraco' };
+  const tone = seloDaLeitura(acesasFortes, semCalibragem);
+  return { label: COPY_DA_LEITURA[tone], tone };
+}
+
+/** A força da leitura, como identificador. Já era o `tone` que a tela usava. */
+export type SeloDaLeitura = 'forte' | 'parcial' | 'fraco' | 'semcal';
+
+/** A régua do selo da leitura, separada da palavra. */
+export function seloDaLeitura(acesasFortes: number, semCalibragem: boolean): SeloDaLeitura {
+  if (semCalibragem) return 'semcal';
+  if (acesasFortes >= 2) return 'forte';
+  if (acesasFortes === 1) return 'parcial';
+  return 'fraco';
+}
+
+/** A palavra de cada selo de leitura. Fonte única: o catálogo pt é gerado daqui. */
+export const COPY_DA_LEITURA: Record<SeloDaLeitura, string> = {
+  semcal: 'Mercado em revisão',
+  forte: 'Leitura forte',
+  parcial: 'Leitura parcial',
+  fraco: 'Leitura fraca',
+};
+
+/** A chave de idioma do selo da leitura. */
+export function chaveDaLeitura(tone: SeloDaLeitura): string {
+  return `leitura.${tone}`;
 }
 
 /**

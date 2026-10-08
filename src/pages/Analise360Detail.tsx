@@ -2,12 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { usePostHog } from '@posthog/react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   ArrowRight, Calendar, Info, Loader2, Radar, Star,
 } from 'lucide-react';
 import {
   getPlayerPhotoUrl, getTeamLogoUrl, teamAbbrToName, tryNextPlayerPhotoUrl,
 } from '@/utils/team-logos';
+import { fmtDecimal, fmtLinhaAnalisada, fmtPct } from '@/utils/formato';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAnalise360Data } from '@/hooks/use-analise360';
 import AnalyticsNav from '@/components/AnalyticsNav';
@@ -59,34 +61,25 @@ interface TriggerInfo {
 
 // ─── Constants ───────────────────────────────────────────────────────────
 
-const STAT_LABEL_PT: Record<string, string> = {
-  player_points: 'Pontos',
-  player_assists: 'Assistências',
-  player_rebounds: 'Rebotes',
-  player_points_rebounds_assists: 'PRA',
-  player_points_assists: 'P+A',
-  player_points_rebounds: 'P+R',
-  player_rebounds_assists: 'R+A',
-  player_blocks_steals: 'B+R',
-  player_threes: '3PT',
-  player_steals: 'Roubos',
-  player_blocks: 'Tocos',
-};
-
+/**
+ * As abas de estatística, por CHAVE e não por rótulo.
+ *
+ * ⚠️ Tabela de MÓDULO, avaliada na importação: frase escrita aqui ficaria
+ * congelada no idioma da primeira visita, porque o idioma troca sem recarregar
+ * a página. Quem traduz é o render. Mesmo desenho de `menu-da-conta.ts` e dos
+ * passos de tour.
+ *
+ * ⚠️ `key` é o `stat_type` que vem do banco (e `'all'`, que é sentinela de
+ * tela). Ele NÃO é traduzido: é contrato de dado, e o que o mantém assim é
+ * justamente ele ser a chave do catálogo em vez do texto.
+ */
 const TAB_OPTIONS = [
-  { key: 'all', label: 'Todas' },
-  { key: 'player_points', label: 'Pontos' },
-  { key: 'player_assists', label: 'Assistências' },
-  { key: 'player_rebounds', label: 'Rebotes' },
-  { key: 'player_points_rebounds_assists', label: 'PRA' },
+  { key: 'all', chave: 'detalhe.abas.todas' },
+  { key: 'player_points', chave: 'estatistica.player_points' },
+  { key: 'player_assists', chave: 'estatistica.player_assists' },
+  { key: 'player_rebounds', chave: 'estatistica.player_rebounds' },
+  { key: 'player_points_rebounds_assists', chave: 'estatistica.player_points_rebounds_assists' },
 ] as const;
-
-const STATUS_WORD_PT: Record<string, string> = {
-  out: 'fora',
-  doubtful: 'duvidoso',
-  questionable: 'dúvida',
-  probable: 'provável',
-};
 
 const STATUS_BADGE: Record<string, { short: string; cls: string }> = {
   out: { short: 'OUT', cls: 'bg-status-danger text-white' },
@@ -105,8 +98,16 @@ function normalizeStatus(status: string): keyof typeof STATUS_BADGE {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────
 
-function statLabel(statType: string): string {
-  return STAT_LABEL_PT[statType] ?? statType.replace(/^player_/, '');
+/**
+ * O rótulo de uma estatística, resolvido no render e não na importação.
+ *
+ * O recuo continua sendo o próprio `stat_type` sem o prefixo, como antes: dado
+ * novo no banco aparece na tela em vez de virar chave crua.
+ */
+function useRotuloDaEstatistica(): (statType: string) => string {
+  const { t } = useTranslation('analise');
+  return (statType: string) =>
+    t('estatistica.' + statType, { defaultValue: statType.replace(/^player_/, '') });
 }
 
 function lastName(fullName: string): string {
@@ -232,6 +233,8 @@ function MandalaView({
   hoverId: number | null;
   onHover: (id: number | null) => void;
 }) {
+  const { t } = useTranslation('analise');
+  const rotuloDaEstatistica = useRotuloDaEstatistica();
   const MAX_VISIBLE = 8;
   const visible = satellites.slice(0, MAX_VISIBLE);
   const overflow = satellites.length - visible.length;
@@ -333,7 +336,7 @@ function MandalaView({
                     ? 'bg-status-danger/10 text-status-danger border border-status-danger/20'
                     : 'bg-canvas-2 text-ink-2 border border-line'
                 }`}>
-                  {isPos ? '+' : ''}{pct.toFixed(0)}%
+                  {isPos ? '+' : ''}{fmtPct(pct / 100, 0)}
                 </span>
               </div>
               <span className="text-[11px] mt-4 text-center max-w-[120px] leading-tight text-ink-2 group-hover:text-ink">
@@ -368,11 +371,11 @@ function MandalaView({
                 <div className="space-y-1">
                   {[...sat.rows].sort((a, b) => b.gapPct - a.gapPct).map(r => (
                     <div key={r.statType} className="flex items-center justify-between gap-3 text-[10px]">
-                      <span className="text-ink-2">{statLabel(r.statType)}</span>
+                      <span className="text-ink-2">{rotuloDaEstatistica(r.statType)}</span>
                       <span className="text-ink tabular-nums">
-                        {r.avgCom.toFixed(1)} → <span className="font-semibold">{r.avgSem.toFixed(1)}</span>
+                        {fmtDecimal(r.avgCom, 1)} → <span className="font-semibold">{fmtDecimal(r.avgSem, 1)}</span>
                         <span className={`ml-1 ${gapTextColor(r.gapPct)}`}>
-                          {r.gapPct > 0 ? '+' : ''}{r.gapPct.toFixed(0)}%
+                          {r.gapPct > 0 ? '+' : ''}{fmtPct(r.gapPct / 100, 0)}
                         </span>
                       </span>
                     </div>
@@ -386,7 +389,7 @@ function MandalaView({
 
       {overflow > 0 && (
         <p className="text-[11px] text-ink-2 text-center mt-2">
-          +{overflow} {overflow === 1 ? 'companheiro' : 'companheiros'} impactado{overflow === 1 ? '' : 's'} fora da cadeia visível
+          {t('detalhe.cadeia.excedente', { count: overflow })}
         </p>
       )}
     </div>
@@ -403,10 +406,11 @@ function scrollToCompanion(backupPlayerId: number) {
 // ─── Card do próximo jogo (usado mobile inline + sidebar desktop) ────────
 
 function NextGameCard({ trigger }: { trigger: TriggerInfo }) {
+  const { t } = useTranslation('analise');
   return (
     <div className="bg-white border border-line rounded-xl p-4">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">Próximo jogo</span>
+        <span className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">{t('detalhe.proximoJogo.titulo')}</span>
         <span className="text-[10px] text-ink-2 tabular-nums">
           <Calendar className="w-3 h-3 inline-block -mt-0.5 mr-1" />
           {formatGameDateBR(trigger.gameDate)}{trigger.gameTime ? ` · ${trigger.gameTime}` : ''}
@@ -424,7 +428,7 @@ function NextGameCard({ trigger }: { trigger: TriggerInfo }) {
           </div>
           <span className="text-[10px] text-ink-2 font-semibold">{trigger.homeTeamAbbr}</span>
         </div>
-        <span className="text-[12px] text-ink-2 font-semibold">vs</span>
+        <span className="text-[12px] text-ink-2 font-semibold">{t('detalhe.proximoJogo.vs')}</span>
         <div className="flex flex-col items-center gap-1">
           <div className="w-12 h-12 rounded-xl bg-canvas-2 flex items-center justify-center p-1.5">
             <img
@@ -440,7 +444,7 @@ function NextGameCard({ trigger }: { trigger: TriggerInfo }) {
       {trigger.isB2b && (
         <div className="flex justify-center mt-3">
           <span className="text-[10px] px-2 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200">
-            Back-to-Back
+            {t('detalhe.proximoJogo.b2b')}
           </span>
         </div>
       )}
@@ -505,7 +509,7 @@ function MobileChain({
                     ? 'bg-status-danger/10 text-status-danger border border-status-danger/20'
                     : 'bg-canvas-2 text-ink-2 border border-line'
                 }`}>
-                  {isPos ? '+' : ''}{pct.toFixed(0)}%
+                  {isPos ? '+' : ''}{fmtPct(pct / 100, 0)}
                 </span>
                 <span className="text-[10px] text-ink-2 mt-1 text-center leading-tight truncate w-full">
                   {lastName(sat.backupPlayerName)}
@@ -526,13 +530,14 @@ function MobileChain({
 // ─── Ranking list (painel direito) ───────────────────────────────────────
 
 function RankingList({ satellites }: { satellites: BackupAggregate[] }) {
+  const { t } = useTranslation('analise');
   if (satellites.length === 0) return null;
   const maxGap = Math.max(...satellites.map(s => Math.abs(s.topRow.gapPct)), 1);
   return (
     <div className="bg-white border border-line rounded-xl p-4">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">Classificação de impacto</span>
-        <span className="text-[10px] text-ink-2">melhor stat de cada</span>
+        <span className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">{t('detalhe.ranking.titulo')}</span>
+        <span className="text-[10px] text-ink-2">{t('detalhe.ranking.legenda')}</span>
       </div>
       <div className="space-y-2">
         {satellites.map((sat, i) => {
@@ -547,7 +552,7 @@ function RankingList({ satellites }: { satellites: BackupAggregate[] }) {
                 <div className={`h-full rounded-full ${gapBarColor(pct)}`} style={{ width: `${barW}%`, opacity: 0.85 }} />
               </div>
               <span className={`text-[11px] font-semibold tabular-nums shrink-0 w-12 text-right ${gapTextColor(pct)}`}>
-                {isPos ? '+' : ''}{pct.toFixed(0)}%
+                {isPos ? '+' : ''}{fmtPct(pct / 100, 0)}
               </span>
             </div>
           );
@@ -568,6 +573,8 @@ function CompanionCard({
   trigger: TriggerInfo;
   onOpenDashboard: () => void;
 }) {
+  const { t } = useTranslation('analise');
+  const rotuloDaEstatistica = useRotuloDaEstatistica();
   // Apenas linhas com gap_pct positivo significativo (valorizadas)
   const valuedRows = agg.rows.filter(r => r.gapPct > 0).sort((a, b) => b.gapPct - a.gapPct);
   if (valuedRows.length === 0) return null;
@@ -591,7 +598,7 @@ function CompanionCard({
               </div>
             </div>
             <span className="text-[11px] text-ink-2">
-              {trigger.triggerTeamAbbr} · {valuedRows.length} {valuedRows.length === 1 ? 'estatística valorizada' : 'estatísticas valorizadas'}
+              {trigger.triggerTeamAbbr} · {t('detalhe.companheiros.estatisticas', { count: valuedRows.length })}
             </span>
           </div>
         </div>
@@ -600,7 +607,7 @@ function CompanionCard({
           onClick={onOpenDashboard}
           className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-forest text-white text-[11px] font-semibold hover:bg-forest-soft transition-colors"
         >
-          Dashboard
+          {t('detalhe.companheiros.dashboard')}
           <ArrowRight className="w-3 h-3" />
         </button>
       </div>
@@ -612,22 +619,31 @@ function CompanionCard({
           return (
             <div key={row.statType} className="border-t border-line pt-2.5 first:border-t-0 first:pt-0">
               <div className="flex items-center justify-between text-[12px] mb-1">
-                <span className="text-ink-2 font-medium">{statLabel(row.statType)}</span>
+                <span className="text-ink-2 font-medium">{rotuloDaEstatistica(row.statType)}</span>
                 <div className="flex items-center gap-2">
-                  <span className="text-ink-2 tabular-nums">{row.avgCom.toFixed(1)}</span>
+                  <span className="text-ink-2 tabular-nums">{fmtDecimal(row.avgCom, 1)}</span>
                   <span className="text-ink-2">→</span>
-                  <span className="text-ink font-semibold tabular-nums">{row.avgSem.toFixed(1)}</span>
+                  <span className="text-ink font-semibold tabular-nums">{fmtDecimal(row.avgSem, 1)}</span>
                   <span className={`font-semibold tabular-nums ${gapTextColor(row.gapPct)}`}>
-                    {isPos ? '+' : ''}{row.gapPct.toFixed(0)}%
+                    {isPos ? '+' : ''}{fmtPct(row.gapPct / 100, 0)}
                   </span>
                 </div>
               </div>
+              {/* A LINHA passa pelo formatador DELA, e não pelo genérico:
+                  é lá que mora a decisão (ainda aberta) de a linha seguir o país
+                  ou o setor, e onze outros lugares a desenham por ela. Chamar o
+                  formatador genérico aqui criaria um décimo segundo lugar que não
+                  acompanharia quando a decisão virar — a caçada que o #529 existe
+                  para evitar. O custo é que "15.0" passa a sair "15", igual aos
+                  outros onze. */}
               {row.lineValue != null && (
                 <div className="flex items-center justify-between text-[11px] mb-1 text-ink-2">
-                  <span>Linha {row.lineValue.toFixed(1)} · proj {row.avgSem.toFixed(1)}</span>
+                  <span>{t('detalhe.companheiros.linhaEProjecao', { linha: fmtLinhaAnalisada(row.lineValue), projecao: fmtDecimal(row.avgSem, 1) })}</span>
                   {row.gapVsLinePct != null && (
                     <span className={`tabular-nums ${gapTextColor(row.gapVsLinePct)}`}>
-                      {row.gapVsLinePct > 0 ? '+' : ''}{row.gapVsLinePct.toFixed(0)}% vs linha
+                      {t('detalhe.companheiros.vsLinha', {
+                        pct: (row.gapVsLinePct > 0 ? '+' : '') + fmtPct(row.gapVsLinePct / 100, 0),
+                      })}
                     </span>
                   )}
                 </div>
@@ -654,6 +670,7 @@ function CompanionCard({
 
 export default function Analise360Detail() {
   const { triggerPlayerId } = useParams<{ triggerPlayerId: string }>();
+  const { t } = useTranslation('analise');
   const navigate = useNavigate();
   const isMobile = useIsMobile();
   const posthog = usePostHog();
@@ -776,7 +793,11 @@ export default function Analise360Detail() {
   return (
     <>
       <Helmet>
-        <title>{triggerInfo ? `${triggerInfo.triggerName} · Análise 360°` : 'Análise 360°'} — Smart Betting</title>
+        <title>
+          {triggerInfo
+            ? t('detalhe.tituloDaAbaComJogador', { jogador: triggerInfo.triggerName })
+            : t('detalhe.tituloDaAba')}
+        </title>
       </Helmet>
 
       <div className="theme-bolao min-h-screen bg-canvas text-ink">
@@ -786,16 +807,19 @@ export default function Analise360Detail() {
         {isLoading ? (
           <div className="flex items-center justify-center py-32 gap-2">
             <Loader2 className="w-5 h-5 animate-spin text-forest opacity-70" />
-            <span className="text-sm text-ink-2">Carregando...</span>
+            <span className="text-sm text-ink-2">{t('detalhe.carregando')}</span>
           </div>
         ) : (error && !isDemo) ? (
           <div className="text-center py-32 text-sm text-status-danger">
-            {(error as Error)?.message ?? 'Falha ao carregar dados'}
+            {/* A mensagem vem do servidor (erro da RPC) e chega no idioma dele:
+                traduzi-la exigiria o banco mandar identificador em vez de frase.
+                Só o recuo é nosso, e é esse que o catálogo cobre. */}
+            {(error as Error)?.message ?? t('detalhe.erro')}
           </div>
         ) : !triggerInfo ? (
           <div className="text-center py-32">
             <Radar className="w-8 h-8 text-ink-2/40 mx-auto mb-3" />
-            <p className="text-sm text-ink-2">Nenhum dado encontrado para este jogador.</p>
+            <p className="text-sm text-ink-2">{t('detalhe.vazio')}</p>
           </div>
         ) : (
           <>
@@ -827,11 +851,11 @@ export default function Analise360Detail() {
                         {triggerInfo.triggerDaysOut != null && triggerInfo.triggerDaysOut > 0 && (
                           <>
                             <span className="text-line">·</span>
-                            <span>fora há {triggerInfo.triggerDaysOut}d</span>
+                            <span>{t('detalhe.foraHa', { dias: triggerInfo.triggerDaysOut })}</span>
                           </>
                         )}
                         <span className="text-line">·</span>
-                        <span>{STATUS_WORD_PT[status] ?? status}</span>
+                        <span>{t('estado.palavra.' + status, { defaultValue: status })}</span>
                       </div>
                     </div>
                   </div>
@@ -849,7 +873,7 @@ export default function Analise360Detail() {
                             : 'text-ink-2 hover:text-ink'
                         }`}
                       >
-                        {tab.label}
+                        {t(tab.chave)}
                       </button>
                     ))}
                   </div>
@@ -863,12 +887,12 @@ export default function Analise360Detail() {
                 {/* Cadeia de impacto */}
                 <div data-tour="a360d-cadeia" className="bg-white border border-line rounded-xl p-4 md:p-6">
                   <div className="mb-4">
-                    <div className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">Cadeia de impacto</div>
-                    <p className="text-[11px] text-ink-2 mt-0.5 hidden sm:block">passe o mouse nos jogadores para detalhes</p>
-                    <p className="text-[11px] text-ink-2 mt-0.5 sm:hidden">toque em um jogador para ver a análise</p>
+                    <div className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">{t('detalhe.cadeia.titulo')}</div>
+                    <p className="text-[11px] text-ink-2 mt-0.5 hidden sm:block">{t('detalhe.cadeia.ajudaMouse')}</p>
+                    <p className="text-[11px] text-ink-2 mt-0.5 sm:hidden">{t('detalhe.cadeia.ajudaToque')}</p>
                   </div>
                   {backupAggs.length === 0 ? (
-                    <p className="text-sm text-ink-2 text-center py-10">Sem dados para esta estatística.</p>
+                    <p className="text-sm text-ink-2 text-center py-10">{t('detalhe.cadeia.vazio')}</p>
                   ) : isMobile ? (
                     <MobileChain satellites={backupAggs} trigger={triggerInfo} />
                   ) : (
@@ -890,19 +914,19 @@ export default function Analise360Detail() {
                   <div className="grid grid-cols-3 gap-2">
                     <div className="bg-white border border-line rounded-lg p-3 text-center">
                       <div className="text-[20px] font-semibold text-ink tabular-nums leading-none">{kpis.valued}</div>
-                      <div className="text-[9px] uppercase tracking-wider text-ink-2 font-semibold mt-1">Valorizados</div>
+                      <div className="text-[9px] uppercase tracking-wider text-ink-2 font-semibold mt-1">{t('detalhe.kpi.valorizados')}</div>
                     </div>
                     <div className="bg-white border border-line rounded-lg p-3 text-center">
                       <div className={`text-[20px] font-semibold tabular-nums leading-none ${kpis.avgGap > 0 ? 'text-forest' : 'text-ink-2'}`}>
-                        {kpis.avgGap > 0 ? '+' : ''}{kpis.avgGap}%
+                        {kpis.avgGap > 0 ? '+' : ''}{fmtPct(kpis.avgGap / 100, 0)}
                       </div>
-                      <div className="text-[9px] uppercase tracking-wider text-ink-2 font-semibold mt-1">Gap médio</div>
+                      <div className="text-[9px] uppercase tracking-wider text-ink-2 font-semibold mt-1">{t('detalhe.kpi.gapMedio')}</div>
                     </div>
                     <div className="bg-white border border-line rounded-lg p-3 text-center">
                       <div className={`text-[20px] font-semibold tabular-nums leading-none ${kpis.maxGap > 0 ? 'text-emerald-700' : 'text-ink-2'}`}>
-                        {kpis.maxGap > 0 ? '+' : ''}{kpis.maxGap}%
+                        {kpis.maxGap > 0 ? '+' : ''}{fmtPct(kpis.maxGap / 100, 0)}
                       </div>
-                      <div className="text-[9px] uppercase tracking-wider text-ink-2 font-semibold mt-1">Maior</div>
+                      <div className="text-[9px] uppercase tracking-wider text-ink-2 font-semibold mt-1">{t('detalhe.kpi.maior')}</div>
                     </div>
                   </div>
 
@@ -913,11 +937,10 @@ export default function Analise360Detail() {
                   <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
                     <div className="flex items-center gap-1.5 mb-1.5">
                       <Info className="w-3.5 h-3.5 text-amber-700" />
-                      <span className="text-[10px] uppercase tracking-wider text-amber-700 font-semibold">Por que isso importa</span>
+                      <span className="text-[10px] uppercase tracking-wider text-amber-700 font-semibold">{t('detalhe.porQue.titulo')}</span>
                     </div>
                     <p className="text-[12px] text-ink leading-snug">
-                      Sem {lastName(triggerInfo.triggerName)}, minutos e posses se dividem entre os companheiros.
-                      Quanto maior a diferença %, maior a chance de a reserva superar a linha de mercado nesta partida.
+                      {t('detalhe.porQue.texto', { jogador: lastName(triggerInfo.triggerName) })}
                     </p>
                   </div>
                 </div>
@@ -927,12 +950,16 @@ export default function Analise360Detail() {
                   <div>
                     <div className="flex items-center justify-between mb-3">
                       <div>
-                        <h2 className="text-[16px] font-semibold text-ink">Companheiros valorizados</h2>
+                        <h2 className="text-[16px] font-semibold text-ink">{t('detalhe.companheiros.titulo')}</h2>
                         <p className="text-[12px] text-ink-2 mt-0.5">
-                          {kpis.valued} {kpis.valued === 1 ? 'jogador' : 'jogadores'} · {backupAggs.flatMap(a => a.rows.filter(r => r.gapPct > 0)).length} oportunidades destravadas
+                          {t('detalhe.companheiros.jogadores', { count: kpis.valued })}
+                          {' · '}
+                          {t('detalhe.companheiros.oportunidades', {
+                            count: backupAggs.flatMap(a => a.rows.filter(r => r.gapPct > 0)).length,
+                          })}
                         </p>
                       </div>
-                      <span className="text-[11px] text-ink-2 hidden sm:block">ordenados por maior gap</span>
+                      <span className="text-[11px] text-ink-2 hidden sm:block">{t('detalhe.companheiros.ordem')}</span>
                     </div>
                     <div className="flex flex-col gap-3">
                       {backupAggs.map(agg => (
@@ -961,19 +988,19 @@ export default function Analise360Detail() {
                 <div className="grid grid-cols-3 gap-2">
                   <div className="bg-white border border-line rounded-lg p-3 text-center">
                     <div className="text-[20px] font-semibold text-ink tabular-nums leading-none">{kpis.valued}</div>
-                    <div className="text-[9px] uppercase tracking-wider text-ink-2 font-semibold mt-1">Valorizados</div>
+                    <div className="text-[9px] uppercase tracking-wider text-ink-2 font-semibold mt-1">{t('detalhe.kpi.valorizados')}</div>
                   </div>
                   <div className="bg-white border border-line rounded-lg p-3 text-center">
                     <div className={`text-[20px] font-semibold tabular-nums leading-none ${kpis.avgGap > 0 ? 'text-forest' : 'text-ink-2'}`}>
-                      {kpis.avgGap > 0 ? '+' : ''}{kpis.avgGap}%
+                      {kpis.avgGap > 0 ? '+' : ''}{fmtPct(kpis.avgGap / 100, 0)}
                     </div>
-                    <div className="text-[9px] uppercase tracking-wider text-ink-2 font-semibold mt-1">Gap médio</div>
+                    <div className="text-[9px] uppercase tracking-wider text-ink-2 font-semibold mt-1">{t('detalhe.kpi.gapMedio')}</div>
                   </div>
                   <div className="bg-white border border-line rounded-lg p-3 text-center">
                     <div className={`text-[20px] font-semibold tabular-nums leading-none ${kpis.maxGap > 0 ? 'text-emerald-700' : 'text-ink-2'}`}>
-                      {kpis.maxGap > 0 ? '+' : ''}{kpis.maxGap}%
+                      {kpis.maxGap > 0 ? '+' : ''}{fmtPct(kpis.maxGap / 100, 0)}
                     </div>
-                    <div className="text-[9px] uppercase tracking-wider text-ink-2 font-semibold mt-1">Maior</div>
+                    <div className="text-[9px] uppercase tracking-wider text-ink-2 font-semibold mt-1">{t('detalhe.kpi.maior')}</div>
                   </div>
                 </div>
 
@@ -984,11 +1011,10 @@ export default function Analise360Detail() {
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
                   <div className="flex items-center gap-1.5 mb-1.5">
                     <Info className="w-3.5 h-3.5 text-amber-700" />
-                    <span className="text-[10px] uppercase tracking-wider text-amber-700 font-semibold">Por que isso importa</span>
+                    <span className="text-[10px] uppercase tracking-wider text-amber-700 font-semibold">{t('detalhe.porQue.titulo')}</span>
                   </div>
                   <p className="text-[12px] text-ink leading-snug">
-                    Sem {lastName(triggerInfo.triggerName)}, minutos e posses se dividem entre os companheiros.
-                    Quanto maior a diferença %, maior a chance de a reserva superar a linha de mercado nesta partida.
+                    {t('detalhe.porQue.texto', { jogador: lastName(triggerInfo.triggerName) })}
                   </p>
                 </div>
               </aside>

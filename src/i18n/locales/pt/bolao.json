@@ -1,0 +1,431 @@
+{
+  "acoes": {
+    "criarGratis": "Criar meu bolão grátis",
+    "entrarComCodigo": "Já tem código? Entrar aqui →"
+  },
+  "comoFunciona": {
+    "etiqueta": "Como funciona",
+    "titulo": "3 passos. Sem complicação."
+  },
+  "landing": {
+    "selo": "Copa do Mundo 2026",
+    "titulo": "O bolão da galera.",
+    "tituloDestaque": "Sem planilha do Excel.",
+    "chamada": "Cria em 30 segundos, manda o link no grupo, e pronto. A gente cuida do ranking, dos placares e dos palpites de campeão.",
+    "semBurocracia": "Sem cartão · Sem cadastro complicado",
+    "numeros": {
+      "jogos": "jogos",
+      "selecoes": "seleções",
+      "grupos": "grupos"
+    },
+    "passos": {
+      "criar": {
+        "titulo": "Cria o bolão",
+        "texto": "Dá um nome (ex: \"Bolão da firma\"). Em 30s tá pronto."
+      },
+      "convidar": {
+        "titulo": "Manda o link",
+        "texto": "Cola no grupo do WhatsApp. A galera entra em 1 clique."
+      },
+      "palpitar": {
+        "titulo": "Palpita",
+        "texto": "Cada jogador palpita os 104 jogos antes de começarem. A gente faz o ranking sozinho."
+      }
+    },
+    "planos": {
+      "etiqueta": "Planos",
+      "titulo": "Tudo grátis até 20 pessoas.",
+      "chamada": "Mesmas features nos dois planos. Pra grupo maior, sobe pro Premium — pagamento único, sem mensalidade.",
+      "free": {
+        "nome": "Grátis",
+        "condicao": "pra sempre · até 20 pessoas",
+        "itens": {
+          "participantes": "Até 20 participantes",
+          "pontuacao": "Pontuação 100% customizável",
+          "multiplicador": "Multiplicador por fase (Final vale até 5×)",
+          "especiais": "Palpites especiais (campeão, finalistas, semis, quartas)",
+          "ranking": "Ranking por fase + destaques",
+          "identidade": "Logo e cor próprios do bolão"
+        }
+      },
+      "premium": {
+        "selo": "Pra grupo grande",
+        "nome": "Premium",
+        "condicao": "pagamento único · sem assinatura",
+        "itens": {
+          "ilimitado": "Participantes ilimitados (20+)",
+          "tudoDoFree": "Tudo do Free incluído"
+        },
+        "rodape": "Mesmas features do Free. Diferença é só o tamanho do grupo."
+      }
+    },
+    "diferenciais": {
+      "cadastro": {
+        "titulo": "Sem cadastro chato",
+        "texto": "Login com Google, e tá dentro. Cada amigo entra com 1 clique no link."
+      },
+      "automatico": {
+        "titulo": "Tudo automático",
+        "texto": "Placares atualizam sozinho via API oficial. Você só palpita e acompanha."
+      },
+      "regras": {
+        "titulo": "Seu bolão, suas regras",
+        "texto": "Ajuste pontuação, multiplicador por fase, prazos de palpite. Sem briga."
+      }
+    },
+    "faq": {
+      "etiqueta": "Perguntas frequentes",
+      "titulo": "Bora tirar dúvida",
+      "gratuidade": {
+        "pergunta": "É grátis mesmo? Tem pegadinha?",
+        "resposta": "É grátis pra criar, entrar e usar todas as features (pontuação custom, palpites especiais, multiplicador por fase). O Premium (R$ 19,90 único) só é necessário se o seu bolão passa de 20 pessoas. Sem mensalidade, sem trial."
+      },
+      "convite": {
+        "pergunta": "Como meus amigos entram?",
+        "resposta": "Você cria o bolão e gera um link tipo smartbetting.app/bolao/entrar/ABC12345. Manda no WhatsApp, eles clicam, fazem login com Google, tá dentro."
+      },
+      "sair": {
+        "pergunta": "E se eu quiser sair de um bolão?",
+        "resposta": "Tem botão \"Sair\" na página do bolão. Seus palpites somem, você não aparece no ranking. Pra voltar, precisa do link de novo."
+      },
+      "placares": {
+        "pergunta": "Como vocês atualizam os placares?",
+        "resposta": "API oficial da FIFA + nossa equipe revisando. Após cada jogo, o ranking recalcula sozinho."
+      },
+      "varios": {
+        "pergunta": "Posso criar mais de 1 bolão?",
+        "resposta": "Quantos quiser. Bolão da firma, bolão da família, bolão dos amigos da escola. Cada um separado."
+      },
+      "premium": {
+        "pergunta": "Premium vale só pra um bolão?",
+        "resposta": "Sim — o pagamento de R$ 19,90 vale pro bolão que você escolheu Premium na criação (libera mais de 20 participantes). Outros bolões seus continuam Free. Não tem assinatura — é pagamento por bolão."
+      }
+    },
+    "fechamento": {
+      "titulo": "Bora montar o bolão da Copa?",
+      "texto": "30 segundos pra criar. 1 link pra mandar pra galera. Em junho/2026 tá todo mundo no grupo torcendo junto."
+    }
+  },
+  "lp": {
+    "selo": "Bolão · Copa do Mundo 2026",
+    "titulo": "Crie seu bolão em <destaque>30 segundos</destaque>.",
+    "chamada": "Reúna a galera, palpite todos os 104 jogos, veja quem manja mais. Grátis pra até 20 amigos. Sem cartão, sem app pra instalar.",
+    "selos": {
+      "gratuito": "100% gratuito",
+      "semCartao": "Sem cartão",
+      "semInstalar": "Sem instalar nada"
+    },
+    "passos": {
+      "criar": {
+        "titulo": "Cria em 1 minuto",
+        "texto": "Escolhe um nome, define a pontuação se quiser, pronto. Você é dono do seu bolão."
+      },
+      "convidar": {
+        "titulo": "Chama no WhatsApp",
+        "texto": "Manda o link no grupo da família, da firma, dos amigos. Quem clicar entra com 1 toque."
+      },
+      "palpitar": {
+        "titulo": "Palpita + disputa",
+        "texto": "104 jogos pra palpitar (ou usa o Quick Pick e edita depois). Ranking ao vivo, conquistas, share nos Stories."
+      }
+    },
+    "semCompromisso": "Não tá comprometido com nada. Apaga depois se quiser."
+  },
+  "home": {
+    "hero": {
+      "selo": "Copa do Mundo 2026",
+      "contagem_one": "Falta <0>{{count}} dia</0>.<1></1>Já tá no bolão de quem?",
+      "contagem_other": "Faltam <0>{{count}} dias</0>.<1></1>Já tá no bolão de quem?",
+      "comecou": "A Copa começou.<0></0>Bora palpitar?",
+      "chamada": "Crie um do zero pra galera ou entre no de um amigo com o código. EUA · México · Canadá · 48 seleções · 104 jogos.",
+      "criar": "Criar bolão",
+      "ou": "ou",
+      "codigoPlaceholder": "Código (ex: ABC123)",
+      "entrar": "Entrar"
+    },
+    "meus": {
+      "titulo": "Meus bolões",
+      "ativos_one": "· {{count}} ativo",
+      "ativos_other": "· {{count}} ativos"
+    },
+    "vazio": {
+      "criar": {
+        "titulo": "Crie um do zero",
+        "texto": "Você é o dono. Define a pontuação, convida a galera, customiza com banner. Free pra até 20 pessoas, Premium pra ranking ilimitado e palpites especiais.",
+        "acao": "Criar agora"
+      },
+      "entrar": {
+        "titulo": "Entre num bolão",
+        "texto": "Pediu o código pro amigo? Cola aqui. Você entra direto, vê o ranking e começa a palpitar.",
+        "acao": "Entrar"
+      }
+    },
+    "card": {
+      "premium": "PREMIUM",
+      "dono": "dono",
+      "posicao": "posição",
+      "de": "de {{total}}",
+      "seusPalpites": "Seus palpites",
+      "tudoPalpitado": "Tudo palpitado",
+      "proxPrazo": "próx prazo",
+      "aguardandoJogos": "Aguardando jogos",
+      "abrir": "Abrir"
+    },
+    "tabela": {
+      "titulo": "Tabela da Copa",
+      "resumo": "104 jogos · 12 grupos · do dia 11/06 ao 19/07",
+      "grupos": "Grupos",
+      "mataMata": "Mata-mata",
+      "rodadaAnterior": "Rodada anterior",
+      "proximaRodada": "Próxima rodada",
+      "carregando": "Carregando jogos…"
+    },
+    "fases": {
+      "r1": {
+        "rotulo": "Rodada 1",
+        "periodo": "11 a 14 de junho"
+      },
+      "r2": {
+        "rotulo": "Rodada 2",
+        "periodo": "15 a 18 de junho"
+      },
+      "r3": {
+        "rotulo": "Rodada 3",
+        "periodo": "19 a 25 de junho"
+      },
+      "round32": {
+        "rotulo": "Oitavas (32)",
+        "periodo": "27 a 30 de junho"
+      },
+      "round16": {
+        "rotulo": "16 Avos",
+        "periodo": "03 a 05 de julho"
+      },
+      "quartas": {
+        "rotulo": "Quartas",
+        "periodo": "08 a 11 de julho"
+      },
+      "semi": {
+        "rotulo": "Semifinal",
+        "periodo": "14 a 15 de julho"
+      },
+      "terceiro": {
+        "rotulo": "3º lugar",
+        "periodo": "18 de julho"
+      },
+      "final": {
+        "rotulo": "Final",
+        "periodo": "19 de julho"
+      }
+    },
+    "criacao": {
+      "sucesso": "Bolão criado!",
+      "codigo": "Código: {{codigo}}",
+      "erro": "Erro ao criar",
+      "erroBolao": "Erro ao criar bolão",
+      "erroCheckout": "Erro ao iniciar checkout",
+      "naoAutenticado": "Usuário não autenticado"
+    },
+    "entrada": {
+      "sucesso": "Você entrou no bolão!",
+      "erro": "Erro",
+      "erroEntrar": "Erro ao entrar"
+    },
+    "checkout": {
+      "titulo": "Redirecionando para pagamento",
+      "texto": "Aguarde a página da Stripe carregar. Não feche essa janela."
+    }
+  },
+  "boasVindas": {
+    "copiado": {
+      "titulo": "Link copiado!",
+      "descricao": "Cola no grupo onde quiser."
+    },
+    "erroCopiar": {
+      "titulo": "Não consegui copiar",
+      "descricao": "Selecione o link manualmente."
+    },
+    "compartilhar": {
+      "titulo": "Bolão \"{{nome}}\" — Copa 2026"
+    },
+    "hero": {
+      "titulo": "Boa! <0>\"{{nome}}\"</0> tá no ar.",
+      "texto": "Agora bora chamar a galera pra palpitar — sem amigos no bolão, ele não rola."
+    },
+    "convite": {
+      "etiqueta": "Convidar amigos",
+      "codigo": "Código do bolão",
+      "link": "Ou link direto",
+      "copiar": "Copiar link",
+      "copiado": "Copiado!",
+      "compartilhar": "Compartilhar"
+    },
+    "personalize": {
+      "titulo": "Personalize (opcional)",
+      "texto": "Defaults são bons. Mexa só no que quiser — dá pra mudar tudo depois, antes do 1º jogo.",
+      "pontuacao": {
+        "titulo": "Pontuação",
+        "texto": "Quanto vale acertar placar, vencedor, etc. Padrão: 3-2-1."
+      },
+      "prazo": {
+        "titulo": "Prazo de palpites",
+        "texto": "Até quando palpitar antes de cada jogo. Padrão: até o jogo começar."
+      },
+      "modalidades": {
+        "titulo": "Modalidades",
+        "texto": "Habilitar palpites especiais: campeão, semifinalistas, mata-mata."
+      },
+      "identidade": {
+        "titulo": "Logo e identidade",
+        "texto": "Adicionar logo do bolão e escolher tema visual."
+      }
+    },
+    "rodape": {
+      "configs": "Configs avançadas (inscrições, excluir) ficam no ícone dentro do bolão.",
+      "irProBolao": "Ir pro bolão"
+    }
+  },
+  "entrar": {
+    "meta": {
+      "titulo": "Entrar no Bolão Copa 2026 | Smart Betting",
+      "descricao": "Você foi convidado pra um bolão da Copa 2026. Entre em 1 clique e palpite os 104 jogos.",
+      "ogTitulo": "Bolão Copa 2026 — Entre na disputa",
+      "ogDescricao": "104 jogos, palpite de campeão, ranking ao vivo."
+    },
+    "selo": "Bolão Copa do Mundo 2026",
+    "codigoInvalido": "Código de convite inválido",
+    "erroEntrar": "Erro ao entrar no bolão",
+    "verificando": "Verificando convite…",
+    "codigo": "código",
+    "sucesso": {
+      "titulo": "Você entrou!",
+      "texto": "Bem-vindo ao bolão"
+    },
+    "premium": "Premium",
+    "participantes": "participantes",
+    "rotuloCodigo": "Código",
+    "pendentes_one": "Você tem {{count}} jogo para palpitar.",
+    "pendentes_other": "Você tem {{count}} jogos para palpitar.",
+    "pendentesCta": "Comece agora — leva poucos minutos.",
+    "verDepois": "Ver depois",
+    "fazerPalpites": "Fazer meus palpites",
+    "erro": {
+      "titulo": "Convite não encontrado",
+      "texto": "Esse código pode ter <0>expirado</0>, ou o dono <1>encerrou as inscrições</1>. Pede pra ele um link novo.",
+      "causasTitulo": "Por que pode ter dado erro",
+      "causa1": "O bolão está com inscrições encerradas pelo dono",
+      "causa2": "Você digitou o código errado (cheque com quem te chamou)",
+      "causa3": "O bolão foi deletado ou está cheio",
+      "tentarOutro": "Tentar outro código",
+      "placeholder": "ex: ABC12345",
+      "entrar": "Entrar",
+      "voltar": "Voltar para meus bolões"
+    }
+  },
+  "detalhe": {
+    "saiu": "Você saiu do bolão",
+    "erroSair": "Erro ao sair",
+    "tenteNovamente": "Tente novamente",
+    "carregando": "Carregando...",
+    "naoEncontrado": "Bolão não encontrado",
+    "voltar": "Voltar",
+    "abas": {
+      "ranking": "Ranking",
+      "estatisticas": "Estatísticas",
+      "aria": "Seções do bolão"
+    },
+    "especiais": {
+      "etiqueta": "Palpites Especiais",
+      "campeao": "Campeão",
+      "mataMataReal": "Mata-mata (jogo real)",
+      "finalistas": "Finalistas",
+      "semis": "Semis",
+      "quartas": "Quartas",
+      "oitavas": "Oitavas",
+      "dezesseisAvos": "16 avos",
+      "nenhum": "Nenhum habilitado",
+      "verPalpites": "Ver palpites →",
+      "palpitar": "Palpitar →"
+    },
+    "jogador": {
+      "etiqueta": "Palpites de Jogador",
+      "premios": "Artilheiro, Craque, Goleiro, Revelação",
+      "palpitar": "Palpitar →"
+    },
+    "cabecalho": {
+      "logoAlt": "Logo",
+      "selo": "Bolão Copa 2026",
+      "premium": "PREMIUM",
+      "jogadorUm": "{{count}} jogador",
+      "jogadoresMuitos": "{{count}} jogadores",
+      "copiarCodigo": "Copiar código de convite {{codigo}}",
+      "cliqueParaCopiar": "Clique para copiar",
+      "codigoCopiado": "Código copiado",
+      "erroCopiar": "Erro ao copiar",
+      "pontuacao": "Pontuação:",
+      "pontuacaoValor": "{{resultado}}pt resultado · {{exato}}pt placar exato",
+      "porFase": "· ×fase",
+      "configuracoes": "Configurações",
+      "abrirConfiguracoes": "Abrir configurações do bolão",
+      "sair": "Sair",
+      "sairDoBolao": "Sair do bolão"
+    },
+    "onboarding": {
+      "titulo": "Faça seus palpites",
+      "texto": "Palpite nos 104 jogos antes de cada partida começar"
+    },
+    "share": {
+      "conteudoImagem": "Conteúdo da imagem",
+      "top5": "Top 5",
+      "todos": "Todos",
+      "compartilhar": "Compartilhar:",
+      "whatsapp": "WhatsApp",
+      "whatsappAria": "Compartilhar ranking via WhatsApp (imagem + link)",
+      "stories": "Stories",
+      "storiesAria": "Compartilhar ranking nos Stories (formato vertical)",
+      "baixar": "Baixar",
+      "baixarAria": "Baixar imagem do ranking",
+      "imagemSalva": "Imagem salva!",
+      "imagemSalvaTexto": "Arraste no chat do WhatsApp ou anexe na conversa",
+      "erroImagem": "Erro ao gerar imagem"
+    },
+    "webhook": {
+      "processando": "Pagamento sendo processado",
+      "processandoTexto": "A confirmação está demorando mais do que o normal. Você receberá um email assim que for ativado, normalmente em poucos minutos.",
+      "continuar": "Continuar usando o bolão",
+      "confirmando": "Confirmando pagamento...",
+      "confirmandoTexto": "Aguarde até 30 segundos para a Stripe confirmar."
+    },
+    "sairDialogo": {
+      "titulo": "Sair do bolão?",
+      "texto": "Você não vai mais aparecer no ranking de <0>{{nome}}</0>.",
+      "aviso": "Seus palpites já feitos serão removidos. Pra voltar, precisa do código de convite novamente.",
+      "confirmar": "Sair do bolão"
+    }
+  },
+  "confirmacao": {
+    "confirmar": "Confirmar",
+    "cancelar": "Cancelar",
+    "processando": "Processando..."
+  },
+  "progresso": {
+    "faltando_one": "{{count}} palpite faltando — ver pendentes",
+    "faltando_other": "{{count}} palpites faltando — ver pendentes",
+    "feitos": "{{feitos}} de {{total}} palpites feitos ({{pct}}%)",
+    "verPendentes_one": "ver {{count}} pendente",
+    "verPendentes_other": "ver {{count}} pendentes"
+  },
+  "sticky": {
+    "irProximo": "Ir para o próximo jogo sem palpite",
+    "proximo": "Próximo",
+    "faltando_one": "<0>{{count}}</0> <1>palpite faltando</1>",
+    "faltando_other": "<0>{{count}}</0> <1>palpites faltando</1>"
+  },
+  "prazo": {
+    "proximo": "Próximo prazo: {{quando}}",
+    "fecha": "Fecha {{quando}}"
+  },
+  "bandeira": {
+    "indisponivel": "Bandeira de {{codigo}} (não disponível)"
+  }
+}

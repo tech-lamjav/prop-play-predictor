@@ -1,10 +1,11 @@
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
   agruparPorPosicao,
+  CHAVE_DA_POSICAO,
   DIAS_PARA_ESTAR_PARADO,
   POSICOES_CALCULADAS,
   TOM_DA_POSICAO,
-  ROTULO_DA_POSICAO,
   type Lead,
 } from './crm-painel';
 import { NOME_DO_GANCHO } from './crm-ficha';
@@ -23,6 +24,7 @@ import { SeloSemWhatsApp } from './SeloSemWhatsApp';
 const TETO_POR_POSICAO = 25;
 
 function Cartao({ lead }: { lead: Lead }) {
+  const { t } = useTranslation('socios');
   const parado = lead.diasParado;
   const atencao = parado !== null && parado >= DIAS_PARA_ESTAR_PARADO;
 
@@ -54,7 +56,7 @@ function Cartao({ lead }: { lead: Lead }) {
           <span
             className={`shrink-0 tabular-nums ${atencao ? 'font-bold text-ink' : 'text-ink-2'}`}
           >
-            {parado}d
+            {t('painel.dias', { dias: parado })}
           </span>
         )}
       </p>
@@ -74,6 +76,7 @@ function Cartao({ lead }: { lead: Lead }) {
  * disposição.
  */
 export function KanbanDeLeads({ leads }: { leads: Lead[] }) {
+  const { t } = useTranslation('socios');
   const grupos = agruparPorPosicao(leads);
 
   return (
@@ -86,7 +89,7 @@ export function KanbanDeLeads({ leads }: { leads: Lead[] }) {
         return (
           <section
             key={posicao}
-            aria-label={ROTULO_DA_POSICAO[posicao]}
+            aria-label={t(CHAVE_DA_POSICAO[posicao])}
             className="w-[210px] shrink-0"
           >
             {/* A régua no topo da coluna é a mesma escala do ponto da tabela:
@@ -98,7 +101,7 @@ export function KanbanDeLeads({ leads }: { leads: Lead[] }) {
 
             <div className="mb-2 flex items-baseline justify-between gap-2">
               <p className="truncate text-[13px] font-bold text-ink">
-                {ROTULO_DA_POSICAO[posicao]}
+                {t(CHAVE_DA_POSICAO[posicao])}
               </p>
               <span className="shrink-0 font-display text-[15px] font-black tabular-nums text-ink">
                 {daPosicao.length}
@@ -108,18 +111,22 @@ export function KanbanDeLeads({ leads }: { leads: Lead[] }) {
             {/* As duas últimas colunas o banco responde: ninguém arrasta para
                 elas, e a tela precisa dizer isso onde a promessa do formato é
                 justamente arrastar. */}
-            {calculada && <p className="mb-1 text-[10px] text-ink-2">o banco responde</p>}
+            {calculada && (
+              <p className="mb-1 text-[10px] text-ink-2">{t('painel.oBancoResponde')}</p>
+            )}
 
             <div className="max-h-[460px] space-y-2 overflow-y-auto rounded-rebrand-sm bg-canvas p-2">
               {daPosicao.length === 0 ? (
-                <p className="p-2 text-[12px] text-ink-2">vazia</p>
+                <p className="p-2 text-[12px] text-ink-2">{t('painel.kanban.vazia')}</p>
               ) : (
                 visiveis.map((lead) => <Cartao key={lead.id} lead={lead} />)
               )}
 
               {sobram > 0 && (
                 <p className="p-2 text-[12px] font-bold text-ink-2">
-                  + {sobram} que não cabem aqui. Use a tabela para trabalhar esta coluna.
+                  {/* O plural vem do catálogo, e aqui ele conserta uma concordância
+                      errada: com um só, a frase dizia "+ 1 que não cabem aqui". */}
+                  {t('painel.kanban.sobram', { count: sobram })}
                 </p>
               )}
             </div>

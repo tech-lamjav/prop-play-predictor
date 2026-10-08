@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import {
   emReais,
   formatarMes,
@@ -77,12 +78,15 @@ function Lancamento({
   salvando: boolean;
   aoEstornar: (id: string, motivo: string) => void;
 }) {
+  const { t } = useTranslation('socios');
   const [pedindoMotivo, setPedindoMotivo] = useState(false);
   const [motivo, setMotivo] = useState('');
 
   return (
     <li className="border-t border-line-2 py-2 first:border-t-0 first:pt-0">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+        {/* ⚠️ `formatarMes` e `rotuloDaOrigem` continuam em PORTUGUÊS: os dois
+            moram em `crm-receita.ts`, que não entrou nesta migração. */}
         <span className={`text-[13px] ${pagamento.estornado ? 'text-ink-dim' : 'text-ink'}`}>
           <span className="font-bold">{formatarMes(pagamento.mes)}</span>{' '}
           {rotuloDaOrigem(pagamento.origem)} {emReais(pagamento.valor)}
@@ -90,7 +94,7 @@ function Lancamento({
 
         {pagamento.estornado ? (
           <span className="text-[11px] font-bold uppercase tracking-wide text-ink-dim">
-            estornado
+            {t('dinheiro.receita.estornado')}
           </span>
         ) : (
           <button
@@ -99,15 +103,17 @@ function Lancamento({
             onClick={() => setPedindoMotivo(true)}
             className="text-[11px] font-bold text-ink-2 underline hover:text-ink disabled:opacity-40"
           >
-            Estornar
+            {t('dinheiro.receita.estornar')}
           </button>
         )}
       </div>
 
       <p className="text-[11px] text-ink-dim">
         {pagamento.estornado
-          ? `Motivo: ${pagamento.motivoDoEstorno ?? 'não registrado'}. O acesso não foi recuado.`
-          : `Caiu em ${formatarDia(pagamento.pagoEm)}`}
+          ? t('dinheiro.receita.motivoDoEstorno', {
+              motivo: pagamento.motivoDoEstorno ?? t('dinheiro.receita.motivoNaoRegistrado'),
+            })
+          : t('dinheiro.receita.caiuEm', { dia: formatarDia(pagamento.pagoEm) })}
       </p>
 
       {pedindoMotivo && !pagamento.estornado ? (
@@ -115,9 +121,11 @@ function Lancamento({
           <input
             type="text"
             value={motivo}
-            placeholder="Por que está estornando?"
+            placeholder={t('dinheiro.receita.placeholderMotivo')}
             disabled={salvando}
-            aria-label={`Motivo do estorno de ${formatarMes(pagamento.mes)}`}
+            aria-label={t('dinheiro.receita.ariaMotivoDoEstorno', {
+              mes: formatarMes(pagamento.mes),
+            })}
             onChange={(e) => setMotivo(e.target.value)}
             className="h-8 flex-1 rounded-rebrand-sm border border-line-2 bg-white px-2 text-[12px] text-ink"
           />
@@ -129,7 +137,7 @@ function Lancamento({
             onClick={() => aoEstornar(pagamento.id, motivo.trim())}
             className="h-8 rounded-rebrand-sm bg-ink px-2.5 text-[12px] font-bold text-white disabled:opacity-40"
           >
-            Confirmar
+            {t('dinheiro.receita.confirmar')}
           </button>
         </div>
       ) : null}
@@ -161,6 +169,8 @@ export function Receita({
   aoLancar: (pagamento: PagamentoALancar) => void;
   aoEstornar: (id: string, motivo: string) => void;
 }) {
+  const { t } = useTranslation('socios');
+
   /*
    * Os campos guardam NULO enquanto ninguém mexeu, e o valor de verdade sai do
    * que chegou do banco na hora de desenhar.
@@ -179,21 +189,17 @@ export function Receita({
   // aqui não teria onde gravar.
   if (!assinatura) {
     return (
-      <p className="text-[13px] text-ink-2">
-        Sem assinatura dada na mão. O histórico de pagamento nasce junto com ela.
-      </p>
+      <p className="text-[13px] text-ink-2">{t('dinheiro.receita.semAssinatura')}</p>
     );
   }
 
   if (estado.tipo === 'carregando') {
-    return <p className="text-[13px] text-ink-2">Carregando os pagamentos…</p>;
+    return <p className="text-[13px] text-ink-2">{t('dinheiro.receita.carregando')}</p>;
   }
 
   if (estado.tipo === 'erro') {
     return (
-      <p className="text-[13px] text-ink-2">
-        Não deu para carregar os pagamentos agora. Sem eles, cobrar seria chute.
-      </p>
+      <p className="text-[13px] text-ink-2">{t('dinheiro.receita.erro')}</p>
     );
   }
 
@@ -236,32 +242,42 @@ export function Receita({
     <div className="space-y-3">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <p className="text-[13px] text-ink">
-          Recebido na mão: <span className="font-bold">{emReais(naMao)}</span>
+          <Trans
+            t={t}
+            i18nKey="dinheiro.receita.recebidoNaMao"
+            values={{ valor: emReais(naMao) }}
+            components={[<span className="font-bold" key="valor" />]}
+          />
           {temDinheiroDoGateway ? (
-            <span className="text-ink-2"> · total {emReais(total)}</span>
+            <span className="text-ink-2">
+              {' · '}
+              {t('dinheiro.receita.total', { valor: emReais(total) })}
+            </span>
           ) : null}
         </p>
 
         {situacao.tipo === 'devendo' ? (
           <span className="rounded-full bg-amber-400/20 px-2.5 py-1 text-[12px] font-bold text-ink">
-            devendo {situacao.meses} {situacao.meses === 1 ? 'mês' : 'meses'},{' '}
-            {emReais(situacao.total)}
+            {t('dinheiro.comum.devendo', {
+              count: situacao.meses,
+              total: emReais(situacao.total),
+            })}
           </span>
         ) : situacao.tipo === 'em_dia' ? (
           <span className="rounded-full bg-canvas px-2.5 py-1 text-[12px] font-bold text-ink-2">
-            em dia
+            {t('dinheiro.receita.emDia')}
           </span>
         ) : (
           <span className="rounded-full bg-canvas px-2.5 py-1 text-[12px] font-bold text-ink-2">
-            sem cobrança
+            {t('dinheiro.comum.semCobranca')}
           </span>
         )}
       </div>
 
       {abertos.length > 0 ? (
         <p className="text-[12px] text-ink-2">
-          Em aberto: {textoDosMesesEmAberto(abertos)}. A assinatura não encerra sozinha: se for
-          para cortar o acesso, encerre na assinatura acima.
+          {/* ⚠️ `textoDosMesesEmAberto` continua em PORTUGUÊS (`crm-receita.ts`). */}
+          {t('dinheiro.receita.emAberto', { meses: textoDosMesesEmAberto(abertos) })}
         </p>
       ) : null}
 
@@ -270,9 +286,7 @@ export function Receita({
           que o sistema esqueceu de contar. */}
       {virada !== null ? (
         <p className="text-[12px] text-ink-2">
-          Esta pessoa também paga no cartão desde {formatarMes(virada)}, então o acordo feito na
-          mão parou de acumular mês a partir daí. O que ficou para trás continua em aberto. Se o
-          acordo na mão acabou, encerre na assinatura acima.
+          {t('dinheiro.receita.virada', { mes: formatarMes(virada) })}
         </p>
       ) : null}
 
@@ -283,47 +297,49 @@ export function Receita({
             deixou de ser verdade quando a ficha passou a somar as duas origens.
             O que continua valendo é a distinção entre os dois números — e é ela
             que a linha explica agora. */}
-        "Recebido na mão" é o que depende de você cobrar. O total soma também o
-        que entra pelo cartão, que é cobrado sozinho.
+        {t('dinheiro.receita.explicacaoDosDoisNumeros')}
       </p>
 
       <div className="rounded-rebrand-sm border border-line-2 bg-canvas p-2.5">
         <div className="grid grid-cols-2 gap-2">
           <label className={ROTULO}>
-            Mês pago
+            {t('dinheiro.receita.campoMesPago')}
             <input
               type="month"
               value={mes}
               disabled={salvando}
-              aria-label="Mês de competência do pagamento"
+              aria-label={t('dinheiro.receita.ariaMesPago')}
               onChange={(e) => setMesEscolhido(e.target.value)}
               className={CAMPO}
             />
           </label>
 
           <label className={ROTULO}>
-            Valor
+            {t('dinheiro.receita.campoValor')}
             <input
               type="text"
               inputMode="decimal"
               value={valor}
+              // O símbolo da moeda segue a MOEDA, e não o idioma, como em `fmtDinheiro`.
               placeholder="R$"
               disabled={salvando}
-              aria-label="Valor recebido"
+              aria-label={t('dinheiro.receita.ariaValor')}
               onChange={(e) => setValorDigitado(e.target.value)}
               className={CAMPO}
             />
           </label>
 
           <label className={ROTULO}>
-            Como caiu
+            {t('dinheiro.receita.campoComoCaiu')}
             <select
               value={origem}
               disabled={salvando}
-              aria-label="Origem do pagamento"
+              aria-label={t('dinheiro.receita.ariaOrigem')}
               onChange={(e) => setOrigem(e.target.value as OrigemParaLancar)}
               className={CAMPO}
             >
+              {/* ⚠️ `ROTULO_DA_ORIGEM` continua em PORTUGUÊS (`crm-receita.ts`). O
+                  `key` é o valor CRU do banco, que nunca se traduz. */}
               {ORIGENS_PARA_LANCAR.map((o) => (
                 <option key={o} value={o}>
                   {ROTULO_DA_ORIGEM[o]}
@@ -333,13 +349,13 @@ export function Receita({
           </label>
 
           <label className={ROTULO}>
-            Dia em que caiu
+            {t('dinheiro.receita.campoDiaQueCaiu')}
             <input
               type="date"
               value={pagoEm}
               max={hoje}
               disabled={salvando}
-              aria-label="Dia em que o dinheiro caiu"
+              aria-label={t('dinheiro.receita.ariaDiaQueCaiu')}
               onChange={(e) => setPagoEm(e.target.value)}
               className={CAMPO}
             />
@@ -366,17 +382,13 @@ export function Receita({
           }}
           className="mt-2 h-9 w-full rounded-rebrand-sm bg-forest px-3 text-[13px] font-bold text-white disabled:opacity-40"
         >
-          {salvando ? 'Gravando…' : 'Registrar pagamento'}
+          {salvando ? t('dinheiro.comum.gravando') : t('dinheiro.receita.registrarPagamento')}
         </button>
 
         {valorLido === 'invalido' ? (
-          <p className="mt-1 text-[11px] text-ink-2">
-            Esse valor não dá para ler. Escreva só o número, como 39,90.
-          </p>
+          <p className="mt-1 text-[11px] text-ink-2">{t('dinheiro.comum.valorIlegivel')}</p>
         ) : (
-          <p className="mt-1 text-[11px] text-ink-dim">
-            Registrar empurra o acesso até o fim do mês pago.
-          </p>
+          <p className="mt-1 text-[11px] text-ink-dim">{t('dinheiro.receita.registrarEmpurra')}</p>
         )}
       </div>
 
@@ -387,7 +399,7 @@ export function Receita({
           ))}
         </ul>
       ) : (
-        <p className="text-[12px] text-ink-2">Nenhum pagamento registrado ainda.</p>
+        <p className="text-[12px] text-ink-2">{t('dinheiro.receita.nenhumPagamento')}</p>
       )}
     </div>
   );

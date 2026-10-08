@@ -9,16 +9,19 @@ registram sobre cada pessoa durante a abordagem.
 Quem enxerga o painel dos sócios. É uma marca no banco, ligada na mão, e não
 tem nada a ver com plano assinado.
 _Avoid_: Admin, administrador, usuário interno
+_ES_: **Socio**
 
 **Cadastro**:
 Uma linha na tabela de usuários, contada pelo dia em que nasceu. É o que a lista
 mostra agrupado por data.
 _Avoid_: Signup, conta, registro
+_ES_: **Registro**
 
 **Lead**:
 Um cadastro visto pela ótica da abordagem — alguém que pode virar assinante.
 Todo cadastro é um lead; a palavra muda porque o assunto muda.
 _Avoid_: Prospect, contato, usuário
+_ES_: **Lead**
 
 **Etapa**:
 Onde o lead está na CONVERSA. São seis, nesta ordem: novo, contatado,
@@ -34,17 +37,20 @@ primeiro toque como marco.
 Etapa é sempre MANUAL: alguém move. O que o banco responde sozinho não é etapa,
 é **posição calculada**.
 _Avoid_: Status, estágio, fase, coluna
+_ES_: **Etapa**
 
 **Gancho**:
 O palpite sobre o que atraiu a pessoa, derivado do que o banco sabe — plano,
 Telegram sincronizado, apostas registradas, alertas ligados. É palpite, e a tela
 diz que é. Um sócio pode corrigir na mão.
 _Avoid_: Interesse, motivo, origem, fonte
+_ES_: **Gancho**
 
 **Origem**:
 De onde o lead veio — campanha, anúncio, indicação. **Não existe no banco**, só
 no PostHog. Não use a palavra como se a tela soubesse: ela não sabe.
 _Avoid_: Usar como sinônimo de gancho
+_ES_: **Origen**
 
 **Posição**:
 Onde o lead aparece no funil da tela. São oito: as seis etapas mais duas que o
@@ -53,23 +59,27 @@ banco responde sozinho — **em teste** (o teste gratuito ainda de pé) e
 VENCE a etapa manual: quem já assina não está sentado em interesse, e mostrar
 nos dois lugares faria o funil somar duas vezes a mesma pessoa.
 _Avoid_: Coluna, estágio, degrau
+_ES_: **Posición**
 
 **Toque**:
 O último sinal de vida de uma conversa: a mudança de etapa mais recente ou a
 anotação mais recente, o que for depois. Quem nunca recebeu nada não tem toque,
 e aí o relógio conta desde o cadastro.
 _Avoid_: Interação, contato, atividade
+_ES_: **Toque**
 
 **Parado**:
 Dias desde o último toque. A partir de sete, uma conversa já começada entra na
 fila de retomada. Para quem nunca foi tocado, conta desde o cadastro — o
 relógio do lead começa quando ele chega, não no primeiro contato que não houve.
 _Avoid_: Inativo, frio, esquecido
+_ES_: **Sin movimiento**
 
 **Recorte**:
 Qual fatia da base a lista mostra. São dois: **precisa de atenção** e **todos**.
 Agrupar por dia não é recorte — é chave à parte, que se combina com os dois.
 _Avoid_: Aba, visão, filtro (filtro é o do funil e o da busca)
+_ES_: **Recorte**
 
 **Precisa de atenção**:
 O recorte de quem espera alguma coisa: conversa começada e sem toque há sete
@@ -77,6 +87,7 @@ dias ou mais, e quem nunca saiu de "novo". Numa lista só, ordenada — a conver
 esfriando vem antes, porque já custou trabalho, e a coluna de etapa é o que
 distingue as duas situações.
 _Avoid_: Fila, pendências, to-do
+_ES_: **Necesita atención**
 
 **Anotação**:
 Um registro livre na linha do tempo de uma pessoa. Tem três tipos que o sócio
@@ -84,18 +95,21 @@ escreve: anotação, feedback e objeção. Feedback não é uma tela separada, �
 tipo de anotação. O quarto tipo da linha do tempo, `acesso`, não se digita: quem
 escreve é a função do banco quando alguém mexe no acesso de uma pessoa.
 _Avoid_: Nota, comentário, observação
+_ES_: **Anotación**
 
 **Linha do tempo**:
 Anotações e mudanças de etapa de uma pessoa, na mesma ordem cronológica. As duas
 coisas dividem a mesma lista de propósito: a mudança de etapa quase sempre é
 consequência do que foi anotado logo antes.
 _Avoid_: Histórico, log, atividades
+_ES_: **Línea de tiempo**
 
 **Ficha**:
 A tela de uma pessoa: contatos, plano, acessos, gancho, etapa, linha do tempo e
 mensagem pronta. Abre em modal por cima da lista, e não numa página separada —
 o trabalho é abrir, registrar, fechar, abrir o próximo.
 _Avoid_: Perfil, detalhe, página do usuário
+_ES_: **Ficha**
 
 **Acesso dado na mão**:
 Um sócio libera ou tira um produto de alguém pela ficha, sem passar pelo Stripe.
@@ -104,6 +118,7 @@ do webhook, senão um clique errado viraria assinatura eterna de graça. Cada
 mudança deixa um registro do tipo `acesso` na linha do tempo, que ninguém digita
 à mão.
 _Avoid_: Cortesia, comp, override, liberar acesso manual
+_ES_: **Acceso otorgado a mano**
 
 **Teste do futebol**:
 A janela entre o começo e o fim do teste, gravados juntos. Dura 48 horas para
@@ -115,6 +130,7 @@ produto convidaria a implementá-lo como `premium`, que dá acesso para sempre c
 cara de teste. Tem três estados, e não dois — nunca usou, correndo, já usou —,
 porque o terceiro é o que decide se dar outro faz sentido.
 _Avoid_: Trial, free trial, degustação, período de teste
+_ES_: **Prueba del fútbol**
 
 **Assinatura**:
 Um plano de pé para uma pessoa, com a **origem da assinatura** dizendo de onde
@@ -129,6 +145,7 @@ aberto**, **fila de inadimplentes** e **recebido na mão** são derivados do nos
 registro e continuam valendo só para origem manual. Calcular mês em aberto para
 quem vem do Stripe inventaria dívida de alguém que está pagando em dia.
 _Avoid_: Plano, contrato, adesão
+_ES_: **Suscripción**
 
 **Origem da assinatura**:
 Manual ou Stripe. Não é detalhe de procedência: é o que decide quem manda no
@@ -136,6 +153,7 @@ acesso, em que fila a pessoa entra e quais números a tela tem direito de
 calcular. Por isso fica gravada, e nunca é adivinhada pela presença de um campo
 preenchido.
 _Avoid_: Tipo, fonte, canal
+_ES_: **Origen de la suscripción**
 
 **Assinatura manual**:
 Uma **assinatura** de origem manual: um plano inteiro concedido por um sócio,
@@ -150,6 +168,7 @@ quatro combinações existem, e é por isso que são duas perguntas na tela e du
 colunas no banco — não um campo "tipo" com quatro opções, que esconderia que são
 duas decisões.
 _Avoid_: Cortesia paga, plano de teste, assinatura interna
+_ES_: **Suscripción manual**
 
 **Vitalícia**:
 Assinatura manual que não vence. Sócio, parceiro, quem ajudou a construir a
@@ -163,6 +182,7 @@ outro e entra na fila de inadimplentes. Vitalícia e sem cobrança são coisas
 diferentes, e confundir as duas faz um cliente pagante desaparecer da conta de
 receita.
 _Avoid_: Permanente, eterna, para sempre, ilimitada, lifetime
+_ES_: **Vitalicia**
 
 **Fila de cobrança**:
 Quem tem assinatura manual vencendo nos próximos sete dias, ou já vencida, na
@@ -176,6 +196,7 @@ Renovação é o assunto desta fila, e quem está no gateway já renova sozinho:
 pedir Pix a quem tem cartão passando é como se produz pagamento em dobro. Sair
 daqui não encerra o acordo na mão, que continua aberto em "Todas".
 _Avoid_: Renovações, vencimentos, inadimplentes
+_ES_: **Fila de cobro**
 
 **Fila de inadimplentes**:
 Quem tem cobrança mensal combinada e está com mês em aberto, do que deve mais
@@ -189,6 +210,7 @@ fatura atrasada: lá o gateway cobra sozinho, e o que ele relata é **cobrança
 falhando**. Quem está nesta fila está aqui porque o dinheiro depende de você ir
 atrás dele.
 _Avoid_: Devedores, calote, caloteiros, bloqueados
+_ES_: **Fila de morosos**
 
 **Cobrança falhando**:
 O que o Stripe relata quando tentou cobrar e não conseguiu. É fato do gateway,
@@ -200,6 +222,7 @@ registro de pagamento e só vale para assinatura de origem manual.
 sozinho, e pedir Pix a quem tem cartão em nova tentativa é como se produz o
 pagamento em dobro. Precisa de acompanhamento, que é outra conversa.
 _Avoid_: Inadimplente, devendo, atrasado, em aberto
+_ES_: **Cobro fallando**
 
 **Etiqueta**:
 O que o produto diz sobre a pessoa, num eixo SEPARADO da etapa. Hoje só existem
@@ -218,6 +241,7 @@ pessoas de uma vez, justamente as mais quentes. O Victor apontou olhando a
 tela: "não me parece que são as mesmas coisas ou estamos misturando duas coisas
 diferentes".
 _Avoid_: Tag, status, situação, estágio
+_ES_: **Etiqueta**
 
 **Teste vencendo**:
 A etiqueta de quem perde o acesso hoje ou amanhã. Um dia de antecedência, a
@@ -225,6 +249,7 @@ pedido: a conversa acontece na véspera, com o acesso ainda de pé. Dois dias
 antes a pessoa esquece; no dia seguinte ela já perdeu o acesso, e aí a conversa
 é de retomada, bem mais difícil.
 _Avoid_: Expirando, a expirar, trial ending
+_ES_: **Prueba por vencer**
 
 **Pagamento**:
 Dinheiro recebido de uma **assinatura**, referente a um mês de competência.
@@ -248,6 +273,7 @@ Estorna, nunca apaga: um registro de dinheiro que alguém apaga é um registro
 que ninguém consegue auditar. Estornar exige motivo e não recua o acesso — a
 pessoa já usou, e tirar por erro de lançamento castiga quem não errou.
 _Avoid_: Cobrança, fatura, recebimento, entrada
+_ES_: **Pago**
 
 **ROI dele**:
 O retorno das apostas DA PESSOA, e não nosso. Lucro sobre o que ela apostou,
@@ -260,6 +286,7 @@ cliente vira julgamento, e quem abre a ficha está prestes a falar com essa
 pessoa. Nulo quando nada liquidou, porque zero por cento é uma afirmação que
 quem só tem aposta em aberto não fez.
 _Avoid_: Nosso ROI, performance, resultado da conta, retorno
+_ES_: **Su ROI**
 
 **Recorte de aposta**:
 Como as apostas de uma pessoa se distribuem por mercado, esporte ou faixa de
@@ -267,6 +294,7 @@ odd. Todo recorte anda com o N junto: "aposta mais em Over/Under" é uma frase
 que mente quando a pessoa tem três apostas, e "2 de 3" se explica sozinho.
 Abaixo de cinco apostas a tela mostra o número mas não chama de perfil.
 _Avoid_: Segmento, cluster, padrão, comportamento de aposta
+_ES_: **Recorte de apuestas**
 
 **Recebido na mão**:
 O total de pagamentos não estornados de uma pessoa **de origem manual**. É o
@@ -277,6 +305,7 @@ tela porque respondem perguntas diferentes: este é o dinheiro que depende de
 alguém ir atrás, e o total é quanto a pessoa vale. Trocar um pelo outro tiraria
 do sócio um número que ele já usa para trabalhar.
 _Avoid_: Receita total, faturamento, LTV, valor do cliente
+_ES_: **Recibido a mano**
 
 **Recebido total**:
 Tudo que a pessoa já pagou, das duas origens, sem os estornados. Só passou a
@@ -286,6 +315,7 @@ disso um número com esse nome seria mentira.
 ⚠️ É a soma do que entrou por UMA pessoa, e não receita da empresa. Chamar de
 LTV convidaria a projetar futuro em cima de um número que só olha para trás.
 _Avoid_: LTV, faturamento, receita da empresa, valor do cliente
+_ES_: **Recibido total**
 
 **Mês de competência**:
 O mês a que um pagamento se refere, e não o dia em que o dinheiro caiu. Um Pix
@@ -299,6 +329,7 @@ competência de setembro. ⚠️ Sai do período declarado, e nunca de assumir q
 todo plano é mensal — hoje todos são, mas o código nunca leu o intervalo do
 preço, e um preço anual cadastrado passaria despercebido.
 _Avoid_: Mês de referência, período, data do pagamento
+_ES_: **Mes de competencia**
 
 **Mês em aberto**:
 Mês de competência que já começou e não tem pagamento. É DERIVADO, e não uma
@@ -316,6 +347,7 @@ derivar dívida de quem está em dia seria inventar dinheiro que ninguém deve.
 ⚠️ Para quem tem as DUAS origens, a conta para na **virada para o cartão**: os
 meses anteriores continuam em aberto, e nenhum mês novo acumula a partir dela.
 _Avoid_: Pendência, atraso, débito, inadimplência (essa é a situação, não o mês)
+_ES_: **Mes pendiente**
 
 **Virada para o cartão**:
 O mês em que o gateway assumiu o pagamento de alguém que já tinha um acordo
@@ -334,6 +366,7 @@ recua para o mês dela sem ninguém mexer.
 cobrança** e aparece em "Todas" com o selo. Encerrar segue sendo decisão do
 sócio, como tudo que mexe no que foi combinado com uma pessoa.
 _Avoid_: Migração, upgrade, troca de plano, conversão
+_ES_: **Traspaso a la tarjeta**
 
 **Sem cobrança**:
 Assinatura manual sem valor mensal combinado. Não é inadimplência e não entra em
@@ -345,3 +378,36 @@ responde "até quando vale". Zero também não é sem cobrança: sem cobrança �
 e um zero gravado viraria receita de R$ 0,00 num total e dívida de nada numa
 fila.
 _Avoid_: Cortesia, grátis, brinde, interna
+_ES_: **Sin cobro**
+
+## Vocabulario en español
+
+O par em espanhol de cada verbete está na linha `_ES_` do próprio verbete, na
+mesma convenção do `CONTEXT.md` da raiz.
+
+⚠️ **NENHUM destes termos tem fonte estática.** O glossário da raiz foi medido em
+central de ajuda de operador e em imprensa esportiva de Peru, Argentina, México e
+Chile — e nada disso fala de CRM nem de cobrança. Os pares acima estão decididos
+por uso, com a mesma régua pan-hispânica, e **valem revisão de falante nativo
+antes do lançamento**. Os quatro que mais pedem revisão:
+
+- **Nutriendo** (etapa `nutrindo`). O mercado hispano de marketing usa o
+  anglicismo "nurturing" ou a perífrase "nutrición de leads"; o gerúndio solto é
+  transparente mas não é termo consagrado.
+- **Boleto enviado** (etapa `boletada`). "Boletada" é jargão da casa e não tem
+  par. A escolha troca o adjetivo por um estado, e perde a concisão do original.
+- **Mes de competencia**. Calque do português. A contabilidade hispana diz
+  "devengo", que é de uso espanhol e soa estrangeiro nos quatro países; o par
+  natural, "mes de referencia", é termo PROIBIDO no verbete.
+- **Toque**. Preserva a distinção que o verbete faz contra "contato", ao preço de
+  um substantivo que em espanhol de CRM não é corrente.
+
+**Fila, e não cola.** "Cola" é o termo da Espanha; nos quatro países do produto
+"fila" é o corrente.
+
+**Moroso, e não deudor.** "Moroso" é o termo financeiro neutro para quem está com
+mês em aberto, e é o que não carrega o julgamento que o verbete proíbe em
+português ("calote", "caloteiro").
+
+**Prueba, e não trial.** O verbete proíbe "trial" em português, e a razão vale
+igual em espanhol: "prueba" é pan-hispânico e não é anglicismo.

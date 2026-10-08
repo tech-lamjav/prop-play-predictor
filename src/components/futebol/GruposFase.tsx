@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Crest } from './Crest';
 import type { FutebolStandingRow } from '@/services/futebol-data.service';
@@ -16,10 +17,16 @@ import type { FutebolStandingRow } from '@/services/futebol-data.service';
  * lista rola dentro do próprio card, sem empurrar o resto da página.
  */
 
-/** 'Group A' → 'Grupo A'. Nome de liga (sem grupo de verdade) passa direto. */
-function nomeDoGrupo(g: string): string {
+/**
+ * 'Group A' → a letra do grupo. Nome de liga (sem grupo de verdade) vem `null`,
+ * e aí a tela mostra o texto cru da fonte.
+ *
+ * Devolve a letra e não a frase pronta porque a palavra "Grupo" sai do catálogo:
+ * a tela pode estar em espanhol (#538).
+ */
+function letraDoGrupo(g: string): string | null {
   const m = g.match(/^group\s+(.+)$/i);
-  return m ? `Grupo ${m[1].toUpperCase()}` : g;
+  return m ? m[1].toUpperCase() : null;
 }
 
 export function GruposFase({
@@ -35,6 +42,7 @@ export function GruposFase({
   hrefDoTime: (id: number) => string;
   classificados?: number;
 }) {
+  const { t } = useTranslation('futebol');
   const grupos = useMemo(() => {
     const m = new Map<string, FutebolStandingRow[]>();
     (rows ?? []).forEach((r) => {
@@ -60,9 +68,9 @@ export function GruposFase({
   if (!grupos.length) {
     return (
       <div className="bg-white rounded-rebrand-lg px-6 py-9 text-center" style={{ border: '1px dashed #ded2b6' }}>
-        <div className="text-[14px] font-semibold text-ink">Grupos ainda não coletados</div>
+        <div className="text-[14px] font-semibold text-ink">{t('grupos.vazioTitulo')}</div>
         <div className="mt-1.5 text-[12.5px] leading-relaxed" style={{ color: '#8d8672' }}>
-          Entram assim que a competição passar pela coleta.
+          {t('grupos.vazioTexto')}
         </div>
       </div>
     );
@@ -75,10 +83,10 @@ export function GruposFase({
         style={{ background: '#f4eddc', borderBottom: '1px solid #ded2b6' }}
       >
         <span className="text-[10.5px] uppercase tracking-[0.16em] font-bold" style={{ color: '#6b6350' }}>
-          Fase de grupos
+          {t('grupos.titulo')}
         </span>
         <span className="text-[10.5px]" style={{ color: '#8d8672' }}>
-          {grupos.length} grupos
+          {t('grupos.contagem', { count: grupos.length })}
         </span>
       </div>
 
@@ -94,10 +102,10 @@ export function GruposFase({
               }}
             >
               <span className="text-[9px] uppercase tracking-[0.12em] font-bold" style={{ color: '#0a3d2e' }}>
-                {nomeDoGrupo(grupo)}
+                {letraDoGrupo(grupo) ? t('grupos.nome', { letra: letraDoGrupo(grupo) }) : grupo}
               </span>
               <span className="text-[9px] uppercase tracking-[0.1em]" style={{ color: '#8d8672' }}>
-                J · SG · Pts
+                {t('grupos.colunas')}
               </span>
             </div>
 

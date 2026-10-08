@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { AgendaCalendario } from './AgendaCalendario';
 import { addDays, brtToday, fmtDayChip } from '@/utils/futebol-datas';
@@ -25,6 +26,7 @@ export function AgendaDateStrip({
   onSelectDay: (day: string) => void;
   jogosPorDia?: Map<string, number>;
 }) {
+  const { t } = useTranslation('futebol');
   const hoje = brtToday();
   const ativoRef = useRef<HTMLButtonElement | null>(null);
 
@@ -46,7 +48,7 @@ export function AgendaDateStrip({
       <button
         onClick={() => onSelectDay(addDays(selectedDay, -1))}
         className="h-7 w-7 shrink-0 grid place-items-center rounded-full text-ink-3 hover:bg-canvas-2 transition"
-        aria-label="Dia anterior"
+        aria-label={t('agenda.diaAnterior')}
       >
         <ChevronLeft className="w-3.5 h-3.5" />
       </button>
@@ -67,14 +69,14 @@ export function AgendaDateStrip({
                 ativo ? 'bg-forest text-canvas' : isHoje ? 'text-forest hover:bg-canvas-2' : 'text-ink-2 hover:bg-canvas-2'
               }`}
             >
-              {isHoje ? 'Hoje' : `${weekday} ${day.slice(0, 2)}`}
+              {isHoje ? t('agenda.hoje') : `${weekday} ${day.slice(0, 2)}`}
               {/* Ponto só quando tem jogo: a ausência informa tanto quanto a presença. */}
               {n > 0 && (
                 <span
                   className={`absolute bottom-[3px] left-1/2 -translate-x-1/2 w-1 h-1 rounded-full ${
                     ativo ? 'bg-canvas/70' : 'bg-forest/60'
                   }`}
-                  title={`${n} ${n === 1 ? 'jogo' : 'jogos'}`}
+                  title={t('contagem.jogos', { count: n })}
                 />
               )}
             </button>
@@ -85,7 +87,7 @@ export function AgendaDateStrip({
       <button
         onClick={() => onSelectDay(addDays(selectedDay, 1))}
         className="h-7 w-7 shrink-0 grid place-items-center rounded-full text-ink-3 hover:bg-canvas-2 transition"
-        aria-label="Próximo dia"
+        aria-label={t('agenda.proximoDia')}
       >
         <ChevronRight className="w-3.5 h-3.5" />
       </button>
@@ -98,7 +100,7 @@ export function AgendaDateStrip({
           onClick={() => onSelectDay(hoje)}
           className="h-7 px-2.5 shrink-0 rounded-full text-[12px] font-semibold text-ink-2 hover:bg-canvas-2 transition"
         >
-          Hoje
+          {t('agenda.hoje')}
         </button>
       )}
 

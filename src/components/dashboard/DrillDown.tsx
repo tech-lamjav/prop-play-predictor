@@ -1,10 +1,12 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
+import { fmtPct, fmtDinheiroDaPessoa } from '@/utils/formato';
 import { Sparkles, ArrowRight, MousePointer2 } from 'lucide-react';
 import { Sparkline } from './Sparkline';
 import { computeDrillDown } from '@/utils/dashboardAggregations';
 import type { Bet } from '@/hooks/use-bets';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { localeDoDateFns } from '@/utils/locale-do-date-fns';
 
 interface DrillDownProps {
   bets: Bet[];
@@ -20,20 +22,22 @@ export const DrillDown: React.FC<DrillDownProps> = ({
   bets,
   selectedCell,
   isPremium,
-  formatValue = (v) => `R$ ${v.toFixed(2)}`,
+  formatValue = (v) => fmtDinheiroDaPessoa(v),
   onViewAllBets,
   onAnalyzeWithAI,
   onUpgrade,
 }) => {
+  const { t } = useTranslation('apostas');
+
   if (!selectedCell) {
     return (
       <div className="bg-white border-2 border-dashed border-forest/40 rounded-xl p-5 h-full flex flex-col items-center justify-center text-center">
         <div className="w-12 h-12 rounded-full bg-forest-tint grid place-items-center mb-3">
           <MousePointer2 className="w-5 h-5 text-forest" />
         </div>
-        <div className="text-[13px] font-bold text-ink">Selecione uma fatia</div>
+        <div className="text-[13px] font-bold text-ink">{t('painel.fatia.selecione')}</div>
         <p className="text-[12px] text-ink-2 mt-1 max-w-[220px]">
-          Clique numa célula do mapa pra ver as apostas, quando você aposta e estatísticas dessa fatia.
+          {t('painel.fatia.selecioneTexto')}
         </p>
       </div>
     );
@@ -45,12 +49,12 @@ export const DrillDown: React.FC<DrillDownProps> = ({
     return (
       <div className="bg-white border-2 border-forest rounded-xl p-5 relative">
         <div className="absolute -top-2.5 left-5 px-2 py-0.5 bg-forest text-white text-[9px] uppercase tracking-[0.18em] font-bold rounded">
-          Fatia selecionada
+          {t('painel.fatia.etiqueta')}
         </div>
         <div className="text-[11px] text-ink-2 font-bold">
           {selectedCell.league} · {selectedCell.market}
         </div>
-        <p className="text-[12px] text-ink-2 mt-4">Nenhuma aposta nesta fatia no período.</p>
+        <p className="text-[12px] text-ink-2 mt-4">{t('painel.fatia.vazia')}</p>
       </div>
     );
   }
@@ -58,7 +62,7 @@ export const DrillDown: React.FC<DrillDownProps> = ({
   return (
     <div className="bg-white border-2 border-forest rounded-xl p-5 relative">
       <div className="absolute -top-2.5 left-5 px-2 py-0.5 bg-forest text-white text-[9px] uppercase tracking-[0.18em] font-bold rounded">
-        Fatia selecionada
+        {t('painel.fatia.etiqueta')}
       </div>
 
       {/* Header: liga · mercado + ROI + lucro */}
@@ -67,28 +71,28 @@ export const DrillDown: React.FC<DrillDownProps> = ({
       </div>
       <div className="flex items-baseline gap-3 mt-1">
         <div className={`text-[32px] font-extrabold tabular leading-none ${stats.roi >= 0 ? 'text-forest' : 'text-rose-700'}`}>
-          {stats.roi > 0 ? '+' : ''}{stats.roi.toFixed(1)}%
+          {stats.roi > 0 ? '+' : ''}{fmtPct(stats.roi / 100, 1)}
         </div>
         <div className={`text-[13px] font-extrabold tabular ${stats.profit >= 0 ? 'text-forest' : 'text-rose-700'}`}>
           {stats.profit > 0 ? '+' : ''}{formatValue(stats.profit)}
         </div>
       </div>
       <div className="text-[11px] text-ink-2 mt-1 tabular">
-        {stats.n} {stats.n === 1 ? 'aposta' : 'apostas'} · stake {formatValue(stats.totalStaked)}
+        {t('painel.fatia.resumo', { count: stats.n, stake: formatValue(stats.totalStaked) })}
       </div>
 
       {/* Counts: greens / reds / outras */}
       <div className="grid grid-cols-3 gap-2 mt-4">
         <div className="bg-forest-tint/60 rounded-lg p-2 border border-line/60">
-          <div className="text-[9px] uppercase tracking-[0.14em] text-ink-2 font-bold">Greens</div>
+          <div className="text-[9px] uppercase tracking-[0.14em] text-ink-2 font-bold">{t('painel.fatia.greens')}</div>
           <div className="text-[14px] font-bold tabular text-forest leading-none mt-1">{stats.won}</div>
         </div>
         <div className="bg-rose-50 rounded-lg p-2 border border-line/60">
-          <div className="text-[9px] uppercase tracking-[0.14em] text-ink-2 font-bold">Reds</div>
+          <div className="text-[9px] uppercase tracking-[0.14em] text-ink-2 font-bold">{t('painel.fatia.reds')}</div>
           <div className="text-[14px] font-bold tabular text-rose-700 leading-none mt-1">{stats.lost}</div>
         </div>
         <div className="bg-canvas-2 rounded-lg p-2 border border-line/60">
-          <div className="text-[9px] uppercase tracking-[0.14em] text-ink-2 font-bold">Outras</div>
+          <div className="text-[9px] uppercase tracking-[0.14em] text-ink-2 font-bold">{t('painel.fatia.outras')}</div>
           <div className="text-[14px] font-bold tabular text-ink leading-none mt-1">{stats.other}</div>
         </div>
       </div>
@@ -96,7 +100,7 @@ export const DrillDown: React.FC<DrillDownProps> = ({
       {/* Sparkline tendência semanal */}
       {stats.weeklySparkline.length >= 2 && (
         <div className="mt-4">
-          <div className="text-[10px] uppercase tracking-[0.14em] text-ink-2 font-bold mb-2">Tendência (semanal)</div>
+          <div className="text-[10px] uppercase tracking-[0.14em] text-ink-2 font-bold mb-2">{t('painel.fatia.tendencia')}</div>
           <Sparkline
             data={stats.weeklySparkline}
             width={280}
@@ -111,7 +115,7 @@ export const DrillDown: React.FC<DrillDownProps> = ({
       {stats.lastThree.length > 0 && (
         <div className="mt-4 pt-3 border-t border-line">
           <div className="text-[10px] uppercase tracking-[0.14em] text-ink-2 font-bold mb-2">
-            {stats.lastThree.length === 1 ? 'Última aposta' : `Últimas ${stats.lastThree.length} apostas`}
+            {t('painel.fatia.ultimas', { count: stats.lastThree.length })}
           </div>
           <div className="space-y-1.5">
             {stats.lastThree.map((b) => {
@@ -131,7 +135,7 @@ export const DrillDown: React.FC<DrillDownProps> = ({
                     }`}
                   />
                   <span className="text-ink-2 tabular w-10 shrink-0">
-                    {format(new Date(b.bet_date), 'dd/MM', { locale: ptBR })}
+                    {format(new Date(b.bet_date), 'dd/MM', { locale: localeDoDateFns() })}
                   </span>
                   <span className="text-ink font-bold flex-1 truncate" title={b.match_description || b.bet_description}>
                     {b.match_description || b.bet_description}
@@ -154,10 +158,10 @@ export const DrillDown: React.FC<DrillDownProps> = ({
             onClick={onAnalyzeWithAI}
             disabled={!onAnalyzeWithAI}
             className="w-full h-9 rounded-md bg-amber-400 text-forest text-[12px] font-bold flex items-center justify-center gap-1.5 hover:bg-amber-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            title={!onAnalyzeWithAI ? 'Análise em breve' : undefined}
+            title={!onAnalyzeWithAI ? t('painel.fatia.analiseEmBreve') : undefined}
           >
             <Sparkles className="w-3.5 h-3.5" />
-            {onAnalyzeWithAI ? 'Gerar análise dessa fatia' : 'Análise em breve'}
+            {onAnalyzeWithAI ? t('painel.fatia.gerarAnalise') : t('painel.fatia.analiseEmBreve')}
           </button>
         ) : (
           <button
@@ -166,7 +170,7 @@ export const DrillDown: React.FC<DrillDownProps> = ({
             className="w-full h-9 rounded-md bg-canvas-2 border border-line text-[11px] font-bold text-ink-2 hover:bg-canvas-2 hover:text-ink transition-colors flex items-center justify-center gap-1.5"
           >
             <Sparkles className="w-3 h-3" />
-            Análise dessa fatia · Disponível no Pro
+            {t('painel.fatia.analiseNoPro')}
           </button>
         )}
         {onViewAllBets && (
@@ -175,7 +179,7 @@ export const DrillDown: React.FC<DrillDownProps> = ({
             onClick={onViewAllBets}
             className="w-full h-9 rounded-md border border-line bg-white text-[12px] font-bold text-ink hover:bg-canvas-2 transition-colors flex items-center justify-center gap-1.5"
           >
-            {stats.n === 1 ? 'Ver a aposta' : `Ver todas as ${stats.n} apostas`}
+            {t('painel.fatia.ver', { count: stats.n })}
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         )}

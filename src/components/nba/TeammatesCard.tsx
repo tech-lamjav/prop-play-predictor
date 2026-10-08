@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { TeamPlayer } from '@/services/nba-data.service';
 import { Star, ChevronDown } from 'lucide-react';
@@ -26,16 +27,19 @@ function StarRow({ n }: { n: number }) {
   );
 }
 
-function statusLabel(status: string | undefined): { label: string; cls: string } | null {
+/** Devolve o IDENTIFICADOR do estado (e a cor), nunca o texto: quem traduz é
+ *  a tela, pelo catálogo `estado.longo.<id>`. `id` nulo = mostrar o que a API
+ *  mandou, porque não é um estado que o produto conhece. */
+function statusLabel(status: string | undefined): { id: string | null; cls: string } | null {
   if (!status) return null;
   const s = status.toLowerCase();
   if (s === 'active' || s === '') return null;
-  if (s.includes('out for season')) return { label: 'Fora da temporada', cls: 'bg-rose-50 text-rose-700 border-rose-200' };
-  if (s === 'out' || s.includes('out')) return { label: 'Fora', cls: 'bg-rose-50 text-rose-700 border-rose-200' };
-  if (s.includes('doubtful')) return { label: 'Duvidoso', cls: 'bg-orange-50 text-orange-700 border-orange-200' };
-  if (s.includes('probable')) return { label: 'Provável', cls: 'bg-emerald-50 text-forest border-emerald-200' };
-  if (s.includes('questionable')) return { label: 'Questionável', cls: 'bg-amber-50 text-amber-700 border-amber-200' };
-  return { label: status, cls: 'bg-canvas-2 text-ink-2 border-line' };
+  if (s.includes('out for season')) return { id: 'out_for_season', cls: 'bg-rose-50 text-rose-700 border-rose-200' };
+  if (s === 'out' || s.includes('out')) return { id: 'out', cls: 'bg-rose-50 text-rose-700 border-rose-200' };
+  if (s.includes('doubtful')) return { id: 'doubtful', cls: 'bg-orange-50 text-orange-700 border-orange-200' };
+  if (s.includes('probable')) return { id: 'probable', cls: 'bg-emerald-50 text-forest border-emerald-200' };
+  if (s.includes('questionable')) return { id: 'questionable', cls: 'bg-amber-50 text-amber-700 border-amber-200' };
+  return { id: null, cls: 'bg-canvas-2 text-ink-2 border-line' };
 }
 
 export const TeammatesCard: React.FC<TeammatesCardProps> = ({
@@ -44,6 +48,7 @@ export const TeammatesCard: React.FC<TeammatesCardProps> = ({
   teamName,
   isLoading,
 }) => {
+  const { t } = useTranslation('nba');
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
 
@@ -81,7 +86,7 @@ export const TeammatesCard: React.FC<TeammatesCardProps> = ({
         onClick={() => setExpanded(v => !v)}
       >
         <div className="text-left">
-          <div className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2">Companheiros</div>
+          <div className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2">{t('jogador.companheirosTitulo')}</div>
           {teamName && (
             <div className="text-[11px] mt-0.5 text-ink-dim">{teamName}</div>
           )}
@@ -93,7 +98,7 @@ export const TeammatesCard: React.FC<TeammatesCardProps> = ({
 
       <div className={`${expanded ? 'block' : 'hidden'} md:block`}>
         {displayTeammates.length === 0 ? (
-          <div className="p-4 text-[12px] text-ink-dim">Nenhum dado de companheiros disponível</div>
+          <div className="p-4 text-[12px] text-ink-dim">{t('jogador.companheirosVazio')}</div>
         ) : (
           displayTeammates.map((player, i) => {
             const initials = player.player_name
@@ -139,7 +144,7 @@ export const TeammatesCard: React.FC<TeammatesCardProps> = ({
                     <span>{player.position}</span>
                     {status && (
                       <span className={`px-1.5 h-4 inline-flex items-center rounded text-[9px] font-bold border ${status.cls}`}>
-                        {status.label}
+                        {status.id ? t(`estado.longo.${status.id}`) : player.current_status}
                       </span>
                     )}
                   </div>

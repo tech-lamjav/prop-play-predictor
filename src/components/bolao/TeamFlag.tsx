@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 /**
  * Mapeia códigos FIFA (3 letras, ex: BRA, ARG) para ISO 3166-1 alpha-2
@@ -50,6 +51,7 @@ const SIZE_CLASSES = {
  * pra placeholder cinza se o código FIFA não mapeia ou se a imagem falha.
  */
 export function TeamFlag({ code, size = 'sm', className = '' }: TeamFlagProps) {
+  const { t } = useTranslation('bolao');
   const [errored, setErrored] = useState(false);
   const isoCode = FIFA_TO_ISO[code?.toUpperCase()];
   const sizeClass = SIZE_CLASSES[size];
@@ -59,7 +61,7 @@ export function TeamFlag({ code, size = 'sm', className = '' }: TeamFlagProps) {
       <div
         className={`${sizeClass} rounded-sm bg-zinc-300/40 border border-zinc-400/30 shrink-0 ${className}`}
         title={code}
-        aria-label={`Bandeira de ${code} (não disponível)`}
+        aria-label={t('bandeira.indisponivel', { codigo: code })}
       />
     );
   }

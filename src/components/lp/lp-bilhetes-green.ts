@@ -14,8 +14,10 @@
 //     existia, então a ausência é evidência, e não falta de registro.
 //   · Chelsea x Brighton (30/08) — zero linhas no board, no histórico e no
 //     envio do Telegram.
-//   · Argentina x Egito (07/07) — zero linhas, mas o histórico só começa em
-//     27/07, então aqui não dá pra concluir nada nos dois sentidos.
+//   · Argentina x Egito (07/07) — SAIU em 07/10/2026, por validade: passou dos
+//     90 dias em 05/10 e o teste ao lado reprovou. Não havia green recente para
+//     pôr no lugar, e a seção passou a mostrar dois. O recorte continua em
+//     public/prova/, caso o histórico dele volte a interessar.
 //
 // Por isso a copy desta seção fala de aposta da casa, e NÃO diz que a
 // metodologia do Score apontou estes jogos. No dia em que entrar aqui um
@@ -76,17 +78,6 @@ export const BILHETES_GREEN: BilheteGreen[] = [
     data: "30 de agosto de 2026",
     dataISO: "2026-08-30",
     placar: "4 x 3",
-  },
-  {
-    src: "/prova/bilhete-argentina-egito.png",
-    largura: 588,
-    altura: 228,
-    alt: "Bilhete ganho: Resultado Final Argentina, odd 3.94, aposta de R$ 100 e pagamento de R$ 394",
-    jogo: "Argentina x Egito",
-    competicao: "Copa 2026",
-    data: "7 de julho de 2026",
-    dataISO: "2026-07-07",
-    placar: "3 x 2",
   },
 ];
 

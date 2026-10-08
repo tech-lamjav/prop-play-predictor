@@ -27,7 +27,7 @@ import {
   Clock
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { localeDoDateFns } from '@/utils/locale-do-date-fns';
 
 interface BetFiltersProps {
   onFiltersChange: (filters: BetFiltersState) => void;
@@ -187,7 +187,7 @@ export default function BetFilters({ onFiltersChange, onClearFilters }: BetFilte
                       <PopoverTrigger asChild>
                         <Button variant="outline" size="sm">
                           <CalendarIcon className="w-4 h-4 mr-2" />
-                          {filters.dateFrom ? format(filters.dateFrom, 'dd/MM/yyyy', { locale: ptBR }) : 'De'}
+                          {filters.dateFrom ? format(filters.dateFrom, 'dd/MM/yyyy', { locale: localeDoDateFns() }) : 'De'}
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0">
@@ -204,7 +204,7 @@ export default function BetFilters({ onFiltersChange, onClearFilters }: BetFilte
                       <PopoverTrigger asChild>
                         <Button variant="outline" size="sm">
                           <CalendarIcon className="w-4 h-4 mr-2" />
-                          {filters.dateTo ? format(filters.dateTo, 'dd/MM/yyyy', { locale: ptBR }) : 'Até'}
+                          {filters.dateTo ? format(filters.dateTo, 'dd/MM/yyyy', { locale: localeDoDateFns() }) : 'Até'}
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0">
@@ -310,7 +310,7 @@ export default function BetFilters({ onFiltersChange, onClearFilters }: BetFilte
           
           {filters.dateFrom && (
             <Badge variant="secondary" className="flex items-center space-x-1">
-              <span>De: {format(filters.dateFrom, 'dd/MM/yyyy', { locale: ptBR })}</span>
+              <span>De: {format(filters.dateFrom, 'dd/MM/yyyy', { locale: localeDoDateFns() })}</span>
               <X 
                 className="w-3 h-3 cursor-pointer" 
                 onClick={() => updateFilter('dateFrom', null)}
@@ -320,7 +320,7 @@ export default function BetFilters({ onFiltersChange, onClearFilters }: BetFilte
           
           {filters.dateTo && (
             <Badge variant="secondary" className="flex items-center space-x-1">
-              <span>Até: {format(filters.dateTo, 'dd/MM/yyyy', { locale: ptBR })}</span>
+              <span>Até: {format(filters.dateTo, 'dd/MM/yyyy', { locale: localeDoDateFns() })}</span>
               <X 
                 className="w-3 h-3 cursor-pointer" 
                 onClick={() => updateFilter('dateTo', null)}

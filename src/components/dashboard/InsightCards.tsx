@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { ArrowRight } from 'lucide-react';
 import type { DerivedInsight } from '@/utils/dashboardAggregations';
 import { InsightIcon } from './InsightIcon';
@@ -33,13 +34,18 @@ const TONE_CLASSES: Record<DerivedInsight['type'], { wrapper: string; label: str
   },
 };
 
-const CTA_TEXT: Record<DerivedInsight['type'], string> = {
-  opportunity: 'Ver fatia no mapa',
-  warning: 'Ver fatia no mapa',
-  discipline: 'Revisar disciplina',
+/* A tabela guarda CHAVE e não texto: ela mora fora do componente, onde não
+   existe `t`, e a tradução acontece no render. Mesmo desenho de
+   `menu-da-conta.ts` e dos benefícios do upsell em `BettingDashboard`. */
+const CTA_CHAVE: Record<DerivedInsight['type'], string> = {
+  opportunity: 'painel.insights.cta.verFatia',
+  warning: 'painel.insights.cta.verFatia',
+  discipline: 'painel.insights.cta.revisarDisciplina',
 };
 
 export const InsightCards: React.FC<InsightCardsProps> = ({ insights, onApplyInsight }) => {
+  const { t } = useTranslation('apostas');
+
   if (insights.length === 0) {
     return null;
   }
@@ -49,10 +55,10 @@ export const InsightCards: React.FC<InsightCardsProps> = ({ insights, onApplyIns
       <div className="flex items-end justify-between mb-2">
         <div>
           <div className="text-[10px] uppercase tracking-[0.18em] text-amber-700 font-extrabold">
-            Plano de ação
+            {t('painel.insights.etiqueta')}
           </div>
           <h2 className="text-[16px] font-extrabold tracking-tight text-ink mt-0.5">
-            {insights.length} {insights.length === 1 ? 'movimento que aumentaria' : 'movimentos que aumentariam'} seu ROI
+            {t('painel.insights.titulo', { count: insights.length })}
           </h2>
         </div>
       </div>
@@ -80,7 +86,7 @@ export const InsightCards: React.FC<InsightCardsProps> = ({ insights, onApplyIns
                   onClick={() => onApplyInsight(insight)}
                   className={`mt-3 inline-flex items-center gap-1 text-[11px] font-bold transition-colors ${tone.cta}`}
                 >
-                  {CTA_TEXT[insight.type]}
+                  {t(CTA_CHAVE[insight.type])}
                   <ArrowRight className="w-3 h-3" />
                 </button>
               )}

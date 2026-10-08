@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Helmet } from 'react-helmet-async';
 import {
   Loader2, Star, ChevronRight, Calendar, Filter as FilterIcon,
@@ -13,6 +14,8 @@ import { ANALISE360_LIST_TOUR_ID, makeAnalise360ListSteps } from '@/components/o
 import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
 import { demoNbaOpportunities, demoPlayerStarsMap, isNbaOffSeason } from '@/components/onboarding/demo/nba';
 import type { DailyOpportunity } from '@/services/nba-data.service';
+import { localeAtivo } from '@/utils/idioma-ativo';
+import { fmtPct } from '@/utils/formato';
 import {
   Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetTrigger,
 } from '@/components/ui/sheet';
@@ -38,50 +41,50 @@ interface TriggerGroup {
 
 const STATUS_ORDER: Record<string, number> = { out: 0, doubtful: 1, questionable: 2, probable: 3 };
 
-const STAT_LABEL_PT: Record<string, string> = {
-  player_points: 'Pontos',
-  player_assists: 'Assistências',
-  player_rebounds: 'Rebotes',
-  player_points_rebounds_assists: 'PRA',
-  player_points_assists: 'P+A',
-  player_points_rebounds: 'P+R',
-  player_rebounds_assists: 'R+A',
-  player_blocks_steals: 'B+R',
-  player_threes: '3PT',
-  player_steals: 'Roubos',
-  player_blocks: 'Tocos',
-};
-
-const STATUS_META: Record<string, { short: 'OUT' | 'Q' | 'DTD'; filterLabel: string; sectionLabel: string; badgeCls: string; chipCls: string }> = {
+/**
+ * O que cada estado de lesão pinta na tela.
+ *
+ * ⚠️ Tabela de MÓDULO: o TEXTO saiu daqui (#532). O rótulo da seção vive no
+ * catálogo, endereçado pela MESMA chave de estado que o banco manda
+ * (`estado.secao.<status>`), e quem resolve é o render — frase escrita aqui
+ * ficaria congelada no idioma da primeira visita.
+ *
+ * `short` fica, e não é esquecimento: OUT, DTD e Q são as siglas do boletim
+ * médico da própria NBA, iguais em português e em espanhol. O `filterLabel`
+ * que morava aqui não era usado por ninguém e saiu com o texto.
+ */
+const STATUS_META: Record<string, { short: 'OUT' | 'Q' | 'DTD'; badgeCls: string; chipCls: string }> = {
   out: {
     short: 'OUT',
-    filterLabel: 'OUT',
-    sectionLabel: 'Fora hoje',
     badgeCls: 'bg-status-danger text-white',
     chipCls: 'bg-status-danger/10 text-status-danger border border-status-danger/20',
   },
   doubtful: {
     short: 'DTD',
-    filterLabel: 'Duvidoso',
-    sectionLabel: 'Duvidosos',
     badgeCls: 'bg-status-warning text-white',
     chipCls: 'bg-status-warning/10 text-status-warning border border-status-warning/20',
   },
   questionable: {
     short: 'Q',
-    filterLabel: 'Questionável',
-    sectionLabel: 'Questionáveis',
     badgeCls: 'bg-amber-500 text-white',
     chipCls: 'bg-amber-50 text-amber-700 border border-amber-200',
   },
   probable: {
     short: 'Q',
-    filterLabel: 'Provável',
-    sectionLabel: 'Prováveis',
     badgeCls: 'bg-lime-500 text-white',
     chipCls: 'bg-lime-50 text-lime-700 border border-lime-200',
   },
 };
+
+/**
+ * O rótulo de uma estatística, resolvido no render e não na importação.
+ *
+ * O recuo continua sendo o próprio `stat_type` do banco, como antes.
+ */
+function useRotuloDaEstatistica(): (statType: string) => string {
+  const { t } = useTranslation('analise');
+  return (statType: string) => t('estatistica.' + statType, { defaultValue: statType });
+}
 
 function normalizeStatusGroup(status: string): string {
   const s = (status ?? '').toLowerCase();
@@ -94,7 +97,7 @@ function normalizeStatusGroup(status: string): string {
 // ─── Helpers ─────────────────────────────────────────────────────────────
 
 function getSaoPauloTodayLabel(): string {
-  const parts = new Intl.DateTimeFormat('pt-BR', {
+  const parts = new Intl.DateTimeFormat(localeAtivo(), {
     timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit',
   }).formatToParts(new Date());
   const d = parts.find(p => p.type === 'day')?.value ?? '00';
@@ -162,9 +165,11 @@ function FilterPill({
 // ─── Trigger Card ────────────────────────────────────────────────────────
 
 function TriggerCard({ trigger, onClick }: { trigger: TriggerGroup; onClick: () => void }) {
+  const { t } = useTranslation('analise');
+  const rotuloDaEstatistica = useRotuloDaEstatistica();
   const statusMeta = STATUS_META[normalizeStatusGroup(trigger.triggerStatus)] ?? STATUS_META.out;
   const lastName = trigger.topBackupName?.split(' ').slice(-1)[0] ?? null;
-  const topStatLabel = STAT_LABEL_PT[trigger.topBackupStat] ?? trigger.topBackupStat;
+  const topStatLabel = rotuloDaEstatistica(trigger.topBackupStat);
 
   return (
     <button
@@ -185,7 +190,7 @@ function TriggerCard({ trigger, onClick }: { trigger: TriggerGroup; onClick: () 
           <div className="flex items-center gap-1.5 mb-1 text-[11px] text-ink-2">
             <span className="font-medium">{trigger.triggerTeamAbbr}</span>
             <span className="text-line">·</span>
-            <span>{trigger.homeTeamAbbr} vs {trigger.visitorTeamAbbr}</span>
+            <span>{t('lista.cartao.jogo', { casa: trigger.homeTeamAbbr, visitante: trigger.visitorTeamAbbr })}</span>
           </div>
           <div className="flex items-center gap-1.5">
             <div className="flex items-center gap-0.5">
@@ -196,7 +201,7 @@ function TriggerCard({ trigger, onClick }: { trigger: TriggerGroup; onClick: () 
             {trigger.triggerDaysOut != null && trigger.triggerDaysOut > 0 && (
               <>
                 <span className="text-line">·</span>
-                <span className="text-[10px] text-ink-2">fora há {trigger.triggerDaysOut}d</span>
+                <span className="text-[10px] text-ink-2">{t('lista.cartao.foraHa', { dias: trigger.triggerDaysOut })}</span>
               </>
             )}
           </div>
@@ -207,7 +212,7 @@ function TriggerCard({ trigger, onClick }: { trigger: TriggerGroup; onClick: () 
       <div className="bg-canvas-2/60 rounded-lg px-3 py-2.5 flex items-center justify-between mb-3">
         <div>
           <div className="text-[9px] uppercase tracking-wider text-ink-2 font-semibold mb-0.5">
-            Companheiros valorizados
+            {t('lista.cartao.valorizados')}
           </div>
           <div className="text-2xl font-bold text-ink tabular-nums leading-none">
             {trigger.backupCount}
@@ -215,13 +220,16 @@ function TriggerCard({ trigger, onClick }: { trigger: TriggerGroup; onClick: () 
         </div>
         <div className="text-right min-w-0">
           <div className="text-[9px] uppercase tracking-wider text-ink-2 font-semibold mb-0.5">
-            Maior impacto
+            {t('lista.cartao.maiorImpacto')}
           </div>
           {lastName ? (
             <>
               <div className="text-sm font-semibold text-ink truncate">{lastName}</div>
               <div className="text-[11px] text-forest font-medium">
-                {trigger.topBackupGapPct > 0 ? '+' : ''}{trigger.topBackupGapPct.toFixed(0)}% em {topStatLabel}
+                {t('lista.cartao.impactoEm', {
+                  pct: (trigger.topBackupGapPct > 0 ? '+' : '') + fmtPct(trigger.topBackupGapPct / 100, 0),
+                  estatistica: topStatLabel,
+                })}
               </div>
             </>
           ) : (
@@ -232,7 +240,7 @@ function TriggerCard({ trigger, onClick }: { trigger: TriggerGroup; onClick: () 
 
       {/* Footer CTA */}
       <div className="flex items-center justify-between text-xs">
-        <span className="text-forest font-medium group-hover:underline">Ver análise</span>
+        <span className="text-forest font-medium group-hover:underline">{t('lista.cartao.verAnalise')}</span>
         <ChevronRight className="w-3.5 h-3.5 text-ink-2 group-hover:text-forest transition-colors" />
       </div>
     </button>
@@ -245,6 +253,7 @@ type StatusFilter = 'all' | 'out' | 'doubtful' | 'questionable';
 
 export default function Analise360List() {
   const navigate = useNavigate();
+  const { t } = useTranslation('analise');
   const { data, isLoading, error } = useAnalise360Data();
   const a360ListTour = useOnboardingTour(ANALISE360_LIST_TOUR_ID, { enabled: !isLoading });
   const realOpps = data?.opportunities ?? [];
@@ -352,7 +361,7 @@ export default function Analise360List() {
   return (
     <>
       <Helmet>
-        <title>Análise 360° — Smart Betting</title>
+        <title>{t('lista.tituloDaAba')}</title>
       </Helmet>
 
       <div className="theme-bolao min-h-screen bg-canvas text-ink">
@@ -366,22 +375,21 @@ export default function Analise360List() {
               <div className="min-w-0">
                 <div className="flex items-center gap-2 mb-2 flex-wrap">
                   <h1 className="text-[26px] md:text-[32px] font-semibold tracking-tight text-ink leading-none">
-                    Análise 360°
+                    {t('lista.titulo')}
                   </h1>
                   <span className="text-[10px] font-semibold uppercase tracking-wide px-2 py-1 bg-amber-100 text-amber-700 rounded-md whitespace-nowrap">
-                    impacto de cada lesão
+                    {t('lista.selo')}
                   </span>
                   {isDemo && <DemoBadge />}
                 </div>
                 <p className="text-[13px] md:text-[14px] mt-1.5 text-ink-2 max-w-2xl leading-snug">
-                  Quem se beneficia quando um titular não joga. Cada card é uma lesão; clique para
-                  ver a análise e os companheiros valorizados.
+                  {t('lista.subtitulo')}
                 </p>
 
               </div>
               <div className="flex items-center gap-1.5 px-3 py-1.5 border border-line bg-white rounded-md text-xs text-ink-2 shrink-0">
                 <Calendar className="w-3.5 h-3.5" />
-                <span>Hoje · {todayLabel}</span>
+                <span>{t('lista.hoje', { data: todayLabel })}</span>
               </div>
             </div>
           </div>
@@ -397,19 +405,19 @@ export default function Analise360List() {
                 <div className="flex items-center gap-2 flex-wrap">
                   <div className="flex items-center gap-1.5">
                     <FilterIcon className="w-3.5 h-3.5 text-ink-2" />
-                    <span className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">Status</span>
+                    <span className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">{t('lista.filtros.estado')}</span>
                   </div>
-                  <FilterPill active={statusFilter === 'all'} onClick={() => setStatusFilter('all')}>Todos</FilterPill>
-                  <FilterPill tone="out" active={statusFilter === 'out'} onClick={() => setStatusFilter('out')}>Fora</FilterPill>
-                  <FilterPill tone="doubtful" active={statusFilter === 'doubtful'} onClick={() => setStatusFilter('doubtful')}>Duvidoso</FilterPill>
-                  <FilterPill tone="questionable" active={statusFilter === 'questionable'} onClick={() => setStatusFilter('questionable')}>Questionável</FilterPill>
+                  <FilterPill active={statusFilter === 'all'} onClick={() => setStatusFilter('all')}>{t('lista.filtros.todos')}</FilterPill>
+                  <FilterPill tone="out" active={statusFilter === 'out'} onClick={() => setStatusFilter('out')}>{t('lista.filtros.fora')}</FilterPill>
+                  <FilterPill tone="doubtful" active={statusFilter === 'doubtful'} onClick={() => setStatusFilter('doubtful')}>{t('lista.filtros.duvidoso')}</FilterPill>
+                  <FilterPill tone="questionable" active={statusFilter === 'questionable'} onClick={() => setStatusFilter('questionable')}>{t('lista.filtros.questionavel')}</FilterPill>
                 </div>
 
                 <div className="w-px h-5 bg-line" />
 
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">Estrelas</span>
-                  <FilterPill active={exactStars === 0} onClick={() => setExactStars(0)}>Todos</FilterPill>
+                  <span className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">{t('lista.filtros.estrelas')}</span>
+                  <FilterPill active={exactStars === 0} onClick={() => setExactStars(0)}>{t('lista.filtros.todos')}</FilterPill>
                   {[1, 2, 3].map((s) => (
                     <FilterPill key={s} active={exactStars === s} onClick={() => setExactStars(s)}>
                       <span className="inline-flex items-center gap-0.5">
@@ -422,9 +430,9 @@ export default function Analise360List() {
                 <div className="w-px h-5 bg-line" />
 
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">Valorizados</span>
+                  <span className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">{t('lista.filtros.valorizados')}</span>
                   <FilterPill active={onlyMultiImpact} onClick={() => setOnlyMultiImpact(!onlyMultiImpact)}>
-                    ≥ 2
+                    {t('lista.filtros.doisOuMais')}
                   </FilterPill>
                 </div>
               </div>
@@ -439,7 +447,7 @@ export default function Analise360List() {
                     >
                       <span className="flex items-center gap-2 text-sm font-medium text-ink">
                         <FilterIcon className="w-4 h-4 text-ink-2" />
-                        Filtros
+                        {t('lista.filtros.abrir')}
                         {activeFilterCount > 0 && (
                           <span className="bg-forest text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-md tabular-nums">
                             {activeFilterCount}
@@ -454,27 +462,27 @@ export default function Analise360List() {
                     className="theme-rebrand bg-canvas rounded-t-2xl border-t border-line max-h-[85vh] overflow-y-auto"
                   >
                     <SheetHeader>
-                      <SheetTitle className="text-ink text-left">Filtros</SheetTitle>
+                      <SheetTitle className="text-ink text-left">{t('lista.filtros.titulo')}</SheetTitle>
                     </SheetHeader>
 
                     <div className="flex flex-col gap-6 mt-5">
                       <div className="flex flex-col gap-2">
                         <div className="flex items-center gap-1.5">
                           <FilterIcon className="w-3.5 h-3.5 text-ink-2" />
-                          <span className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">Status</span>
+                          <span className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">{t('lista.filtros.estado')}</span>
                         </div>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <FilterPill active={statusFilter === 'all'} onClick={() => setStatusFilter('all')}>Todos</FilterPill>
-                          <FilterPill tone="out" active={statusFilter === 'out'} onClick={() => setStatusFilter('out')}>Fora</FilterPill>
-                          <FilterPill tone="doubtful" active={statusFilter === 'doubtful'} onClick={() => setStatusFilter('doubtful')}>Duvidoso</FilterPill>
-                          <FilterPill tone="questionable" active={statusFilter === 'questionable'} onClick={() => setStatusFilter('questionable')}>Questionável</FilterPill>
+                          <FilterPill active={statusFilter === 'all'} onClick={() => setStatusFilter('all')}>{t('lista.filtros.todos')}</FilterPill>
+                          <FilterPill tone="out" active={statusFilter === 'out'} onClick={() => setStatusFilter('out')}>{t('lista.filtros.fora')}</FilterPill>
+                          <FilterPill tone="doubtful" active={statusFilter === 'doubtful'} onClick={() => setStatusFilter('doubtful')}>{t('lista.filtros.duvidoso')}</FilterPill>
+                          <FilterPill tone="questionable" active={statusFilter === 'questionable'} onClick={() => setStatusFilter('questionable')}>{t('lista.filtros.questionavel')}</FilterPill>
                         </div>
                       </div>
 
                       <div className="flex flex-col gap-2">
-                        <span className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">Estrelas</span>
+                        <span className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">{t('lista.filtros.estrelas')}</span>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <FilterPill active={exactStars === 0} onClick={() => setExactStars(0)}>Todos</FilterPill>
+                          <FilterPill active={exactStars === 0} onClick={() => setExactStars(0)}>{t('lista.filtros.todos')}</FilterPill>
                           {[1, 2, 3].map((s) => (
                             <FilterPill key={s} active={exactStars === s} onClick={() => setExactStars(s)}>
                               <span className="inline-flex items-center gap-0.5">
@@ -486,10 +494,10 @@ export default function Analise360List() {
                       </div>
 
                       <div className="flex flex-col gap-2">
-                        <span className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">Valorizados</span>
+                        <span className="text-[10px] uppercase tracking-wider text-ink-2 font-semibold">{t('lista.filtros.valorizados')}</span>
                         <div className="flex items-center gap-2">
                           <FilterPill active={onlyMultiImpact} onClick={() => setOnlyMultiImpact(!onlyMultiImpact)}>
-                            ≥ 2
+                            {t('lista.filtros.doisOuMais')}
                           </FilterPill>
                         </div>
                       </div>
@@ -502,14 +510,14 @@ export default function Analise360List() {
                         disabled={activeFilterCount === 0}
                         className="flex-1 px-3 py-2.5 text-sm font-medium rounded-md border border-line text-ink-2 hover:text-ink hover:border-ink-2 transition-colors disabled:opacity-40 disabled:pointer-events-none"
                       >
-                        Limpar
+                        {t('lista.filtros.limpar')}
                       </button>
                       <SheetClose asChild>
                         <button
                           type="button"
                           className="flex-1 px-3 py-2.5 text-sm font-semibold rounded-md bg-forest text-white hover:bg-forest/90 transition-colors"
                         >
-                          Ver resultados ({sortedGroups.length})
+                          {t('lista.filtros.verResultados', { n: sortedGroups.length })}
                         </button>
                       </SheetClose>
                     </div>
@@ -523,15 +531,18 @@ export default function Analise360List() {
           {isLoading ? (
             <div className="flex items-center justify-center py-20 gap-2">
               <Loader2 className="w-5 h-5 animate-spin text-forest opacity-70" />
-              <span className="text-sm text-ink-2">Carregando dados...</span>
+              <span className="text-sm text-ink-2">{t('lista.carregando')}</span>
             </div>
           ) : error ? (
             <div className="text-center py-20 text-sm text-status-danger">
-              {error?.message ?? 'Falha ao carregar dados'}
+              {/* A mensagem vem do servidor (erro da RPC) e chega no idioma dele:
+                  traduzi-la exigiria o banco mandar identificador em vez de frase.
+                  Só o recuo é nosso, e é esse que o catálogo cobre. */}
+              {error?.message ?? t('lista.erro')}
             </div>
           ) : sortedGroups.length === 0 ? (
             <div className="text-center py-20">
-              <p className="text-sm text-ink-2">Nenhum jogador com lesão impactante hoje.</p>
+              <p className="text-sm text-ink-2">{t('lista.vazio')}</p>
             </div>
           ) : (
             <div data-tour="a360l-grid" className="space-y-8">
@@ -544,7 +555,9 @@ export default function Analise360List() {
                         {meta.short}
                       </span>
                       <span className="text-sm text-ink-2">
-                        {meta.sectionLabel} · {triggers.length} {triggers.length === 1 ? 'jogador' : 'jogadores'}
+                        {t('estado.secao.' + statusKey)}
+                        {' · '}
+                        {t('lista.jogadores', { count: triggers.length })}
                       </span>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

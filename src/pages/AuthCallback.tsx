@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { usePostHog } from "@posthog/react";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/integrations/supabase/client";
@@ -55,6 +56,7 @@ function waitForUser(
 }
 
 const AuthCallback = () => {
+  const { t } = useTranslation('auth');
   const navigate = useNavigate();
   const posthog = usePostHog();
   // StrictMode monta o componente 2x em dev; sem o guard o fluxo roda em
@@ -82,8 +84,8 @@ const AuthCallback = () => {
       const user = await waitForUser(supabase);
       if (!user) {
         toast({
-          title: "Erro no login",
-          description: "Não foi possível completar o login com o Google. Tenta de novo.",
+          title: t('avisos.erroNoLogin'),
+          description: t('avisos.googleFalhou'),
           variant: "destructive",
         });
         navigate("/auth", { replace: true });
@@ -163,7 +165,7 @@ const AuthCallback = () => {
         });
       }
 
-      toast({ title: isNewUser ? "Conta criada!" : "Bem-vindo de volta!" });
+      toast({ title: isNewUser ? t('avisos.contaCriada') : t('avisos.bemVindo') });
       navigate(resolveTarget(storedTarget, isNewUser, !!existing?.telegram_chat_id), { replace: true });
     };
 

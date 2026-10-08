@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AchievementProvider } from "@/components/bolao/AchievementProvider";
 import { ReferralProvider } from "@/components/ReferralProvider";
 import { BrowserRouter, Routes, Route, Outlet, Navigate } from "react-router-dom";
+import { MoedaProvider } from "@/config/MoedaProvider";
 import { BolaoLayout } from "@/components/bolao/BolaoLayout";
 import LandingEcossistema from "./pages/LandingEcossistema";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -23,6 +24,7 @@ import { Porteiro } from "./components/perfil/Porteiro";
 import { EnvironmentBanner } from "./components/EnvironmentBanner";
 import Footer from "./components/Footer";
 import { lazyWithRetry } from "./lib/lazy-with-retry";
+import { TituloPadrao } from "@/components/TituloPadrao";
 
 // Lazy-loaded pages (not critical for first paint).
 // Usa `lazyWithRetry` em vez de `React.lazy` direto pra detectar falha de
@@ -44,7 +46,7 @@ import { lazyWithRetry } from "./lib/lazy-with-retry";
 //
 // A landing do ecossistema ("/") continua ansiosa de propósito: é a porta de
 // entrada mais comum e mais fria, a única onde uma ida extra ao servidor
-// apareceria. A Auth ainda leva o i18next junto, que serve três telas ao todo.
+// apareceria.
 const Landing = lazyWithRetry(() => import("./pages/Landing"));
 const Auth = lazyWithRetry(() => import("./pages/Auth"));
 const Picks = lazyWithRetry(() => import("./pages/Picks"));
@@ -129,6 +131,9 @@ const App = () => (
             BrowserRouter porque leem a rota. */}
         <IdentidadeAnalytics />
         <ChegadaDoTelegram />
+        {/* O título da aba para quem não monta <Seo>. Fica com os outros
+            sentinelas porque é da PESSOA e não de uma tela. Ver TituloPadrao. */}
+        <TituloPadrao />
         <CrossSellManager />
         {/* A pesquisa de perfil é da PESSOA, não de uma tela: por isso mora
             aqui com os outros sentinelas, e não pendurada numa página. Ela
@@ -137,6 +142,11 @@ const App = () => (
         {/* O porteiro NÃO é vizinho dos sentinelas acima: ele embrulha as
             rotas porque precisa poder aparecer no lugar delas. Os outros
             desenham por cima do produto; este substitui o produto. (#551) */}
+        {/* A moeda é da PESSOA, como o título da aba: por isso mora aqui e não
+            pendurada numa tela. Ela embrulha as rotas porque precisa poder
+            repintar o dinheiro já desenhado quando alguém troca — `fmtDinheiro`
+            lê estado de módulo, que o React não enxerga. Ver MoedaProvider. */}
+        <MoedaProvider>
         <Porteiro>
         <Suspense fallback={<LazyFallback />}>
           <Routes>
@@ -317,6 +327,7 @@ const App = () => (
           <Footer />
         </Suspense>
         </Porteiro>
+        </MoedaProvider>
       </BrowserRouter>
       </ReferralProvider>
       </AchievementProvider>

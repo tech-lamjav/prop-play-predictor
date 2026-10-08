@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../hooks/use-auth';
 import UserNav from './UserNav';
+import { useTranslation } from 'react-i18next';
+import { SeletorDeIdiomaCompacto } from './SeletorDeIdioma';
 import { SHOW_BOLAO_ENTRY_POINTS } from '@/config/bolao';
 import { useState } from 'react';
 import {
@@ -30,20 +32,21 @@ interface MainNavProps {
 
 export default function MainNav({ className }: MainNavProps) {
   const location = useLocation();
+  const { t: tComum } = useTranslation('comum');
   const navigate = useNavigate();
   const { user } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const analysisItems = [
-    { name: 'Início NBA', href: '/home-nba', icon: BarChart3 },
-    { name: 'Oportunidades do Dia', href: '/oportunidades', icon: TrendingUp },
-    { name: 'Jogos', href: '/home-games', icon: TrendingUp },
-    { name: 'Relatório', href: '/report', icon: FileText },
+    { chave: 'nav.inicioNba', href: '/home-nba', icon: BarChart3 },
+    { chave: 'nav.oportunidadesDoDia', href: '/oportunidades', icon: TrendingUp },
+    { chave: 'nav.jogos', href: '/home-games', icon: TrendingUp },
+    { chave: 'nav.relatorio', href: '/report', icon: FileText },
   ];
 
   const betinhoModuleItems = [
-    { name: 'Painel', href: '/betting-dashboard', icon: BarChart3 },
-    { name: 'Apostas', href: '/bets', icon: Target },
+    { chave: 'nav.painel', href: '/betting-dashboard', icon: BarChart3 },
+    { chave: 'nav.apostas', href: '/bets', icon: Target },
   ];
 
   const isActive = (path: string) => {
@@ -53,7 +56,7 @@ export default function MainNav({ className }: MainNavProps) {
   const isBolaoActive = location.pathname.startsWith('/bolao');
 
   const activeModuleName = analysisItems.some((i) => isActive(i.href))
-    ? 'Análises'
+    ? tComum('nav.analises')
     : betinhoModuleItems.some((i) => isActive(i.href))
     ? 'Betinho'
     : isBolaoActive
@@ -88,7 +91,7 @@ export default function MainNav({ className }: MainNavProps) {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center gap-2">
-                  <span>Análises</span>
+                  <span>{tComum('nav.analises')}</span>
                   <ChevronDown className="w-4 h-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -103,7 +106,7 @@ export default function MainNav({ className }: MainNavProps) {
                       className={`cursor-pointer ${isActive(item.href) ? 'font-semibold' : ''}`}
                     >
                       <Icon className="w-4 h-4 mr-2" />
-                      {item.name}
+                      {tComum(item.chave)}
                     </DropdownMenuItem>
                   );
                 })}
@@ -128,7 +131,7 @@ export default function MainNav({ className }: MainNavProps) {
                       className={`cursor-pointer ${isActive(item.href) ? 'font-semibold' : ''}`}
                     >
                       <Icon className="w-4 h-4 mr-2" />
-                      {item.name}
+                      {tComum(item.chave)}
                     </DropdownMenuItem>
                   );
                 })}
@@ -154,18 +157,21 @@ export default function MainNav({ className }: MainNavProps) {
               <UserNav />
             ) : (
               <>
+                {/* Sem usuário não há menu da conta, e é lá que o idioma mora.
+                    Este é o outro lugar dele. Ver SeletorDeIdioma. */}
+                <SeletorDeIdiomaCompacto className="text-muted-foreground hover:bg-accent" />
                 <Button
                   variant="ghost"
                   onClick={() => navigate('/auth')}
                   className="text-muted-foreground hover:text-foreground"
                 >
-                  Entrar
+                  {tComum('acoes.entrar')}
                 </Button>
                 <Button
                   onClick={() => navigate('/planos')}
                   className="bg-primary text-primary-foreground hover:opacity-90"
                 >
-                  Assinar
+                  {tComum('acoes.assinar')}
                 </Button>
               </>
             )}
@@ -197,14 +203,14 @@ export default function MainNav({ className }: MainNavProps) {
               {/* Seção Análises */}
               <div>
                 <p className="px-3 mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Análises
+                  {tComum('nav.analises')}
                 </p>
                 <div className="space-y-1">
                   {analysisItems.map((item) => {
                     const Icon = item.icon;
                     return (
                       <Button
-                        key={item.name}
+                        key={item.chave}
                         variant={isActive(item.href) ? "default" : "ghost"}
                         onClick={() => handleNavigation(item.href)}
                         className={`w-full justify-start flex items-center space-x-3 ${
@@ -214,7 +220,7 @@ export default function MainNav({ className }: MainNavProps) {
                         }`}
                       >
                         <Icon className="w-4 h-4" />
-                        <span className="font-medium">{item.name}</span>
+                        <span className="font-medium">{tComum(item.chave)}</span>
                       </Button>
                     );
                   })}
@@ -234,7 +240,7 @@ export default function MainNav({ className }: MainNavProps) {
                     const Icon = item.icon;
                     return (
                       <Button
-                        key={item.name}
+                        key={item.chave}
                         variant={isActive(item.href) ? "default" : "ghost"}
                         onClick={() => handleNavigation(item.href)}
                         className={`w-full justify-start flex items-center space-x-3 ${
@@ -244,7 +250,7 @@ export default function MainNav({ className }: MainNavProps) {
                         }`}
                       >
                         <Icon className="w-4 h-4" />
-                        <span className="font-medium">{item.name}</span>
+                        <span className="font-medium">{tComum(item.chave)}</span>
                       </Button>
                     );
                   })}

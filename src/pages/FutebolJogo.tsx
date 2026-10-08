@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useMemo, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { MapPin } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
@@ -18,9 +19,7 @@ import {
   computeMatchupTendencies,
 } from '@/utils/futebol-tendencias';
 import { type SaidaPreferida } from '@/utils/futebol-leitura';
-import {
-  pickLabel, marketLabel,
-} from '@/utils/futebol-score';
+import { useCopyDoFutebol } from '@/hooks/use-copy-do-futebol';
 import { settleFutebol, resultBadge, isHit, type BetResult } from '@/utils/futebol-settlement';
 import { escalacaoExibida, rotuloEscalacao } from '@/utils/futebol-escalacao';
 import { escalacaoDoTime, ultimoJogoDoTime } from '@/utils/futebol-escalacao-referencia';
@@ -35,6 +34,8 @@ import { FUT_JOGO_TOUR_ID, makeFutebolJogoSteps } from '@/components/onboarding/
 import { DemoRibbon, DemoBadge } from '@/components/onboarding/DemoRibbon';
 import { demoFixtureDetail, demoTeamSeason, demoAwaySeason } from '@/components/onboarding/demo/futebol';
 import { useDemoFixtureValueRows } from '@/components/onboarding/demo/use-demo-futebol';
+import { fmtDecimal } from '@/utils/formato';
+import { localeAtivo, RELOGIO_DE_24H } from '@/utils/idioma-ativo';
 
 /**
  * A bancada fica lado a lado a partir de 1280px (o breakpoint `xl` do grid). O
@@ -82,10 +83,10 @@ function fmtDataEHora(raw: string | null): { data: string; hora: string } {
   const d = new Date(/[Z]|[+-]\d{2}:?\d{2}$/.test(iso) ? iso : `${iso}Z`);
   if (isNaN(d.getTime())) return { data: raw, hora: '—' };
   const parte = (opcoes: Intl.DateTimeFormatOptions) =>
-    formatadorDeData('pt-BR', { timeZone: SAO_PAULO_TZ, ...opcoes }).format(d);
+    formatadorDeData(localeAtivo(), { timeZone: SAO_PAULO_TZ, ...opcoes }).format(d);
   return {
     data: parte({ day: '2-digit', month: '2-digit' }),
-    hora: parte({ hour: '2-digit', minute: '2-digit' }),
+    hora: parte({ hour: '2-digit', hourCycle: RELOGIO_DE_24H, minute: '2-digit' }),
   };
 }
 
@@ -93,24 +94,35 @@ function fmtDate(raw: string | null): string {
   if (!raw) return '—';
   const d = new Date(`${raw}T12:00:00Z`);
   if (isNaN(d.getTime())) return raw;
-  return formatadorDeData('pt-BR', { timeZone: SAO_PAULO_TZ, day: '2-digit', month: '2-digit', year: '2-digit' }).format(d);
+  return formatadorDeData(localeAtivo(), { timeZone: SAO_PAULO_TZ, day: '2-digit', month: '2-digit', year: '2-digit' }).format(d);
 }
 
-// Fases de mata-mata que a API manda em inglês. pt-BR sempre, inclusive aqui.
-const FASE_PT: Record<string, string> = {
-  'round of 32': '16-avos de final',
-  'round of 16': 'Oitavas de final',
-  'quarter-finals': 'Quartas de final',
-  'semi-finals': 'Semifinal',
-  final: 'Final',
-  '3rd place final': 'Disputa de 3º lugar',
+/**
+ * O tradutor, como as funções soltas deste arquivo precisam dele.
+ *
+ * Elas não são componentes e não podem chamar o gancho; receber a função é o que
+ * as mantém puras, e é o que faz o rótulo acompanhar o idioma ativo em vez de
+ * congelar num mapa de módulo.
+ */
+type Traduzir = (chave: string, valores?: Record<string, unknown>) => string;
+
+// Fases de mata-mata que a API manda em inglês. O texto mora no catálogo — a
+// API é o que é, e o idioma da tela é o do usuário, inclusive aqui.
+const CHAVE_DA_FASE: Record<string, string> = {
+  'round of 32': 'jogo.fase.dezesseisAvos',
+  'round of 16': 'jogo.fase.oitavas',
+  'quarter-finals': 'jogo.fase.quartas',
+  'semi-finals': 'jogo.fase.semifinal',
+  final: 'jogo.fase.final',
+  '3rd place final': 'jogo.fase.terceiroLugar',
 };
 
-function prettyRound(round: string | null): string {
+function prettyRound(round: string | null, t: Traduzir): string {
   if (!round) return '';
   const m = round.match(/Regular Season\s*-\s*(\d+)/i);
-  if (m) return `Rodada ${m[1]}`;
-  return FASE_PT[round.trim().toLowerCase()] ?? round;
+  if (m) return t('jogo.fase.rodada', { numero: m[1] });
+  const chave = CHAVE_DA_FASE[round.trim().toLowerCase()];
+  return chave ? t(chave) : round;
 }
 
 function crestInitials(name: string): string {
@@ -135,21 +147,30 @@ const FORM_COLORS: Record<string, string> = {
   L: 'bg-status-danger text-canvas',
 };
 
-/** W/D/L da API em português. O DS é explícito: pt-BR sempre, inclusive em micro-rótulo. */
-const RESULTADO_PT: Record<string, string> = { W: 'V', D: 'E', L: 'D' };
+/** W/D/L da API na letra do idioma ativo. Micro-rótulo também é texto de tela. */
+const CHAVE_DO_RESULTADO: Record<string, string> = {
+  W: 'jogo.forma.vitoria',
+  D: 'jogo.forma.empate',
+  L: 'jogo.forma.derrota',
+};
 
 function FormChips({ form }: { form: FutebolFormResult[] }) {
-  if (!form?.length) return <span className="text-xs text-ink-3">Sem histórico</span>;
+  const { t } = useTranslation('futebol');
+  if (!form?.length) return <span className="text-xs text-ink-3">{t('jogo.forma.semHistorico')}</span>;
   const ordered = [...form].reverse(); // antigo → recente
   return (
     <div className="flex gap-1">
       {ordered.map((g) => (
         <span
           key={g.fixture_id}
-          title={`${g.side === 'home' ? 'contra' : 'fora, contra'} ${g.opponent} · ${g.goals_for} a ${g.goals_against}`}
+          title={t(g.side === 'home' ? 'jogo.forma.tituloCasa' : 'jogo.forma.tituloFora', {
+            adversario: g.opponent,
+            marcados: g.goals_for,
+            sofridos: g.goals_against,
+          })}
           className={`w-5 h-5 rounded text-[10px] font-bold flex items-center justify-center ${FORM_COLORS[g.result] || ''}`}
         >
-          {RESULTADO_PT[g.result] ?? g.result}
+          {CHAVE_DO_RESULTADO[g.result] ? t(CHAVE_DO_RESULTADO[g.result]) : g.result}
         </span>
       ))}
     </div>
@@ -167,20 +188,20 @@ type FormatoDaLinha = 'pct' | 'dec' | 'int';
  * detalhe do jogo e a tela o jogava fora. O rótulo perdeu o "(%)" porque o
  * valor já sai com o sinal.
  */
-const STAT_ROWS: { key: keyof FutebolTeamStats; label: string; f: FormatoDaLinha }[] = [
-  { key: 'ball_possession', label: 'Posse de bola', f: 'pct' },
-  { key: 'expected_goals', label: 'Gols esperados', f: 'dec' },
-  { key: 'total_shots', label: 'Finalizações', f: 'int' },
-  { key: 'shots_on_goal', label: 'No gol', f: 'int' },
-  { key: 'corner_kicks', label: 'Escanteios', f: 'int' },
-  { key: 'fouls', label: 'Faltas', f: 'int' },
-  { key: 'yellow_cards', label: 'Cartões amarelos', f: 'int' },
-  { key: 'passes_pct', label: 'Passes certos', f: 'pct' },
+const STAT_ROWS: { key: keyof FutebolTeamStats; chave: string; f: FormatoDaLinha }[] = [
+  { key: 'ball_possession', chave: 'jogo.estatisticas.posse', f: 'pct' },
+  { key: 'expected_goals', chave: 'jogo.estatisticas.golsEsperados', f: 'dec' },
+  { key: 'total_shots', chave: 'jogo.estatisticas.finalizacoes', f: 'int' },
+  { key: 'shots_on_goal', chave: 'jogo.estatisticas.noGol', f: 'int' },
+  { key: 'corner_kicks', chave: 'jogo.estatisticas.escanteios', f: 'int' },
+  { key: 'fouls', chave: 'jogo.estatisticas.faltas', f: 'int' },
+  { key: 'yellow_cards', chave: 'jogo.estatisticas.cartoesAmarelos', f: 'int' },
+  { key: 'passes_pct', chave: 'jogo.estatisticas.passesCertos', f: 'pct' },
 ];
 
 function RatingBadge({ value }: { value: number }) {
   const cls = value >= 7.5 ? 'bg-forest text-canvas' : value >= 6.5 ? 'bg-canvas-2 text-ink border border-line' : 'bg-status-danger/15 text-status-danger';
-  return <span className={`text-[10px] font-bold tabular-nums rounded px-1 py-0.5 ${cls}`}>{value.toFixed(1)}</span>;
+  return <span className={`text-[10px] font-bold tabular-nums rounded px-1 py-0.5 ${cls}`}>{fmtDecimal(value, 1)}</span>;
 }
 
 const GOAL_SUFFIX: Record<string, string> = { Penalty: ' (pênalti)', 'Own Goal': ' (gol contra)' };
@@ -198,6 +219,7 @@ const CARD = 'bg-white border border-line rounded-rebrand-xl';
 // Selo de resultado (jogo encerrado): Green / Meio green / Anulada / Meio red / Red.
 // Cor + texto (não só cor) e um ponto pra reforçar o estado à distância.
 function ResultBadge({ r, big }: { r: BetResult; big?: boolean }) {
+  const copy = useCopyDoFutebol();
   const b = resultBadge(r);
   const c = b.tone === 'won' ? { bg: '#dcefe2', fg: '#0a3d2e', dot: '#2f7d50' }
     : b.tone === 'push' ? { bg: '#eef0ec', fg: '#5a625a', dot: '#8a8f86' }
@@ -208,7 +230,7 @@ function ResultBadge({ r, big }: { r: BetResult; big?: boolean }) {
       style={{ background: c.bg, color: c.fg }}
     >
       <span className="w-1.5 h-1.5 rounded-full" style={{ background: c.dot }} />
-      {b.label}
+      {copy.seloDeResultado(r)}
     </span>
   );
 }
@@ -227,7 +249,7 @@ type LinhaComparada = { l: string; a: number; b: number; f: FormatoDaLinha };
 function BarrasComparadas({ rows, vazio }: { rows: LinhaComparada[]; vazio: string }) {
   if (!rows.length) return <p className="text-sm text-ink-3 text-center py-4">{vazio}</p>;
   const fmt = (v: number, f: FormatoDaLinha) =>
-    f === 'pct' ? `${Math.round(v)}%` : f === 'int' ? String(Math.round(v)) : v.toFixed(1);
+    f === 'pct' ? `${Math.round(v)}%` : f === 'int' ? String(Math.round(v)) : fmtDecimal(v, 1);
   return (
     <div className="flex flex-col gap-3">
       {rows.map((s) => {
@@ -264,17 +286,20 @@ type RecorteDoPerfil = 'geral' | 'mando';
  * METADE das linhas não teve, que é exatamente o defeito que esta linha existe
  * para não cometer.
  */
-function baseDoLado(r?: FutebolScopeResult, s?: FutebolScopeStats): string {
+function baseDoLado(t: Traduzir, r?: FutebolScopeResult, s?: FutebolScopeStats): string {
   const jogos = r?.games;
   const comBoletim = s?.games;
   if (jogos == null && comBoletim == null) return '—';
-  if (jogos == null) return `${comBoletim} com estatística`;
-  const texto = `${jogos} ${jogos === 1 ? 'jogo' : 'jogos'}`;
-  return comBoletim == null || comBoletim === jogos ? texto : `${texto} · ${comBoletim} com estatística`;
+  if (jogos == null) return t('jogo.base.comEstatistica', { count: comBoletim });
+  const texto = t('contagem.jogos', { count: jogos });
+  return comBoletim == null || comBoletim === jogos
+    ? texto
+    : t('jogo.base.jogosComEstatistica', { jogos: texto, comBoletim });
 }
 
 // Estatísticas comparadas da temporada (barras espelhadas) — médias via team_profile
 function StatsCompare({ home, away }: { home?: FutebolTeamProfile; away?: FutebolTeamProfile }) {
+  const { t } = useTranslation('futebol');
   const [recorte, setRecorte] = useState<RecorteDoPerfil>('geral');
   // ⚠️ "Mando deste jogo" são recortes OPOSTOS: o mandante medido em casa e o
   // visitante medido fora. Por isso o rótulo nomeia a regra e não um lado — e
@@ -287,18 +312,18 @@ function StatsCompare({ home, away }: { home?: FutebolTeamProfile; away?: Futebo
   const hs = home?.stats_avg.find((s) => s.scope === escopoMandante);
   const as = away?.stats_avg.find((s) => s.scope === escopoVisitante);
   const rows = [
-    { l: 'Gols marcados / jogo', a: hr?.avg_gf, b: ar?.avg_gf, f: 'dec' },
-    { l: 'Gols sofridos / jogo', a: hr?.avg_ga, b: ar?.avg_ga, f: 'dec' },
-    { l: 'Posse de bola', a: hs?.avg_possession, b: as?.avg_possession, f: 'pct' },
-    { l: 'Finalizações / jogo', a: hs?.avg_shots, b: as?.avg_shots, f: 'dec' },
-    { l: 'Escanteios / jogo', a: hs?.avg_corners, b: as?.avg_corners, f: 'dec' },
-    { l: '% jogos Over 2.5', a: hr?.over25_pct, b: ar?.over25_pct, f: 'pct' },
+    { l: t('jogo.temporada.golsMarcadosPorJogo'), a: hr?.avg_gf, b: ar?.avg_gf, f: 'dec' },
+    { l: t('jogo.temporada.golsSofridosPorJogo'), a: hr?.avg_ga, b: ar?.avg_ga, f: 'dec' },
+    { l: t('jogo.temporada.posse'), a: hs?.avg_possession, b: as?.avg_possession, f: 'pct' },
+    { l: t('jogo.temporada.finalizacoesPorJogo'), a: hs?.avg_shots, b: as?.avg_shots, f: 'dec' },
+    { l: t('jogo.temporada.escanteiosPorJogo'), a: hs?.avg_corners, b: as?.avg_corners, f: 'dec' },
+    { l: t('jogo.temporada.over25'), a: hr?.over25_pct, b: ar?.over25_pct, f: 'pct' },
   ].filter((r) => r.a != null && r.b != null) as LinhaComparada[];
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-1.5 flex-wrap">
-        <Chip ativo={recorte === 'geral'} onClick={() => setRecorte('geral')}>Geral</Chip>
-        <Chip ativo={recorte === 'mando'} onClick={() => setRecorte('mando')}>Mando deste jogo</Chip>
+        <Chip ativo={recorte === 'geral'} onClick={() => setRecorte('geral')}>{t('jogo.temporada.geral')}</Chip>
+        <Chip ativo={recorte === 'mando'} onClick={() => setRecorte('mando')}>{t('jogo.temporada.mando')}</Chip>
       </div>
       {/* A BASE, sempre à vista, e no mesmo arranjo das barras: valor, rótulo,
           valor. Trocar o recorte muda quantos jogos sustentam cada número — no
@@ -307,14 +332,14 @@ function StatsCompare({ home, away }: { home?: FutebolTeamProfile; away?: Futebo
           embaixo de um critério que somava dez. */}
       {(hr || ar || hs || as) && (
         <div className="flex items-center justify-between gap-2 text-[10.5px] tabular-nums">
-          <span className="font-semibold text-forest">{baseDoLado(hr, hs)}</span>
-          <span className="uppercase tracking-[0.1em] font-semibold text-ink-3 shrink-0">base</span>
-          <span className="font-semibold text-ink-2">{baseDoLado(ar, as)}</span>
+          <span className="font-semibold text-forest">{baseDoLado(t, hr, hs)}</span>
+          <span className="uppercase tracking-[0.1em] font-semibold text-ink-3 shrink-0">{t('jogo.temporada.base')}</span>
+          <span className="font-semibold text-ink-2">{baseDoLado(t, ar, as)}</span>
         </div>
       )}
       <BarrasComparadas
         rows={rows}
-        vazio={recorte === 'mando' ? 'Sem médias para o mando deste confronto.' : 'Médias da temporada indisponíveis.'}
+        vazio={recorte === 'mando' ? t('jogo.temporada.vazioMando') : t('jogo.temporada.vazioGeral')}
       />
     </div>
   );
@@ -328,16 +353,18 @@ function StatsCompare({ home, away }: { home?: FutebolTeamProfile; away?: Futebo
  * nada sobre aposta, e não é insumo de premissa nenhuma.
  */
 function CaixaDoJogo({ home, away }: { home?: FutebolTeamStats; away?: FutebolTeamStats }) {
+  const { t } = useTranslation('futebol');
   const rows = STAT_ROWS.map((r) => ({
-    l: r.label,
+    l: t(r.chave),
     a: home?.[r.key] as number | null | undefined,
     b: away?.[r.key] as number | null | undefined,
     f: r.f,
   })).filter((r) => r.a != null && r.b != null) as LinhaComparada[];
-  return <BarrasComparadas rows={rows} vazio="A fonte não publicou estatística desta partida." />;
+  return <BarrasComparadas rows={rows} vazio={t('jogo.caixa.vazio')} />;
 }
 
 export default function FutebolJogo() {
+  const { t } = useTranslation('futebol');
   const { fixtureId } = useParams<{ fixtureId: string }>();
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -625,11 +652,11 @@ export default function FutebolJogo() {
           exatamente assim: contexto, com o número de encontros à vista, e
           nunca evidência. */}
       <div className="px-5 py-3 border-b border-line">
-        <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">Confrontos diretos</div>
-        <div className="text-[10px] text-ink-3 mt-0.5">Contexto dos encontros anteriores. Não entra na leitura do modelo.</div>
+        <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">{t('jogo.h2h.titulo')}</div>
+        <div className="text-[10px] text-ink-3 mt-0.5">{t('jogo.h2h.descricao')}</div>
       </div>
       <div className="p-5">
-        {h2hLoading ? <p className="text-xs text-ink-3">Carregando…</p> : h2h && h2h.length ? (
+        {h2hLoading ? <p className="text-xs text-ink-3">{t('jogo.h2h.carregando')}</p> : h2h && h2h.length ? (
           <>
             <div className="flex items-center gap-2 mb-2">
               <span className="text-[20px] font-semibold tabular-nums text-forest shrink-0">{h2hHomeWins}</span>
@@ -640,19 +667,28 @@ export default function FutebolJogo() {
               </div>
               <span className="text-[20px] font-semibold tabular-nums shrink-0" style={{ color: '#b8341c' }}>{h2hAwayWins}</span>
             </div>
-            <p className="text-[11px] mb-2 text-ink-3">{h2hTotal} confronto{h2hTotal === 1 ? '' : 's'} · {h2hHomeWins} {fixture.home_team_name} · {h2hDraws} empate · {h2hAwayWins} {fixture.away_team_name}</p>
+            <p className="text-[11px] mb-2 text-ink-3">
+              {t('jogo.h2h.resumo', {
+                count: h2hTotal,
+                vitoriasCasa: h2hHomeWins,
+                casa: fixture.home_team_name,
+                empates: h2hDraws,
+                vitoriasFora: h2hAwayWins,
+                fora: fixture.away_team_name,
+              })}
+            </p>
             {h2h.slice(0, 6).map((m) => {
               const win = (m.goals_home ?? 0) > (m.goals_away ?? 0) ? 'home' : (m.goals_away ?? 0) > (m.goals_home ?? 0) ? 'away' : 'draw';
               return (
                 <div key={m.fixture_id} className="grid grid-cols-[1fr_auto_60px] gap-2 items-center py-2 text-[12px] border-t border-line/60">
                   <span className="text-[11px] text-ink-3 truncate">{fmtDate(m.date_utc)} · {m.competition}</span>
                   <span className="font-semibold tabular-nums text-ink">{m.goals_home} × {m.goals_away}</span>
-                  <span className="text-right text-[10px] font-bold uppercase" style={{ color: win === 'home' ? 'var(--forest)' : win === 'away' ? '#b8341c' : 'var(--ink-3)' }}>{win === 'home' ? 'Casa' : win === 'away' ? 'Fora' : 'Empate'}</span>
+                  <span className="text-right text-[10px] font-bold uppercase" style={{ color: win === 'home' ? 'var(--forest)' : win === 'away' ? '#b8341c' : 'var(--ink-3)' }}>{win === 'home' ? t('jogo.h2h.casa') : win === 'away' ? t('jogo.h2h.fora') : t('jogo.h2h.empate')}</span>
                 </div>
               );
             })}
           </>
-        ) : <p className="text-xs text-ink-3">Sem confrontos diretos no histórico.</p>}
+        ) : <p className="text-xs text-ink-3">{t('jogo.h2h.vazio')}</p>}
       </div>
     </div>
   ) : null;
@@ -662,7 +698,7 @@ export default function FutebolJogo() {
   const jogoCard = fixture && finished && (home || away) ? (
     <div className="rounded-rebrand-xl overflow-hidden bg-white border border-line">
       <div className="px-5 py-3 flex items-center justify-between border-b border-line">
-        <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">Como foi esta partida</div>
+        <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">{t('jogo.caixa.titulo')}</div>
         <span className="text-[10px] flex items-center gap-2"><span className="text-forest font-semibold truncate max-w-[90px]">{fixture.home_team_name}</span><span className="text-ink-3 truncate max-w-[90px]">{fixture.away_team_name}</span></span>
       </div>
       <div className="p-5"><CaixaDoJogo home={home} away={away} /></div>
@@ -672,7 +708,7 @@ export default function FutebolJogo() {
   const statsCard = fixture && (homeProfile || awayProfile) ? (
     <div className="rounded-rebrand-xl overflow-hidden bg-white border border-line">
       <div className="px-5 py-3 flex items-center justify-between border-b border-line">
-        <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">Estatísticas · temporada</div>
+        <div className="text-[11px] uppercase tracking-[0.18em] font-bold text-ink-2">{t('jogo.temporada.titulo')}</div>
         <span className="text-[10px] flex items-center gap-2"><span className="text-forest font-semibold truncate max-w-[90px]">{fixture.home_team_name}</span><span className="text-ink-3 truncate max-w-[90px]">{fixture.away_team_name}</span></span>
       </div>
       <div className="p-5"><StatsCompare home={homeProfile} away={awayProfile} /></div>
@@ -694,7 +730,7 @@ export default function FutebolJogo() {
           </div>
         ) : !fixture ? (
           <div className={`${CARD} p-6 text-center text-sm text-status-danger`}>
-            Não foi possível carregar este jogo.
+            {t('jogo.erro')}
           </div>
         ) : (
           <>
@@ -714,7 +750,7 @@ export default function FutebolJogo() {
                   ocultos={ocultos}
                   leituraCarregando={leituraCarregando}
                   locked={locked}
-                  rodada={prettyRound(fixture.round)}
+                  rodada={prettyRound(fixture.round, t)}
                   estadio={fixture.venue_name ? `${fixture.venue_name}${fixture.venue_city ? `, ${fixture.venue_city}` : ''}` : null}
                   data={quandoJoga.data}
                   hora={quandoJoga.hora}
@@ -772,9 +808,9 @@ export default function FutebolJogo() {
               >
                 {(
                   [
-                    ['mercados', 'Leitura & mercados'],
-                    ['estatisticas', 'Estatísticas'],
-                    ['escalacoes', 'Escalações'],
+                    ['mercados', t('jogo.abas.mercados')],
+                    ['estatisticas', t('jogo.abas.estatisticas')],
+                    ['escalacoes', t('jogo.abas.escalacoes')],
                   ] as const
                 ).map(([k, label]) => (
                   <button
@@ -789,7 +825,7 @@ export default function FutebolJogo() {
                 ))}
               </div>
               <span className="text-[11.5px]" style={{ color: '#8d8672' }}>
-                Leitura de risco, não recomendação de aposta
+                {t('jogo.aviso')}
               </span>
             </div>
 

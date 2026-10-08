@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { PesoPorFaixa } from './placar-agregacao';
 import type { Recorte } from './placar-filtros';
 import { EXPLICACAO_DO_EIXO, type Eixo, type Periodo } from './placar-periodo';
@@ -83,6 +84,8 @@ export function BarraDeFiltros({
   aoMudarRecorte: (r: Recorte) => void;
   aoMudarPesos: (p: PesoPorFaixa) => void;
 }) {
+  const { t } = useTranslation('socios');
+
   return (
     // Mesma faixa branca do título, só que embaixo: a barra é parte do
     // cabeçalho da página, e não um cartão à parte no meio do conteúdo.
@@ -100,28 +103,34 @@ export function BarraDeFiltros({
       />
 
       <Escolha
-        rotulo="Conta"
+        rotulo={t('placar.filtros.conta')}
         valor={eixo}
         opcoes={[
-          { id: 'jogo' as Eixo, label: 'Por apito', ajuda: EXPLICACAO_DO_EIXO.jogo },
-          { id: 'deteccao' as Eixo, label: 'Por detecção', ajuda: EXPLICACAO_DO_EIXO.deteccao },
+          // ⚠️ `EXPLICACAO_DO_EIXO` continua em português: ela mora em
+          // `placar-periodo.ts`, que não entra nesta migração.
+          { id: 'jogo' as Eixo, label: t('placar.filtros.porApito'), ajuda: EXPLICACAO_DO_EIXO.jogo },
+          {
+            id: 'deteccao' as Eixo,
+            label: t('placar.filtros.porDeteccao'),
+            ajuda: EXPLICACAO_DO_EIXO.deteccao,
+          },
         ]}
         aoMudar={aoMudarEixo}
       />
 
       <Escolha
-        rotulo="Mercados"
+        rotulo={t('placar.filtros.mercados')}
         valor={soVitrine ? 'vitrine' : 'board'}
         opcoes={[
           {
             id: 'board',
-            label: 'Board inteiro',
-            ajuda: 'Inclui o mercado que saiu da vitrine. Responde como está a metodologia.',
+            label: t('placar.filtros.boardInteiro'),
+            ajuda: t('placar.filtros.boardInteiroAjuda'),
           },
           {
             id: 'vitrine',
-            label: 'Só a vitrine',
-            ajuda: 'Só o que o assinante viu. Responde como foi o produto.',
+            label: t('placar.filtros.soAVitrine'),
+            ajuda: t('placar.filtros.soAVitrineAjuda'),
           },
         ]}
         aoMudar={(v) => aoMudarVitrine(v === 'vitrine')}

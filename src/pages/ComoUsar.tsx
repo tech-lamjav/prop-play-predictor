@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { CheckCircle, Send, Camera, AlertCircle, BookOpen, Rocket } from "lucide-react";
@@ -5,31 +6,34 @@ import { useNavigate } from "react-router-dom";
 import AnalyticsNav from "@/components/AnalyticsNav";
 import { Seo } from "@/components/Seo";
 
+/**
+ * Guia público do Betinho no Telegram (rota /como-usar).
+ *
+ * A copy vem do catálogo `planos` no idioma ativo (#540), e não mais de texto
+ * fixo aqui: é tela pública, e quem chega de Peru, Argentina, México ou Chile
+ * precisa entender o passo a passo antes de sincronizar o bot.
+ */
 const ComoUsar = () => {
+  const { t } = useTranslation('planos');
   const navigate = useNavigate();
 
-  const steps = [
-    "Crie sua conta e faça login no app (signup).",
-    "Abra o bot no Telegram e toque em “Enviar meu número” para sincronizar.",
-    "Envie sua aposta em UMA mensagem: texto ou print (pode anexar texto junto ao print).",
-    "Aguarde a confirmação e confira no dashboard.",
-    "Se precisar, marque status ou edite no dashboard."
-  ];
+  // As listas são construídas a partir das chaves, e não de texto fixo: o
+  // idioma decide a frase, e a ordem fica aqui, onde ela é a mesma sempre.
+  const steps = ['um', 'dois', 'tres', 'quatro', 'cinco'].map((n) =>
+    t(`comoUsar.passos.${n}`),
+  );
 
-  const boasPraticas = [
-    "1 mensagem = 1 aposta. Não quebre em várias mensagens.",
-    "Inclua valor/stake e odd. Odds mínimas 1.01; múltiplas serão tratadas como combinado se vierem juntas.",
-    "Para prints: garanta legibilidade e só um palpite por print. Se faltar valor, escreva na mesma mensagem.",
-    "Para texto: siga o formato livre, mas inclua jogo, mercado, odd e valor (ex: “Lakers vs Warriors - LeBron 25+ pts - odd 1.85 - R$50”).",
-  ];
+  const boasPraticas = ['um', 'dois', 'tres', 'quatro'].map((n) =>
+    t(`comoUsar.boasPraticas.${n}`),
+  );
 
-  const problemas = [
-    "Bot pediu contato: toque em “Enviar meu número” no teclado do Telegram.",
-    "Conta não encontrada após enviar contato: garanta que o telefone cadastrado no app seja o mesmo do Telegram.",
-    "Sem resposta após print: reenvie com texto na mesma mensagem (valor/odd).",
-    "Ultrapassou limite diário: o bot responde com aviso; tente no próximo dia.",
-    "Erro genérico: tente novamente e, se persistir, fale com o suporte."
-  ];
+  const problemas = ['um', 'dois', 'tres', 'quatro', 'cinco'].map((n) =>
+    t(`comoUsar.problemas.${n}`),
+  );
+
+  const comoEnviar = ['print', 'texto', 'audio', 'umaAposta'].map((chave) =>
+    t(`comoUsar.envio.${chave}`),
+  );
 
   return (
     <div className="theme-bolao min-h-screen bg-canvas text-ink flex flex-col">
@@ -41,11 +45,11 @@ const ComoUsar = () => {
         <div className="text-center mb-10 sm:mb-12">
           <div className="inline-flex items-center gap-2 bg-forest/10 text-forest px-4 py-2 rounded-full text-sm font-medium border border-forest/20">
             <BookOpen className="w-4 h-4" />
-            Como usar o Betinho no Telegram
+            {t('comoUsar.etiqueta')}
           </div>
-          <h1 className="font-display text-3xl sm:text-5xl font-black mt-4 mb-4 text-ink">Guia rápido e boas práticas</h1>
+          <h1 className="font-display text-3xl sm:text-5xl font-black mt-4 mb-4 text-ink">{t('comoUsar.titulo')}</h1>
           <p className="text-lg sm:text-xl text-ink-2 max-w-3xl mx-auto">
-            Siga o passo a passo para sincronizar, enviar apostas e obter o melhor resultado com o bot.
+            {t('comoUsar.chamada')}
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6">
             <Button
@@ -54,7 +58,7 @@ const ComoUsar = () => {
               className="bg-forest hover:bg-forest-soft text-white px-6 py-4"
             >
               <Rocket className="w-4 h-4 mr-2" />
-              Começar grátis
+              {t('comoUsar.acao')}
             </Button>
           </div>
         </div>
@@ -65,7 +69,7 @@ const ComoUsar = () => {
             <CardContent className="p-6 space-y-3">
               <div className="flex items-center gap-2 text-forest">
                 <Send className="w-5 h-5" />
-                <p className="font-semibold">Passo a passo de configuração</p>
+                <p className="font-semibold">{t('comoUsar.passos.titulo')}</p>
               </div>
               <ul className="space-y-2 text-sm text-ink-2">
                 {steps.map((item, idx) => (
@@ -82,13 +86,15 @@ const ComoUsar = () => {
             <CardContent className="p-6 space-y-3">
               <div className="flex items-center gap-2 text-forest">
                 <Camera className="w-5 h-5" />
-                <p className="font-semibold">Como enviar</p>
+                <p className="font-semibold">{t('comoUsar.envio.titulo')}</p>
               </div>
               <ul className="space-y-2 text-sm text-ink-2">
-                <li className="flex gap-2"><CheckCircle className="w-4 h-4 text-status-success mt-0.5 shrink-0" /> Print: 1 aposta por print; se faltar valor, escreva na mesma mensagem.</li>
-                <li className="flex gap-2"><CheckCircle className="w-4 h-4 text-status-success mt-0.5 shrink-0" /> Texto: jogo + mercado + odd + valor em uma mensagem.</li>
-                <li className="flex gap-2"><CheckCircle className="w-4 h-4 text-status-success mt-0.5 shrink-0" /> Áudio (opcional): o bot transcreve e junta com o texto.</li>
-                <li className="flex gap-2"><CheckCircle className="w-4 h-4 text-status-success mt-0.5 shrink-0" /> 1 mensagem = 1 aposta. Não enviar partes separadas.</li>
+                {comoEnviar.map((item, idx) => (
+                  <li key={idx} className="flex gap-2">
+                    <CheckCircle className="w-4 h-4 text-status-success mt-0.5 shrink-0" />
+                    <span>{item}</span>
+                  </li>
+                ))}
               </ul>
             </CardContent>
           </Card>
@@ -99,7 +105,7 @@ const ComoUsar = () => {
           <CardContent className="p-6 space-y-3">
             <div className="flex items-center gap-2 text-forest">
               <AlertCircle className="w-5 h-5" />
-              <p className="font-semibold">Boas práticas</p>
+              <p className="font-semibold">{t('comoUsar.boasPraticas.titulo')}</p>
             </div>
             <ul className="space-y-2 text-sm text-ink-2">
               {boasPraticas.map((item, idx) => (
@@ -117,7 +123,7 @@ const ComoUsar = () => {
           <CardContent className="p-6 space-y-3">
             <div className="flex items-center gap-2 text-forest">
               <AlertCircle className="w-5 h-5" />
-              <p className="font-semibold">Problemas comuns</p>
+              <p className="font-semibold">{t('comoUsar.problemas.titulo')}</p>
             </div>
             <ul className="space-y-2 text-sm text-ink-2">
               {problemas.map((item, idx) => (
@@ -138,10 +144,10 @@ const ComoUsar = () => {
               className="bg-forest hover:bg-forest-soft text-white px-6 py-4"
             >
               <Rocket className="w-4 h-4 mr-2" />
-              Começar grátis
+              {t('comoUsar.acao')}
             </Button>
           </div>
-          <p className="text-xs text-ink-3 mt-3">Dica: se o bot pedir contato, toque em “Enviar meu número”.</p>
+          <p className="text-xs text-ink-3 mt-3">{t('comoUsar.dica')}</p>
         </div>
       </div>
     </div>

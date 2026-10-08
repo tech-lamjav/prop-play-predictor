@@ -25,6 +25,7 @@ import { RankingShareImageStories } from '@/components/bolao/RankingShareImageSt
 import { useRankingShareImage } from '@/components/bolao/useRankingShareImage';
 import { shareTextOrLink, SHARE_MESSAGES } from '@/components/bolao/share-utils';
 import type { Bolao, BolaoPrediction, BolaoRankingEntry, WcMatch } from '@/services/bolao.service';
+import { localeAtivo } from '@/utils/idioma-ativo';
 
 interface BolaoEmptyStateProps {
   bolao: Bolao;
@@ -117,7 +118,7 @@ export const BolaoEmptyState: React.FC<BolaoEmptyStateProps> = ({
   const nextDeadlineLabel = nextMatch
     ? (() => {
         const d = new Date(nextMatch.match_date + 'T00:00:00');
-        const dayShort = d.toLocaleDateString('pt-BR', {
+        const dayShort = d.toLocaleDateString(localeAtivo(), {
           weekday: 'short',
           day: '2-digit',
           month: '2-digit',

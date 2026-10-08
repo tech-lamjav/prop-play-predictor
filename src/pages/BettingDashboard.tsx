@@ -1,4 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
+import { useSimboloDaMoeda } from '@/hooks/use-moeda';
+import { fmtPct } from '@/utils/formato';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/use-auth';
 import { useBets } from '@/hooks/use-bets';
@@ -63,19 +66,28 @@ import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { UnitConfigurationModal } from '@/components/UnitConfigurationModal';
 import { ChevronRight, DollarSign, Target, Download, AlertCircle, Calendar as CalendarIcon, Crown, AlertTriangle, Lightbulb, Shield, Lock, Edit, Settings, BarChart3, X, type LucideIcon } from 'lucide-react';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { localeDoDateFns } from '@/utils/locale-do-date-fns';
 
-const PERIOD_OPTIONS: { value: DateRangePreset; label: string }[] = [
-  { value: '7', label: 'Últimos 7 dias' },
-  { value: '30', label: 'Últimos 30 dias' },
-  { value: '90', label: 'Últimos 90 dias' },
-  { value: 'month', label: 'Este mês' },
-  { value: 'ytd', label: 'Este ano (YTD)' },
-  { value: 'all', label: 'Período total' },
-  { value: 'custom', label: 'Personalizado' },
+const PERIOD_OPTIONS: { value: DateRangePreset; chave: string }[] = [
+  { value: '7', chave: 'painel.periodo.d7' },
+  { value: '30', chave: 'painel.periodo.d30' },
+  { value: '90', chave: 'painel.periodo.d90' },
+  { value: 'month', chave: 'painel.periodo.mes' },
+  { value: 'ytd', chave: 'painel.periodo.ano' },
+  { value: 'all', chave: 'painel.periodo.total' },
+  { value: 'custom', chave: 'painel.periodo.personalizado' },
 ];
 
+/* O PREÇO NÃO ENTRA NO CATÁLOGO, pelo mesmo motivo do #540 em Planos.tsx:
+   moeda e preço por país são decisão comercial e estão fora do escopo do
+   #532. O catálogo traduz o texto AO REDOR do preço — "Assinar Pro", "/mês" —
+   e recebe o valor por interpolação. */
+const PRECO_PRO = 'R$ 14,90';
+
 export default function BettingDashboard() {
+  const { t } = useTranslation('apostas');
+  // O símbolo da moeda escolhida — era "R$" escrito à mão.
+  const simbolo = useSimboloDaMoeda();
   const { user, isLoading: authLoading } = useAuth();
   const { bets: realBets, isLoading: betsLoading } = useBets(user?.id ?? '');
   const { toUnits, formatUnits, formatCurrency, isConfigured, refetchConfig, config } = useUserUnit();
@@ -191,15 +203,15 @@ export default function BettingDashboard() {
   const oddsData = useMemo(() => aggregateOddsDistribution(currentBets), [currentBets]);
 
   const periodLabel = useMemo(() => {
-    if (period === 'custom' && customFrom && customTo) return 'período personalizado';
-    if (period === '7') return 'últimos 7 dias';
-    if (period === '30') return 'últimos 30 dias';
-    if (period === '90') return 'últimos 90 dias';
-    if (period === 'month') return 'este mês';
-    if (period === 'ytd') return 'este ano';
-    if (period === 'all') return 'período total';
-    return 'período';
-  }, [period, customFrom, customTo]);
+    if (period === 'custom' && customFrom && customTo) return t('painel.periodoTexto.personalizado');
+    if (period === '7') return t('painel.periodoTexto.d7');
+    if (period === '30') return t('painel.periodoTexto.d30');
+    if (period === '90') return t('painel.periodoTexto.d90');
+    if (period === 'month') return t('painel.periodoTexto.mes');
+    if (period === 'ytd') return t('painel.periodoTexto.ano');
+    if (period === 'all') return t('painel.periodoTexto.total');
+    return t('painel.periodoTexto.generico');
+  }, [period, customFrom, customTo, t]);
 
   // Focus filter applies ONLY to narrative + insights (heatmap/charts/StatusStrip ignoram).
   const focusedBets = useMemo(
@@ -225,28 +237,37 @@ export default function BettingDashboard() {
           winRate: focusedStats.winRate,
         },
         focusedHeatmap,
-        isEmptyFocus(currentFocus) ? periodLabel : `${focusLabel(currentFocus)} · ${periodLabel}`,
+        isEmptyFocus(currentFocus)
+          ? periodLabel
+          : `${focusLabel(currentFocus, t)} · ${periodLabel}`,
+        t,
         formatValue
       ),
-    [focusedBets, focusedStats, focusedHeatmap, currentFocus, periodLabel, formatValue]
+    [focusedBets, focusedStats, focusedHeatmap, currentFocus, periodLabel, t, formatValue]
   );
   const insights = useMemo(
-    () => deriveInsights(focusedBets, focusedHeatmap, formatValue),
-    [focusedBets, focusedHeatmap, formatValue]
+    () => deriveInsights(focusedBets, focusedHeatmap, t, formatValue),
+    [focusedBets, focusedHeatmap, t, formatValue]
   );
   const sliceNarrative = useMemo(
     () =>
       selectedCell
-        ? composeSliceNarrative(currentBets, selectedCell.league, selectedCell.market, formatValue)
+        ? composeSliceNarrative(
+            currentBets,
+            selectedCell.league,
+            selectedCell.market,
+            t,
+            formatValue,
+          )
         : null,
-    [selectedCell, currentBets, formatValue]
+    [selectedCell, currentBets, t, formatValue]
   );
   const tagNarrative = useMemo(
     () =>
       tagAnalysisTags.length > 0
-        ? composeTagNarrative(currentBetsWithTags, tagAnalysisTags, formatValue)
+        ? composeTagNarrative(currentBetsWithTags, tagAnalysisTags, t, formatValue)
         : null,
-    [tagAnalysisTags, currentBetsWithTags, formatValue]
+    [tagAnalysisTags, currentBetsWithTags, t, formatValue]
   );
 
   // Reset selected cell when period changes (cell indices may not match new heatmap).
@@ -296,7 +317,7 @@ export default function BettingDashboard() {
       <div className="theme-bolao min-h-screen bg-canvas text-ink flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="h-12 w-12 mx-auto mb-4 text-status-danger" />
-          <p className="text-[14px] text-ink-2">Por favor, faça login para ver o painel.</p>
+          <p className="text-[14px] text-ink-2">{t('painel.login')}</p>
         </div>
       </div>
     );
@@ -311,11 +332,15 @@ export default function BettingDashboard() {
       <div className="bg-white border-b border-line">
         <div className="max-w-7xl mx-auto px-4 py-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
-            <div className="text-[11px] font-bold tracking-[0.2em] text-amber-700 uppercase flex items-center gap-2">Raio-x{isDemo && <DemoBadge />}</div>
+            <div className="text-[11px] font-bold tracking-[0.2em] text-amber-700 uppercase flex items-center gap-2">{t('painel.etiqueta')}{isDemo && <DemoBadge />}</div>
             <h1 className="text-[24px] md:text-[28px] font-extrabold tracking-tight text-ink mt-1" style={{ letterSpacing: '-0.02em' }}>
-              Onde você <span className="text-forest">ganha</span> e onde <span className="text-rose-700">perde</span>?
+              <Trans
+                t={t}
+                i18nKey="painel.titulo"
+                components={[<span className="text-forest" key="ganha" />, <span className="text-rose-700" key="perde" />]}
+              />
             </h1>
-            <p className="text-[13px] text-ink-2 mt-1">Veja o desempenho da sua banca por esporte, liga, mercado e etiqueta.</p>
+            <p className="text-[13px] text-ink-2 mt-1">{t('painel.subtitulo')}</p>
           </div>
           <div data-tour="dash-header" className="flex flex-wrap items-center gap-2">
             {/* Tier badge — informativo, não clicável (vira link se houver página de billing) */}
@@ -323,8 +348,8 @@ export default function BettingDashboard() {
               <span
                 className="h-7 px-2.5 inline-flex items-center gap-1.5 rounded text-[10px] font-bold uppercase tracking-[0.14em] bg-forest text-amber-400 border border-forest"
                 role="status"
-                aria-label="Plano Pro ativo"
-                title="Plano Pro ativo"
+                aria-label={t('painel.planoPro')}
+                title={t('painel.planoPro')}
               >
                 <Crown className="w-3 h-3" aria-hidden="true" />
                 Pro
@@ -333,8 +358,8 @@ export default function BettingDashboard() {
               <span
                 className="h-7 px-2.5 inline-flex items-center rounded text-[10px] font-bold uppercase tracking-[0.14em] bg-canvas-2 text-ink-2 border border-line"
                 role="status"
-                aria-label="Plano Free"
-                title="Plano Free"
+                aria-label={t('painel.planoFree')}
+                title={t('painel.planoFree')}
               >
                 Free
               </span>
@@ -349,7 +374,7 @@ export default function BettingDashboard() {
                   !showUnitsView ? 'bg-white text-ink shadow-sm border border-line' : 'text-ink-2 hover:text-ink'
                 }`}
               >
-                R$
+                {simbolo}
               </button>
               <button
                 type="button"
@@ -360,7 +385,7 @@ export default function BettingDashboard() {
                   }
                   setShowUnitsView(true);
                 }}
-                title={!isConfigured() ? 'Configure sua unidade pra ver em u' : undefined}
+                title={!isConfigured() ? t('painel.unidade.configurePara') : undefined}
                 className={`h-7 px-3 text-[12px] font-bold rounded transition-colors ${
                   showUnitsView ? 'bg-white text-ink shadow-sm border border-line' : 'text-ink-2 hover:text-ink'
                 }`}
@@ -374,7 +399,7 @@ export default function BettingDashboard() {
               type="button"
               onClick={() => setUnitConfigOpen(true)}
               className="h-9 px-2 md:px-2.5 inline-flex items-center gap-1.5 text-[11px] text-ink-2 hover:text-ink border border-line bg-white hover:bg-canvas-2 rounded-md transition-colors"
-              title={isConfigured() && config?.unit_value ? `1u = ${formatCurrency(config.unit_value)}` : 'Configurar unidade'}
+              title={isConfigured() && config?.unit_value ? `1u = ${formatCurrency(config.unit_value)}` : t('painel.unidade.configurar')}
             >
               {isConfigured() && config?.unit_value ? (
                 <>
@@ -385,7 +410,7 @@ export default function BettingDashboard() {
               ) : (
                 <>
                   <Settings className="w-3.5 h-3.5 text-forest" />
-                  <span className="hidden md:inline text-forest font-bold">Configurar unidade</span>
+                  <span className="hidden md:inline text-forest font-bold">{t('painel.unidade.configurar')}</span>
                 </>
               )}
             </button>
@@ -394,11 +419,11 @@ export default function BettingDashboard() {
               type="button"
               onClick={() => exportBetsToCSV(currentBets, formatValue)}
               className="h-9 px-2 md:px-3 inline-flex items-center gap-2 text-[13px] font-medium text-ink-2 hover:text-ink border border-line bg-white hover:bg-canvas-2 rounded-md transition-colors"
-              title="Exportar CSV"
-              aria-label="Exportar CSV"
+              title={t('painel.acoes.exportarCsv')}
+              aria-label={t('painel.acoes.exportarCsv')}
             >
               <Download className="w-4 h-4" />
-              <span className="hidden md:inline">Exportar</span>
+              <span className="hidden md:inline">{t('painel.acoes.exportar')}</span>
             </button>
 
             <Select
@@ -406,7 +431,7 @@ export default function BettingDashboard() {
               onValueChange={(v) => setPeriod(v as DateRangePreset)}
             >
               <SelectTrigger className="theme-rebrand h-9 w-[180px] bg-white border-line text-ink text-[13px] focus:ring-2 focus:ring-forest/10">
-                <SelectValue placeholder="Período" />
+                <SelectValue placeholder={t('painel.periodo.placeholder')} />
               </SelectTrigger>
               <SelectContent className="theme-rebrand bg-white border-line text-ink">
                 {PERIOD_OPTIONS.map((opt) => (
@@ -415,7 +440,7 @@ export default function BettingDashboard() {
                     value={opt.value}
                     className="text-ink text-[13px] focus:bg-canvas-2 focus:text-ink"
                   >
-                    {opt.label}
+                    {t(opt.chave)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -431,7 +456,7 @@ export default function BettingDashboard() {
                     >
                       <CalendarIcon className="w-3.5 h-3.5 text-forest" />
                       <span className={customFrom ? 'tabular' : 'text-ink-2'}>
-                        {customFrom ? format(customFrom, 'dd/MM/yyyy', { locale: ptBR }) : 'De'}
+                        {customFrom ? format(customFrom, 'dd/MM/yyyy', { locale: localeDoDateFns() }) : t('painel.periodo.de')}
                       </span>
                     </button>
                   </PopoverTrigger>
@@ -468,7 +493,7 @@ export default function BettingDashboard() {
                     >
                       <CalendarIcon className="w-3.5 h-3.5 text-forest" />
                       <span className={customTo ? 'tabular' : 'text-ink-2'}>
-                        {customTo ? format(customTo, 'dd/MM/yyyy', { locale: ptBR }) : 'Até'}
+                        {customTo ? format(customTo, 'dd/MM/yyyy', { locale: localeDoDateFns() }) : t('painel.periodo.ate')}
                       </span>
                     </button>
                   </PopoverTrigger>
@@ -505,7 +530,7 @@ export default function BettingDashboard() {
       {/* Mobile headline */}
       <div className="md:hidden px-4 pt-4">
         <div className="text-[18px] font-extrabold tracking-tight">
-          Seu período tá{' '}
+          {t('painel.mobile.periodoEsta')}{' '}
           <span
             className={
               currentStats.profit > 0
@@ -515,7 +540,11 @@ export default function BettingDashboard() {
                   : 'text-ink'
             }
           >
-            {currentStats.profit > 0 ? 'green' : currentStats.profit < 0 ? 'red' : 'neutro'}
+            {currentStats.profit > 0
+              ? t('painel.mobile.green')
+              : currentStats.profit < 0
+                ? t('painel.mobile.red')
+                : t('painel.mobile.neutro')}
           </span>
         </div>
       </div>
@@ -543,7 +572,7 @@ export default function BettingDashboard() {
           <div className="flex items-center gap-4 shrink-0">
             <div>
               <div className="text-[10px] uppercase tracking-[0.18em] text-ink-2 font-bold">
-                {initialBankroll > 0 ? 'Banca atual' : `Lucro · ${periodLabel}`}
+                {initialBankroll > 0 ? t('painel.kpi.bancaAtual') : t('painel.kpi.lucroDoPeriodo', { periodo: periodLabel })}
               </div>
               <div className="flex items-baseline gap-2 mt-0.5">
                 <div
@@ -581,7 +610,7 @@ export default function BettingDashboard() {
           {/* Mini KPIs: Lucro · ROI · Win rate · Apostas */}
           <div className="grid grid-cols-4 gap-4 lg:gap-6 flex-1 min-w-[280px]">
             <div>
-              <div className="text-[9px] uppercase tracking-[0.14em] text-ink-2 font-bold">Lucro</div>
+              <div className="text-[9px] uppercase tracking-[0.14em] text-ink-2 font-bold">{t('painel.kpi.lucro')}</div>
               <div
                 className={`text-[15px] font-extrabold tabular mt-0.5 ${
                   currentStats.profit >= 0 ? 'text-forest' : 'text-rose-700'
@@ -592,24 +621,24 @@ export default function BettingDashboard() {
               </div>
             </div>
             <div>
-              <div className="text-[9px] uppercase tracking-[0.14em] text-ink-2 font-bold">ROI</div>
+              <div className="text-[9px] uppercase tracking-[0.14em] text-ink-2 font-bold">{t('painel.kpi.roi')}</div>
               <div
                 className={`text-[15px] font-extrabold tabular mt-0.5 ${
                   currentStats.roi >= 0 ? 'text-ink' : 'text-rose-700'
                 }`}
               >
                 {currentStats.roi >= 0 ? '+' : ''}
-                {currentStats.roi.toFixed(1)}%
+                {fmtPct(currentStats.roi / 100, 1)}
               </div>
             </div>
             <div>
-              <div className="text-[9px] uppercase tracking-[0.14em] text-ink-2 font-bold">Taxa de acerto</div>
+              <div className="text-[9px] uppercase tracking-[0.14em] text-ink-2 font-bold">{t('painel.kpi.taxaDeAcerto')}</div>
               <div className="text-[15px] font-extrabold tabular text-ink mt-0.5">
-                {currentStats.winRate.toFixed(1)}%
+                {fmtPct(currentStats.winRate / 100, 1)}
               </div>
             </div>
             <div>
-              <div className="text-[9px] uppercase tracking-[0.14em] text-ink-2 font-bold">Apostas</div>
+              <div className="text-[9px] uppercase tracking-[0.14em] text-ink-2 font-bold">{t('painel.kpi.apostas')}</div>
               <div className="text-[15px] font-extrabold tabular text-ink mt-0.5">{currentStats.totalBets}</div>
             </div>
           </div>
@@ -620,7 +649,7 @@ export default function BettingDashboard() {
       <main id="main-content" tabIndex={-1} className="max-w-7xl mx-auto px-4 py-6 space-y-4 focus:outline-none">
         {betsLoading ? (
           <div className="bg-white border border-line rounded-xl p-8 text-center text-[13px] text-ink-2">
-            Carregando apostas...
+            {t('painel.carregando')}
           </div>
         ) : (
           <>
@@ -731,8 +760,8 @@ export default function BettingDashboard() {
                     <Target className="w-5 h-5 text-forest" />
                   </div>
                   <div className="text-left">
-                    <div className="text-[14px] font-bold text-ink">Ver apostas</div>
-                    <div className="text-[12px] text-ink-2">Lista completa e filtros</div>
+                    <div className="text-[14px] font-bold text-ink">{t('painel.cta.verApostas')}</div>
+                    <div className="text-[12px] text-ink-2">{t('painel.cta.verApostasTexto')}</div>
                   </div>
                 </div>
                 <ChevronRight className="w-5 h-5 text-forest opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
@@ -747,8 +776,8 @@ export default function BettingDashboard() {
                     <DollarSign className="w-5 h-5 text-forest" />
                   </div>
                   <div className="text-left">
-                    <div className="text-[14px] font-bold text-ink">Fluxo de caixa</div>
-                    <div className="text-[12px] text-ink-2">Histórico detalhado de transações</div>
+                    <div className="text-[14px] font-bold text-ink">{t('painel.cta.fluxoDeCaixa')}</div>
+                    <div className="text-[12px] text-ink-2">{t('painel.cta.fluxoDeCaixaTexto')}</div>
                   </div>
                 </div>
                 <ChevronRight className="w-5 h-5 text-forest opacity-50 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
@@ -852,21 +881,20 @@ export default function BettingDashboard() {
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-[10px] uppercase tracking-[0.18em] text-amber-400 font-extrabold">
-                  Exemplo · Betinho Pro
+                  {t('painel.exemplo.etiqueta')}
                 </div>
                 <DialogTitle className="text-[18px] font-extrabold tracking-tight leading-tight mt-0.5">
-                  Como sua análise vai ficar no Pro
+                  {t('painel.exemplo.titulo')}
                 </DialogTitle>
                 <DialogDescription className="text-[11px] text-white/70 mt-1">
-                  Prévia gerada com seus dados reais ({focusedStats.totalBets}{' '}
-                  {focusedStats.totalBets === 1 ? 'aposta' : 'apostas'})
+                  {t('painel.exemplo.previa', { count: focusedStats.totalBets })}
                 </DialogDescription>
               </div>
               <button
                 type="button"
                 onClick={() => setExampleModalOpen(false)}
                 className="w-7 h-7 rounded-md bg-white/10 hover:bg-white/20 grid place-items-center shrink-0 transition-colors"
-                aria-label="Fechar"
+                aria-label={t('painel.acoes.fechar')}
               >
                 <X className="w-3.5 h-3.5 text-white" />
               </button>
@@ -882,8 +910,7 @@ export default function BettingDashboard() {
             {!narrative.hasEnoughData && (
               <div className="bg-white border border-line rounded-xl p-5 text-center">
                 <p className="text-[13px] text-ink-2">
-                  Você ainda tem poucas apostas no período pra gerar uma análise sólida. Cadastre pelo menos 5 e
-                  veja o que o Betinho identifica.
+                  {t('painel.exemplo.poucasApostas')}
                 </p>
               </div>
             )}
@@ -896,7 +923,7 @@ export default function BettingDashboard() {
               onClick={() => setExampleModalOpen(false)}
               className="h-10 px-4 rounded-md border border-line text-[12px] font-bold text-ink-2 hover:text-ink hover:bg-canvas-2 transition-colors flex-1"
             >
-              Fechar
+              {t('painel.acoes.fechar')}
             </button>
             <button
               type="button"
@@ -906,7 +933,7 @@ export default function BettingDashboard() {
               }}
               className="h-10 px-5 rounded-md bg-amber-400 text-forest font-extrabold text-[12px] hover:bg-amber-300 transition-colors flex-[2]"
             >
-              Assinar Pro · R$ 14,90/mês
+              {t('painel.exemplo.assinar', { valor: PRECO_PRO })}
             </button>
           </div>
         </DialogContent>
@@ -921,7 +948,18 @@ interface UpsellCardProps {
   onSeeExample: () => void;
 }
 
-const UpsellCard: React.FC<UpsellCardProps> = ({ onUpgrade, onSeeExample }) => (
+/* Os benefícios guardam CHAVE e não texto: o ícone é código, o rótulo é
+   catálogo. A pintura logo abaixo é quem traduz. */
+const BENEFICIOS: { Icon: LucideIcon; chave: string }[] = [
+  { Icon: BarChart3, chave: 'raioX' },
+  { Icon: AlertTriangle, chave: 'vazamentos' },
+  { Icon: Lightbulb, chave: 'fatia' },
+  { Icon: Shield, chave: 'disciplina' },
+];
+
+const UpsellCard: React.FC<UpsellCardProps> = ({ onUpgrade, onSeeExample }) => {
+  const { t } = useTranslation('apostas');
+  return (
   <div className="relative overflow-hidden rounded-xl bg-forest text-white">
     <div
       className="absolute inset-0 opacity-[0.06] pointer-events-none"
@@ -937,21 +975,24 @@ const UpsellCard: React.FC<UpsellCardProps> = ({ onUpgrade, onSeeExample }) => (
             <span className="text-amber-400 text-[18px] font-bold">B</span>
           </div>
           <div>
-            <div className="text-[10px] uppercase tracking-[0.18em] text-amber-400 font-bold inline-flex items-center gap-1.5"><Lock className="w-3 h-3" />Desbloqueie o Betinho Pro</div>
+            <div className="text-[10px] uppercase tracking-[0.18em] text-amber-400 font-bold inline-flex items-center gap-1.5"><Lock className="w-3 h-3" />{t('painel.upsell.desbloqueie')}</div>
             <div className="text-[12px] text-white/70">
-              Disponível no plano <span className="font-bold text-amber-400">Pro · R$ 14,90/mês</span>
+              {t('painel.upsell.disponivelNoPlano')} <span className="font-bold text-amber-400">{t('painel.upsell.proPreco', { valor: PRECO_PRO })}</span>
             </div>
           </div>
         </div>
 
         <h2 className="text-[20px] md:text-[22px] font-bold tracking-tight leading-tight">
-          Pare de olhar gráfico.<br />
-          Receba <span className="text-amber-400">recomendações práticas</span> sobre suas apostas.
+          {t('painel.upsell.tituloLinhaUm')}<br />
+          <Trans
+            t={t}
+            i18nKey="painel.upsell.tituloLinhaDois"
+            components={[<span className="text-amber-400" key="destaque" />]}
+          />
         </h2>
 
         <p className="text-[13px] text-white/80 leading-relaxed mt-3 max-w-md">
-          O Betinho cruza suas apostas e destaca onde você ganha, onde perde e o que ajustar.
-          Atualiza automaticamente conforme você registra novas apostas.
+          {t('painel.upsell.texto')}
         </p>
 
         <div className="flex flex-wrap items-center gap-2 mt-5">
@@ -960,37 +1001,33 @@ const UpsellCard: React.FC<UpsellCardProps> = ({ onUpgrade, onSeeExample }) => (
             onClick={onUpgrade}
             className="h-10 px-5 rounded-md bg-amber-400 text-forest font-bold text-[13px] hover:bg-amber-300 transition-colors"
           >
-            Assinar Pro · R$ 14,90/mês
+            {t('painel.upsell.assinar', { valor: PRECO_PRO })}
           </button>
           <button
             type="button"
             onClick={onSeeExample}
             className="h-10 px-4 rounded-md bg-white/10 border border-white/20 text-white font-bold text-[12px] hover:bg-white/15 transition-colors"
           >
-            Ver exemplo de análise
+            {t('painel.upsell.verExemplo')}
           </button>
         </div>
       </div>
 
       <div className="md:col-span-5 space-y-2">
-        <div className="text-[10px] uppercase tracking-[0.14em] text-amber-400 font-bold mb-1">Você terá:</div>
-        {([
-          { Icon: BarChart3, t: 'Raio-x completo da banca', s: 'Onde você ganha e onde perde por liga, mercado e etiqueta.' },
-          { Icon: AlertTriangle, t: 'Detector de vazamentos', s: 'Fatias com ROI negativo destacadas como prioridade pra revisar.' },
-          { Icon: Lightbulb, t: 'Análise por fatia ou tag', s: 'Clique numa fatia do mapa e veja sequências, odd média e padrões.' },
-          { Icon: Shield, t: 'Alertas de disciplina', s: 'Alertas sobre quando você aposta valores muito diferentes e faixa de odd fora da zona estável.' },
-        ] as { Icon: LucideIcon; t: string; s: string }[]).map((b, i) => (
-          <div key={i} className="bg-white/5 border border-white/10 rounded-lg p-2.5 flex gap-2.5">
+        <div className="text-[10px] uppercase tracking-[0.14em] text-amber-400 font-bold mb-1">{t('painel.upsell.voceTera')}</div>
+        {BENEFICIOS.map((b) => (
+          <div key={b.chave} className="bg-white/5 border border-white/10 rounded-lg p-2.5 flex gap-2.5">
             <div className="w-7 h-7 rounded-md bg-amber-400/15 grid place-items-center shrink-0">
               <b.Icon className="w-4 h-4 text-amber-400" />
             </div>
             <div className="flex-1">
-              <div className="text-[12px] font-bold leading-tight">{b.t}</div>
-              <div className="text-[11px] text-white/65 leading-snug mt-0.5">{b.s}</div>
+              <div className="text-[12px] font-bold leading-tight">{t(`painel.upsell.beneficios.${b.chave}.titulo`)}</div>
+              <div className="text-[11px] text-white/65 leading-snug mt-0.5">{t(`painel.upsell.beneficios.${b.chave}.texto`)}</div>
             </div>
           </div>
         ))}
       </div>
     </div>
   </div>
-);
+  );
+};

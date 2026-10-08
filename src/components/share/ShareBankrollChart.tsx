@@ -11,7 +11,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { ShareResolveBet } from '@/hooks/use-share-resolve';
 import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { localeDoDateFns } from '@/utils/locale-do-date-fns';
 
 interface ShareBankrollChartProps {
   bets: ShareResolveBet[];
@@ -48,8 +48,8 @@ export const ShareBankrollChart: React.FC<ShareBankrollChartProps> = ({ bets }) 
     for (const { date, profit } of settled) {
       cumulative += profit;
       result.push({
-        date: format(date, 'dd/MM', { locale: ptBR }),
-        fullDate: format(date, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }),
+        date: format(date, 'dd/MM', { locale: localeDoDateFns() }),
+        fullDate: format(date, "dd/MM/yyyy 'às' HH:mm", { locale: localeDoDateFns() }),
         balance: cumulative,
       });
     }

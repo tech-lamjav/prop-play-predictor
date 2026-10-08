@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Check } from 'lucide-react';
 
@@ -9,11 +10,12 @@ interface AILoadingModalProps {
   onComplete?: () => void;
 }
 
+/* Tabela fora do componente: guarda CHAVE, nunca texto. */
 const STEPS = [
-  'Carregando histórico',
-  'Calculando ROI por liga × mercado',
-  'Detectando padrões e vazamentos',
-  'Gerando recomendações',
+  'painel.analisando.passos.historico',
+  'painel.analisando.passos.roi',
+  'painel.analisando.passos.padroes',
+  'painel.analisando.passos.recomendacoes',
 ];
 
 const STEP_DURATION = 800; // ms per step
@@ -25,6 +27,7 @@ export const AILoadingModal: React.FC<AILoadingModalProps> = ({
   betCount,
   onComplete,
 }) => {
+  const { t } = useTranslation('apostas');
   // step is the index currently active. step === STEPS.length means all done.
   const [step, setStep] = useState(0);
 
@@ -78,21 +81,21 @@ export const AILoadingModal: React.FC<AILoadingModalProps> = ({
           className="text-[18px] font-extrabold tracking-tight text-ink text-center"
           style={{ letterSpacing: '-0.01em' }}
         >
-          {allDone ? 'Análise pronta' : 'Betinho está analisando…'}
+          {allDone ? t('painel.analisando.pronta') : t('painel.analisando.emCurso')}
         </DialogTitle>
         <DialogDescription className="text-[12px] text-ink-2 text-center mt-1">
           {allDone
-            ? `${betCount} ${betCount === 1 ? 'aposta processada' : 'apostas processadas'}`
-            : `Cruzando ${betCount} ${betCount === 1 ? 'aposta' : 'apostas'} do período`}
+            ? t('painel.analisando.processadas', { count: betCount })
+            : t('painel.analisando.cruzando', { count: betCount })}
         </DialogDescription>
 
         <div className="space-y-2 mt-5">
-          {STEPS.map((label, i) => {
+          {STEPS.map((chave, i) => {
             const done = step > i;
             const active = step === i;
             return (
               <div
-                key={i}
+                key={chave}
                 className={`flex items-center gap-2.5 text-[12px] ${
                   done ? 'text-forest' : active ? 'text-ink' : 'text-ink-2'
                 }`}
@@ -104,7 +107,7 @@ export const AILoadingModal: React.FC<AILoadingModalProps> = ({
                 ) : (
                   <div className="w-4 h-4 rounded-full border-2 border-line shrink-0" />
                 )}
-                <span className={done ? 'line-through opacity-70' : 'font-bold'}>{label}</span>
+                <span className={done ? 'line-through opacity-70' : 'font-bold'}>{t(chave)}</span>
               </div>
             );
           })}
@@ -112,7 +115,7 @@ export const AILoadingModal: React.FC<AILoadingModalProps> = ({
 
         <div className="mt-5 pt-4 border-t border-line text-center">
           <div className="text-[10px] text-ink-2">
-            {allDone ? 'Pronto!' : 'Geralmente leva 3–5 segundos'}
+            {allDone ? t('painel.analisando.pronto') : t('painel.analisando.duracao')}
           </div>
         </div>
       </DialogContent>

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { brtDayOf } from '@/utils/futebol-datas';
 import { formatarDia } from './crm-lista';
 import { historiaTruncada, tempoDeTela } from './crm-comportamento';
@@ -27,10 +28,12 @@ export function BlocoDeComportamento({
   estado: EstadoDoComportamento;
   cadastradoEm: string | null;
 }) {
+  const { t } = useTranslation('socios');
+
   if (estado.tipo === 'carregando') {
     return (
-      <Bloco titulo="Comportamento">
-        <p className="text-[13px] text-ink-2">Consultando o PostHog…</p>
+      <Bloco titulo={t('ficha.comportamento.titulo')}>
+        <p className="text-[13px] text-ink-2">{t('ficha.comportamento.consultando')}</p>
       </Bloco>
     );
   }
@@ -38,11 +41,9 @@ export function BlocoDeComportamento({
   if (estado.tipo === 'erro') {
     const semChave = estado.motivo.includes('sem_chave');
     return (
-      <Bloco titulo="Comportamento">
+      <Bloco titulo={t('ficha.comportamento.titulo')}>
         <p className="text-[13px] text-ink-2">
-          {semChave
-            ? 'A chave de consulta do PostHog não está configurada neste ambiente.'
-            : 'Não deu para consultar o PostHog agora.'}
+          {semChave ? t('ficha.comportamento.semChave') : t('ficha.comportamento.erro')}
         </p>
       </Bloco>
     );
@@ -67,37 +68,52 @@ export function BlocoDeComportamento({
     const projetoMudo = c.eventosNoProjetoNaSemana === 0;
 
     return (
-      <Bloco titulo="Comportamento">
+      <Bloco titulo={t('ficha.comportamento.titulo')}>
         <p className="text-[13px] text-ink-2">
-          {projetoMudo
-            ? 'O PostHog não registrou evento nenhum no projeto nesta semana — o problema é de configuração, e não desta pessoa.'
-            : 'O PostHog não tem visita registrada para esta pessoa. Pode ser que ela não tenha voltado, ou que o cadastro dela aqui não corresponda ao que o PostHog guardou.'}
+          {projetoMudo ? t('ficha.comportamento.projetoMudo') : t('ficha.comportamento.semVisita')}
         </p>
       </Bloco>
     );
   }
 
   return (
-    <Bloco titulo="Comportamento">
+    <Bloco titulo={t('ficha.comportamento.titulo')}>
       <div className="flex flex-wrap gap-x-6 gap-y-2">
         <div>
-          <p className="font-display text-xl font-black tabular-nums text-ink" aria-label="Sessões">
+          <p
+            className="font-display text-xl font-black tabular-nums text-ink"
+            aria-label={t('ficha.comportamento.sessoes')}
+          >
             {c.sessoes}
           </p>
-          <p className="text-[12px] text-ink-2">{c.sessoes === 1 ? 'visita' : 'visitas'}</p>
+          {/* Plural pelo `count` do catálogo, e não por ternário no código: em
+              espanhol a regra de plural não é a mesma, e um ternário aqui
+              decidiria por ela. */}
+          <p className="text-[12px] text-ink-2">
+            {t('ficha.comportamento.visitas', { count: c.sessoes })}
+          </p>
         </div>
         <div>
-          <p className="text-[15px] font-bold text-ink" aria-label="Tempo de tela">
+          {/* ⚠️ `tempoDeTela` vem de `crm-comportamento.ts` e ainda devolve
+              PORTUGUÊS ("menos de 1min", "sem tempo registrado"): não foi
+              migrado neste passo. */}
+          <p
+            className="text-[15px] font-bold text-ink"
+            aria-label={t('ficha.comportamento.tempoDeTela')}
+          >
             {tempoDeTela(c.segundosDeTela)}
           </p>
-          <p className="text-[12px] text-ink-2">de tela, somado</p>
+          <p className="text-[12px] text-ink-2">{t('ficha.comportamento.deTelaSomado')}</p>
         </div>
         {ultimo && (
           <div>
-            <p className="text-[15px] font-bold text-ink" aria-label="Última visita">
+            <p
+              className="text-[15px] font-bold text-ink"
+              aria-label={t('ficha.comportamento.ultimaVisita')}
+            >
               {ultimo}
             </p>
-            <p className="text-[12px] text-ink-2">última visita</p>
+            <p className="text-[12px] text-ink-2">{t('ficha.comportamento.ultimaVisitaRotulo')}</p>
           </div>
         )}
       </div>
@@ -106,7 +122,9 @@ export function BlocoDeComportamento({
         <ul className="mt-3 border-t border-line-2 pt-2">
           {c.paginas.map((p) => (
             <li key={p.caminho} className="flex justify-between gap-3 py-0.5 text-[13px]">
-              <span className="truncate text-ink-2">{p.caminho || '(sem caminho)'}</span>
+              <span className="truncate text-ink-2">
+                {p.caminho || t('ficha.comportamento.semCaminho')}
+              </span>
               <span className="tabular-nums text-ink">{p.vezes}</span>
             </li>
           ))}
@@ -115,8 +133,7 @@ export function BlocoDeComportamento({
 
       {historiaTruncada(c, cadastradoEm) && primeiro && (
         <p className="mt-3 text-[12px] text-ink-2">
-          O PostHog só guarda eventos desde {primeiro}, e esta pessoa se cadastrou antes disso.
-          Estes números são desse recorte, não de sempre.
+          {t('ficha.comportamento.historiaTruncada', { desde: primeiro })}
         </p>
       )}
     </Bloco>

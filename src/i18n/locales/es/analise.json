@@ -1,0 +1,113 @@
+{
+  "estatistica": {
+    "player_points": "Puntos",
+    "player_assists": "Asistencias",
+    "player_rebounds": "Rebotes",
+    "player_points_rebounds_assists": "PRA",
+    "player_points_assists": "P+A",
+    "player_points_rebounds": "P+R",
+    "player_rebounds_assists": "R+A",
+    "player_blocks_steals": "B+R",
+    "player_threes": "3PT",
+    "player_steals": "Robos",
+    "player_blocks": "Bloqueos"
+  },
+  "estado": {
+    "palavra": {
+      "out": "fuera",
+      "doubtful": "dudoso",
+      "questionable": "duda",
+      "probable": "probable"
+    },
+    "secao": {
+      "out": "Fuera hoy",
+      "doubtful": "Dudosos",
+      "questionable": "Cuestionables",
+      "probable": "Probables"
+    }
+  },
+  "lista": {
+    "tituloDaAba": "Análisis 360° — Smart Betting",
+    "titulo": "Análisis 360°",
+    "selo": "impacto de cada lesión",
+    "subtitulo": "Quién se beneficia cuando un titular no juega. Cada tarjeta es una lesión; haz clic para ver el análisis y los compañeros revalorizados.",
+    "hoje": "Hoy · {{data}}",
+    "carregando": "Cargando datos...",
+    "erro": "Falla al cargar los datos",
+    "vazio": "Ningún jugador con lesión impactante hoy.",
+    "jogadores_one": "{{count}} jugador",
+    "jogadores_other": "{{count}} jugadores",
+    "filtros": {
+      "abrir": "Filtros",
+      "titulo": "Filtros",
+      "estado": "Estado",
+      "estrelas": "Estrellas",
+      "valorizados": "Revalorizados",
+      "todos": "Todos",
+      "fora": "Fuera",
+      "duvidoso": "Dudoso",
+      "questionavel": "Cuestionable",
+      "doisOuMais": "≥ 2",
+      "limpar": "Limpiar",
+      "verResultados": "Ver resultados ({{n}})"
+    },
+    "cartao": {
+      "jogo": "{{casa}} vs {{visitante}}",
+      "foraHa": "fuera hace {{dias}}d",
+      "valorizados": "Compañeros revalorizados",
+      "maiorImpacto": "Mayor impacto",
+      "impactoEm": "{{pct}} en {{estatistica}}",
+      "verAnalise": "Ver análisis"
+    }
+  },
+  "detalhe": {
+    "tituloDaAba": "Análisis 360° — Smart Betting",
+    "tituloDaAbaComJogador": "{{jogador}} · Análisis 360° — Smart Betting",
+    "carregando": "Cargando...",
+    "erro": "Falla al cargar los datos",
+    "vazio": "Ningún dato encontrado para este jugador.",
+    "foraHa": "fuera hace {{dias}}d",
+    "abas": {
+      "todas": "Todas"
+    },
+    "cadeia": {
+      "titulo": "Cadena de impacto",
+      "ajudaMouse": "pasa el mouse por los jugadores para ver detalles",
+      "ajudaToque": "toca un jugador para ver el análisis",
+      "vazio": "Sin datos para esta estadística.",
+      "excedente_one": "+{{count}} compañero impactado fuera de la cadena visible",
+      "excedente_other": "+{{count}} compañeros impactados fuera de la cadena visible"
+    },
+    "proximoJogo": {
+      "titulo": "Próximo partido",
+      "vs": "vs",
+      "b2b": "Back-to-Back"
+    },
+    "kpi": {
+      "valorizados": "Revalorizados",
+      "gapMedio": "Gap promedio",
+      "maior": "Mayor"
+    },
+    "ranking": {
+      "titulo": "Clasificación de impacto",
+      "legenda": "la mejor estadística de cada uno"
+    },
+    "porQue": {
+      "titulo": "Por qué esto importa",
+      "texto": "Sin {{jogador}}, los minutos y las posesiones se reparten entre los compañeros. Cuanto mayor es la diferencia %, mayor es la probabilidad de que el suplente supere la línea de mercado en este partido."
+    },
+    "companheiros": {
+      "titulo": "Compañeros revalorizados",
+      "jogadores_one": "{{count}} jugador",
+      "jogadores_other": "{{count}} jugadores",
+      "oportunidades_one": "{{count}} oportunidad desbloqueada",
+      "oportunidades_other": "{{count}} oportunidades desbloqueadas",
+      "ordem": "ordenados por mayor gap",
+      "estatisticas_one": "{{count}} estadística revalorizada",
+      "estatisticas_other": "{{count}} estadísticas revalorizadas",
+      "dashboard": "Dashboard",
+      "linhaEProjecao": "Línea {{linha}} · proy {{projecao}}",
+      "vsLinha": "{{pct}} vs línea"
+    }
+  }
+}

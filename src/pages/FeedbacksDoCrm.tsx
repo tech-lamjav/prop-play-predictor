@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { Seo } from '@/components/Seo';
 import { CabecalhoDoCrm } from '@/components/socios/CabecalhoDoCrm';
@@ -14,18 +15,17 @@ import { useNomeDoSocio } from '@/hooks/use-nome-do-socio';
  * falo agora"; esta responde "o que estão achando do produto".
  */
 export default function FeedbacksDoCrm() {
+  const { t } = useTranslation('socios');
   const cadastros = useCadastros();
   const feedbacks = useFeedbacks(cadastros.tipo === 'pronto' ? cadastros.cadastros : []);
   const nomeDoSocio = useNomeDoSocio();
 
   const resumo =
     feedbacks.tipo === 'pronto'
-      ? `${feedbacks.feedbacks.length} ${
-          feedbacks.feedbacks.length === 1 ? 'feedback registrado' : 'feedbacks registrados'
-        }`
+      ? t('paginas.feedbacks.resumo', { count: feedbacks.feedbacks.length })
       : feedbacks.tipo === 'erro'
-        ? 'feedbacks indisponíveis'
-        : 'carregando…';
+        ? t('paginas.feedbacks.resumoIndisponivel')
+        : t('paginas.feedbacks.carregando');
 
   return (
     <>
@@ -37,9 +37,7 @@ export default function FeedbacksDoCrm() {
 
         <div className="mx-auto max-w-3xl px-4 py-6">
           <p className="mb-4 text-[14px] text-ink-2">
-            O que a base falou, do mais recente para o mais antigo. Cada feedback continua na linha
-            do tempo de quem falou — é lá que ele tem contexto —, e o nome leva de volta para a
-            ficha.
+            {t('paginas.feedbacks.introducao')}
           </p>
 
           <div className="rounded-rebrand-md border border-line-2 bg-white">
@@ -50,8 +48,8 @@ export default function FeedbacksDoCrm() {
             ) : (
               <p className="px-4 py-6 text-[14px] text-ink-2">
                 {cadastros.tipo === 'erro'
-                  ? 'Não deu para carregar a base, então os feedbacks ficariam sem dono.'
-                  : 'Carregando…'}
+                  ? t('paginas.feedbacks.erroNaBase')
+                  : t('paginas.feedbacks.carregandoBase')}
               </p>
             )}
           </div>

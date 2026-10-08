@@ -125,10 +125,32 @@ function humanize(slug: string): string {
   return slug.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+/** O travessão que a tela mostra quando não há competição. */
+export const SEM_COMPETICAO = '—';
+
 /** Nome amigável de uma competição. Cai no humanize se o slug não estiver mapeado. */
 export function competitionLabel(slug: string | null | undefined): string {
-  if (!slug) return '—';
+  if (!slug) return SEM_COMPETICAO;
   return COMPETITION_LABELS[slug] ?? humanize(slug);
+}
+
+/**
+ * A chave de idioma do nome de uma competição, ou `null` quando não há chave.
+ *
+ * `null` acontece em dois casos, e nos dois a tela deve usar `competitionLabel`:
+ * slug que o catálogo não conhece — onde o humanize devolve o nome nativo, que é
+ * nome PRÓPRIO e não se traduz — e a ausência de competição, que é o travessão.
+ *
+ * ⚠️ Mesmo dentro do catálogo, a maioria dos nomes não muda de idioma: "Premier
+ * League", "Bundesliga", "Ligue 1" e "Champions League" são nomes próprios em
+ * qualquer língua. A chave existe para os poucos que mudam — "Brasileirão",
+ * "Série B", "Copa do Brasil", "Sul-Americana", "Copa do Mundo", "Serie A
+ * (Itália)" — e ter chave para todos é o que impede a próxima liga de entrar sem
+ * ninguém decidir se ela muda ou não.
+ */
+export function chaveDaCompeticao(slug: string | null | undefined): string | null {
+  if (!slug) return null;
+  return slug in COMPETITION_LABELS ? `competicao.${slug}` : null;
 }
 
 /** Ordena uma lista de slugs pela ordem canônica (desconhecidos ao fim, alfabético). */

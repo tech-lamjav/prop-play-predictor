@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 
 /**
  * A faixa de identidade do placar, irmã da do CRM.
@@ -19,12 +20,14 @@ export function CabecalhoDoPlacar({
   /** Os filtros, que moram na mesma faixa branca — abaixo do título. */
   children?: ReactNode;
 }) {
+  const { t } = useTranslation('socios');
+
   return (
     <div className="border-b border-line-2 bg-white">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-4 pb-3 pt-4">
-        <h1 className="font-display text-2xl font-black text-ink">Metodologia</h1>
+        <h1 className="font-display text-2xl font-black text-ink">{t('placar.cabecalho.titulo')}</h1>
         <span className="rounded-full bg-forest/10 px-2.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-forest">
-          Uso interno
+          {t('placar.cabecalho.usoInterno')}
         </span>
         <p className="text-[13px] text-ink-2">{resumo}</p>
       </div>

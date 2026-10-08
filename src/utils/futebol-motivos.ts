@@ -209,6 +209,34 @@ export function premissasAcesasDaLeitura(
  * degradação: cabe ao chamador não concluir nada enquanto isso, com
  * `estadoDosMotivos`.
  */
+/**
+ * Sob que rótulo a explicação é apresentada — como IDENTIFICADOR, não como
+ * frase.
+ *
+ * ⚠️ ERA A FRASE, e isso quebrava a tela em silêncio (#544). O painel do jogo
+ * decidia o sufixo comparando `rotulo === 'Por quê'`, e no dia em que a frase
+ * fosse traduzida a comparação passaria a falhar em espanhol — sem teste
+ * nenhum acusando, porque em teste a interface está em português e a comparação
+ * continua dando certo. Identificador não tem esse problema: ele não muda de
+ * idioma.
+ *
+ * Os dois nomes estão no glossário e não são sinônimos: **porquê** é motivo a
+ * favor, e vale quando há preço; **o que o jogo mostra** são as premissas acesas
+ * de uma linha sem preço, onde não há aposta a favor de quê.
+ */
+export type RotuloDaExplicacao = 'porque' | 'oQueOJogoMostra';
+
+/** O texto de cada rótulo. Fonte única do português. */
+export const COPY_DO_ROTULO_DA_EXPLICACAO: Record<RotuloDaExplicacao, string> = {
+  porque: 'Por quê',
+  oQueOJogoMostra: 'O que o jogo mostra',
+};
+
+/** A chave de idioma do rótulo da explicação. */
+export function chaveDoRotuloDaExplicacao(rotulo: RotuloDaExplicacao): string {
+  return `explicacao.${rotulo}`;
+}
+
 export type SaidaExplicavel = {
   market: string;
   outcome: string;
@@ -242,7 +270,7 @@ export function explicacaoDaLeitura(
     maxContra?: number;
   },
 ): {
-  rotulo: 'Por quê' | 'O que o jogo mostra';
+  rotulo: RotuloDaExplicacao;
   itens: PremissaComEvidencia[];
   contra: PremissaComEvidencia[];
   /**
@@ -270,7 +298,7 @@ export function explicacaoDaLeitura(
   const semPreco = () => {
     const todos = monta(candidato?.acesas ?? []);
     return {
-      rotulo: 'O que o jogo mostra' as const,
+      rotulo: 'oQueOJogoMostra' as const,
       itens: todos.slice(0, opcoes.max),
       // Sem preço não há aposta, e sem aposta não há o que pesar contra.
       contra: [],
@@ -293,7 +321,7 @@ export function explicacaoDaLeitura(
 
   const todos = monta(separarMotivosDoContrato(doContrato?.favor ?? []).slugsDePremissas);
   return {
-    rotulo: 'Por quê',
+    rotulo: 'porque',
     itens: todos.slice(0, opcoes.max),
     contra:
       opcoes.maxContra == null

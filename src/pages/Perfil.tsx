@@ -1,4 +1,6 @@
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { SeletorDeIdioma } from '@/components/SeletorDeIdioma';
 import { fmtDecimal } from '@/utils/formato';
 import { Settings, LogOut, ChevronRight, Zap } from 'lucide-react';
 import AnalyticsNav from '@/components/AnalyticsNav';
@@ -24,6 +26,7 @@ type Row = ItemDaConta & { danger?: boolean };
 
 export default function Perfil() {
   const navigate = useNavigate();
+  const { t } = useTranslation('conta');
   const { user, signOut } = useAuth();
   const { openReferral } = useReferral();
   const { profile, subscription } = useSettingsData();
@@ -48,7 +51,7 @@ export default function Perfil() {
 
   const rows: Row[] = [
     ...doCatalogo.filter((i) => !i.interno),
-    { label: 'Sair da conta', icon: LogOut, onClick: handleSignOut, danger: true },
+    { chave: 'menu.sair', icon: LogOut, onClick: handleSignOut, danger: true },
   ];
 
   // Em cartão próprio, e ANTES das ações da conta: assim o "Sair da conta"
@@ -69,9 +72,9 @@ export default function Perfil() {
   const pct = (n: number) => `${fmtDecimal(n, 1)}%`;
   const kpis = stats
     ? [
-        { label: 'Apostas', value: String(stats.totalBets) },
-        { label: 'Acerto', value: pct(stats.winRate) },
-        { label: 'ROI', value: `${stats.roi >= 0 ? '+' : ''}${pct(stats.roi)}`, forest: true },
+        { label: t('perfil.kpis.apostas'), value: String(stats.totalBets) },
+        { label: t('perfil.kpis.acerto'), value: pct(stats.winRate) },
+        { label: t('perfil.kpis.roi'), value: `${stats.roi >= 0 ? '+' : ''}${pct(stats.roi)}`, forest: true },
       ]
     : null;
 
@@ -128,13 +131,13 @@ export default function Perfil() {
         {internos.length > 0 && (
           <section className="bg-white border border-sand-line rounded-2xl overflow-hidden">
             <span className="block px-3.5 pt-3 pb-1 font-mono text-[9.5px] font-bold uppercase tracking-[0.14em] text-sand-ink-2">
-              Uso interno
+              {t('menu.usoInterno')}
             </span>
             {internos.map((item) => {
               const Icon = item.icon;
               return (
                 <button
-                  key={item.label}
+                  key={item.chave}
                   type="button"
                   onClick={() => go(item)}
                   className="w-full h-[52px] px-3.5 flex items-center gap-3 text-[13.5px] font-medium text-ink transition-colors hover:bg-sand-50"
@@ -142,7 +145,7 @@ export default function Perfil() {
                   <span className="w-8 h-8 rounded-[9px] grid place-items-center shrink-0 bg-sand-100 text-forest">
                     <Icon className="w-4 h-4" />
                   </span>
-                  <span className="flex-1 text-left">{item.label}</span>
+                  <span className="flex-1 text-left">{t(item.chave)}</span>
                   <ChevronRight className="w-[15px] h-[15px] text-sand-chevron shrink-0" />
                 </button>
               );
@@ -150,6 +153,17 @@ export default function Perfil() {
           </section>
         )}
 
+        {/* Idioma — cartão próprio, antes das ações.
+            Fica aqui e não dentro de Ações porque trocar o idioma não é uma
+            ação sobre a conta: é uma preferência de como a tela fala. E fica
+            ANTES para o "Sair da conta" continuar sendo a última coisa da
+            página, que é onde a pessoa procura por ele. */}
+        <section className="bg-white border border-sand-line rounded-2xl overflow-hidden p-1.5">
+          <span className="block px-2 pt-1.5 pb-1 font-mono text-[9.5px] font-bold uppercase tracking-[0.14em] text-sand-ink-2">
+            {t('menu.idioma')}
+          </span>
+          <SeletorDeIdioma />
+        </section>
         {/* Ações */}
         <section className="bg-white border border-sand-line rounded-2xl overflow-hidden">
           {rows.map((row, i) => {
@@ -157,7 +171,7 @@ export default function Perfil() {
             const last = i === rows.length - 1;
             return (
               <button
-                key={row.label}
+                key={row.chave}
                 type="button"
                 onClick={() => go(row)}
                 className={`w-full h-[52px] px-3.5 flex items-center gap-3 text-[13.5px] font-medium transition-colors ${
@@ -171,7 +185,7 @@ export default function Perfil() {
                 >
                   <Icon className="w-4 h-4" />
                 </span>
-                <span className="flex-1 text-left">{row.label}</span>
+                <span className="flex-1 text-left">{t(row.chave)}</span>
                 {!row.danger && (
                   <ChevronRight className="w-[15px] h-[15px] text-sand-chevron shrink-0" />
                 )}

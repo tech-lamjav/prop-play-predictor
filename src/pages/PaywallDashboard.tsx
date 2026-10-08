@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Lock, ArrowRight, ArrowLeft, MessageCircle, Loader2, Check, BarChart2, Database, FileText, BarChart3 } from "lucide-react";
 import { useNavigate, useSearchParams, Navigate } from "react-router-dom";
@@ -7,10 +8,20 @@ import { whatsappDoTime } from "@/config/contato";
 import { createClient } from "@/integrations/supabase/client";
 import { stripeService } from "@/services/stripe.service";
 import { toast } from "@/hooks/use-toast";
+import { SeletorDeIdiomaCompacto } from '@/components/SeletorDeIdioma';
 
 const STRIPE_PRICE_ID = import.meta.env.VITE_STRIPE_PRICE_ID_BETINHO;
 
+/**
+ * Paywall do dashboard de apostas (rota /paywall-dashboard). Tela pública: a
+ * copy vem do catálogo `planos` no idioma ativo (#540).
+ *
+ * ⚠️ A mensagem pré-preenchida do WhatsApp segue em português de propósito:
+ * ela é escrita PARA o time de suporte, e texto de WhatsApp está fora do
+ * escopo do #532, que é interface.
+ */
 export default function PaywallDashboard() {
+  const { t } = useTranslation(['planos', 'comum']);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user, isLoading: authLoading } = useAuth();
@@ -59,8 +70,8 @@ export default function PaywallDashboard() {
   useEffect(() => {
     if (success && sessionId && user?.id) {
       toast({
-        title: "Pagamento realizado!",
-        description: "Verificando sua assinatura...",
+        title: t('checkout.pagoTitulo'),
+        description: t('checkout.pagoTexto'),
         variant: "default",
       });
 
@@ -73,8 +84,8 @@ export default function PaywallDashboard() {
           if (result.verified) {
             setSubscriptionStatus('premium');
             toast({
-              title: "Assinatura ativada!",
-              description: "Seu plano premium está ativo. Redirecionando...",
+              title: t('checkout.ativaTitulo'),
+              description: t('checkout.ativaTexto'),
               variant: "default",
             });
             setTimeout(() => navigate(redirectAfterPremium), 1000);
@@ -96,20 +107,20 @@ export default function PaywallDashboard() {
 
     if (canceled) {
       toast({
-        title: "Pagamento cancelado",
-        description: "Você cancelou o processo de pagamento. Tente novamente quando estiver pronto.",
+        title: t('checkout.canceladoTitulo'),
+        description: t('checkout.canceladoTexto'),
         variant: "default",
       });
     }
-  }, [success, canceled, sessionId, user?.id, navigate, redirectAfterPremium]);
+  }, [success, canceled, sessionId, user?.id, navigate, redirectAfterPremium, t]);
 
   const handleStripeCheckout = async () => {
     if (authLoading) return;
 
     if (!user) {
       toast({
-        title: "Login necessário",
-        description: "Por favor, faça login para continuar com o pagamento.",
+        title: t('checkout.loginTitulo'),
+        description: t('checkout.loginTexto'),
         variant: "destructive",
       });
       navigate('/auth');
@@ -127,8 +138,8 @@ export default function PaywallDashboard() {
     } catch (error) {
       console.error('Error creating checkout session:', error);
       toast({
-        title: "Erro ao processar pagamento",
-        description: error instanceof Error ? error.message : "Ocorreu um erro ao iniciar o checkout. Tente novamente.",
+        title: t('checkout.erroTitulo'),
+        description: error instanceof Error ? error.message : t('checkout.erroTexto'),
         variant: "destructive",
       });
     } finally {
@@ -150,26 +161,22 @@ export default function PaywallDashboard() {
     {
       icon: Check,
       iconColor: "text-terminal-green",
-      title: "Visão completa dos resultados",
-      description: "Lucro, prejuízo, ROI e evolução da banca em tempo real.",
+      chave: "visao",
     },
     {
       icon: BarChart2,
       iconColor: "text-terminal-green",
-      title: "Análise por esporte, liga e mercado",
-      description: "Entenda exatamente onde você ganha e onde perde dinheiro.",
+      chave: "analise",
     },
     {
       icon: Database,
       iconColor: "text-terminal-green",
-      title: "Registro ilimitado de apostas",
-      description: "Registre quantas apostas quiser, sem limites diários.",
+      chave: "registro",
     },
     {
       icon: FileText,
       iconColor: "text-terminal-green",
-      title: "Decisões baseadas em dados",
-      description: "Ajuste sua estratégia com base em números, não em feeling.",
+      chave: "decisao",
     },
   ];
 
@@ -185,20 +192,23 @@ export default function PaywallDashboard() {
             <span className="text-lg sm:text-2xl font-bold text-foreground">Smart Betting</span>
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
-            <Button 
-              variant="outline" 
-              onClick={() => navigate("/bets")} 
-              className="text-sm sm:text-base px-3 sm:px-4 py-2 bg-muted text-foreground border-border hover:bg-muted/80"
+            {/* Sem usuário não há menu da conta, e é lá que o idioma mora.
+                Esta tela tem cabeçalho próprio, então precisa do seu. */}
+            <SeletorDeIdiomaCompacto tom="claro" />
+            <Button
+              variant="outline"
+              onClick={() => navigate("/bets")}
+              className="text-sm sm:text-base px-3 sm:px-4 py-2 bg-muted text-foreground border-border hover:bg-muted/80 hover:text-foreground"
             >
               <ArrowLeft className="h-4 w-4 mr-1" />
-              Bets
+              {t('paywallDashboard.voltar')}
             </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => navigate("/auth")} 
-              className="text-sm sm:text-base px-3 sm:px-4 py-2 bg-muted text-foreground border-border hover:bg-muted/80"
+            <Button
+              variant="outline"
+              onClick={() => navigate("/auth")}
+              className="text-sm sm:text-base px-3 sm:px-4 py-2 bg-muted text-foreground border-border hover:bg-muted/80 hover:text-foreground"
             >
-              Entrar
+              {t('comum:acoes.entrar')}
             </Button>
           </div>
         </div>
@@ -207,18 +217,18 @@ export default function PaywallDashboard() {
       <div className="container mx-auto px-4 sm:px-6 py-12">
         <div className="text-center mb-12 max-w-4xl mx-auto">
           <h1 className="text-3xl md:text-4xl font-bold text-terminal-text mb-4">
-            Você está a um passo da gestão completa
+            {t('paywallDashboard.titulo')}
           </h1>
           <p className="text-base text-terminal-text/80 mb-2">
-            O dashboard mostra exatamente onde você está ganhando e onde está perdendo dinheiro.
+            {t('paywallDashboard.textoUm')}
           </p>
           <p className="text-sm text-terminal-text/60">
-            No plano gratuito, essa visão fica bloqueada.
+            {t('paywallDashboard.textoDois')}
           </p>
           {isCheckingStatus && (
             <div className="mt-4 flex items-center justify-center gap-2 text-terminal-text/60">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span className="text-sm">Verificando status da assinatura...</span>
+              <span className="text-sm">{t('checkout.verificandoAssinatura')}</span>
             </div>
           )}
         </div>
@@ -233,42 +243,42 @@ export default function PaywallDashboard() {
             <div className="relative aspect-video overflow-hidden">
               <img
                 src="/Dashboard.jpeg"
-                alt="Dashboard Premium - preview bloqueado"
+                alt={t('paywallDashboard.previaAlt')}
                 className="w-full h-full object-cover"
               />
               <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center">
                 <p className="text-center font-bold text-white px-4 mb-4 text-sm md:text-base">
-                  Identifique padrões, erros recorrentes e oportunidades de ajuste.
+                  {t('paywallDashboard.previaTexto')}
                 </p>
                 <Lock className="w-16 h-16 text-white mb-4" strokeWidth={2} />
               </div>
             </div>
             <div className="p-4 flex items-center justify-center gap-2 text-xs text-terminal-text/60">
               <Lock className="w-4 h-4 shrink-0" />
-              <span>Dados completos disponíveis apenas no plano Premium</span>
+              <span>{t('paywallDashboard.previaRodape')}</span>
             </div>
           </div>
 
           {/* Right: Premium Features & CTAs */}
           <div className="bg-terminal-dark-gray border border-terminal-border-subtle rounded-lg p-6 flex flex-col">
             <h2 className="text-xl font-bold text-terminal-text mb-2">
-              Desbloqueie o Dashboard Premium
+              {t('paywallDashboard.cartaoTitulo')}
             </h2>
             <p className="text-sm text-terminal-text/70 mb-6">
-              Apostar sem análise é jogar no escuro.
+              {t('paywallDashboard.cartaoChamada')}
             </p>
 
             <div className="space-y-4 flex-1">
               {features.map((feature) => {
                 const Icon = feature.icon;
                 return (
-                <div key={feature.title} className="flex items-start gap-3">
+                <div key={feature.chave} className="flex items-start gap-3">
                   <div className={`flex-shrink-0 w-6 h-6 rounded-full bg-terminal-gray flex items-center justify-center mt-0.5 ${feature.iconColor}`}>
                     <Icon className="h-4 w-4" />
                   </div>
                   <div>
-                    <p className="font-semibold text-terminal-text text-base">{feature.title}</p>
-                    <p className="text-xs text-terminal-text/70">{feature.description}</p>
+                    <p className="font-semibold text-terminal-text text-base">{t(`paywallDashboard.itens.${feature.chave}.titulo`)}</p>
+                    <p className="text-xs text-terminal-text/70">{t(`paywallDashboard.itens.${feature.chave}.texto`)}</p>
                   </div>
                 </div>
                 );
@@ -286,16 +296,16 @@ export default function PaywallDashboard() {
                 {isLoading ? (
                   <>
                     <Loader2 className="h-5 w-5 animate-spin" />
-                    <span>Processando...</span>
+                    <span>{t('checkout.processando')}</span>
                   </>
                 ) : authLoading ? (
                   <>
                     <Loader2 className="h-5 w-5 animate-spin" />
-                    <span>Verificando autenticação...</span>
+                    <span>{t('checkout.verificandoAuth')}</span>
                   </>
                 ) : (
                   <>
-                    <span>Acessar o Dashboard Agora</span>
+                    <span>{t('paywallDashboard.acao')}</span>
                     <ArrowRight className="h-5 w-5" />
                   </>
                 )}
@@ -308,23 +318,29 @@ export default function PaywallDashboard() {
                 size="lg"
               >
                 <MessageCircle className="h-5 w-5" />
-                <span>Ou fale com a gente pelo WhatsApp</span>
+                <span>{t('checkout.whatsapp')}</span>
               </Button>
 
               <p className="text-xs text-terminal-text/50 text-center pt-2">
-                Pagamento via Pix ou dúvidas rápidas.
+                {t('paywallDashboard.rodape')}
               </p>
 
               {!user && (
                 <p className="text-xs text-terminal-text/60 text-center">
-                  <button
-                    type="button"
-                    onClick={() => navigate('/auth')}
-                    className="underline hover:text-terminal-green transition-colors"
-                  >
-                    Faça login
-                  </button>
-                  {" "}para continuar com o pagamento
+                  {/* `Trans`, e não concatenação: o link cai NO MEIO da frase,
+                      e em outro idioma ele cai em outro lugar. */}
+                  <Trans
+                    t={t}
+                    i18nKey="checkout.loginParaPagar"
+                    components={[
+                      <button
+                        key="login"
+                        type="button"
+                        onClick={() => navigate('/auth')}
+                        className="underline hover:text-terminal-green transition-colors"
+                      />,
+                    ]}
+                  />
                 </p>
               )}
             </div>

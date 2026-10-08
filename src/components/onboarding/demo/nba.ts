@@ -20,8 +20,53 @@ function saoPauloMonth(): number {
 // (ex.: All-Star break em fevereiro) — aí o estado vazio honesto é que vale.
 // Quem consome combina isto com "o feed real está vazio" antes de exibir demo.
 const NBA_OFFSEASON_MONTHS = new Set([7, 8, 9]);
+
+/**
+ * Liga a demonstração fora do recesso, SÓ em desenvolvimento.
+ *
+ * ⚠️ EXISTE PORQUE A DEMONSTRAÇÃO ERA INVISÍVEL PARA QUEM REVISA. Ela só liga em
+ * julho, agosto e setembro; no resto do ano, quem quisesse conferir o texto que
+ * o assinante vê no recesso — a tradução, por exemplo — via tela vazia. Fora do
+ * recesso e antes de a temporada começar, a tela fica vazia de verdade, e a
+ * revisão não tinha o que olhar.
+ *
+ * Abre com `?demo=nba` na URL e fica lembrado no navegador; `?demo=off` desliga.
+ * Em produção não faz nada: `import.meta.env.DEV` é falso no build.
+ */
+const CHAVE_DEMO_FORCADA = 'smartbetting.demoNba';
+
+// O pedido na URL é lido UMA vez, quando o módulo carrega — e não dentro do
+// predicado abaixo, que é chamado a cada pintura e não deve gravar nada. Como
+// a leitura é no carregamento, o pedido vale ao ABRIR o endereço com
+// `?demo=nba`; navegar dentro do app não relê a URL.
+if (import.meta.env.DEV) {
+  try {
+    const pedido = new URLSearchParams(window.location.search).get('demo');
+    if (pedido === 'nba') localStorage.setItem(CHAVE_DEMO_FORCADA, '1');
+    if (pedido === 'off') localStorage.removeItem(CHAVE_DEMO_FORCADA);
+  } catch {
+    // Navegador sem armazenamento: a demonstração forçada só não liga.
+  }
+}
+
+function demoForcadaEmDesenvolvimento(): boolean {
+  if (!import.meta.env.DEV) return false;
+  try {
+    return localStorage.getItem(CHAVE_DEMO_FORCADA) === '1';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * A NBA deve se comportar como em recesso — mostrar a demonstração?
+ *
+ * Responde sim nos três meses sem jogo nenhum e, só em desenvolvimento, quando a
+ * demonstração foi forçada. Os dois casos pedem a mesma coisa da tela, e por
+ * isso a pergunta é uma só. Não grava nada: é predicado.
+ */
 export function isNbaOffSeason(): boolean {
-  return NBA_OFFSEASON_MONTHS.has(saoPauloMonth());
+  return NBA_OFFSEASON_MONTHS.has(saoPauloMonth()) || demoForcadaEmDesenvolvimento();
 }
 
 const game = (over: Partial<Game>): Game => ({

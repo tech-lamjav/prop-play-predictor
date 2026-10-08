@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -14,11 +15,11 @@ import { useToast } from '../hooks/use-toast';
 import { stripeService } from '../services/stripe.service';
 import { User, CreditCard, ArrowLeft, Send, ExternalLink, Compass, Bell } from 'lucide-react';
 import { format, parseISO, isValid } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 import { telegramBotUrl } from '../config/environment';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import { resetAllOnboarding } from '../components/onboarding/useOnboardingTour';
 import { SECOES, secaoAtiva, type SecaoId } from '../utils/settings-secoes';
+import { localeDoDateFns } from '@/utils/locale-do-date-fns';
 
 /**
  * O ícone de cada seção. Mora aqui, e não no catálogo: ícone é JSX, e o catálogo
@@ -58,7 +59,7 @@ function formatCreatedAt(iso: string): string {
   if (!iso) return '—';
   try {
     const date = parseISO(iso);
-    return isValid(date) ? format(date, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : '—';
+    return isValid(date) ? format(date, "dd/MM/yyyy 'às' HH:mm", { locale: localeDoDateFns() }) : '—';
   } catch {
     return '—';
   }
@@ -68,13 +69,14 @@ function formatDate(iso: string | null): string {
   if (!iso) return '—';
   try {
     const date = parseISO(iso);
-    return isValid(date) ? format(date, 'dd/MM/yyyy', { locale: ptBR }) : '—';
+    return isValid(date) ? format(date, 'dd/MM/yyyy', { locale: localeDoDateFns() }) : '—';
   } catch {
     return '—';
   }
 }
 
 export default function Settings() {
+  const { t } = useTranslation('conta');
   const navigate = useNavigate();
 
   // A seção aberta vive na URL, e não em estado local.
@@ -134,10 +136,17 @@ export default function Settings() {
     });
 
     if (ok) {
-      setSuccessMessage('Alterações salvas com sucesso.');
-      toast({ title: 'Sucesso', description: 'Perfil atualizado.' });
+      setSuccessMessage(t('configuracoes.perfil.sucesso'));
+      toast({
+        title: t('configuracoes.perfil.toastSucesso'),
+        description: t('configuracoes.perfil.toastSucessoTexto'),
+      });
     } else {
-      toast({ title: 'Erro', description: 'Falha ao salvar alterações.', variant: 'destructive' });
+      toast({
+        title: t('configuracoes.erro'),
+        description: t('configuracoes.perfil.toastErroTexto'),
+        variant: 'destructive',
+      });
     }
   };
 
@@ -148,8 +157,8 @@ export default function Settings() {
       window.location.href = url;
     } catch (err) {
       toast({
-        title: 'Erro',
-        description: err instanceof Error ? err.message : 'Falha ao abrir portal.',
+        title: t('configuracoes.erro'),
+        description: err instanceof Error ? err.message : t('configuracoes.assinatura.toastErroTexto'),
         variant: 'destructive',
       });
     } finally {
@@ -163,15 +172,17 @@ export default function Settings() {
       const enabled = !publicationAlerts.enabled;
       await setEnabled(enabled);
       toast({
-        title: enabled ? 'Alertas retomados' : 'Alertas pausados',
+        title: enabled
+          ? t('configuracoes.alertas.toastRetomados')
+          : t('configuracoes.alertas.toastPausados'),
         description: enabled
-          ? 'As próximas oportunidades publicadas poderão chegar no seu Telegram.'
-          : 'Você não receberá novas oportunidades até retomar.',
+          ? t('configuracoes.alertas.toastRetomadosTexto')
+          : t('configuracoes.alertas.toastPausadosTexto'),
       });
     } catch (err) {
       toast({
-        title: 'Não foi possível salvar',
-        description: err instanceof Error ? err.message : 'Tente novamente.',
+        title: t('configuracoes.alertas.toastErro'),
+        description: err instanceof Error ? err.message : t('configuracoes.alertas.toastErroTexto'),
         variant: 'destructive',
       });
     }
@@ -179,12 +190,12 @@ export default function Settings() {
 
   return (
     <div className="theme-bolao min-h-screen bg-canvas text-ink flex flex-col">
-      <AnalyticsNav variant="rebrand" showBack title="Configurações" />
+      <AnalyticsNav variant="rebrand" showBack title={t('configuracoes.titulo')} />
 
       <div className="container mx-auto px-4 py-8 max-w-5xl flex-1">
         {/* "do Perfil" saiu do título: perfil virou UMA das quatro seções, e o
             título não pode nomear só ela. */}
-        <h1 className="text-2xl font-bold text-ink mb-6">Configurações</h1>
+        <h1 className="text-2xl font-bold text-ink mb-6">{t('configuracoes.titulo')}</h1>
 
         <div className="grid gap-6 md:grid-cols-[220px_1fr] md:gap-8 items-start">
           {/* No COMPUTADOR a navegação é uma coluna ao lado, com o resumo de cada
@@ -228,9 +239,9 @@ export default function Settings() {
                   <Icone className={`h-4 w-4 shrink-0 ${ativa ? 'text-white' : 'text-ink-2'}`} />
                   <span className="min-w-0">
                     <span className={`block text-[13.5px] whitespace-nowrap ${ativa ? 'font-semibold text-white' : 'font-medium text-ink'}`}>
-                      {sec.rotulo}
+                      {t(sec.rotulo)}
                     </span>
-                    <span className={`hidden md:block text-[11px] truncate ${ativa ? 'text-white/65' : 'text-ink-3'}`}>{sec.resumo}</span>
+                    <span className={`hidden md:block text-[11px] truncate ${ativa ? 'text-white/65' : 'text-ink-3'}`}>{t(sec.resumo)}</span>
                   </span>
                 </button>
               );
@@ -244,18 +255,18 @@ export default function Settings() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <User className="h-5 w-5 text-forest" />
-              <CardTitle>Perfil</CardTitle>
+              <CardTitle>{t('configuracoes.perfil.titulo')}</CardTitle>
             </div>
-            <CardDescription>Suas informações pessoais</CardDescription>
+            <CardDescription>{t('configuracoes.perfil.descricao')}</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Nome</Label>
+                <Label htmlFor="name">{t('configuracoes.perfil.nome')}</Label>
                 <Input
                   id="name"
                   type="text"
-                  placeholder="Seu nome"
+                  placeholder={t('configuracoes.perfil.nomeExemplo')}
                   value={formData.name}
                   onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
                   className="bg-white border-line"
@@ -263,11 +274,11 @@ export default function Settings() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">E-mail</Label>
+                <Label htmlFor="email">{t('configuracoes.perfil.email')}</Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="seu@email.com"
+                  placeholder={t('configuracoes.perfil.emailExemplo')}
                   value={formData.email}
                   onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
                   required
@@ -276,7 +287,7 @@ export default function Settings() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="phone">Telefone / Telegram ID</Label>
+                <Label htmlFor="phone">{t('configuracoes.perfil.telefone')}</Label>
                 <div className="flex gap-2">
                   <Select
                     value={formData.countryCode}
@@ -311,7 +322,7 @@ export default function Settings() {
 
               <div className="space-y-2">
                 <p className="text-sm text-ink-2">
-                  Se mudou seu número no Telegram, toque para ressincronizar.
+                  {t('configuracoes.perfil.ressincronizarAviso')}
                 </p>
                 <Button
                   type="button"
@@ -319,17 +330,17 @@ export default function Settings() {
                   onClick={() =>
                     window.open(`${telegramBotUrl}?start=force_contact`, '_blank')
                   }
-                  className="bg-white border-line text-ink hover:bg-canvas-2"
+                  className="bg-white border-line text-ink hover:bg-canvas-2 hover:text-ink"
                 >
                   <Send className="w-4 h-4 mr-2" />
-                  Ressincronizar Telegram
+                  {t('configuracoes.perfil.ressincronizar')}
                 </Button>
               </div>
 
               <div className="space-y-2">
-                <Label>Conta criada em</Label>
+                <Label>{t('configuracoes.perfil.contaCriadaEm')}</Label>
                 <Input
-                  value={isLoading ? 'Carregando...' : (profile ? formatCreatedAt(profile.created_at) : '—')}
+                  value={isLoading ? t('configuracoes.carregando') : (profile ? formatCreatedAt(profile.created_at) : '—')}
                   readOnly
                   disabled
                   className="bg-canvas-2 border-line text-ink-2"
@@ -343,7 +354,7 @@ export default function Settings() {
               )}
 
               <Button type="submit" disabled={isSaving} className="bg-forest hover:bg-forest-soft text-white">
-                {isSaving ? 'Salvando...' : 'Salvar alterações'}
+                {isSaving ? t('configuracoes.salvando') : t('configuracoes.perfil.salvar')}
               </Button>
             </form>
           </CardContent>
@@ -358,35 +369,41 @@ export default function Settings() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <Bell className="h-5 w-5 text-forest" />
-              <CardTitle>Alertas de oportunidades</CardTitle>
+              <CardTitle>{t('configuracoes.alertas.titulo')}</CardTitle>
             </div>
-            <CardDescription>Receba no Telegram quando uma nova oportunidade entrar no painel.</CardDescription>
+            <CardDescription>{t('configuracoes.alertas.descricao')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {isLoadingPublicationAlerts || !publicationAlerts ? (
-              <p className="text-sm text-ink-2">Carregando...</p>
+              <p className="text-sm text-ink-2">{t('configuracoes.carregando')}</p>
             ) : !publicationAlerts.accessActive ? (
               // Acesso inativo vem antes do vínculo: nada é entregue nesse
               // estado, então chamar para conectar prometeria algo que o
               // backend não cumpre.
               <>
                 <p className="text-sm text-ink-2">
-                  Indisponíveis enquanto seu acesso ao Futebol estiver inativo. Sua preferência está {publicationAlerts.enabled ? 'ativada' : 'pausada'} e será mantida quando voltar.
+                  {t('configuracoes.alertas.semAcesso', {
+                    estado: publicationAlerts.enabled
+                      ? t('configuracoes.alertas.estadoAtivada')
+                      : t('configuracoes.alertas.estadoPausada'),
+                  })}
                 </p>
                 <Button
                   type="button"
                   variant="outline"
                   onClick={handlePublicationAlerts}
                   disabled={isSavingPublicationAlerts}
-                  className="bg-white border-line text-ink hover:bg-canvas-2"
+                  className="bg-white border-line text-ink hover:bg-canvas-2 hover:text-ink"
                 >
-                  {publicationAlerts.enabled ? 'Pausar para quando voltar' : 'Retomar para quando voltar'}
+                  {publicationAlerts.enabled
+                    ? t('configuracoes.alertas.pausarParaDepois')
+                    : t('configuracoes.alertas.retomarParaDepois')}
                 </Button>
               </>
             ) : !publicationAlerts.telegramLinked ? (
               <>
                 <p className="text-sm text-ink-2">
-                  Conecte seu Telegram para escolher se quer receber esses alertas.
+                  {t('configuracoes.alertas.convite')}
                 </p>
                 {/* Vai para o onboarding já existente, e não direto ao bot: é lá
                     que a conexão é explicada e confirmada. */}
@@ -394,22 +411,24 @@ export default function Settings() {
                   type="button"
                   variant="outline"
                   onClick={() => navigate(onboardingHref(ONBOARDING_SRC_ALERTAS_FUTEBOL, '/settings'))}
-                  className="bg-white border-line text-ink hover:bg-canvas-2"
+                  className="bg-white border-line text-ink hover:bg-canvas-2 hover:text-ink"
                 >
                   <Send className="w-4 h-4 mr-2" />
-                  Conectar Telegram
+                  {t('configuracoes.alertas.conectar')}
                 </Button>
               </>
             ) : (
               <>
                 <div className="flex items-center gap-2">
                   <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${publicationAlerts.enabled ? 'bg-forest/10 text-forest' : 'bg-canvas-2 text-ink-2'}`}>
-                    {publicationAlerts.enabled ? 'Ativos' : 'Pausados'}
+                    {publicationAlerts.enabled
+                      ? t('configuracoes.alertas.ativos')
+                      : t('configuracoes.alertas.pausados')}
                   </span>
                   <p className="text-sm text-ink-2">
                     {publicationAlerts.enabled
-                      ? 'Você será avisado sobre novas oportunidades antes do jogo.'
-                      : 'Nenhuma nova oportunidade será enviada até você retomar.'}
+                      ? t('configuracoes.alertas.ativosTexto')
+                      : t('configuracoes.alertas.pausadosTexto')}
                   </p>
                 </div>
                 <Button
@@ -417,9 +436,13 @@ export default function Settings() {
                   variant={publicationAlerts.enabled ? 'outline' : 'default'}
                   onClick={handlePublicationAlerts}
                   disabled={isSavingPublicationAlerts}
-                  className={publicationAlerts.enabled ? 'bg-white border-line text-ink hover:bg-canvas-2' : 'bg-forest hover:bg-forest-soft text-white'}
+                  className={publicationAlerts.enabled ? 'bg-white border-line text-ink hover:bg-canvas-2 hover:text-ink' : 'bg-forest hover:bg-forest-soft text-white'}
                 >
-                  {isSavingPublicationAlerts ? 'Salvando...' : publicationAlerts.enabled ? 'Pausar alertas' : 'Retomar alertas'}
+                  {isSavingPublicationAlerts
+                    ? t('configuracoes.salvando')
+                    : publicationAlerts.enabled
+                      ? t('configuracoes.alertas.pausar')
+                      : t('configuracoes.alertas.retomar')}
                 </Button>
               </>
             )}
@@ -435,55 +458,56 @@ export default function Settings() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <CreditCard className="h-5 w-5 text-ink-2" />
-              <CardTitle>Assinatura</CardTitle>
+              <CardTitle>{t('configuracoes.assinatura.titulo')}</CardTitle>
             </div>
-            <CardDescription>Gerencie seu plano e pagamentos</CardDescription>
+            <CardDescription>{t('configuracoes.assinatura.descricao')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {isLoading ? (
-              <p className="text-sm text-ink-2">Carregando...</p>
+              <p className="text-sm text-ink-2">{t('configuracoes.carregando')}</p>
             ) : (
               <>
                 {/* Betinho */}
                 <div className="space-y-2 rounded-lg border border-line p-4">
+                  {/* "Betinho" é nome próprio e não passa pelo catálogo. */}
                   <h4 className="font-medium text-sm">Betinho</h4>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-ink-2">Plano</span>
+                    <span className="text-sm text-ink-2">{t('configuracoes.assinatura.plano')}</span>
                     <span className="font-medium">
                       {subscription?.betinho.status === 'premium' ? 'Premium' : 'Free'}
                     </span>
                   </div>
                   {subscription?.betinho.periodEnd && (
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-ink-2">Próxima cobrança</span>
+                      <span className="text-sm text-ink-2">{t('configuracoes.assinatura.proximaCobranca')}</span>
                       <span className="text-sm">{formatDate(subscription.betinho.periodEnd)}</span>
                     </div>
                   )}
                   {subscription?.betinho.cancelAtPeriodEnd && subscription?.betinho.cancelAt && (
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-ink-2">Cancela em</span>
+                      <span className="text-sm text-ink-2">{t('configuracoes.assinatura.cancelaEm')}</span>
                       <span className="text-sm text-amber-2">{formatDate(subscription.betinho.cancelAt)}</span>
                     </div>
                   )}
                 </div>
                 {/* Plataforma */}
                 <div className="space-y-2 rounded-lg border border-line p-4">
-                  <h4 className="font-medium text-sm">Plataforma de Análise NBA</h4>
+                  <h4 className="font-medium text-sm">{t('configuracoes.assinatura.plataformaNba')}</h4>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-ink-2">Plano</span>
+                    <span className="text-sm text-ink-2">{t('configuracoes.assinatura.plano')}</span>
                     <span className="font-medium">
                       {subscription?.analytics.status === 'premium' ? 'Premium' : 'Free'}
                     </span>
                   </div>
                   {subscription?.analytics.periodEnd && (
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-ink-2">Próxima cobrança</span>
+                      <span className="text-sm text-ink-2">{t('configuracoes.assinatura.proximaCobranca')}</span>
                       <span className="text-sm">{formatDate(subscription.analytics.periodEnd)}</span>
                     </div>
                   )}
                   {subscription?.analytics.cancelAtPeriodEnd && subscription?.analytics.cancelAt && (
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-ink-2">Cancela em</span>
+                      <span className="text-sm text-ink-2">{t('configuracoes.assinatura.cancelaEm')}</span>
                       <span className="text-sm text-amber-2">{formatDate(subscription.analytics.cancelAt)}</span>
                     </div>
                   )}
@@ -497,12 +521,14 @@ export default function Settings() {
                       className="bg-forest hover:bg-forest-soft text-white"
                     >
                       <ExternalLink className="w-4 h-4 mr-2" />
-                      {portalLoading ? 'Abrindo...' : 'Gerenciar assinatura'}
+                      {portalLoading
+                        ? t('configuracoes.assinatura.abrindo')
+                        : t('configuracoes.assinatura.gerenciar')}
                     </Button>
                   </div>
                 ) : (
                   <p className="text-sm text-ink-2">
-                    Assine um plano para gerenciar sua assinatura.
+                    {t('configuracoes.assinatura.semPlano')}
                   </p>
                 )}
               </>
@@ -517,14 +543,13 @@ export default function Settings() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <Compass className="h-5 w-5 text-forest" />
-              <CardTitle>Tour guiado</CardTitle>
+              <CardTitle>{t('configuracoes.tour.titulo')}</CardTitle>
             </div>
-            <CardDescription>Rever a apresentação das áreas e dos produtos da plataforma</CardDescription>
+            <CardDescription>{t('configuracoes.tour.descricao')}</CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-sm text-ink-2 mb-3">
-              Reinicia o tour guiado: a apresentação do início reaparece agora, e a de cada produto
-              (Futebol, Betinho, NBA, Bolão) volta a aparecer na próxima vez que você abrir a tela.
+              {t('configuracoes.tour.texto')}
             </p>
             <Button
               type="button"
@@ -533,10 +558,10 @@ export default function Settings() {
                 resetAllOnboarding();
                 navigate('/inicio');
               }}
-              className="bg-white border-line text-ink hover:bg-canvas-2"
+              className="bg-white border-line text-ink hover:bg-canvas-2 hover:text-ink"
             >
               <Compass className="w-4 h-4 mr-2" />
-              Rever tour guiado
+              {t('configuracoes.tour.botao')}
             </Button>
           </CardContent>
         </Card>
