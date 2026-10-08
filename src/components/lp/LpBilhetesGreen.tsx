@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { BILHETES_GREEN } from "./lp-bilhetes-green";
 
 /**
@@ -24,7 +25,16 @@ export function LpBilhetesGreen() {
           Apostas da nossa operação que deram green
         </h2>
 
-        <div className="mt-9 grid md:grid-cols-3 gap-4 sm:gap-5">
+        {/* ⚠️ A GRADE SE AJUSTA À QUANTIDADE DE BILHETES. Eram três colunas
+            fixas, e tirar um bilhete vencido deixava os dois que sobravam
+            encostados à esquerda, com um buraco no lugar do terceiro. Os
+            bilhetes vencem a cada 90 dias e a quantidade varia, então a fileira
+            tem uma coluna por bilhete, cada uma com no máximo a largura de
+            antes (287px), e fica centralizada. Com três, sai idêntico. */}
+        <div
+          className="mt-9 grid gap-4 sm:gap-5 md:grid-cols-[repeat(var(--colunas),minmax(0,287px))] md:justify-center"
+          style={{ '--colunas': BILHETES_GREEN.length } as CSSProperties}
+        >
           {BILHETES_GREEN.map((b) => (
             <figure
               key={b.src}
