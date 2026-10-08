@@ -1,0 +1,81 @@
+{
+  "acoes": {
+    "assinar": "Suscribirse",
+    "entrar": "Iniciar sesión",
+    "fechar": "Cerrar",
+    "comecarGratis": "Empezar gratis"
+  },
+  "idioma": {
+    "rotulo": "Idioma",
+    "escolher": "Elegir idioma"
+  },
+  "rodape": {
+    "aria": "Pie del sitio",
+    "sobre": "Análisis, gestión de bankroll y herramientas para quien quiere decidir con datos. Pronósticos de NBA y fútbol actualizados a diario, con score de fiabilidad en cada oportunidad.",
+    "colunas": {
+      "analises": "Análisis",
+      "ferramentas": "Herramientas",
+      "suporte": "Soporte"
+    },
+    "links": {
+      "futebol": "Fútbol",
+      "bolao": "Bolão Mundial 2026",
+      "planos": "Planes y precios",
+      "comoUsar": "Cómo usar",
+      "configuracoes": "Configuración de la cuenta",
+      "indicar": "Invita a un amigo",
+      "falarComOTime": "Hablar con el equipo"
+    },
+    "social": {
+      "email": "Correo electrónico"
+    },
+    "legal": {
+      "termos": "Términos de uso y privacidad",
+      "aviso": "Contenido analítico. No es recomendación de apuesta. Juega con responsabilidad."
+    }
+  },
+  "nav": {
+    "voltar": "Volver",
+    "inicio": "Inicio",
+    "analises": "Análisis",
+    "betinho": "Betinho",
+    "bolao": "Bolão",
+    "perfil": "Perfil",
+    "hoje": "Hoy",
+    "oportunidades": "Oportunidades",
+    "analise360": "Análisis 360",
+    "jogos": "Partidos",
+    "relatorio": "Informe",
+    "campeonatos": "Ligas",
+    "crm": "CRM",
+    "metodologia": "Metodología",
+    "apostas": "Apuestas",
+    "dashboard": "Panel",
+    "futebol": "Fútbol",
+    "nba": "NBA",
+    "inicioNba": "Inicio NBA",
+    "oportunidadesDoDia": "Oportunidades del Día",
+    "painel": "Panel"
+  },
+  "erro": {
+    "404": {
+      "codigo": "Error 404",
+      "titulo": "Página no encontrada"
+    }
+  },
+  "espera": {
+    "oQueAcontece": "¿Qué pasa ahora?",
+    "avisos": "Recibirás novedades por correo",
+    "prioridadeLancamento": "Acceso prioritario cuando lancemos",
+    "desconto": "Descuento especial para los primeros",
+    "nome": "Nombre completo *",
+    "nomeExemplo": "Tu nombre completo",
+    "email": "Correo *",
+    "whatsapp": "WhatsApp (opcional)",
+    "beneficios": "Beneficios de la lista de espera:",
+    "prioridade": "Acceso prioritario en el lanzamiento",
+    "ligas": "Brasileirão, Copa de Brasil y ligas europeas",
+    "sucessoTitulo": "¡Listo!",
+    "sucessoTexto": "Te sumamos a la lista de espera. Pronto nos pondremos en contacto."
+  }
+}

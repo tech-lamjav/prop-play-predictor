@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { fmtDinheiro } from '@/utils/formato';
+import { fmtDinheiroDaPessoa } from '@/utils/formato';
+import { useMoeda } from '@/hooks/use-moeda';
 import {
   Dialog,
   DialogContent,
@@ -11,6 +12,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useTranslation } from 'react-i18next';
+import { simboloDaMoeda } from '@/config/moedas';
+import { SeletorDeMoeda } from '@/components/SeletorDeMoeda';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useUserUnit } from '@/hooks/use-user-unit';
@@ -25,6 +29,9 @@ export function UnitConfigurationModal({
   open,
   onOpenChange,
 }: UnitConfigurationModalProps) {
+  const { t } = useTranslation('apostas');
+  const { moeda, trocarMoeda } = useMoeda();
+  const simbolo = simboloDaMoeda(moeda);
   const { config, isLoading, error, updateConfig, clearConfig, isConfigured } = useUserUnit();
   const [activeTab, setActiveTab] = useState<'direct' | 'division'>('direct');
   const [formData, setFormData] = useState({
@@ -32,6 +39,9 @@ export function UnitConfigurationModal({
     bankAmount: '',
     divisor: '',
   });
+  // ⚠️ GUARDA A CHAVE, E NÃO A FRASE. Frase traduzida guardada em estado fica
+  // presa no idioma do momento em que o erro aconteceu: troca o idioma e o
+  // aviso continua na língua antiga. A chave é traduzida na pintura.
   const [localError, setLocalError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -77,18 +87,18 @@ export function UnitConfigurationModal({
     if (activeTab === 'direct') {
       const value = parseFloat(formData.directValue);
       if (!formData.directValue || isNaN(value) || value <= 0) {
-        setLocalError('O valor da unidade deve ser maior que zero');
+        setLocalError('unidade.erroUnidadeZero');
         return false;
       }
     } else {
       const bank = parseFloat(formData.bankAmount);
       const div = parseFloat(formData.divisor);
       if (!formData.bankAmount || isNaN(bank) || bank <= 0) {
-        setLocalError('O valor da banca deve ser maior que zero');
+        setLocalError('unidade.erroBancaZero');
         return false;
       }
       if (!formData.divisor || isNaN(div) || div <= 0) {
-        setLocalError('O divisor deve ser maior que zero');
+        setLocalError('unidade.erroDivisorZero');
         return false;
       }
     }
@@ -125,10 +135,10 @@ export function UnitConfigurationModal({
           onOpenChange(false);
         }, 1500);
       } else {
-        setLocalError('Erro ao salvar configuração. Tente novamente.');
+        setLocalError('unidade.erroSalvar');
       }
     } catch (err) {
-      setLocalError(err instanceof Error ? err.message : 'Erro ao salvar configuração');
+      setLocalError('unidade.erroSalvar');
     } finally {
       setIsSaving(false);
     }
@@ -152,10 +162,10 @@ export function UnitConfigurationModal({
           onOpenChange(false);
         }, 1500);
       } else {
-        setLocalError('Erro ao limpar configuração. Tente novamente.');
+        setLocalError('unidade.erroLimpar');
       }
     } catch (err) {
-      setLocalError(err instanceof Error ? err.message : 'Erro ao limpar configuração');
+      setLocalError('unidade.erroLimpar');
     } finally {
       setIsSaving(false);
     }
@@ -181,26 +191,43 @@ export function UnitConfigurationModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="theme-rebrand bg-white border-line text-ink sm:max-w-[500px]">
         <DialogHeader>
-          <div className="text-[11px] uppercase tracking-[0.16em] text-forest font-semibold">Sistema de unidades</div>
-          <DialogTitle className="text-[18px] font-semibold tracking-tight text-ink">Configurar unidade</DialogTitle>
+          <div className="text-[11px] uppercase tracking-[0.16em] text-forest font-semibold">{t('unidade.sobretitulo')}</div>
+          <DialogTitle className="text-[18px] font-semibold tracking-tight text-ink">{t('unidade.titulo')}</DialogTitle>
           <DialogDescription className="text-ink-2 text-[13px]">
-            Configure o valor de 1 unidade pra visualizar suas métricas em unidades além dos valores monetários.
+            {t('unidade.descricao')}
           </DialogDescription>
         </DialogHeader>
 
         {(error || localError) && (
           <div className="flex items-start gap-2 p-3 bg-status-danger/10 border border-status-danger/30 rounded-md text-[12px] text-status-danger">
             <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-            <span>{error || localError}</span>
+            <span>{error || (localError && t(localError))}</span>
           </div>
         )}
 
         {saveSuccess && (
           <div className="flex items-start gap-2 p-3 bg-status-success/10 border border-status-success/30 rounded-md text-[12px] text-status-success">
             <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
-            <span>Configuração salva com sucesso!</span>
+            <span>{t('unidade.salvo')}</span>
           </div>
         )}
+
+        {/* A MOEDA VEM ANTES DOS VALORES porque ela enquadra os dois campos:
+            "Valor de 1 unidade" não quer dizer nada sem saber de que moeda se
+            fala. O padrão vem do país do cadastro; aqui a pessoa corrige.
+
+            ⚠️ Trocar aqui NÃO converte nada — muda o símbolo e a pontuação, e
+            o número segue o mesmo. É decisão de produto, e o aviso embaixo do
+            campo diz isso para quem está escolhendo. */}
+        <div className="space-y-1.5">
+          <Label htmlFor="moeda" className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">
+            {t('unidade.moeda')}
+          </Label>
+          <SeletorDeMoeda id="moeda" valor={moeda} aoEscolher={trocarMoeda} />
+          {/* O aviso tinha `text-ink-3` em 11px e ficava quase invisível — e é a
+              frase que impede alguém de achar que o dinheiro foi convertido. */}
+          <p className="text-[12px] text-ink-2">{t('unidade.moedaAjuda')}</p>
+        </div>
 
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'direct' | 'division')}>
           <TabsList className="grid w-full grid-cols-2 h-9 bg-ink-3 border border-line p-0.5 rounded-md">
@@ -208,18 +235,18 @@ export function UnitConfigurationModal({
               value="direct"
               className="h-7 text-[12px] font-semibold rounded text-ink-2 data-[state=active]:bg-white data-[state=active]:text-ink data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-line"
             >
-              Valor direto
+              {t('unidade.abaDireto')}
             </TabsTrigger>
             <TabsTrigger
               value="division"
               className="h-7 text-[12px] font-semibold rounded text-ink-2 data-[state=active]:bg-white data-[state=active]:text-ink data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-line"
             >
-              Divisão da banca
+              {t('unidade.abaDivisao')}
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="direct" className="space-y-2 mt-4">
-            <Label htmlFor="directValue" className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Valor de 1 unidade (R$)</Label>
+            <Label htmlFor="directValue" className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('unidade.valorDaUnidade', { simbolo })}</Label>
             <Input
               id="directValue"
               type="number"
@@ -232,13 +259,13 @@ export function UnitConfigurationModal({
               className="h-10 bg-canvas border-line text-ink tabular focus:border-forest"
             />
             <p className="text-[11px] text-ink-2">
-              Informe diretamente quanto vale 1 unidade em reais.
+              {t('unidade.ajudaDireto')}
             </p>
           </TabsContent>
 
           <TabsContent value="division" className="space-y-3 mt-4">
             <div className="space-y-2">
-              <Label htmlFor="bankAmount" className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Valor da banca (R$)</Label>
+              <Label htmlFor="bankAmount" className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('unidade.valorDaBanca', { simbolo })}</Label>
               <Input
                 id="bankAmount"
                 type="number"
@@ -252,7 +279,7 @@ export function UnitConfigurationModal({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="divisor" className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">Divisor</Label>
+              <Label htmlFor="divisor" className="text-[10px] uppercase tracking-[0.12em] text-ink-2 font-semibold">{t('unidade.divisor')}</Label>
               <Input
                 id="divisor"
                 type="number"
@@ -265,7 +292,7 @@ export function UnitConfigurationModal({
                 className="h-10 bg-canvas border-line text-ink tabular focus:border-forest"
               />
               <p className="text-[11px] text-ink-2">
-                A banca será dividida por este número pra calcular o valor de 1 unidade.
+                {t('unidade.ajudaDivisao')}
               </p>
             </div>
           </TabsContent>
@@ -273,9 +300,9 @@ export function UnitConfigurationModal({
 
         {calculatedUnitValue !== null && (
           <div className="rounded-md bg-forest-tint border border-forest/20 p-3">
-            <p className="text-[10px] uppercase tracking-[0.14em] text-forest font-semibold">Valor calculado de 1 unidade</p>
+            <p className="text-[10px] uppercase tracking-[0.14em] text-forest font-semibold">{t('unidade.calculado')}</p>
             <p className="text-[20px] font-semibold text-forest tabular tracking-tight mt-0.5">
-              {fmtDinheiro(calculatedUnitValue)}
+              {fmtDinheiroDaPessoa(calculatedUnitValue)}
             </p>
           </div>
         )}
@@ -291,10 +318,10 @@ export function UnitConfigurationModal({
               {isSaving ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Limpando…
+                  {t('unidade.limpando')}
                 </>
               ) : (
-                'Limpar configuração'
+                t('unidade.limpar')
               )}
             </Button>
           )}
@@ -306,10 +333,10 @@ export function UnitConfigurationModal({
             {isSaving ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Salvando…
+                {t('unidade.salvando')}
               </>
             ) : (
-              'Salvar configuração'
+              t('unidade.salvar')
             )}
           </Button>
         </DialogFooter>

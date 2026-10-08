@@ -28,7 +28,8 @@ import { ROTA_DO_PLACAR } from '@/components/placar/placar-vocabulario';
  * seu jeito e por isso não entra aqui.
  */
 export type ItemDaConta = {
-  label: string;
+  /** Chave de tradução COMPLETA dentro da área `conta` (#536), e não o texto. */
+  chave: string;
   icon: typeof Settings;
   href?: string;
   onClick?: () => void;
@@ -55,13 +56,13 @@ export type ItemDaConta = {
  */
 export function itensDaConta(indicarUmAmigo: () => void, ehSocio = false): ItemDaConta[] {
   return [
-    { label: 'Configurações', icon: Settings, href: '/settings' },
-    { label: 'Planos e preços', icon: CreditCard, href: '/planos' },
-    { label: 'Indique um amigo', icon: Gift, onClick: indicarUmAmigo },
+    { chave: 'itens.configuracoes', icon: Settings, href: '/settings' },
+    { chave: 'itens.planos', icon: CreditCard, href: '/planos' },
+    { chave: 'itens.indicar', icon: Gift, onClick: indicarUmAmigo },
     ...(SHOW_COMO_USAR_ENTRY_POINTS
-      ? [{ label: 'Como usar', icon: BookOpen, href: '/como-usar' }]
+      ? [{ chave: 'itens.comoUsar', icon: BookOpen, href: '/como-usar' }]
       : []),
-    { label: 'Falar com o time', icon: MessageCircle, href: WHATSAPP_FALAR_COM_O_TIME },
+    { chave: 'itens.falarComOTime', icon: MessageCircle, href: WHATSAPP_FALAR_COM_O_TIME },
     // Por último, e só para sócio. Quem protege a área continua sendo a
     // política de linha do banco — estes itens governam o que a tela desenha, e
     // o caminho da rota está no bundle, que é público. O que eles evitam é
@@ -73,8 +74,8 @@ export function itensDaConta(indicarUmAmigo: () => void, ehSocio = false): ItemD
     // Porta que existe e não se acha é porta fechada.
     ...(ehSocio
       ? [
-          { label: 'CRM', icon: Users, href: ROTA_DO_CRM, interno: true },
-          { label: 'Metodologia', icon: Gauge, href: ROTA_DO_PLACAR, interno: true },
+          { chave: 'itens.crm', icon: Users, href: ROTA_DO_CRM, interno: true },
+          { chave: 'itens.metodologia', icon: Gauge, href: ROTA_DO_PLACAR, interno: true },
         ]
       : []),
   ];

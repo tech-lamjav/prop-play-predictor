@@ -7,13 +7,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CheckCircle, ArrowLeft } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { LanguageToggle } from "@/components/LanguageToggle";
-// ⚠️ Toda tela que traduz precisa desta linha: o i18next deixou de ser
-// iniciado no main.tsx para sair do pacote de entrada. O porquê está em
-// src/lib/i18n.ts.
-import '@/lib/i18n';
+import { SeletorDeIdiomaCompacto } from '@/components/SeletorDeIdioma';
+import { useTranslation } from 'react-i18next';
 
 const Waitlist = () => {
+  const { t: tComum } = useTranslation('comum');
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -48,8 +46,8 @@ const Waitlist = () => {
       } else {
         setSubmitted(true);
         toast({
-          title: "Sucesso!",
-          description: "Você foi adicionado à lista de espera. Em breve entraremos em contato!",
+          title: tComum('espera.sucessoTitulo'),
+          description: tComum('espera.sucessoTexto'),
         });
       }
     } catch (error) {
@@ -79,7 +77,7 @@ const Waitlist = () => {
               <img src="/logo-sem-texto.png" alt="Smart Betting" className="h-8 w-8" />
               <span className="text-xl font-bold text-foreground">Smartbetting</span>
             </div>
-            <LanguageToggle />
+            <SeletorDeIdiomaCompacto tom="claro" />
           </div>
 
           <Card className="text-center">
@@ -97,11 +95,11 @@ const Waitlist = () => {
               </p>
 
               <div className="bg-muted/30 rounded-lg p-4 space-y-2">
-                <h3 className="font-semibold text-foreground">O que acontece agora?</h3>
+                <h3 className="font-semibold text-foreground">{tComum('espera.oQueAcontece')}</h3>
                 <ul className="text-sm text-muted-foreground space-y-1 text-left">
-                  <li>Você receberá atualizações por email</li>
-                  <li>Acesso prioritário quando lançarmos</li>
-                  <li>Desconto especial para os primeiros</li>
+                  <li>{tComum('espera.avisos')}</li>
+                  <li>{tComum('espera.prioridadeLancamento')}</li>
+                  <li>{tComum('espera.desconto')}</li>
                 </ul>
               </div>
 
@@ -128,7 +126,7 @@ const Waitlist = () => {
             <img src="/logo-sem-texto.png" alt="Smart Betting" className="h-8 w-8" />
             <span className="text-xl font-bold text-foreground">Smartbetting</span>
           </div>
-          <LanguageToggle />
+          <SeletorDeIdiomaCompacto tom="claro" />
         </div>
 
         <Card>
@@ -143,19 +141,19 @@ const Waitlist = () => {
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Nome completo *</Label>
+                <Label htmlFor="name">{tComum('espera.nome')}</Label>
                 <Input
                   id="name"
                   type="text"
                   value={formData.name}
                   onChange={(e) => handleInputChange("name", e.target.value)}
-                  placeholder="Seu nome completo"
+                  placeholder={tComum('espera.nomeExemplo')}
                   required
                 />
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="email">Email *</Label>
+                <Label htmlFor="email">{tComum('espera.email')}</Label>
                 <Input
                   id="email"
                   type="email"
@@ -167,7 +165,7 @@ const Waitlist = () => {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="phone">WhatsApp (opcional)</Label>
+                <Label htmlFor="phone">{tComum('espera.whatsapp')}</Label>
                 <Input
                   id="phone"
                   type="tel"
@@ -178,11 +176,11 @@ const Waitlist = () => {
               </div>
 
               <div className="bg-muted/30 rounded-lg p-4 space-y-2">
-                <h3 className="font-semibold text-foreground text-sm">Benefícios da lista de espera:</h3>
+                <h3 className="font-semibold text-foreground text-sm">{tComum('espera.beneficios')}</h3>
                 <ul className="text-xs text-muted-foreground space-y-1">
-                  <li>Acesso prioritário no lançamento</li>
-                  <li>Desconto especial para os primeiros</li>
-                  <li>Brasileirão, Copa do Brasil e ligas europeias</li>
+                  <li>{tComum('espera.prioridade')}</li>
+                  <li>{tComum('espera.desconto')}</li>
+                  <li>{tComum('espera.ligas')}</li>
                 </ul>
               </div>
 

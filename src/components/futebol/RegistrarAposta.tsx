@@ -9,7 +9,11 @@
 // Só aparece quando o pick está visível (não bloqueado) — i.e. trial/assinante.
 // ============================================================
 import { useEffect, useState } from 'react';
-import { fmtDinheiro, fmtOdd } from '@/utils/formato';
+import { Trans, useTranslation } from 'react-i18next';
+import { simboloDaMoeda } from '@/config/moedas';
+import { moedaAtiva } from '@/utils/moeda-ativa';
+import { fmtDinheiroDaPessoa, fmtOdd } from '@/utils/formato';
+import { useMoeda } from '@/hooks/use-moeda';
 import { Link } from 'react-router-dom';
 import { Receipt, Check, Loader2, ArrowRight } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
@@ -18,8 +22,7 @@ import { createClient } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/use-auth';
 import { useFutebolAccess } from '@/hooks/use-futebol-data';
 import { useUserUnit } from '@/hooks/use-user-unit';
-import { pickLabel, marketLabel } from '@/utils/futebol-score';
-import { competitionLabel } from '@/utils/futebol-competitions';
+import { useCopyDoFutebol } from '@/hooks/use-copy-do-futebol';
 import { atalhosDaUnidade, type FutebolBetDraft } from './registrar-aposta-utils';
 import {
   apostaRegistrada,
@@ -71,6 +74,10 @@ export function RegistrarApostaModal({
   /** De qual tela veio o registro. Ver `RegistrarApostaCTA`. */
   origem?: OrigemDoJogo;
 }) {
+  const { t } = useTranslation('futebol');
+  // Assina a moeda: sem isto a tela não repinta quando a pessoa troca.
+  useMoeda();
+  const copy = useCopyDoFutebol();
   const { user } = useAuth();
   const { data: acesso } = useFutebolAccess();
   const { config: unidade } = useUserUnit();
@@ -115,11 +122,11 @@ export function RegistrarApostaModal({
   // O draft veio do formulario com `lineValue` em camelCase, entao a saida se monta
   // aqui. E o unico lugar em que ela nao chega pronta da RPC.
   const pick = draft
-    ? pickLabel({ market: draft.market, outcome: draft.outcome, line_value: draft.lineValue }, draft.homeName, draft.awayName)
+    ? copy.pick({ market: draft.market, outcome: draft.outcome, line_value: draft.lineValue }, draft.homeName, draft.awayName)
     : '';
   const match = draft ? `${draft.homeName} x ${draft.awayName}` : '';
-  const mkt = draft ? marketLabel(draft.market) : '';
-  const league = draft ? competitionLabel(draft.competition) : '';
+  const mkt = draft ? copy.mercadoLongo(draft.market) : '';
+  const league = draft ? copy.competicao(draft.competition) : '';
 
   const stakeN = parseFloat(stake.replace(',', '.'));
   const oddN = parseFloat(odd.replace(',', '.'));
@@ -166,7 +173,7 @@ export function RegistrarApostaModal({
         odds: oddN,
       });
     } catch {
-      setError('Não foi possível registrar a aposta. Tente de novo.');
+      setError(t('registrar.erro'));
     } finally {
       setSaving(false);
     }
@@ -180,27 +187,32 @@ export function RegistrarApostaModal({
             "diálogo" sem saber do quê. Escondido à vista porque o cabeçalho
             desenhado logo abaixo já cumpre esse papel para quem enxerga. */}
         <VisuallyHidden.Root asChild>
-          <DialogTitle>Registrar aposta no Betinho</DialogTitle>
+          <DialogTitle>{t('registrar.dialogo')}</DialogTitle>
         </VisuallyHidden.Root>
         {/* Cabeçalho */}
         <div className="px-5 py-4 border-b border-line">
           <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.16em] font-bold text-forest">
-            <Receipt className="w-3.5 h-3.5" /> Registrar no Betinho
+            <Receipt className="w-3.5 h-3.5" /> {t('registrar.noBetinho')}
           </div>
-          <p className="text-[12px] text-ink-3 mt-1">Salva no seu controle de apostas com os campos já preenchidos.</p>
+          <p className="text-[12px] text-ink-3 mt-1">{t('registrar.subtitulo')}</p>
         </div>
 
         {done ? (
           <div className="p-6 flex flex-col items-center text-center gap-3">
             <span className="w-12 h-12 rounded-full bg-forest/10 text-forest grid place-items-center"><Check className="w-6 h-6" /></span>
-            <div className="text-[16px] font-bold text-ink">Aposta registrada</div>
+            <div className="text-[16px] font-bold text-ink">{t('registrar.sucesso')}</div>
             <p className="text-[13px] text-ink-2 leading-snug">
-              <b className="text-ink">{pick}</b> · {fmtDinheiro(stakeN)} @ {fmtOdd(oddN)} já está no seu Betinho como pendente.
+              <Trans
+                t={t}
+                i18nKey="registrar.sucessoTexto"
+                values={{ pick, valor: fmtDinheiroDaPessoa(stakeN), odd: fmtOdd(oddN) }}
+                components={[<b className="text-ink" key="pick" />]}
+              />
             </p>
             <div className="flex items-center gap-2 mt-1 w-full">
-              <button onClick={() => onOpenChange(false)} className="flex-1 h-10 rounded-rebrand-sm border border-line text-[13px] font-semibold text-ink hover:bg-canvas-2 transition">Fechar</button>
+              <button onClick={() => onOpenChange(false)} className="flex-1 h-10 rounded-rebrand-sm border border-line text-[13px] font-semibold text-ink hover:bg-canvas-2 transition">{t('registrar.fechar')}</button>
               <Link to="/bets" className="flex-1 h-10 rounded-rebrand-sm bg-forest text-canvas text-[13px] font-bold inline-flex items-center justify-center gap-1.5 hover:bg-forest-2 transition">
-                Ver no Betinho <ArrowRight className="w-3.5 h-3.5" />
+                {t('registrar.verNoBetinho')} <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
           </div>
@@ -219,7 +231,7 @@ export function RegistrarApostaModal({
             {/* Stake + Odd */}
             <div className="grid grid-cols-2 gap-3">
               <label className="flex flex-col gap-1.5">
-                <span className="text-[11px] uppercase tracking-[0.12em] font-bold text-ink-3">Valor (R$)</span>
+                <span className="text-[11px] uppercase tracking-[0.12em] font-bold text-ink-3">{t('registrar.valor', { simbolo: simboloDaMoeda(moedaAtiva()) })}</span>
                 <input
                   type="number" inputMode="decimal" step="0.01" min="0" placeholder="0,00"
                   value={stake} onChange={(e) => setStake(e.target.value)} autoFocus
@@ -227,7 +239,7 @@ export function RegistrarApostaModal({
                 />
               </label>
               <label className="flex flex-col gap-1.5">
-                <span className="text-[11px] uppercase tracking-[0.12em] font-bold text-ink-3">Odd</span>
+                <span className="text-[11px] uppercase tracking-[0.12em] font-bold text-ink-3">{t('numeros.odd')}</span>
                 <input
                   type="number" inputMode="decimal" step="0.01" min="1" placeholder="1.00"
                   value={odd} onChange={(e) => setOdd(e.target.value)}
@@ -238,7 +250,7 @@ export function RegistrarApostaModal({
 
             {atalhos.length > 0 && (
               <div className="flex flex-nowrap items-center gap-1.5 -mt-1">
-                <span className="shrink-0 text-[11px] font-semibold text-ink-3">Unidade</span>
+                <span className="shrink-0 text-[11px] font-semibold text-ink-3">{t('registrar.unidade')}</span>
                 {atalhos.map((atalho) => (
                   <button
                     key={atalho.unidades}
@@ -246,28 +258,38 @@ export function RegistrarApostaModal({
                     onClick={() => setStake(atalho.valor.toFixed(2))}
                     className="h-8 shrink-0 whitespace-nowrap px-2.5 rounded-rebrand-sm border border-forest/20 bg-forest/5 text-[11.5px] font-semibold text-forest hover:bg-forest/10 transition"
                   >
-                    <span className="sm:hidden">{atalho.unidades === 1 ? '1 un.' : '½ un.'} · {fmtDinheiro(atalho.valor)}</span>
-                    <span className="hidden sm:inline">{atalho.unidades === 1 ? '1 unidade' : '½ unidade'} · {fmtDinheiro(atalho.valor)}</span>
+                    <span className="sm:hidden">
+                      {t('registrar.atalho', {
+                        rotulo: atalho.unidades === 1 ? t('registrar.unidadeUmaCurta') : t('registrar.unidadeMeiaCurta'),
+                        valor: fmtDinheiroDaPessoa(atalho.valor),
+                      })}
+                    </span>
+                    <span className="hidden sm:inline">
+                      {t('registrar.atalho', {
+                        rotulo: atalho.unidades === 1 ? t('registrar.unidadeUma') : t('registrar.unidadeMeia'),
+                        valor: fmtDinheiroDaPessoa(atalho.valor),
+                      })}
+                    </span>
                   </button>
                 ))}
               </div>
             )}
             <p className="text-[11px] text-ink-3 -mt-2">
               {draft?.oddKind === 'referencia'
-                ? `Confirme a cotação na sua casa antes de registrar. A referência coletada foi ${fmtOdd(draft.bestOdd)}.`
+                ? t('registrar.notaReferencia', { odd: fmtOdd(draft.bestOdd) })
                 : draft?.oddKind === 'sem_cotacao'
-                  ? 'Informe a odd que você encontrou para registrar a aposta.'
-                  : `Pegou outra odd? Ajuste acima — preenchemos com a melhor que encontramos (${fmtOdd(draft?.bestOdd)}).`}
+                  ? t('registrar.notaSemCotacao')
+                  : t('registrar.notaMelhor', { odd: fmtOdd(draft?.bestOdd) })}
             </p>
 
             {/* Retorno potencial */}
             <div className="flex items-center justify-between rounded-rebrand-sm bg-forest/5 border border-forest/15 px-3.5 py-2.5">
-              <span className="text-[12px] text-ink-2">Retorno potencial</span>
-              <span className="text-[16px] font-bold tabular-nums text-forest">{retorno != null ? fmtDinheiro(retorno) : '—'}</span>
+              <span className="text-[12px] text-ink-2">{t('registrar.retorno')}</span>
+              <span className="text-[16px] font-bold tabular-nums text-forest">{retorno != null ? fmtDinheiroDaPessoa(retorno) : '—'}</span>
             </div>
 
             {error && <p className="text-[12px] text-status-danger">{error}</p>}
-            {!user && <p className="text-[12px] text-amber-2">Entre na sua conta para registrar a aposta.</p>}
+            {!user && <p className="text-[12px] text-amber-2">{t('registrar.precisaLogin')}</p>}
 
             <button
               onClick={handleSave}
@@ -276,9 +298,9 @@ export function RegistrarApostaModal({
                 !valid || saving || !user ? 'bg-canvas-2 text-ink-3 cursor-default' : 'bg-forest text-canvas hover:bg-forest-2'
               }`}
             >
-              {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Registrando…</> : <>Registrar aposta</>}
+              {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> {t('registrar.salvando')}</> : <>{t('registrar.botao')}</>}
             </button>
-            <p className="text-[10px] text-ink-3 text-center -mt-1">Controle pessoal de apostas. Não é recomendação nem garantia de retorno.</p>
+            <p className="text-[10px] text-ink-3 text-center -mt-1">{t('registrar.rodape')}</p>
           </div>
         )}
       </DialogContent>
@@ -320,6 +342,9 @@ export function RegistrarApostaCTA({
    */
   larguraTotal?: boolean;
 }) {
+  const { t } = useTranslation('futebol');
+  // Assina a moeda: sem isto a tela não repinta quando a pessoa troca.
+  useMoeda();
   const [open, setOpen] = useState(false);
   const { data: acesso } = useFutebolAccess();
   const trigger = (e: React.MouseEvent) => {
@@ -344,25 +369,25 @@ export function RegistrarApostaCTA({
           className={`inline-flex items-center justify-center h-9 px-4 rounded-[9px] text-[12.5px] font-bold whitespace-nowrap transition hover:brightness-95${larguraTotal ? ' w-full' : ''}`}
           style={{ background: '#fbbf24', color: '#1a1d1a' }}
         >
-          {rotulo ?? 'Registrar aposta'}
+          {rotulo ?? t('registrar.botao')}
         </button>
       )}
 
       {variant === 'footer' && (
         <div className="flex items-center flex-wrap gap-x-3 gap-y-2 px-5 md:px-6 py-3 border-t border-line" style={{ background: 'var(--canvas-2)' }}>
-          <span className="text-[13px] font-semibold text-ink">Apostou nessa oportunidade?</span>
+          <span className="text-[13px] font-semibold text-ink">{t('registrar.apostou')}</span>
           <button type="button" onClick={trigger}
             className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-rebrand-sm bg-forest text-canvas text-[12px] font-bold hover:bg-forest-2 transition">
-            Registrar no Betinho <ArrowRight className="w-3.5 h-3.5" />
+            {t('registrar.noBetinho')} <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
       )}
 
       {variant === 'text' && (
         <span className="text-[11px] text-ink-3">
-          Apostou nessa oportunidade?{' '}
+          {t('registrar.apostou')}{' '}
           <button type="button" onClick={trigger} className="text-forest font-semibold hover:underline underline-offset-2">
-            Registre no Betinho
+            {t('registrar.registreNoBetinho')}
           </button>
         </span>
       )}

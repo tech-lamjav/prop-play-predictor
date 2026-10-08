@@ -1,0 +1,685 @@
+{
+  "dinheiro": {
+    "comum": {
+      "gravando": "Gravando…",
+      "valorIlegivel": "Esse valor não dá para ler. Escreva só o número, como 39,90.",
+      "devendo_one": "devendo {{count}} mês, {{total}}",
+      "devendo_other": "devendo {{count}} meses, {{total}}",
+      "planoVitalicia": "{{plano}} na mão, vitalícia",
+      "planoAte": "{{plano}} na mão, até {{dia}}",
+      "semCobranca": "sem cobrança",
+      "porMes": "{{valor}} por mês",
+      "devendo_zero": "devendo {{count}} meses, {{total}}"
+    },
+    "assinatura": {
+      "libera": {
+        "entrada": "Betinho ilimitado",
+        "essencial": "futebol completo e Betinho ilimitado",
+        "completo": "futebol, Betinho e as análises de NBA"
+      },
+      "liberaFrase": "Libera {{oQue}}.",
+      "atual": {
+        "vitalicia": "<0>{{plano}}</0> na mão, vitalícia.",
+        "validaAte": "<0>{{plano}}</0> na mão, válida até {{dia}}."
+      },
+      "semCobrancaCombinada": "Sem cobrança combinada.",
+      "porMes": "{{valor}} por mês.",
+      "encerrar": "Encerrar a assinatura",
+      "encerrarNaoTiraAcesso": "Encerrar registra o fim do acordo e <0>não tira o acesso</0>. Para cortar o produto, use os acessos avulsos ao lado.",
+      "campoPlano": "Plano",
+      "ariaPlano": "Plano da assinatura manual",
+      "campoValidoAte": "Válido até",
+      "ariaValidoAte": "Assinatura manual válida até",
+      "ariaVitalicia": "Assinatura vitalícia",
+      "vitaliciaNaoVence": "Vitalícia, não vence",
+      "campoCobrancaMensal": "Cobrança mensal",
+      "placeholderValor": "R$ por mês",
+      "ariaValor": "Valor cobrado por mês",
+      "emBrancoSemCobranca": "Em branco quer dizer sem cobrança.",
+      "todoMesRecorrente": "{{valor}} todo mês, recorrente.",
+      "campoComecouEm": "Começou em",
+      "ariaComecouEm": "Quando a assinatura começou",
+      "naoComecaNoFuturo": "Não dá para começar no futuro.",
+      "maisDeUmAno": "Mais de um ano atrás. Confira o ano antes de gravar.",
+      "hojeNoCasoNormal": "Hoje, no caso normal. Para trás, no máximo um ano.",
+      "vaiAbrir_one": "Vai abrir {{count}} mês em aberto, {{total}} no total.",
+      "vaiAbrir_other": "Vai abrir {{count}} meses em aberto, {{total}} no total.",
+      "trocarPlanoOuPrazo": "Trocar o plano ou o prazo",
+      "darEstaAssinatura": "Dar esta assinatura",
+      "avisoVitalicia": "Vitalícia não entra na fila de vencimento. Se tiver cobrança mensal e deixar de pagar, entra na fila de inadimplentes.",
+      "avisoComPrazo": "Entra na fila de cobrança sete dias antes de vencer. Não encerra sozinha: parar de pagar só coloca a pessoa na fila de inadimplentes, e quem encerra é você.",
+      "vaiAbrir_zero": "Vai abrir {{count}} meses em aberto, {{total}} no total."
+    },
+    "acesso": {
+      "ariaAcessoAo": "Acesso ao {{produto}}",
+      "ariaAcessoAoAte": "Acesso ao {{produto}} até",
+      "salvar": "Salvar",
+      "liberado": "liberado",
+      "semAcesso": "sem acesso",
+      "continuaComoEstava": "O acesso continua como estava.",
+      "avisoDoStripe": "Vale até o Stripe falar sobre esta pessoa. Quando ela assinar ou cancelar, o que vier de lá manda. Toda mudança fica registrada na linha do tempo.",
+      "teste": {
+        "nunca": "Nunca usou o teste.",
+        "correndo_one": "Correndo, termina em {{dia}} ({{count}} dia).",
+        "correndo_other": "Correndo, termina em {{dia}} ({{count}} dias).",
+        "vencido": "Já usou. Terminou em {{dia}}.",
+        "continuaComoEstava": "O teste continua como estava.",
+        "encerrarAgora": "Encerrar o teste agora",
+        "darOutro": "Dar outro teste",
+        "comecarAgora": "Começar o teste agora",
+        "correndo_zero": "Correndo, termina em {{dia}} ({{count}} dias)."
+      }
+    },
+    "receita": {
+      "estornado": "estornado",
+      "estornar": "Estornar",
+      "motivoNaoRegistrado": "não registrado",
+      "motivoDoEstorno": "Motivo: {{motivo}}. O acesso não foi recuado.",
+      "caiuEm": "Caiu em {{dia}}",
+      "placeholderMotivo": "Por que está estornando?",
+      "ariaMotivoDoEstorno": "Motivo do estorno de {{mes}}",
+      "confirmar": "Confirmar",
+      "semAssinatura": "Sem assinatura dada na mão. O histórico de pagamento nasce junto com ela.",
+      "carregando": "Carregando os pagamentos…",
+      "erro": "Não deu para carregar os pagamentos agora. Sem eles, cobrar seria chute.",
+      "recebidoNaMao": "Recebido na mão: <0>{{valor}}</0>",
+      "total": "total {{valor}}",
+      "emDia": "em dia",
+      "emAberto": "Em aberto: {{meses}}. A assinatura não encerra sozinha: se for para cortar o acesso, encerre na assinatura acima.",
+      "virada": "Esta pessoa também paga no cartão desde {{mes}}, então o acordo feito na mão parou de acumular mês a partir daí. O que ficou para trás continua em aberto. Se o acordo na mão acabou, encerre na assinatura acima.",
+      "explicacaoDosDoisNumeros": "\"Recebido na mão\" é o que depende de você cobrar. O total soma também o que entra pelo cartão, que é cobrado sozinho.",
+      "campoMesPago": "Mês pago",
+      "ariaMesPago": "Mês de competência do pagamento",
+      "campoValor": "Valor",
+      "ariaValor": "Valor recebido",
+      "campoComoCaiu": "Como caiu",
+      "ariaOrigem": "Origem do pagamento",
+      "campoDiaQueCaiu": "Dia em que caiu",
+      "ariaDiaQueCaiu": "Dia em que o dinheiro caiu",
+      "registrarPagamento": "Registrar pagamento",
+      "registrarEmpurra": "Registrar empurra o acesso até o fim do mês pago.",
+      "nenhumPagamento": "Nenhum pagamento registrado ainda."
+    },
+    "cobranca": {
+      "venceHoje": "vence hoje",
+      "aVencer_one": "vence em {{count}} dia",
+      "aVencer_other": "vence em {{count}} dias",
+      "vencida_one": "venceu faz {{count}} dia",
+      "vencida_other": "venceu faz {{count}} dias",
+      "naoVence": "não vence",
+      "seloDoCartao": "<0>Também paga no cartão.</0> O acordo feito na mão continua aberto e parou de acumular mês. Se ele acabou, encerre na ficha.",
+      "carregando": "Carregando as assinaturas…",
+      "erro": "Não deu para carregar as assinaturas dadas na mão agora.",
+      "saiuDaFila_one": "{{count}} pessoa saiu desta fila por já pagar no cartão.",
+      "saiuDaFila_other": "{{count}} pessoas saíram desta fila por já pagarem no cartão.",
+      "saiuDaFilaPorQue": "O gateway cobra sozinho, e pedir Pix a quem tem cartão passando é como se produz pagamento em dobro. O acordo na mão delas continua aberto, em \"Todas\".",
+      "aVencer_zero": "vence em {{count}} dias",
+      "vencida_zero": "venceu faz {{count}} dias",
+      "saiuDaFila_zero": "{{count}} pessoas saíram desta fila por já pagarem no cartão."
+    },
+    "inadimplentes": {
+      "emAberto": "Em aberto: {{meses}}",
+      "carregando": "Carregando quem está devendo…",
+      "erro": "Não deu para carregar os pagamentos agora, então esta fila estaria chutando quem deve.",
+      "vazio": "Ninguém devendo. Toda assinatura com cobrança mensal está com os meses pagos.",
+      "rodape": "Ninguém sai daqui encerrado sozinho. Para registrar um Pix ou encerrar, abra a ficha: os dois ficam na aba Planos. O mês corrente conta como devido a partir do dia 1º."
+    },
+    "stripe": {
+      "renovacaoNaoSabemos": "renovação: não sabemos",
+      "renovaEm": "renova em {{dia}}",
+      "produtoNaoGravado": "produto não gravado",
+      "noCartao": "{{produto}} no cartão",
+      "carregando": "Carregando quem paga no cartão…",
+      "erro": "Não deu para carregar a base, então não dá para saber quem paga no cartão.",
+      "vazio": "Ninguém assinando pelo cartão ainda."
+    },
+    "feedbacks": {
+      "carregando": "Carregando os feedbacks…",
+      "erro": "Não deu para carregar os feedbacks.",
+      "vazio": "Nenhum feedback registrado ainda. Eles aparecem aqui quando alguém marca uma anotação como feedback na ficha de um lead.",
+      "semData": "sem data",
+      "registradoPor": "registrado por {{socio}}"
+    }
+  },
+  "ficha": {
+    "estado": {
+      "carregando": "Carregando a ficha…",
+      "erro": "Não deu para carregar a ficha agora.",
+      "naoEncontrada": "Não encontramos esse cadastro."
+    },
+    "modal": {
+      "titulo": "Ficha do lead"
+    },
+    "identificacao": {
+      "regiao": "Identificação do lead",
+      "email": "E-mail",
+      "naoInformado": "não informado",
+      "naoVinculado": " (não vinculado)"
+    },
+    "cabecalho": {
+      "cadastrouEm": "Cadastrou em {{dia}}",
+      "semDataDeCadastro": "Sem data de cadastro no banco",
+      "etapa": "Etapa",
+      "etapaDoLead": "Etapa do lead",
+      "carregandoEtapa": "Carregando…",
+      "gravando": "Gravando…",
+      "naoGravou": "Não gravou. Continua como estava."
+    },
+    "whatsapp": {
+      "situacao": "Situação do WhatsApp",
+      "numeroOk": "Número ok",
+      "naoLevaAPessoa": "Não leva à pessoa",
+      "selo": "Sem WhatsApp",
+      "seloMarcado": "Sem WhatsApp · marcado",
+      "tituloMarcado": "Marcado na mão: o número está no cadastro, mas não leva à pessoa.",
+      "tituloSemNumero": "Sem número que abra conversa. Só dá para chegar por e-mail."
+    },
+    "abas": {
+      "conversa": "Conversa",
+      "planos": "Planos",
+      "comportamento": "Comportamento"
+    },
+    "gancho": {
+      "titulo": "Gancho",
+      "palpite": "Palpite:",
+      "porque": "Porque {{porque}}.",
+      "ultimaAposta": "Última aposta em {{dia}}.",
+      "apostasDesconhecidas": "Não deu para consultar as apostas, então este palpite está incompleto.",
+      "aviso": "É leitura do que o banco registrou, não do que a pessoa disse.",
+      "origem": {
+        "betinho": "veio pelo Betinho",
+        "futebol": "veio pelo futebol",
+        "nba": "veio pela NBA",
+        "indefinido": "não dá para dizer ainda"
+      }
+    },
+    "planos": {
+      "assinatura": "Assinatura",
+      "plano": "Plano",
+      "naoIdentificado": "Não identificado: {{bruto}}",
+      "receita": "Receita",
+      "acessosAvulsos": "Acessos avulsos",
+      "testeDoFutebol": "Teste do futebol"
+    },
+    "etiquetas": {
+      "titulo": "Teste gratuito"
+    },
+    "linhaDoTempo": {
+      "titulo": "Linha do tempo",
+      "listaAria": "Linha do tempo desta pessoa",
+      "soFeedbacks": "Só feedbacks",
+      "carregando": "Carregando a linha do tempo…",
+      "erro": "Não deu para carregar a linha do tempo.",
+      "vazio": "Nada registrado ainda.",
+      "vazioFeedbacks": "Nenhum feedback registrado ainda.",
+      "semData": "sem data",
+      "semEtapa": "sem etapa",
+      "mudouDeEtapa": "Etapa: {{de}} → {{para}}",
+      "anotacao": "Anotação",
+      "placeholder": "O que aconteceu nessa conversa?",
+      "tipoDoRegistro": "Tipo do registro",
+      "registrar": "Registrar",
+      "registrando": "Registrando…",
+      "registrarAria": "Registrar na linha do tempo"
+    },
+    "comportamento": {
+      "titulo": "Comportamento",
+      "consultando": "Consultando o PostHog…",
+      "semChave": "A chave de consulta do PostHog não está configurada neste ambiente.",
+      "erro": "Não deu para consultar o PostHog agora.",
+      "projetoMudo": "O PostHog não registrou evento nenhum no projeto nesta semana — o problema é de configuração, e não desta pessoa.",
+      "semVisita": "O PostHog não tem visita registrada para esta pessoa. Pode ser que ela não tenha voltado, ou que o cadastro dela aqui não corresponda ao que o PostHog guardou.",
+      "sessoes": "Sessões",
+      "visitas_one": "visita",
+      "visitas_other": "visitas",
+      "tempoDeTela": "Tempo de tela",
+      "deTelaSomado": "de tela, somado",
+      "ultimaVisita": "Última visita",
+      "ultimaVisitaRotulo": "última visita",
+      "semCaminho": "(sem caminho)",
+      "historiaTruncada": "O PostHog só guarda eventos desde {{desde}}, e esta pessoa se cadastrou antes disso. Estes números são desse recorte, não de sempre.",
+      "visitas_zero": "visitas"
+    },
+    "perfil": {
+      "titulo": "Perfil de aposta",
+      "carregando": "Lendo as apostas…",
+      "erro": "Não deu para ler as apostas desta pessoa agora.",
+      "vazio": "Nunca registrou aposta no Betinho. É o caso da maior parte da base, e em si já é assunto: quem assina e não usa é quem cancela primeiro.",
+      "apostas": "Apostas",
+      "liquidadas": "Liquidadas",
+      "emAberto_one": "{{count}} em aberto",
+      "emAberto_other": "{{count}} em aberto",
+      "apostado": "Apostado",
+      "roiDele": "ROI dele",
+      "nadaLiquidado": "nada liquidado ainda",
+      "noVermelho": "Está no vermelho nas apostas dele. Não é conta nossa, e é por onde a conversa entra: dá para falar de gestão de banca e do que a gente tem para ajudar nisso.",
+      "apostaDesde": "Aposta desde {{primeira}}, a última em {{ultima}}.",
+      "semData": "Sem data de aposta registrada.",
+      "apostaMaisEm": "Aposta mais em <0/> ({{parte}})",
+      "quaseSempreEm": "quase sempre em <0/> ({{parte}}).",
+      "apostaQuaseSempreEm": "Aposta quase sempre em <0/> ({{parte}}).",
+      "poucasApostas": "Poucas apostas para falar em perfil. Os recortes abaixo mostram o que existe.",
+      "porMercado": "Por mercado",
+      "porEsporte": "Por esporte",
+      "porFaixaDeOdd": "Por faixa de odd",
+      "soLiquidadas": "Só o que já terminou entra nas contas de dinheiro. Aposta em aberto não tem resultado, e somá-la diluiria o ROI a ponto de não dizer nada.",
+      "emAberto_zero": "{{count}} em aberto"
+    },
+    "mensagem": {
+      "titulo": "Mensagem pronta",
+      "trocar": "Trocar a mensagem",
+      "escolherAria": "Escolher outra mensagem pronta",
+      "sugerida": " (sugerida)",
+      "rotuloDoCampo": "Mensagem",
+      "copiar": "Copiar",
+      "copiado": "Copiado",
+      "abrirNoWhatsApp": "Abrir no WhatsApp",
+      "semWhatsApp": "Sem WhatsApp no cadastro",
+      "voltarAoModelo": "Voltar ao modelo",
+      "falhouAoCopiar": "Não deu para copiar sozinho. Selecione o texto acima e copie na mão."
+    }
+  },
+  "paginas": {
+    "assinaturas": {
+      "recorte": {
+        "cobrar": {
+          "rotulo": "A cobrar",
+          "explicacao": "quem vence nos próximos {{dias}} dias, e quem já venceu"
+        },
+        "devendo": {
+          "rotulo": "Devendo",
+          "explicacao": "quem tem cobrança mensal e mês em aberto, do que deve mais para o que deve menos"
+        },
+        "todas": {
+          "rotulo": "Todas",
+          "explicacao": "todas as assinaturas manuais abertas"
+        },
+        "cartao": {
+          "rotulo": "No cartão",
+          "explicacao": "quem assina pelo gateway, e quando renova"
+        }
+      },
+      "resumo": "{{naMao}} na mão, {{noCartao}} no cartão",
+      "resumoIndisponivel": "assinaturas indisponíveis",
+      "carregando": "carregando…",
+      "introducao": "Assinatura dada na mão não renova sozinha e não encerra sozinha. \"A cobrar\" junta quem vence primeiro, com quem já venceu no topo. \"Devendo\" junta quem parou de pagar, e é ali que se decide quem encerrar. \"No cartão\" é o outro lado: quem assina pelo gateway renova e é cobrado sozinho, então ali não há o que cobrar — é acompanhamento.",
+      "erroNaBase": "Não deu para carregar a base, então as cobranças ficariam sem dono.",
+      "carregandoBase": "Carregando…",
+      "vazio": {
+        "cobrar": "Ninguém para cobrar agora. Nenhuma assinatura manual vence nesta semana.",
+        "todas": "Nenhuma assinatura dada na mão até agora."
+      }
+    },
+    "placar": {
+      "tituloDaAba": "Metodologia",
+      "resumo_one": "{{count}} oportunidade publicada no período",
+      "resumo_other": "{{count}} oportunidades publicadas no período",
+      "resumoIndisponivel": "placar indisponível",
+      "carregando": "carregando…",
+      "erroAoCarregar": "Não deu para carregar as oportunidades publicadas. Uma tabela vazia diria que a metodologia não publicou nada, o que é diferente de não ter resposta.",
+      "carregandoBloco": "Carregando…",
+      "resumo_zero": "{{count}} oportunidades publicadas no período"
+    },
+    "feedbacks": {
+      "resumo_one": "{{count}} feedback registrado",
+      "resumo_other": "{{count}} feedbacks registrados",
+      "resumoIndisponivel": "feedbacks indisponíveis",
+      "carregando": "carregando…",
+      "introducao": "O que a base falou, do mais recente para o mais antigo. Cada feedback continua na linha do tempo de quem falou — é lá que ele tem contexto —, e o nome leva de volta para a ficha.",
+      "erroNaBase": "Não deu para carregar a base, então os feedbacks ficariam sem dono.",
+      "carregandoBase": "Carregando…",
+      "resumo_zero": "{{count}} feedbacks registrados"
+    }
+  },
+  "painel": {
+    "oBancoResponde": "o banco responde",
+    "dias": "{{dias}}d",
+    "carregando": "Carregando os cadastros…",
+    "erro": "Não deu para carregar os cadastros agora.",
+    "baseVazia": "Nenhum cadastro na base.",
+    "truncada": "A base passou do teto da consulta. Estes são os {{mostrados}} cadastros mais recentes de {{total}}, e os números abaixo contam só eles.",
+    "resumo": {
+      "naBase_one": "{{count}} cadastro na base",
+      "naBase_other": "{{count}} cadastros na base",
+      "erro": "base indisponível",
+      "carregando": "carregando…",
+      "naBase_zero": "{{count}} cadastros na base"
+    },
+    "cabecalho": {
+      "titulo": "CRM",
+      "usoInterno": "Uso interno",
+      "ariaSecoes": "Seções do CRM",
+      "leads": "Leads",
+      "assinaturas": "Assinaturas",
+      "feedbacks": "Feedbacks"
+    },
+    "metricas": {
+      "aria": "Números da operação",
+      "cadastros": {
+        "rotulo": "Cadastros em 30 dias",
+        "explicacao": "quanta gente nova chegou"
+      },
+      "conversao": {
+        "rotulo": "Conversão",
+        "explicacao_zero": "{{count}} assinantes na base",
+        "explicacao_one": "{{count}} assinante na base",
+        "explicacao_other": "{{count}} assinantes na base"
+      },
+      "abordados": {
+        "rotulo": "Abordados",
+        "explicacao": "tocados por vocês, não pelo produto"
+      }
+    },
+    "funil": {
+      "aria": "Funil",
+      "erro": "Não deu para montar o funil: o histórico de etapas não carregou.",
+      "carregando": "Carregando o funil…",
+      "limpar": "Limpar filtro do funil"
+    },
+    "busca": {
+      "placeholder": "Buscar por nome, e-mail ou telefone",
+      "aria": "Buscar cadastro"
+    },
+    "filtroPeriodo": {
+      "aria": "Período de cadastro",
+      "de": "Cadastrado a partir de",
+      "ate": "Cadastrado até",
+      "atalhos": {
+        "sempre": "Desde sempre",
+        "ultimos7": "Últimos 7 dias",
+        "ultimos30": "Últimos 30 dias",
+        "ultimos90": "Últimos 90 dias",
+        "personalizado": "Escolher as datas"
+      }
+    },
+    "filtroWhatsApp": {
+      "aria": "Filtrar por WhatsApp",
+      "suspensoPelaBusca": "a busca mostra todo mundo",
+      "semAsMarcas": "só pelo número — as marcas não carregaram",
+      "opcoes": {
+        "com": "Só quem tem WhatsApp",
+        "todos": "Com e sem WhatsApp",
+        "sem": "Só quem não tem WhatsApp"
+      }
+    },
+    "recorte": {
+      "aria": "Recorte da lista",
+      "atencao": {
+        "rotulo": "Precisa de atenção",
+        "explicacao": "quem está esperando você: conversas sem toque há 7 dias ou mais, e quem nunca foi abordado"
+      },
+      "todos": {
+        "rotulo": "Todos",
+        "explicacao": "a base inteira, incluindo casos fechados e conversas que já tiveram toque esta semana"
+      }
+    },
+    "formato": {
+      "aria": "Formato da lista",
+      "tabela": "Tabela",
+      "kanban": "Kanban"
+    },
+    "agrupar": {
+      "aria": "Agrupar por dia de cadastro",
+      "rotulo": "Agrupar por dia",
+      "semData": "Sem data de cadastro"
+    },
+    "vazio": {
+      "semWhatsApp": "Ninguém sem WhatsApp por aqui: todo mundo desta lista tem número que abre conversa.",
+      "atencao": "Ninguém esperando. Toda conversa começada teve toque na última semana, e todo lead novo já foi abordado.",
+      "todos": "Nenhum cadastro com esses filtros."
+    },
+    "lista": {
+      "erro": "Sem o histórico de etapas não dá para montar a lista sem inventar.",
+      "carregando": "Carregando a lista…"
+    },
+    "tabela": {
+      "semData": "sem data",
+      "colunas": {
+        "pessoa": "Pessoa",
+        "etapa": "Etapa",
+        "gancho": "Gancho",
+        "parado": "Parado"
+      }
+    },
+    "kanban": {
+      "vazia": "vazia",
+      "sobram_zero": "+ {{count}} que não cabem aqui. Use a tabela para trabalhar esta coluna.",
+      "sobram_one": "+ {{count}} que não cabe aqui. Use a tabela para trabalhar esta coluna.",
+      "sobram_other": "+ {{count}} que não cabem aqui. Use a tabela para trabalhar esta coluna."
+    }
+  },
+  "placar": {
+    "cabecalho": {
+      "titulo": "Metodologia",
+      "usoInterno": "Uso interno"
+    },
+    "comoEMedido": {
+      "titulo": "Como este número é medido",
+      "unidade": "Cada oportunidade vale <0>uma unidade</0>, medida pela odd, pela nota e pela faixa com que ela foi publicada — a foto de nascimento, e não o estado dela no apito, que é o que o assinante vê no histórico dele.",
+      "soPublicado": "Só entra aqui o que foi <0>publicado</0>. A candidata que o funil recusou vive no BigQuery e o site não a alcança, então esta tela não responde se o corte está apertado demais nem se falta premissa.",
+      "denominadores": "Taxa de acerto não conta anulada no denominador; o ROI conta, com lucro zero. É por isso que os dois números têm bases diferentes."
+    },
+    "avisos": {
+      "atencao": "Atenção:"
+    },
+    "gaveta": {
+      "aberta": "Aberto em <0>{{rotulo}}</0>. Tudo nesta tela — os números do topo, o gráfico, as quebras e as premissas — conta só essa janela.",
+      "verPeriodoInteiro": "Ver o período inteiro"
+    },
+    "simulacao": {
+      "ligada": "Simulação ligada.",
+      "aviso": "As unidades por faixa não são as medidas: {{pesos}}. O ROI abaixo é o que teria acontecido com esses tamanhos, sobre as mesmas apostas — e o erro-padrão passa a ser aproximado, porque ele é calculado por unidade e não ponderado.",
+      "pesoDaFaixa": "{{faixa}} {{peso}}u",
+      "foraPorPesoZero_zero": "{{count}} oportunidades ficaram fora por peso zero.",
+      "foraPorPesoZero_one": "{{count}} oportunidade ficou fora por peso zero.",
+      "foraPorPesoZero_other": "{{count}} oportunidades ficaram fora por peso zero."
+    },
+    "totais": {
+      "publicadas": "Publicadas",
+      "liquidadas": "Liquidadas",
+      "pendentes": "Pendentes",
+      "anuladas": "Anuladas",
+      "rotuloAcerto": "Acerto: {{acertos}} {{base}}",
+      "rotuloRoi": "ROI ± {{ep}} {{base}}",
+      "roiDoPeriodo": "ROI do período",
+      "emUnidades": "em {{unidades}}u",
+      "deAcerto": "de acerto · {{acertos}} {{base}}",
+      "resumoNoCelular": "{{publicadas}} publicadas · {{liquidadas}} liquidadas · {{pendentes}} pendentes · {{anuladas}} anuladas"
+    },
+    "pendentes": {
+      "aviso_zero": "{{count}} oportunidades ainda não liquidaram — jogo por acabar, jogo sem placar no fato, ou mercado que a regra de liquidação ainda não conhece. Nenhuma delas entra nas contas acima, e a conta muda quando elas liquidarem.",
+      "aviso_one": "Uma oportunidade ainda não liquidou — jogo por acabar, jogo sem placar no fato, ou mercado que a regra de liquidação ainda não conhece. Nenhuma delas entra nas contas acima, e a conta muda quando elas liquidarem.",
+      "aviso_other": "{{count}} oportunidades ainda não liquidaram — jogo por acabar, jogo sem placar no fato, ou mercado que a regra de liquidação ainda não conhece. Nenhuma delas entra nas contas acima, e a conta muda quando elas liquidarem."
+    },
+    "vitrine": {
+      "aviso_zero": "A conta está restrita à <0>vitrine</0>: {{count}} oportunidades ficaram de fora porque o assinante não as viu. Esta é a leitura do produto; a do board inteiro é a outra.",
+      "aviso_one": "A conta está restrita à <0>vitrine</0>: uma oportunidade ficou de fora porque o assinante não as viu. Esta é a leitura do produto; a do board inteiro é a outra.",
+      "aviso_other": "A conta está restrita à <0>vitrine</0>: {{count}} oportunidades ficaram de fora porque o assinante não as viu. Esta é a leitura do produto; a do board inteiro é a outra."
+    },
+    "premissas": {
+      "titulo": "ROI por premissa",
+      "comoLer": "Como ler",
+      "comoLerTexto": "Sempre dentro do lado do mercado, porque o ROI do lado é a linha de base. A coluna que decide é a diferença entre acesa e apagada. A flag vem recalculada do mart, então mudar o critério de uma premissa reescreve o passado — e o quanto ela acendeu, o insumo, ainda não chega neste banco.",
+      "vazio": "Nenhuma oportunidade liquidada no período."
+    },
+    "filtros": {
+      "conta": "Conta",
+      "porApito": "Por apito",
+      "porDeteccao": "Por detecção",
+      "mercados": "Mercados",
+      "boardInteiro": "Board inteiro",
+      "boardInteiroAjuda": "Inclui o mercado que saiu da vitrine. Responde como está a metodologia.",
+      "soAVitrine": "Só a vitrine",
+      "soAVitrineAjuda": "Só o que o assinante viu. Responde como foi o produto."
+    },
+    "periodo": {
+      "atalhos": "Atalhos",
+      "versus": "vs {{periodo}}",
+      "compararCom": "Comparar com",
+      "inicioDaComparacao": "Início do período de comparação",
+      "ate": "até",
+      "fimDaComparacao": "Fim do período de comparação",
+      "fuso": "Fuso das datas: Brasília",
+      "cancelar": "Cancelar",
+      "atualizar": "Atualizar"
+    },
+    "recorte": {
+      "rotulo": "Recorte e simulação",
+      "faixasEscolhidas": "{{quantas}} faixa(s)",
+      "valorMinimoResumo": "valor ≥ {{valor}}",
+      "simulando": "simulando",
+      "soEstasFaixas": "Só estas faixas de Score",
+      "nenhumaEhTodas": "Nenhuma escolhida é o mesmo que todas.",
+      "valorMinimo": "Valor mínimo",
+      "valorMinimoAria": "Valor mínimo em por cento",
+      "unidadesPorFaixa": "Unidades por faixa",
+      "unidadesPorFaixaAjuda": "Quanto apostar em cada faixa. Zero é não apostar — a linha sai da conta e é contada à parte. Mexer aqui vira simulação, e a tela avisa.",
+      "unidadesNaFaixaAria": "Unidades na faixa {{faixa}}"
+    },
+    "evolucao": {
+      "titulo": "Evolução do ROI",
+      "acertoEBase": "{{taxa}} de acerto · {{base}}",
+      "voltar": "{{gaveta}}, por {{degrau}} — voltar",
+      "vazio": "Nenhuma oportunidade liquidada no período com os mercados escolhidos.",
+      "abrirPor": "Abrir por {{degrau}}",
+      "rodapeComparando": "Comparando dois períodos, a barra não abre: a gaveta recorta a tela toda, e a tela está mostrando duas janelas.",
+      "rodapeToque": "Toque numa barra para ver o número dela.",
+      "rodapeClique": "Clique numa barra para abrir por {{degrau}}.",
+      "rodapeUltimoDegrau": "Este é o último degrau: cada barra é um dia."
+    },
+    "tirinha": {
+      "aria": "ROI por {{degrau}}: {{descricao}}"
+    },
+    "degrau": {
+      "mes": "Mês",
+      "semana": "Semana",
+      "dia": "Dia"
+    }
+  },
+  "quebras": {
+    "vazio": "Nenhuma oportunidade liquidada no período.",
+    "vazioComparado": "Nenhuma oportunidade liquidada em nenhum dos dois períodos.",
+    "colunaGrupo": "Grupo",
+    "periodoInteiro": "período inteiro",
+    "semAposta": "sem aposta",
+    "ruido": "dentro do ruído",
+    "deAcerto": "{{taxa}} de acerto",
+    "curto": {
+      "mercado": "mercado",
+      "faixaDeScore": "faixa de Score",
+      "faixaDeOdd": "faixa de odd",
+      "campeonato": "campeonato"
+    },
+    "matriz": {
+      "total": "Total",
+      "abrirLinha": "Abrir {{grupo}} por {{dentro}}",
+      "comoAbrir": "A seta abre a linha por {{dentro}}. A célula abre as apostas dela.",
+      "cliqueNaCelula": "Clique numa célula para ver as apostas dela.",
+      "foraDaTabela_zero": "{{count}} apostas fora desta tabela:",
+      "foraDaTabela_one": "{{count}} aposta fora desta tabela:",
+      "foraDaTabela_other": "{{count}} apostas fora desta tabela:"
+    },
+    "drill": {
+      "ordenar": "Ordenar",
+      "semCampeonato": "sem campeonato",
+      "oddEmLinha": "odd",
+      "unidadeApostada": "{{unidades}}u apostada",
+      "deUnidades": "de {{unidades}}u",
+      "reordenar": "Clique num cabeçalho para reordenar.",
+      "rodape": "O placar é do jogo, e a distância é até a linha da aposta — nos mercados que têm linha. O lucro é em unidades apostadas.",
+      "coluna": {
+        "lucro": "Lucro",
+        "score": "Score",
+        "odd": "Odd",
+        "distancia": "Distância",
+        "jogo": "Jogo",
+        "saida": "Saída"
+      },
+      "cabecalho": {
+        "placar": "Placar",
+        "resultado": "Resultado"
+      }
+    },
+    "linha": {
+      "voltar": "Voltar",
+      "fechar": "Fechar",
+      "verApostas_one": "Ver a aposta",
+      "verApostas_other": "Ver as {{count}} apostas",
+      "tempo": {
+        "mes": "Mês a mês",
+        "semana": "Semana a semana",
+        "dia": "Dia a dia"
+      },
+      "verApostas_zero": "Ver as {{count}} apostas"
+    },
+    "premissas": {
+      "ruido": "ruído",
+      "peso": "peso",
+      "acesa": "acesa",
+      "apagada": "apagada",
+      "apagadaVazia": "apagada —",
+      "nuncaAcendeu": "nunca acendeu",
+      "comoLer": "Como ler esta lista",
+      "linhaDeBase": "Linha de base: apostar em <0>todas</0> as oportunidades publicadas deste lado. Cada premissa abaixo divide essas mesmas apostas em duas.",
+      "comoLerLista": "O número da direita é a diferença entre acesa e apagada: quanto o ROI muda quando aquela premissa acende. Em destaque, a diferença passa do próprio erro e a amostra a sustenta; como ruído, não passa — o número aparece pequeno, para ser olhado e não decidido. Peso zero não é erro: são as premissas que a recalibragem de agosto mediu como verdadeiras sobre o jogo e sem efeito na previsão — se uma delas separar aqui, ela é candidata a voltar a pesar.",
+      "comoLerTabela": "A coluna da direita é a diferença entre as duas do meio: quanto o ROI muda quando aquela premissa acende. Em destaque, a diferença passa do próprio erro e a amostra a sustenta; como <0>ruído</0>, não passa — o número aparece pequeno, para ser olhado e não decidido. Peso zero não é erro: são as premissas que a recalibragem de agosto mediu como verdadeiras sobre o jogo e sem efeito na previsão — se uma delas separar aqui, ela é candidata a voltar a pesar.",
+      "coluna": {
+        "premissa": "Premissa",
+        "peso": "Peso na nota",
+        "roiAcesa": "ROI quando acendeu",
+        "roiApagada": "ROI quando não",
+        "separa": "Quanto ela separa"
+      }
+    },
+    "celular": {
+      "regiao": "Quebras do placar",
+      "quebrarPor": "Quebrar por",
+      "sobre": "Sobre esta quebra",
+      "foraDaQuebra_zero": "{{count}} apostas fora desta quebra:",
+      "foraDaQuebra_one": "{{count}} aposta fora desta quebra:",
+      "foraDaQuebra_other": "{{count}} apostas fora desta quebra:"
+    },
+    "comparada": {
+      "diferenca": "Diferença",
+      "anuladas_zero": "{{count}} anuladas",
+      "anuladas_one": "{{count}} anulada",
+      "anuladas_other": "{{count}} anuladas"
+    }
+  },
+  "vocabulario": {
+    "etapa": {
+      "novo": "Novo",
+      "primeiroContato": "Primeiro contato",
+      "nutrindo": "Nutrindo",
+      "boletada": "Boletada",
+      "interesse": "Interesse",
+      "semResposta": "Sem resposta"
+    },
+    "posicao": {
+      "assinante": "Assinante"
+    },
+    "tipo": {
+      "anotacao": "Anotação",
+      "feedback": "Feedback",
+      "objecao": "Objeção",
+      "acesso": "Acesso"
+    },
+    "gancho": {
+      "betinho": "Betinho",
+      "futebol": "Futebol",
+      "nba": "NBA",
+      "indefinido": "Geral"
+    },
+    "mensagem": {
+      "grupoTesteGratuito": "Teste gratuito",
+      "grupoCobranca": "Cobrança",
+      "grupoFechamento": "Fechamento",
+      "acabaAmanha": "Acaba amanhã",
+      "acabaHoje": "Acaba hoje",
+      "jaAcabou": "Já acabou",
+      "acabaEmDias": "Acaba em {{dias}} dias",
+      "vencimentoDaAssinatura": "Vencimento da assinatura",
+      "depoisDoSim": "Depois do sim"
+    }
+  }
+}

@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { X, Sparkles, Info, Check } from 'lucide-react';
 import {
@@ -16,11 +17,12 @@ import {
 } from '@/utils/dashboardAggregations';
 import type { Bet } from '@/hooks/use-bets';
 
-const PRESETS: { value: DateRangePreset; label: string }[] = [
-  { value: '7', label: '7 dias' },
-  { value: '30', label: '30 dias' },
-  { value: '90', label: '90 dias' },
-  { value: 'all', label: 'Tudo' },
+/* Tabela fora do componente: guarda CHAVE, nunca texto. */
+const PRESETS: { value: DateRangePreset; chave: string }[] = [
+  { value: '7', chave: 'painel.novaAnalise.presets.d7' },
+  { value: '30', chave: 'painel.novaAnalise.presets.d30' },
+  { value: '90', chave: 'painel.novaAnalise.presets.d90' },
+  { value: 'all', chave: 'painel.novaAnalise.presets.tudo' },
 ];
 
 interface AIPeriodModalProps {
@@ -47,6 +49,7 @@ export const AIPeriodModal: React.FC<AIPeriodModalProps> = ({
   currentFocus,
   onConfirm,
 }) => {
+  const { t } = useTranslation('apostas');
   const [selected, setSelected] = useState<DateRangePreset>(
     PRESETS.some((p) => p.value === currentPeriod) ? currentPeriod : '30'
   );
@@ -118,20 +121,20 @@ export const AIPeriodModal: React.FC<AIPeriodModalProps> = ({
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-[10px] uppercase tracking-[0.18em] text-amber-400 font-bold">
-                Nova análise · Betinho
+                {t('painel.novaAnalise.eyebrow')}
               </div>
               <DialogTitle className="text-[18px] font-extrabold tracking-tight leading-tight mt-0.5">
-                Que período quer analisar?
+                {t('painel.novaAnalise.titulo')}
               </DialogTitle>
               <DialogDescription className="text-[11px] text-white/65 mt-1">
-                Análise feita a partir das suas apostas
+                {t('painel.novaAnalise.descricao')}
               </DialogDescription>
             </div>
             <button
               type="button"
               onClick={() => onOpenChange(false)}
               className="w-7 h-7 rounded-md bg-white/10 hover:bg-white/20 grid place-items-center shrink-0 transition-colors"
-              aria-label="Fechar"
+              aria-label={t('painel.acoes.fechar')}
             >
               <X className="w-3.5 h-3.5 text-white" />
             </button>
@@ -141,7 +144,7 @@ export const AIPeriodModal: React.FC<AIPeriodModalProps> = ({
         {/* Body */}
         <div className="p-6">
           <div className="text-[10px] uppercase tracking-[0.14em] text-ink-2 font-bold mb-2">
-            Períodos sugeridos
+            {t('painel.novaAnalise.periodosSugeridos')}
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {PRESETS.map((p) => {
@@ -158,9 +161,9 @@ export const AIPeriodModal: React.FC<AIPeriodModalProps> = ({
                       : 'bg-white text-ink border-line hover:border-forest/50'
                   }`}
                 >
-                  <div className="text-[14px] font-bold">{p.label}</div>
+                  <div className="text-[14px] font-bold">{t(p.chave)}</div>
                   <div className={`text-[10px] tabular ${isOn ? 'text-amber-300' : 'text-ink-2'}`}>
-                    {n} {n === 1 ? 'aposta' : 'apostas'}
+                    {t('painel.novaAnalise.contagem', { count: n })}
                   </div>
                 </button>
               );
@@ -172,9 +175,9 @@ export const AIPeriodModal: React.FC<AIPeriodModalProps> = ({
             <div className="mt-5">
               <div className="flex items-center justify-between mb-2">
                 <div className="text-[10px] uppercase tracking-[0.14em] text-ink-2 font-bold">
-                  Foco da análise{' '}
+                  {t('painel.novaAnalise.foco')}{' '}
                   <span className="normal-case tracking-normal text-[10px] text-ink-2/70 font-normal">
-                    (opcional · selecione 1+)
+                    {t('painel.novaAnalise.focoOpcional')}
                   </span>
                 </div>
                 {!isEmptyFocus(focus) && (
@@ -183,7 +186,7 @@ export const AIPeriodModal: React.FC<AIPeriodModalProps> = ({
                     onClick={clearFocus}
                     className="text-[10px] font-bold text-forest hover:underline"
                   >
-                    Limpar
+                    {t('painel.novaAnalise.limpar')}
                   </button>
                 )}
               </div>
@@ -192,7 +195,7 @@ export const AIPeriodModal: React.FC<AIPeriodModalProps> = ({
               {focusOptions.leagues.length > 0 && (
                 <div className="mb-2">
                   <div className="text-[9px] uppercase tracking-[0.1em] text-ink-2/70 font-bold mb-1.5">
-                    Ligas
+                    {t('painel.novaAnalise.ligas')}
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {focusOptions.leagues.map((lg) => {
@@ -221,7 +224,7 @@ export const AIPeriodModal: React.FC<AIPeriodModalProps> = ({
               {focusOptions.tags.length > 0 && (
                 <div>
                   <div className="text-[9px] uppercase tracking-[0.1em] text-ink-2/70 font-bold mb-1.5">
-                    Etiquetas
+                    {t('painel.novaAnalise.etiquetas')}
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {focusOptions.tags.map((tag) => {
@@ -254,16 +257,19 @@ export const AIPeriodModal: React.FC<AIPeriodModalProps> = ({
               <Info className="w-3.5 h-3.5 shrink-0 text-forest" />
               {selectedCount > 0 ? (
                 <span>
-                  O Betinho vai analisar{' '}
-                  <span className="text-ink font-bold tabular">
-                    {selectedCount} {selectedCount === 1 ? 'aposta' : 'apostas'}
-                  </span>{' '}
-                  do período. Isso leva 3–5 segundos.
+                  {/* A frase inteira mora no catálogo: o destaque é o <0>, e a
+                      posição dele dentro da frase é decisão de cada idioma. */}
+                  <Trans
+                    t={t}
+                    i18nKey="painel.novaAnalise.resumo"
+                    count={selectedCount}
+                    components={[
+                      <span className="text-ink font-bold tabular" key="quantas" />,
+                    ]}
+                  />
                 </span>
               ) : (
-                <span>
-                  Nenhuma aposta encerrada nesse período. Tente outro intervalo.
-                </span>
+                <span>{t('painel.novaAnalise.semApostas')}</span>
               )}
             </div>
             <div className="flex gap-2">
@@ -272,7 +278,7 @@ export const AIPeriodModal: React.FC<AIPeriodModalProps> = ({
                 onClick={() => onOpenChange(false)}
                 className="h-10 px-4 rounded-md border border-line text-[12px] font-bold text-ink-2 hover:text-ink hover:bg-canvas-2 transition-colors flex-1"
               >
-                Cancelar
+                {t('painel.novaAnalise.cancelar')}
               </button>
               <button
                 type="button"
@@ -281,7 +287,9 @@ export const AIPeriodModal: React.FC<AIPeriodModalProps> = ({
                 className="h-10 px-5 rounded-md bg-amber-400 text-forest font-bold text-[12px] hover:bg-amber-300 transition-colors flex-[2] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-amber-400"
               >
                 <Sparkles className="w-3.5 h-3.5" />
-                Analisar {selectedCount > 0 ? `${selectedCount} ${selectedCount === 1 ? 'aposta' : 'apostas'}` : ''}
+                {selectedCount > 0
+                  ? t('painel.novaAnalise.analisarContagem', { count: selectedCount })
+                  : t('painel.novaAnalise.analisar')}
               </button>
             </div>
           </div>

@@ -1,0 +1,425 @@
+{
+  "landing": {
+    "nav": {
+      "acessar": "Acceder",
+      "comecarGratis": "Empezar gratis"
+    },
+    "hero": {
+      "etiqueta": "Smart Betting · El ecosistema",
+      "titulo": "Todo lo que el apostador necesita, <0>menos la casa.</0>",
+      "chamada": "Valor en el fútbol, análisis en la NBA, gestión de bankroll en Telegram y Bolão para bromear con los amigos — y cero promesa de ganancia en ninguno. Elige por dónde empezar:",
+      "rodape": "Planes separados · Todas empiezan gratis · La decisión siempre es tuya"
+    },
+    "produtos": {
+      "futebol": {
+        "nome": "Fútbol",
+        "etiqueta": "Fútbol · Apuesta de valor",
+        "titulo": "Donde la cuota paga más que el riesgo de verdad.",
+        "texto": "Todos los días, los partidos en que la probabilidad real supera lo que incorpora la cuota — con Score propio, el porqué de cada pick y qué mirar. Brasileirão, Copa de Brasil y ligas europeas.",
+        "fatos": {
+          "um": "Cuadro de oportunidades del día",
+          "dois": "Score de valor + el porqué",
+          "tres": "Brasileirão, Copa de BR y Europa"
+        },
+        "acao": "Conocer el Fútbol"
+      },
+      "betinho": {
+        "nome": "Betinho",
+        "etiqueta": "Betinho · Tu asistente en Telegram",
+        "titulo": "Tú apuestas. El resto lo hace Betinho solo.",
+        "texto": "Captura del boleto → registrada. Terminó el partido → liquidada. Fin de mes → tu ROI real en la mano. Sin planilla, sin teclear, sin autoengaño — y las oportunidades del día llegan al mismo chat.",
+        "fatos": {
+          "um": "Registra por la captura, liquida solo",
+          "dois": "Bankroll y ROI reales, siempre a la vista",
+          "tres": "Oportunidades del día en Telegram"
+        },
+        "acao": "Conocer Betinho"
+      },
+      "nba": {
+        "nome": "Análisis NBA",
+        "etiqueta": "Análisis NBA · Prop Bets",
+        "titulo": "La casa tarda en ajustar la línea. Tú llegas antes.",
+        "texto": "Una baja confirmada cambia los números de quien sigue en cancha — y la línea tarda en acompañar. El análisis cruza el injury report con el historial y te muestra dónde se abrió la ventana.",
+        "fatos": {
+          "um": "12 mercados de props",
+          "dois": "Injury report diario",
+          "tres": "Oportunidades por baja"
+        },
+        "acao": "Explorar el análisis NBA"
+      },
+      "bolao": {
+        "nome": "Bolão Mundial 2026",
+        "etiqueta": "Bolão Mundial 2026",
+        "titulo": "El Bolão de tu gente. Sin planilla de Excel.",
+        "texto": "Lo creas en 30 segundos, mandas el enlace al grupo y listo. Nosotros nos encargamos de la clasificación, de los marcadores y de los pronósticos de campeón — tú te encargas de las bromas.",
+        "fatos": {
+          "um": "104 partidos del Mundial",
+          "dois": "Gratis hasta 20 personas",
+          "tres": "Clasificación automática"
+        },
+        "acao": "Crear mi Bolão"
+      }
+    },
+    "faixa": {
+      "um": "El dato por delante",
+      "dois": "Sin promesa de ganancia",
+      "tres": "La decisión siempre es tuya"
+    },
+    "combinado": {
+      "etiqueta": "Transparencia",
+      "titulo": "El acuerdo que firmamos",
+      "nunca": {
+        "titulo": "Lo que nunca vas a ver aquí",
+        "um": "Promesa de ganancia garantizada",
+        "dois": "Apuesta para que copies a ciegas",
+        "tres": "Tasa de acierto de marketing",
+        "quatro": "Testimonio inventado"
+      },
+      "sempre": {
+        "titulo": "Lo que siempre vas a tener",
+        "um": "El dato por delante de la decisión",
+        "dois": "El porqué de cada análisis",
+        "tres": "Tu bankroll y tu decisión — siempre tuyos",
+        "quatro": "Transparencia como principio, no como eslogan"
+      },
+      "rodape": "— Smart Betting · acuerdo válido en todos los productos"
+    },
+    "faq": {
+      "etiqueta": "Preguntas frecuentes",
+      "titulo": "Vamos a resolver dudas",
+      "tipsters": {
+        "pergunta": "¿Ustedes son tipsters?",
+        "resposta": "No. El tipster te da el pronóstico y te pide fe. Nosotros te damos el dato — la línea, el historial, el contexto — y te devolvemos la decisión. Ningún producto nuestro promete ganancia; de quien promete, desconfía."
+      },
+      "gratis": {
+        "pergunta": "¿Qué es gratis?",
+        "resposta": "Todos los productos tienen puerta de entrada gratis: en el análisis NBA, paneles de jugadores liberados sin iniciar sesión; en Betinho, 3 registros por día; en el Bolão, todo gratis hasta 20 personas. Los detalles están en la página de cada uno."
+      },
+      "tudoJunto": {
+        "pergunta": "¿Tengo que suscribirme a todo junto?",
+        "resposta": "No. Cada producto tiene su plan, por separado — te suscribes solo a lo que usas. El Bolão ni suscripción tiene: pago único por Bolão, y solo si el grupo pasa de 20 personas."
+      },
+      "porOndeComecar": {
+        "pergunta": "¿Por dónde empiezo?",
+        "resposta": "Por tu dolor. ¿Apuestas en la NBA y quieres decidir con datos? Análisis NBA. ¿No sabes si estás en ganancia? Betinho. ¿Quieres reunir a tu gente en el Mundial? Bolão. Todas empiezan gratis — prueba y quédate con la que te sirva."
+      }
+    },
+    "final": {
+      "titulo": "Elige tu puerta de entrada.",
+      "texto": "Todas empiezan gratis. Entra en la que resuelve tu dolor de hoy — las otras siguen aquí."
+    },
+    "mock": {
+      "exemplo": "datos de ejemplo",
+      "nba": {
+        "ativo": "Activo",
+        "pontos": "Puntos",
+        "assistencias": "Asist.",
+        "rebotes": "Rebotes",
+        "insight": "Insight",
+        "fora": "BAJA",
+        "insightTexto": "Sin <0>{{desfalque}}</0>, los <1>puntos</1> de {{jogador}} suben <2>{{alta}}</2>",
+        "insightDica": "— haz clic para filtrar el gráfico",
+        "grafico": "Gráfico de rendimiento",
+        "filtro": "Sin {{desfalque}} en cancha",
+        "taxaAcerto": "Tasa de acierto",
+        "acima": "Por encima ({{total}})",
+        "abaixo": "Por debajo ({{total}})",
+        "linha": "Línea"
+      },
+      "betinho": {
+        "resposta": "¡Recibido! Registrada. Tu mes: <0>{{roi}} de ROI</0> en {{apostas}} apuestas.",
+        "oportunidade": "Oportunidad",
+        "oportunidadeTitulo": "Los props de la NBA son tu mina",
+        "oportunidadeTexto": "<0>{{roi}}</0> de ROI en {{apostas}} apuestas",
+        "alerta": "Alerta",
+        "alertaTitulo": "La Serie A te cuesta caro",
+        "alertaTexto": "<0>{{roi}}</0> en Más de/Menos de"
+      },
+      "bolao": {
+        "titulo": "Bolão de la Oficina",
+        "info": "{{participantes}} participantes · {{jogos}} partidos",
+        "voce": "Tú"
+      },
+      "futebol": {
+        "titulo": "Oportunidades de hoy",
+        "info": "Brasileirão · {{comValor}} con valor",
+        "picks": {
+          "maisGols": "Más de 2.5 goles",
+          "ouEmpate": "{{time}} o empate",
+          "ambosMarcam": "Ambos equipos marcan"
+        },
+        "faixas": {
+          "alta": "Alta",
+          "media": "Media"
+        },
+        "porque": "Por qué {{casa}} × {{visitante}}",
+        "porqueTexto": "Probabilidad real <0>{{chance}}</0> · la cuota <1>{{odd}}</1> solo incorpora <2>{{embutida}}</2> — la diferencia es el <3>valor</3>."
+      }
+    }
+  },
+  "planos": {
+    "promo": "<0>Precio de lanzamiento</0> — valores promocionales por tiempo limitado",
+    "hero": {
+      "etiqueta": "Un plan, todo el ecosistema",
+      "titulo": "Decide con <0>datos</0>. No con suposiciones.",
+      "chamada": "Análisis de fútbol y NBA, y Betinho cuidando tu bankroll directo en Telegram. Tú eliges hasta dónde quieres llegar — y subes de nivel cuando quieras.",
+      "chips": {
+        "teste": "48 horas gratis para probar",
+        "cancelar": "Cancela cuando quieras",
+        "pagamento": "Pix o tarjeta"
+      }
+    },
+    "cobranca": {
+      "mensal": "Mensual",
+      "anual": "Anual"
+    },
+    "preco": {
+      "porMes": "/mes",
+      "valorPorMes": "{{valor}}/mes",
+      "paraSempre": "para siempre",
+      "cobradoAnual": "se cobra {{valorAnual}}/año · ahorra 20%"
+    },
+    "acoes": {
+      "acessar": "Acceder",
+      "criarConta": "Crear cuenta gratis",
+      "assinarPlano": "Suscribirse a {{plano}}",
+      "anualEmBreve": "Anual en breve",
+      "pagamentoEmBreve": "Pago en breve"
+    },
+    "cartoes": {
+      "gratis": {
+        "nome": "Gratis",
+        "chamada": "Para sentir cómo funciona, sin pagar nada.",
+        "itens": {
+          "futebol": "Fútbol: <0>48 horas gratis</0> de acceso completo",
+          "nba": "NBA: <0>2 picks del día</0> liberados",
+          "betinho": "Betinho: hasta <0>3 apuestas por día</0>"
+        }
+      },
+      "entrada": {
+        "nome": "Entrada",
+        "chamada": "Solo Betinho, tu bankroll en automático.",
+        "itens": {
+          "betinho": "<0>Betinho ilimitado</0>, registra y liquida todo en Telegram",
+          "resumo": "Resumen semanal de tu bankroll",
+          "historico": "Tu historial y tu ganancia a mano",
+          "semAnalises": "Sin los análisis de fútbol y NBA"
+        }
+      },
+      "essencial": {
+        "nome": "Esencial",
+        "chamada": "Fútbol completo + el bankroll en automático.",
+        "itens": {
+          "futebol": "<0>Fútbol completo</0> — oportunidades y Score sin límite",
+          "betinho": "<0>Betinho ilimitado</0> — registra y liquida todo en Telegram",
+          "resumo": "Resumen semanal de tu bankroll",
+          "suporte": "Soporte prioritario",
+          "nba": "NBA: <0>2 picks del día</0> (completo solo en el Completo)"
+        }
+      },
+      "completo": {
+        "selo": "EL MÁS ELEGIDO",
+        "nome": "Completo",
+        "chamada": "Todo. Fútbol, NBA y Betinho en el mismo plan.",
+        "itens": {
+          "essencial": "Todo lo del Esencial, incluido",
+          "nba": "<0>NBA completo</0> — el análisis más robusto: prop bets + Análisis 360",
+          "esportes": "Todos los deportes de una sola vez",
+          "suporte": "Soporte prioritario"
+        }
+      },
+      "rodape": "Todos los planes pagos incluyen Betinho ilimitado y la prueba gratis de 48 horas."
+    },
+    "comparacao": {
+      "etiqueta": "Comparar",
+      "titulo": "Resumen de los planes",
+      "linhas": {
+        "betinho": "Betinho en Telegram",
+        "futebol": "Análisis de fútbol",
+        "nba": "Análisis de NBA"
+      },
+      "valores": {
+        "apostasPorDia": "3 apuestas/día",
+        "ilimitado": "Ilimitado",
+        "horasGratis": "48 horas gratis",
+        "naoInclui": "No incluye",
+        "completa": "Completo",
+        "picksPorDia": "2 picks/día",
+        "nbaCompleto": "Prop bets + Análisis 360"
+      },
+      "nota": "Los 2 picks del día de la NBA se liberan en cualquier plan, incluso en el gratis."
+    },
+    "faq": {
+      "etiqueta": "Dudas",
+      "titulo": "Antes de suscribirse",
+      "entrada": {
+        "pergunta": "¿Qué incluye el plan Entrada?",
+        "resposta": "Solo <0>Betinho</0>: registras tus apuestas en Telegram, él las liquida solo y te manda el resumen semanal de tu bankroll, sin límite de apuestas por día. Los análisis de fútbol y NBA no entran en el Entrada, empiezan en el Esencial."
+      },
+      "nba": {
+        "pergunta": "¿Por qué la NBA está solo en el plan Completo?",
+        "resposta": "La NBA es nuestro análisis <0>más robusto</0> — prop bets, Análisis 360 y lo más avanzado que tenemos. El Esencial ya entrega el fútbol completo para tu día a día; el Completo es para quien quiere <1>todo</1> junto. No pagas por deporte suelto: pagas por hasta dónde quieres llegar."
+      },
+      "trocar": {
+        "pergunta": "¿Puedo cambiar de plan después?",
+        "resposta": "Puedes, cuando quieras. Si subes de plan, el importe se ajusta proporcionalmente; si bajas, el cambio vale al final del ciclo. Sin multa, sin trámites."
+      },
+      "teste": {
+        "pergunta": "¿Cómo funciona la prueba gratis?",
+        "resposta": "Creas la cuenta y tienes <0>48 horas</0> de acceso completo para probarlo de verdad. Se cobra solo después — y tú decides si sigues."
+      },
+      "pix": {
+        "pergunta": "¿Puedo pagar con Pix?",
+        "resposta": "Sí. Aceptamos <0>Pix</0> y tarjeta. En el anual, el Pix se paga de una sola vez con el descuento de lanzamiento aplicado."
+      },
+      "cancelar": {
+        "pergunta": "¿Cómo cancelo?",
+        "resposta": "En dos clics, en tu cuenta. El acceso sigue hasta el final del período que ya pagaste — sin cortes a mitad de camino."
+      }
+    },
+    "final": {
+      "titulo": "Empieza gratis hoy",
+      "texto": "Crea la cuenta, prueba 48 horas y decide después. Si no es para ti, solo cancelas."
+    },
+    "gratis": "Gratis"
+  },
+  "checkout": {
+    "processando": "Procesando...",
+    "verificandoAuth": "Verificando la autenticación...",
+    "verificandoAssinatura": "Verificando el estado de la suscripción...",
+    "whatsapp": "O habla con nosotros por WhatsApp",
+    "whatsappContato": "O contáctanos por WhatsApp",
+    "loginParaPagar": "<0>Inicia sesión</0> para continuar con el pago",
+    "pagoTitulo": "¡Pago realizado!",
+    "pagoTexto": "Estamos verificando tu suscripción...",
+    "ativaTitulo": "¡Suscripción activada!",
+    "ativaTexto": "Tu plan premium está activo. Te estamos redirigiendo...",
+    "canceladoTitulo": "Pago cancelado",
+    "canceladoTexto": "Cancelaste el proceso de pago. Inténtalo de nuevo cuando estés listo.",
+    "loginTitulo": "Hace falta iniciar sesión",
+    "loginTexto": "Por favor, inicia sesión para continuar con el pago.",
+    "erroTitulo": "Error al procesar el pago",
+    "erroTexto": "Ocurrió un error al iniciar el pago. Inténtalo de nuevo.",
+    "whatsappUpgradeBetinho": "Hola, quiero mejorar mi plan Betinho (registro de apuestas)",
+    "whatsappUpgradePlataforma": "Hola, quiero mejorar mi plan en la Plataforma de Análisis"
+  },
+  "paywall": {
+    "titulo": "¡Llegaste al límite del plan gratis!",
+    "textoUm": "El plan gratis es ideal para empezar.",
+    "textoDois": "Para seguir registrando apuestas y ver tus resultados, pasa al plan premium.",
+    "cartaoTitulo": "Desbloquea el Plan Premium",
+    "cartaoChamada": "Apostar más exige más control.",
+    "itens": {
+      "registro": {
+        "titulo": "Registro ilimitado de apuestas",
+        "texto": "Registra todas las apuestas que quieras, sin límite diario"
+      },
+      "dashboard": {
+        "titulo": "Panel completo de gestión de apuestas",
+        "texto": "Mira la ganancia, la pérdida, el ROI y la evolución de tu bankroll en un solo lugar"
+      },
+      "historico": {
+        "titulo": "Historial y organización",
+        "texto": "Ten todas las apuestas organizadas para analizar patrones y decisiones"
+      }
+    },
+    "acao": "Desbloquear el Plan Premium",
+    "rodape": "El límite diario se reinicia automáticamente a medianoche (hora GMT-3). Puedes seguir en el plan gratis o pasar a apuestas ilimitadas."
+  },
+  "paywallDashboard": {
+    "voltar": "Apuestas",
+    "titulo": "Estás a un paso de la gestión completa",
+    "textoUm": "El panel muestra exactamente dónde estás ganando y dónde estás perdiendo dinero.",
+    "textoDois": "En el plan gratis, esa vista queda bloqueada.",
+    "previaAlt": "Panel Premium - vista previa bloqueada",
+    "previaTexto": "Identifica patrones, errores que se repiten y oportunidades de ajuste.",
+    "previaRodape": "Los datos completos están disponibles solo en el plan Premium",
+    "cartaoTitulo": "Desbloquea el Panel Premium",
+    "cartaoChamada": "Apostar sin análisis es jugar a ciegas.",
+    "itens": {
+      "visao": {
+        "titulo": "Visión completa de los resultados",
+        "texto": "Ganancia, pérdida, ROI y evolución del bankroll en tiempo real."
+      },
+      "analise": {
+        "titulo": "Análisis por deporte, liga y mercado",
+        "texto": "Entiende exactamente dónde ganas y dónde pierdes dinero."
+      },
+      "registro": {
+        "titulo": "Registro ilimitado de apuestas",
+        "texto": "Registra todas las apuestas que quieras, sin límite diario."
+      },
+      "decisao": {
+        "titulo": "Decisiones basadas en datos",
+        "texto": "Ajusta tu estrategia con base en números, no en intuición."
+      }
+    },
+    "acao": "Acceder al Panel ahora",
+    "rodape": "Pago por Pix o dudas rápidas."
+  },
+  "paywallPlataforma": {
+    "dashboard": "Panel",
+    "jaPremium": {
+      "titulo": "¡Ya eres Premium!",
+      "texto": "Tu suscripción está activa. Aprovecha todos los beneficios del plan premium.",
+      "acao": "Ir al Panel"
+    },
+    "titulo": "Acceso a la Plataforma Premium",
+    "chamada": "Desbloquea análisis avanzados e insights exclusivos para mejorar tus estrategias",
+    "cartaoTitulo": "Desbloquea Análisis Avanzados",
+    "cartaoChamada": "Suscríbete al plan premium y ten acceso completo a la plataforma de análisis",
+    "itens": {
+      "analises": {
+        "titulo": "Análisis detallados",
+        "texto": "Accede a análisis profundos y estadísticas avanzadas de jugadores y equipos"
+      },
+      "insights": {
+        "titulo": "Insights exclusivos",
+        "texto": "Recibe insights y recomendaciones personalizadas basadas en datos"
+      },
+      "suporte": {
+        "titulo": "Prioridad en el soporte",
+        "texto": "Recibe soporte prioritario para todas tus dudas"
+      }
+    },
+    "acao": "Suscribirse a Premium ahora",
+    "rodape": "Con el plan premium tienes acceso completo a todas las funciones de la plataforma de análisis. Cancela cuando quieras, sin compromiso."
+  },
+  "comoUsar": {
+    "etiqueta": "Cómo usar Betinho en Telegram",
+    "titulo": "Guía rápida y buenas prácticas",
+    "chamada": "Sigue el paso a paso para sincronizar, enviar apuestas y sacar el mejor resultado del bot.",
+    "acao": "Empezar gratis",
+    "passos": {
+      "titulo": "Paso a paso de configuración",
+      "um": "Crea tu cuenta e inicia sesión en la app (registro).",
+      "dois": "Abre el bot en Telegram y toca “Enviar mi número” para sincronizar.",
+      "tres": "Envía tu apuesta en UN solo mensaje: texto o captura (puedes adjuntar texto junto a la captura).",
+      "quatro": "Espera la confirmación y revísala en el panel.",
+      "cinco": "Si hace falta, marca el estado o edítala en el panel."
+    },
+    "envio": {
+      "titulo": "Cómo enviar",
+      "print": "Captura: 1 apuesta por captura; si falta el importe, escríbelo en el mismo mensaje.",
+      "texto": "Texto: partido + mercado + cuota + importe en un solo mensaje.",
+      "audio": "Audio (opcional): el bot lo transcribe y lo junta con el texto.",
+      "umaAposta": "1 mensaje = 1 apuesta. No enviar partes separadas."
+    },
+    "boasPraticas": {
+      "titulo": "Buenas prácticas",
+      "um": "1 mensaje = 1 apuesta. No lo dividas en varios mensajes.",
+      "dois": "Incluye el importe/stake y la cuota. Cuotas mínimas 1.01; las múltiples se tratan como combinada si llegan juntas.",
+      "tres": "Para capturas: cuida la legibilidad y solo un pronóstico por captura. Si falta el importe, escríbelo en el mismo mensaje.",
+      "quatro": "Para texto: el formato es libre, pero incluye partido, mercado, cuota e importe (ej.: “Lakers vs Warriors - LeBron 25+ pts - cuota 1.85 - R$50”)."
+    },
+    "problemas": {
+      "titulo": "Problemas frecuentes",
+      "um": "El bot pidió el contacto: toca “Enviar mi número” en el teclado de Telegram.",
+      "dois": "Cuenta no encontrada después de enviar el contacto: asegúrate de que el teléfono registrado en la app sea el mismo de Telegram.",
+      "tres": "Sin respuesta después de la captura: reenvíala con el texto en el mismo mensaje (importe/cuota).",
+      "quatro": "Pasaste el límite diario: el bot responde con un aviso; inténtalo al día siguiente.",
+      "cinco": "Error genérico: inténtalo de nuevo y, si persiste, habla con soporte."
+    },
+    "dica": "Consejo: si el bot pide el contacto, toca “Enviar mi número”."
+  }
+}

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { fraseEmPortugues } from '@/test/copy-em-portugues';
 import { readFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -129,7 +130,8 @@ describe('a política do front sem foto da época', () => {
     const ev = evidenciaDe('superioridade_tabela', comTabela());
 
     expect(ev).not.toBeNull();
-    expect(ev!.texto).toContain('2º');
-    expect(ev!.texto).toContain('20º');
+    const frase = fraseEmPortugues(ev!.texto);
+    expect(frase).toContain('2º');
+    expect(frase).toContain('20º');
   });
 });

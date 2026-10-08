@@ -1,4 +1,6 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
+import { fmtPct } from '@/utils/formato';
 import { Sparkline } from './Sparkline';
 import type { DateRangePreset } from '@/utils/bettingStats';
 
@@ -18,10 +20,11 @@ interface HeroKPIMobileProps {
   onPeriodChange?: (period: DateRangePreset) => void;
 }
 
-const PERIOD_CHIPS: { value: DateRangePreset; label: string }[] = [
-  { value: '7', label: '7d' },
-  { value: '30', label: '30d' },
-  { value: '90', label: '90d' },
+/* Tabela fora do componente: guarda CHAVE, nunca texto. */
+const PERIOD_CHIPS: { value: DateRangePreset; chave: string }[] = [
+  { value: '7', chave: 'painel.heroMobile.chips.d7' },
+  { value: '30', chave: 'painel.heroMobile.chips.d30' },
+  { value: '90', chave: 'painel.heroMobile.chips.d90' },
 ];
 
 export const HeroKPIMobile: React.FC<HeroKPIMobileProps> = ({
@@ -38,6 +41,7 @@ export const HeroKPIMobile: React.FC<HeroKPIMobileProps> = ({
   currentPeriod,
   onPeriodChange,
 }) => {
+  const { t } = useTranslation('apostas');
   const isPositive = profit >= 0;
 
   return (
@@ -69,7 +73,7 @@ export const HeroKPIMobile: React.FC<HeroKPIMobileProps> = ({
                       isOn ? 'bg-amber-400 text-forest' : 'bg-white/10 text-white/60 hover:text-white/80'
                     }`}
                   >
-                    {chip.label}
+                    {t(chip.chave)}
                   </button>
                 );
               })}
@@ -87,7 +91,7 @@ export const HeroKPIMobile: React.FC<HeroKPIMobileProps> = ({
               style={{ letterSpacing: '-0.02em' }}
             >
               {roi >= 0 ? '+' : ''}
-              {roi.toFixed(1)}%
+              {fmtPct(roi / 100, 1)}
             </div>
             {showTrend && Math.abs(roiTrendPct) >= 0.01 && (
               <div
@@ -96,7 +100,7 @@ export const HeroKPIMobile: React.FC<HeroKPIMobileProps> = ({
                 }`}
               >
                 {roiTrendPct >= 0 ? '+' : ''}
-                {roiTrendPct.toFixed(1)}%
+                {fmtPct(roiTrendPct / 100, 1)}
               </div>
             )}
           </div>
@@ -115,7 +119,7 @@ export const HeroKPIMobile: React.FC<HeroKPIMobileProps> = ({
         {/* Mini KPIs */}
         <div className="mt-4 pt-4 border-t border-white/10 grid grid-cols-3 gap-3">
           <div>
-            <div className="text-[9px] uppercase tracking-[0.14em] text-white/60 font-bold">Lucro</div>
+            <div className="text-[9px] uppercase tracking-[0.14em] text-white/60 font-bold">{t('painel.heroMobile.lucro')}</div>
             <div
               className={`text-[15px] font-bold tabular mt-0.5 ${
                 profit >= 0 ? 'text-amber-400' : 'text-rose-300'
@@ -131,16 +135,16 @@ export const HeroKPIMobile: React.FC<HeroKPIMobileProps> = ({
                 }`}
               >
                 {profitTrendPct >= 0 ? '+' : ''}
-                {profitTrendPct.toFixed(1)}%
+                {fmtPct(profitTrendPct / 100, 1)}
               </div>
             )}
           </div>
           <div>
-            <div className="text-[9px] uppercase tracking-[0.14em] text-white/60 font-bold">Taxa de acerto</div>
-            <div className="text-[15px] font-bold tabular text-white mt-0.5">{winRate.toFixed(0)}%</div>
+            <div className="text-[9px] uppercase tracking-[0.14em] text-white/60 font-bold">{t('painel.heroMobile.taxaDeAcerto')}</div>
+            <div className="text-[15px] font-bold tabular text-white mt-0.5">{fmtPct(winRate / 100, 0)}</div>
           </div>
           <div>
-            <div className="text-[9px] uppercase tracking-[0.14em] text-white/60 font-bold">Apostas</div>
+            <div className="text-[9px] uppercase tracking-[0.14em] text-white/60 font-bold">{t('painel.heroMobile.apostas')}</div>
             <div className="text-[15px] font-bold tabular text-white mt-0.5">{totalBets}</div>
           </div>
         </div>

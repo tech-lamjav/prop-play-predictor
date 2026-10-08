@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { fmtDecimal } from '@/utils/formato';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { CalendarDays, ChevronDown } from 'lucide-react';
@@ -22,10 +23,10 @@ import {
 import type { Competition, FutebolFixture, FutebolValueBoardRow } from '@/services/futebol-data.service';
 import { brtDayOf, fmtDayHeader, isFinished } from '@/utils/futebol-datas';
 import { groupBoardByFixture } from '@/utils/futebol-score';
-import { sufixoDeLeitura } from '@/utils/futebol-leitura';
 import { hrefDaSaida, hrefDoJogo } from '@/utils/futebol-links';
 import { settleFutebol, isHit } from '@/utils/futebol-settlement';
-import { competitionLabel, sortCompetitions } from '@/utils/futebol-competitions';
+import { sortCompetitions } from '@/utils/futebol-competitions';
+import { useCopyDoFutebol } from '@/hooks/use-copy-do-futebol';
 import { ChaveamentoBracket } from '@/components/futebol/ChaveamentoBracket';
 import { GruposFase } from '@/components/futebol/GruposFase';
 import { ehCampeonatoDePontos, ehMataMata, rodadaLonga } from '@/utils/futebol-rodadas';
@@ -93,6 +94,8 @@ function Estatistica({ rotulo, valor, unidade }: { rotulo: string; valor: string
 }
 
 export default function FutebolCampeonato() {
+  const { t } = useTranslation('futebol');
+  const copy = useCopyDoFutebol();
   const { slug } = useParams<{ slug: string }>();
   const [params, setParams] = useSearchParams();
 
@@ -218,19 +221,29 @@ export default function FutebolCampeonato() {
   const resumoRodada = useMemo(() => {
     const comLeitura = jogosDaRodada.filter((f) => bestByFixture.has(f.fixture_id));
     const encerrada = jogosDaRodada.length > 0 && jogosDaRodada.every((f) => isFinished(f.status_short));
-    const rotulo = encerrada ? (porPontos ? 'Rodada encerrada' : 'Fase encerrada') : porPontos ? 'Nesta rodada' : 'Nesta fase';
+    const rotulo = encerrada
+      ? porPontos
+        ? t('campeonato.resumo.rodadaEncerrada')
+        : t('campeonato.resumo.faseEncerrada')
+      : porPontos
+        ? t('campeonato.resumo.nestaRodada')
+        : t('campeonato.resumo.nestaFase');
 
     // Enquanto o board não respondeu, `bestByFixture` está vazio e "sem leitura
     // nesta rodada" seria a mesma conclusão prematura que a linha evita. "Sem
     // jogos" não: essa não depende do board, e a rodada vazia é vazia agora.
     if (leituraCarregando && jogosDaRodada.length) {
-      return { rotulo, valor: '', texto: 'carregando…' };
+      return { rotulo, valor: '', texto: t('jogos.carregando') };
     }
     if (!comLeitura.length) {
       return {
         rotulo,
         valor: '—',
-        texto: jogosDaRodada.length ? `sem leitura ${porPontos ? 'nesta rodada' : 'nesta fase'}` : 'sem jogos',
+        texto: jogosDaRodada.length
+          ? porPontos
+            ? t('campeonato.resumo.semLeituraNestaRodada')
+            : t('campeonato.resumo.semLeituraNestaFase')
+          : t('campeonato.resumo.semJogos'),
       };
     }
     if (encerrada) {
@@ -239,23 +252,38 @@ export default function FutebolCampeonato() {
         const r = settleFutebol(b, f.goals_home, f.goals_away);
         return r != null && isHit(r);
       }).length;
-      return { rotulo, valor: `${bateram}/${comLeitura.length}`, texto: 'leituras bateram' };
+      return {
+        rotulo,
+        valor: `${bateram}/${comLeitura.length}`,
+        texto: t('campeonato.resumo.leiturasBateram'),
+      };
     }
     const melhor = comLeitura.reduce((m, f) => Math.max(m, bestByFixture.get(f.fixture_id)!.score), 0);
     return {
       rotulo,
       valor: String(comLeitura.length),
-      texto: melhor ? `com leitura · melhor Score ${melhor}` : 'com leitura',
+      texto: melhor
+        ? t('campeonato.resumo.comLeituraMelhorScore', { score: melhor })
+        : t('campeonato.resumo.comLeitura'),
     };
-  }, [jogosDaRodada, bestByFixture, porPontos, leituraCarregando]);
+  }, [jogosDaRodada, bestByFixture, porPontos, leituraCarregando, t]);
 
   const nTimes = standings?.length ?? new Set((fixtures ?? []).map((f) => f.home_team_id)).size;
   const ondeEstamos = currentRound
     ? porPontos
-      ? `${rodadaLonga(currentRound).toLowerCase()} de ${rounds.length}`
-      : rodadaLonga(currentRound)
+      ? t('campeonato.subtitulo.ondeEstamos', {
+          rodada: rodadaLonga(currentRound, t).toLowerCase(),
+          total: rounds.length,
+        })
+      : rodadaLonga(currentRound, t)
     : null;
-  const subtitulo = [`Temporada ${season}`, nTimes ? `${nTimes} times` : null, ondeEstamos].filter(Boolean).join(' · ');
+  const subtitulo = [
+    t('campeonato.subtitulo.temporada', { season }),
+    nTimes ? t('contagem.times', { count: nTimes }) : null,
+    ondeEstamos,
+  ]
+    .filter(Boolean)
+    .join(' · ');
   // No celular a linha não cabe inteira e o fim dela, que é onde está a rodada,
   // era justamente o pedaço que sumia no "…".
   const subtituloCurto = [String(season), ondeEstamos].filter(Boolean).join(' · ');
@@ -263,9 +291,18 @@ export default function FutebolCampeonato() {
   // Mata-mata não tem tabela; liga sem tabela é coleta que ainda não veio. A
   // distinção importa: um é assim mesmo, o outro é pendência nossa.
   const vazioTabela = porPontos
-    ? { titulo: 'Classificação ainda não coletada', texto: 'Entra assim que a competição passar pela coleta.' }
-    : { titulo: 'Competição de mata-mata', texto: 'Sem tabela de pontos, o que vale é o chaveamento de cada fase.' };
-  const vazioArtilheiros = { titulo: 'Artilheiros ainda não coletados', texto: 'Entram assim que a competição passar pela coleta.' };
+    ? {
+        titulo: t('campeonato.vazioTabela.pontosTitulo'),
+        texto: t('campeonato.vazioTabela.pontosTexto'),
+      }
+    : {
+        titulo: t('campeonato.vazioTabela.mataMataTitulo'),
+        texto: t('campeonato.vazioTabela.mataMataTexto'),
+      };
+  const vazioArtilheiros = {
+    titulo: t('campeonato.vazioArtilheiros.titulo'),
+    texto: t('campeonato.vazioArtilheiros.texto'),
+  };
 
   const campTour = useOnboardingTour(FUT_CAMPEONATO_TOUR_ID, { enabled: !isLoading && !isError });
   const campSteps = useMemo(
@@ -294,9 +331,9 @@ export default function FutebolCampeonato() {
           >
             <CalendarDays className="w-4 h-4" />
           </div>
-          <div className="mt-3.5 text-[15px] font-semibold text-ink">Nenhum jogo nesta rodada</div>
+          <div className="mt-3.5 text-[15px] font-semibold text-ink">{t('campeonato.vazioRodada.titulo')}</div>
           <div className="mt-1.5 text-[12.5px] leading-relaxed max-w-[380px] mx-auto" style={{ color: '#8d8672' }}>
-            O calendário desta competição pode não ter entrado na coleta ainda.
+            {t('campeonato.vazioRodada.texto')}
           </div>
         </div>
       ) : (
@@ -312,8 +349,8 @@ export default function FutebolCampeonato() {
                   {fmtDayHeader(day)}
                 </span>
                 <span className="text-[10.5px]" style={{ color: '#8d8672' }}>
-                  {games.length} {games.length === 1 ? 'jogo' : 'jogos'}
-                  {sufixoDeLeitura(leituraCarregando, comLeitura)}
+                  {t('contagem.jogos', { count: games.length })}
+                  {copy.sufixoDeLeitura(leituraCarregando, comLeitura)}
                 </span>
               </div>
               {games.map((f, i) => (
@@ -356,7 +393,7 @@ export default function FutebolCampeonato() {
   // números diferentes, e o maior é o que responde "a tabela está em que altura".
   const rodadasJogadas = (standings ?? []).reduce((m, r) => Math.max(m, r.played), 0);
   const legendaTabela = rodadasJogadas
-    ? `após ${rodadasJogadas} ${rodadasJogadas === 1 ? 'rodada' : 'rodadas'}`
+    ? t('campeonato.legendaTabela', { count: rodadasJogadas })
     : undefined;
 
   // O que vai na coluna da direita depende de onde a competição está:
@@ -411,7 +448,7 @@ export default function FutebolCampeonato() {
             </span>
             <div className="min-w-0">
               <h1 className="font-display text-[19px] md:text-[22px] font-bold tracking-tight text-ink truncate">
-                {competitionLabel(competition)}
+                {copy.competicao(competition)}
               </h1>
               <div className="text-[11.5px] md:text-[12px] truncate" style={{ color: '#8d8672' }}>
                 <span className="md:hidden">{subtituloCurto}</span>
@@ -426,8 +463,8 @@ export default function FutebolCampeonato() {
                     className="h-8 px-3 rounded-rebrand-sm bg-white text-[12px] font-semibold text-ink inline-flex items-center gap-1.5"
                     style={{ border: `1px solid ${menuLiga ? '#0a3d2e' : '#ded2b6'}` }}
                   >
-                    <span className="hidden sm:inline">{competitionLabel(competition)}</span>
-                    <span className="sm:hidden">Trocar</span>
+                    <span className="hidden sm:inline">{copy.competicao(competition)}</span>
+                    <span className="sm:hidden">{t('campeonato.trocar')}</span>
                     <ChevronDown className="w-3.5 h-3.5" style={{ color: '#8d8672' }} />
                   </button>
                 </PopoverTrigger>
@@ -441,7 +478,7 @@ export default function FutebolCampeonato() {
                     className="px-3.5 py-2 text-[9.5px] uppercase tracking-[0.14em] font-bold"
                     style={{ background: '#fdfbf6', borderBottom: '1px solid #f1e9d6', color: '#8d8672' }}
                   >
-                    Competição
+                    {t('campeonato.competicao')}
                   </div>
                   <div className="max-h-[320px] overflow-y-auto minimal-scrollbar">
                     {ligas.map((c, i) => (
@@ -464,7 +501,7 @@ export default function FutebolCampeonato() {
                         <span
                           className={`min-w-0 truncate text-[12.5px] text-ink ${c === competition ? 'font-bold' : 'font-medium'}`}
                         >
-                          {competitionLabel(c)}
+                          {copy.competicao(c)}
                         </span>
                       </Link>
                     ))}
@@ -520,7 +557,7 @@ export default function FutebolCampeonato() {
                 style={{ border: '1px solid #ded2b6' }}
               >
                 <CalendarDays className="w-3.5 h-3.5" />
-                Jogos do dia
+                {t('cta.jogosDoDia')}
               </Link>
             </div>
           </div>
@@ -532,10 +569,26 @@ export default function FutebolCampeonato() {
               className="mt-3.5 pt-3.5 grid grid-cols-2 md:flex md:items-center gap-3 md:gap-8"
               style={{ borderTop: '1px solid #e5d9bd' }}
             >
-              <Estatistica rotulo="Média de gols" valor={d1(estat.gols)} unidade="por jogo" />
-              <Estatistica rotulo="Mais de 2,5" valor={pct(estat.over)} unidade="dos jogos" />
-              <Estatistica rotulo="Vitória do mandante" valor={pct(estat.mando)} unidade="na temporada" />
-              <Estatistica rotulo="Ambos marcam" valor={pct(estat.btts)} unidade="dos jogos" />
+              <Estatistica
+                rotulo={t('campeonato.estat.mediaDeGols')}
+                valor={d1(estat.gols)}
+                unidade={t('campeonato.estat.porJogo')}
+              />
+              <Estatistica
+                rotulo={t('campeonato.estat.maisDe25')}
+                valor={pct(estat.over)}
+                unidade={t('campeonato.estat.dosJogos')}
+              />
+              <Estatistica
+                rotulo={t('campeonato.estat.vitoriaDoMandante')}
+                valor={pct(estat.mando)}
+                unidade={t('campeonato.estat.naTemporada')}
+              />
+              <Estatistica
+                rotulo={t('campeonato.estat.ambosMarcam')}
+                valor={pct(estat.btts)}
+                unidade={t('campeonato.estat.dosJogos')}
+              />
               <div className="col-span-2 md:ml-auto md:pl-8" style={{ borderLeft: 'none' }}>
                 <div className="text-[9.5px] uppercase tracking-[0.14em] font-bold" style={{ color: '#8d8672' }}>
                   {resumoRodada.rotulo}
@@ -560,7 +613,7 @@ export default function FutebolCampeonato() {
       <div className="max-w-[1240px] w-full mx-auto px-4 md:px-6 py-4 md:py-5 flex-1 min-w-0">
         {isError ? (
           <div className="bg-white border border-line rounded-rebrand-md p-6 text-center text-sm text-status-danger">
-            Erro ao carregar os jogos.
+            {t('jogos.erro')}
           </div>
         ) : (
           <>
@@ -596,15 +649,15 @@ export default function FutebolCampeonato() {
                 >
                   {a === 'rodada'
                     ? porPontos
-                      ? 'Rodada'
-                      : 'Fase'
+                      ? t('campeonato.abas.rodada')
+                      : t('campeonato.abas.fase')
                     : a === 'tabela'
                       ? porPontos
-                        ? 'Tabela'
+                        ? t('campeonato.abas.tabela')
                         : naFaseDeGrupos && temGrupos
-                          ? 'Grupos'
-                          : 'Chave'
-                      : 'Artilheiros'}
+                          ? t('campeonato.abas.grupos')
+                          : t('campeonato.abas.chave')
+                      : t('campeonato.abas.artilheiros')}
                 </button>
               ))}
             </div>

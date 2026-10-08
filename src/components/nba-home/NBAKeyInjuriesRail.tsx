@@ -1,19 +1,7 @@
 import React from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { ArrowRight, AlertTriangle } from 'lucide-react';
 import { getPlayerPhotoUrl, tryNextPlayerPhotoUrl } from '@/utils/team-logos';
-
-const STAT_LABEL_SHORT: Record<string, string> = {
-  player_points: 'pts',
-  player_assists: 'ast',
-  player_rebounds: 'reb',
-  player_threes: '3pts',
-  player_steals: 'stl',
-  player_blocks: 'blk',
-  player_points_rebounds_assists: 'pts+reb+ast',
-  player_points_assists: 'pts+ast',
-  player_points_rebounds: 'pts+reb',
-  player_rebounds_assists: 'reb+ast',
-};
 
 export interface KeyInjuryData {
   id: number;
@@ -40,14 +28,16 @@ interface NBAKeyInjuriesRailProps {
   maxItems?: number;
 }
 
-function statusBadgeCls(status: string): { text: string; cls: string } {
+/** Devolve o IDENTIFICADOR do estado (e a cor); o selo vem do catálogo. */
+function statusBadgeCls(status: string): { id: string; cls: string } {
   const s = status.toLowerCase();
-  if (s === 'out' || s.includes('out')) return { text: 'OUT', cls: 'bg-rose-100 text-rose-700' };
-  if (s.includes('doubtful')) return { text: 'DTD', cls: 'bg-orange-100 text-orange-700' };
-  return { text: 'Q', cls: 'bg-amber-100 text-amber-700' };
+  if (s === 'out' || s.includes('out')) return { id: 'out', cls: 'bg-rose-100 text-rose-700' };
+  if (s.includes('doubtful')) return { id: 'doubtful', cls: 'bg-orange-100 text-orange-700' };
+  return { id: 'questionable', cls: 'bg-amber-100 text-amber-700' };
 }
 
 function PlayerThumb({ name, teamAbbr }: { name: string; teamAbbr: string }) {
+  const { t } = useTranslation('nba');
   const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   return (
     <div
@@ -56,7 +46,7 @@ function PlayerThumb({ name, teamAbbr }: { name: string; teamAbbr: string }) {
     >
       <img
         src={getPlayerPhotoUrl(name, teamAbbr)}
-        alt={`Foto de ${name}`}
+        alt={t('home.fotoDe', { nome: name })}
         className="w-full h-full object-cover object-top"
         loading="lazy"
         data-player-photo-index="0"
@@ -75,6 +65,7 @@ function PlayerThumb({ name, teamAbbr }: { name: string; teamAbbr: string }) {
 }
 
 const KeyInjuryCard: React.FC<{ inj: KeyInjuryData; onClick: () => void }> = ({ inj, onClick }) => {
+  const { t } = useTranslation('nba');
   const badge = statusBadgeCls(inj.status);
   return (
     <button
@@ -86,20 +77,30 @@ const KeyInjuryCard: React.FC<{ inj: KeyInjuryData; onClick: () => void }> = ({ 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
           <span className="text-[13px] font-semibold tracking-tight truncate text-ink">{inj.name}</span>
-          <span className={`px-1.5 h-5 inline-flex items-center rounded text-[10px] font-bold tabular ${badge.cls}`}>{badge.text}</span>
+          <span className={`px-1.5 h-5 inline-flex items-center rounded text-[10px] font-bold tabular ${badge.cls}`}>{t(`estado.selo.${badge.id}`)}</span>
         </div>
         <div className="text-[11px] mt-0.5 text-ink-2">
-          {inj.teamAbbr} · <span className="font-semibold text-forest">{inj.impactedCount} impactados</span>
+          {inj.teamAbbr} · <span className="font-semibold text-forest">{t('lesoesRail.impactados', { count: inj.impactedCount })}</span>
         </div>
         {inj.topImpact && (
           <div className="text-[10px] mt-1 text-ink-2/70 truncate">
-            ex: <span className="font-semibold text-ink">{inj.topImpact.playerName}</span>{' '}
-            +{Math.round(inj.topImpact.gapPct)}% em {STAT_LABEL_SHORT[inj.topImpact.statType] ?? inj.topImpact.statType}
+            {/* `Trans`, e não concatenação: em outro idioma o negrito e a
+                preposição caem em outro lugar da frase. */}
+            <Trans
+              t={t}
+              i18nKey="lesoesRail.exemplo"
+              values={{
+                jogador: inj.topImpact.playerName,
+                pct: Math.round(inj.topImpact.gapPct),
+                estatistica: t(`estatisticas.abrev.${inj.topImpact.statType}`, { defaultValue: inj.topImpact.statType }),
+              }}
+              components={[<span className="font-semibold text-ink" key="jogador" />]}
+            />
           </div>
         )}
       </div>
       <span className="shrink-0 text-[11px] font-semibold inline-flex items-center gap-1 text-forest">
-        Ver impacto
+        {t('lesoesRail.verImpacto')}
         <ArrowRight className="w-3 h-3" />
       </span>
     </button>
@@ -113,19 +114,20 @@ export const NBAKeyInjuriesRail: React.FC<NBAKeyInjuriesRailProps> = ({
   onOpenInjuryReport,
   maxItems = 2,
 }) => {
+  const { t } = useTranslation('nba');
   if (injuries.length === 0) return null;
   const visible = injuries.slice(0, maxItems);
   const totalCount = injuries.length;
   return (
     <section
-      aria-label="Lesões chave do dia"
+      aria-label={t('lesoesRail.aria')}
       className="rounded-xl bg-canvas-2 border border-line"
     >
       <header className="px-4 pt-4 pb-3 flex items-center justify-between">
         <div>
-          <div className="text-[10px] uppercase tracking-[0.2em] font-semibold text-ink-2">Lesões chave</div>
+          <div className="text-[10px] uppercase tracking-[0.2em] font-semibold text-ink-2">{t('lesoesRail.etiqueta')}</div>
           <div className="text-[14px] font-semibold tracking-tight mt-0.5 text-ink">
-            {totalCount} {totalCount === 1 ? 'jogador' : 'jogadores'} na lista de lesões
+            {t('lesoesRail.contagem', { count: totalCount })}
           </div>
         </div>
         <span className="px-1.5 h-5 inline-flex items-center rounded text-[10px] font-bold uppercase tracking-widest bg-amber-400 text-ink">
@@ -146,7 +148,7 @@ export const NBAKeyInjuriesRail: React.FC<NBAKeyInjuriesRailProps> = ({
             onClick={onOpenAll}
             className="h-10 rounded-md text-[13px] font-semibold inline-flex items-center justify-center gap-2 bg-amber-400 text-ink hover:bg-amber-300 transition-colors w-full"
           >
-            <span>Abrir Análise 360°</span>
+            <span>{t('lesoesRail.abrir360')}</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         )}
@@ -157,7 +159,7 @@ export const NBAKeyInjuriesRail: React.FC<NBAKeyInjuriesRailProps> = ({
             className="h-9 rounded-md text-[12px] font-semibold inline-flex items-center justify-center gap-2 bg-white border border-line text-ink-2 hover:text-ink hover:border-forest/30 transition-colors w-full"
           >
             <AlertTriangle className="w-3.5 h-3.5" />
-            <span>Ver lista completa de lesões</span>
+            <span>{t('lesoesRail.listaCompleta')}</span>
           </button>
         )}
       </div>

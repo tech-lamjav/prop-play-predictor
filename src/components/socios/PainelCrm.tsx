@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { agruparPorDia, buscar, formatarDia, type Cadastro } from './crm-lista';
 import {
   contarPorPosicao,
@@ -60,18 +61,21 @@ const VAZIO: Cadastro[] = [];
  */
 type Recorte = 'atencao' | 'todos';
 
-const RECORTES: { id: Recorte; rotulo: string; explicacao: string }[] = [
+/**
+ * ⚠️ Guarda CHAVE, e não texto. Declarada fora do componente, esta tabela é
+ * avaliada uma vez no carregamento do módulo: texto aqui congelaria o idioma da
+ * primeira pintura. O `t()` acontece no render, e o `key` do React é o `id`.
+ */
+const RECORTES: { id: Recorte; chaveDoRotulo: string; chaveDaExplicacao: string }[] = [
   {
     id: 'atencao',
-    rotulo: 'Precisa de atenção',
-    explicacao:
-      'quem está esperando você: conversas sem toque há 7 dias ou mais, e quem nunca foi abordado',
+    chaveDoRotulo: 'painel.recorte.atencao.rotulo',
+    chaveDaExplicacao: 'painel.recorte.atencao.explicacao',
   },
   {
     id: 'todos',
-    rotulo: 'Todos',
-    explicacao:
-      'a base inteira, incluindo casos fechados e conversas que já tiveram toque esta semana',
+    chaveDoRotulo: 'painel.recorte.todos.rotulo',
+    chaveDaExplicacao: 'painel.recorte.todos.explicacao',
   },
 ];
 
@@ -81,15 +85,14 @@ const RECORTES: { id: Recorte; rotulo: string; explicacao: string }[] = [
  * A frase muda com o que produziu o vazio: lista vazia em "precisa de atenção"
  * é uma boa notícia, e a mesma frase genérica faria parecer defeito. Vazia com
  * o filtro em "só quem não tem" também é boa notícia, e de outro tipo.
+ *
+ * Devolve a CHAVE e não a frase: a função mora fora do componente, onde não há
+ * `t`. Quem desenha traduz.
  */
-const vazioDo = (recorte: Recorte, whatsapp: ValorDoFiltro) => {
-  if (whatsapp === 'sem') {
-    return 'Ninguém sem WhatsApp por aqui: todo mundo desta lista tem número que abre conversa.';
-  }
-  if (recorte === 'atencao') {
-    return 'Ninguém esperando. Toda conversa começada teve toque na última semana, e todo lead novo já foi abordado.';
-  }
-  return 'Nenhum cadastro com esses filtros.';
+const chaveDoVazio = (recorte: Recorte, whatsapp: ValorDoFiltro) => {
+  if (whatsapp === 'sem') return 'painel.vazio.semWhatsApp';
+  if (recorte === 'atencao') return 'painel.vazio.atencao';
+  return 'painel.vazio.todos';
 };
 
 /**
@@ -132,6 +135,8 @@ export function PainelCrm({
   marcas: EstadoDasMarcas;
   hoje: string;
 }) {
+  const { t } = useTranslation('socios');
+
   const [busca, setBusca] = useState('');
   const [posicao, setPosicao] = useState<Posicao | null>(null);
   /**
@@ -323,10 +328,10 @@ export function PainelCrm({
 
   const resumo =
     estado.tipo === 'pronto'
-      ? `${estado.totalNaBase} ${estado.totalNaBase === 1 ? 'cadastro' : 'cadastros'} na base`
+      ? t('painel.resumo.naBase', { count: estado.totalNaBase })
       : estado.tipo === 'erro'
-        ? 'base indisponível'
-        : 'carregando…';
+        ? t('painel.resumo.erro')
+        : t('painel.resumo.carregando');
 
   const baseVazia = estado.tipo === 'pronto' && estado.cadastros.length === 0;
   const truncada = estado.tipo === 'pronto' && estado.totalNaBase > estado.cadastros.length;
@@ -341,12 +346,12 @@ export function PainelCrm({
 
       <div className="mx-auto max-w-6xl px-4 py-6">
         {estado.tipo === 'carregando' && (
-          <p className="text-[15px] text-ink-2">Carregando os cadastros…</p>
+          <p className="text-[15px] text-ink-2">{t('painel.carregando')}</p>
         )}
         {estado.tipo === 'erro' && (
-          <p className="text-[15px] text-ink-2">Não deu para carregar os cadastros agora.</p>
+          <p className="text-[15px] text-ink-2">{t('painel.erro')}</p>
         )}
-        {baseVazia && <p className="text-[15px] text-ink-2">Nenhum cadastro na base.</p>}
+        {baseVazia && <p className="text-[15px] text-ink-2">{t('painel.baseVazia')}</p>}
 
         {estado.tipo === 'pronto' && !baseVazia && (
           <>
@@ -354,8 +359,10 @@ export function PainelCrm({
                 fatia, e um número errado sem aviso é pior que número nenhum. */}
             {truncada && (
               <p className="mb-4 rounded-rebrand-sm border border-line-2 bg-white px-4 py-3 text-[13px] text-ink-2">
-                A base passou do teto da consulta. Estes são os {estado.cadastros.length} cadastros
-                mais recentes de {estado.totalNaBase}, e os números abaixo contam só eles.
+                {t('painel.truncada', {
+                  mostrados: estado.cadastros.length,
+                  total: estado.totalNaBase,
+                })}
               </p>
             )}
 
@@ -366,9 +373,7 @@ export function PainelCrm({
                 <FaixaDoFunil contagem={contagem} selecionada={posicao} aoSelecionar={setPosicao} />
               ) : (
                 <p className="rounded-rebrand-md border border-line-2 bg-white px-4 py-6 text-[14px] text-ink-2">
-                  {faltouAlgo
-                    ? 'Não deu para montar o funil: o histórico de etapas não carregou.'
-                    : 'Carregando o funil…'}
+                  {faltouAlgo ? t('painel.funil.erro') : t('painel.funil.carregando')}
                 </p>
               )}
             </div>
@@ -392,8 +397,8 @@ export function PainelCrm({
                 type="search"
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
-                placeholder="Buscar por nome, e-mail ou telefone"
-                aria-label="Buscar cadastro"
+                placeholder={t('painel.busca.placeholder')}
+                aria-label={t('painel.busca.aria')}
                 className="h-11 min-w-[240px] flex-1 rounded-rebrand-sm border border-line-2 bg-white px-4 text-[15px] text-ink placeholder:text-ink-dim"
               />
               <FiltroDePeriodo
@@ -422,7 +427,7 @@ export function PainelCrm({
                   onClick={() => setPosicao(null)}
                   className="h-11 rounded-rebrand-sm border border-line-2 bg-white px-4 text-[14px] font-bold text-ink hover:border-forest hover:text-forest"
                 >
-                  Limpar filtro do funil
+                  {t('painel.funil.limpar')}
                 </button>
               )}
             </div>
@@ -431,16 +436,16 @@ export function PainelCrm({
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line-2 px-4 pb-1 pt-3">
                 <div
                   role="radiogroup"
-                  aria-label="Recorte da lista"
+                  aria-label={t('painel.recorte.aria')}
                   className="flex flex-wrap gap-1"
                 >
-                  {RECORTES.map(({ id, rotulo, explicacao }) => (
+                  {RECORTES.map(({ id, chaveDoRotulo, chaveDaExplicacao }) => (
                     <button
                       key={id}
                       type="button"
                       role="radio"
                       aria-checked={recorte === id}
-                      title={explicacao}
+                      title={t(chaveDaExplicacao)}
                       onClick={() => setRecorte(id)}
                       className={`rounded-rebrand-sm px-3 py-1.5 text-[14px] font-bold transition ${
                         recorte === id
@@ -448,7 +453,7 @@ export function PainelCrm({
                           : 'text-ink-2 hover:bg-canvas hover:text-ink'
                       }`}
                     >
-                      {rotulo}
+                      {t(chaveDoRotulo)}
                       {/* O número entra mesmo zerado: "Precisa de atenção 0" é
                           uma boa notícia legível, e sem ele a lista vazia
                           parece defeito. Só some enquanto não se sabe.
@@ -471,7 +476,11 @@ export function PainelCrm({
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
-                  <div role="radiogroup" aria-label="Formato da lista" className="flex gap-1">
+                  <div
+                    role="radiogroup"
+                    aria-label={t('painel.formato.aria')}
+                    className="flex gap-1"
+                  >
                     {(['tabela', 'kanban'] as const).map((id) => (
                       <button
                         key={id}
@@ -485,7 +494,7 @@ export function PainelCrm({
                             : 'text-ink-2 hover:bg-canvas hover:text-ink'
                         }`}
                       >
-                        {id === 'tabela' ? 'Tabela' : 'Kanban'}
+                        {t(`painel.formato.${id}`)}
                       </button>
                     ))}
                   </div>
@@ -499,9 +508,9 @@ export function PainelCrm({
                         type="checkbox"
                         checked={agrupado}
                         onChange={(e) => setAgrupado(e.target.checked)}
-                        aria-label="Agrupar por dia de cadastro"
+                        aria-label={t('painel.agrupar.aria')}
                       />
-                      Agrupar por dia
+                      {t('painel.agrupar.rotulo')}
                     </label>
                   )}
                 </div>
@@ -513,9 +522,7 @@ export function PainelCrm({
                   continua no `title` de cada botão, para quem chegar depois. */}
               {lista === null ? (
                 <p className="px-4 py-6 text-[14px] text-ink-2">
-                  {faltouAlgo
-                    ? 'Sem o histórico de etapas não dá para montar a lista sem inventar.'
-                    : 'Carregando a lista…'}
+                  {faltouAlgo ? t('painel.lista.erro') : t('painel.lista.carregando')}
                 </p>
               ) : vista === 'kanban' ? (
                 <KanbanDeLeads leads={lista} />
@@ -523,7 +530,7 @@ export function PainelCrm({
                 porDia.map((grupo) => (
                   <div key={grupo.dia ?? 'sem-data'}>
                     <h3 className="border-b border-line-2 bg-canvas px-4 py-2 font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-ink-2">
-                      {grupo.dia ? formatarDia(grupo.dia) : 'Sem data de cadastro'}
+                      {grupo.dia ? formatarDia(grupo.dia) : t('painel.agrupar.semData')}
                       <span className="ml-2 font-sans normal-case tracking-normal">
                         {grupo.itens.length}
                       </span>
@@ -532,7 +539,7 @@ export function PainelCrm({
                   </div>
                 ))
               ) : (
-                <TabelaDeLeads leads={lista} vazio={vazioDo(recorte, filtroWhatsApp)} />
+                <TabelaDeLeads leads={lista} vazio={t(chaveDoVazio(recorte, filtroWhatsApp))} />
               )}
             </div>
           </>

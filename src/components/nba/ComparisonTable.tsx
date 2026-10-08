@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronDown } from 'lucide-react';
 import { GamePlayerStats } from '@/services/nba-data.service';
+import { fmtDecimal, fmtLinhaAnalisada } from '@/utils/formato';
+import { localeAtivo } from '@/utils/idioma-ativo';
 
 interface ComparisonTableProps {
   gameStats: GamePlayerStats[];
@@ -8,6 +11,7 @@ interface ComparisonTableProps {
 }
 
 export const ComparisonTable: React.FC<ComparisonTableProps> = ({ gameStats }) => {
+  const { t } = useTranslation('nba');
   const [expanded, setExpanded] = useState(false);
   // Get last 10 games
   const recentGames = gameStats.slice(0, 10);
@@ -16,10 +20,10 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({ gameStats }) =
     return (
       <div className="rounded-lg bg-white border border-line overflow-hidden">
         <div className="px-4 py-3 border-b border-line">
-          <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2">Jogos recentes</span>
+          <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2">{t('jogador.recentesTitulo')}</span>
         </div>
         <div className="text-center py-8 text-ink-dim text-[12px]">
-          Nenhum dado de jogo disponível
+          {t('jogador.recentesVazio')}
         </div>
       </div>
     );
@@ -36,7 +40,7 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({ gameStats }) =
         className="w-full px-4 py-3 flex items-center justify-between border-b border-line md:cursor-default"
         onClick={() => setExpanded(prev => !prev)}
       >
-        <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2">Jogos recentes</span>
+        <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2">{t('jogador.recentesTitulo')}</span>
         <ChevronDown className={`w-4 h-4 text-ink-dim transition-transform md:hidden ${expanded ? 'rotate-180' : ''}`} />
       </button>
 
@@ -45,12 +49,12 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({ gameStats }) =
           <table className="w-full text-[11px] md:text-[12px] tabular">
             <thead>
               <tr className="text-[9px] md:text-[10px] uppercase tracking-[0.12em] md:tracking-[0.14em] font-bold text-ink-dim">
-                <th className="text-left px-2 md:px-4 pt-2.5 pb-1.5 font-bold">Data</th>
-                <th className="text-left px-1 md:px-2 pt-2.5 pb-1.5 font-bold">Adv.</th>
-                <th className="text-left px-1 md:px-2 pt-2.5 pb-1.5 font-bold">Local</th>
-                <th className="text-right px-1 md:px-2 pt-2.5 pb-1.5 font-bold">Valor</th>
-                <th className="text-right px-1 md:px-2 pt-2.5 pb-1.5 font-bold">Linha</th>
-                <th className="text-right px-2 md:px-4 pt-2.5 pb-1.5 font-bold">Resultado</th>
+                <th className="text-left px-2 md:px-4 pt-2.5 pb-1.5 font-bold">{t('tabelaRecentes.data')}</th>
+                <th className="text-left px-1 md:px-2 pt-2.5 pb-1.5 font-bold">{t('tabelaRecentes.adversario')}</th>
+                <th className="text-left px-1 md:px-2 pt-2.5 pb-1.5 font-bold">{t('tabelaRecentes.local')}</th>
+                <th className="text-right px-1 md:px-2 pt-2.5 pb-1.5 font-bold">{t('tabelaRecentes.valor')}</th>
+                <th className="text-right px-1 md:px-2 pt-2.5 pb-1.5 font-bold">{t('tabelaRecentes.linha')}</th>
+                <th className="text-right px-2 md:px-4 pt-2.5 pb-1.5 font-bold">{t('tabelaRecentes.resultado')}</th>
               </tr>
             </thead>
             <tbody>
@@ -64,7 +68,7 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({ gameStats }) =
                   || game.home_away?.toLowerCase() === 'h'
                   || game.home_away?.toLowerCase() === 'casa';
                 const d = new Date(game.game_date);
-                const dateLong = d.toLocaleDateString('pt-BR', { month: 'short', day: 'numeric' });
+                const dateLong = d.toLocaleDateString(localeAtivo(), { month: 'short', day: 'numeric' });
                 const dateShort = `${d.getDate()}/${d.getMonth() + 1}`;
 
                 return (
@@ -76,7 +80,7 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({ gameStats }) =
                         {game.is_b2b_game && (
                           <span
                             className="px-1 h-4 inline-flex items-center rounded text-[8px] font-bold uppercase bg-amber-50 text-amber-700 border border-amber-200"
-                            title="Jogo back-to-back"
+                            title={t('jogador.recentesB2bTitulo')}
                           >
                             B2B
                           </span>
@@ -84,10 +88,10 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({ gameStats }) =
                       </span>
                     </td>
                     <td className="px-1 md:px-2 py-2 font-semibold text-ink whitespace-nowrap">{game.played_against}</td>
-                    <td className="px-1 md:px-2 py-2 text-ink-2 whitespace-nowrap">{isHome ? 'Casa' : 'Fora'}</td>
-                    <td className="px-1 md:px-2 py-2 text-right font-semibold text-ink whitespace-nowrap">{statValue.toFixed(1)}</td>
+                    <td className="px-1 md:px-2 py-2 text-ink-2 whitespace-nowrap">{isHome ? t('tabelaRecentes.casa') : t('tabelaRecentes.fora')}</td>
+                    <td className="px-1 md:px-2 py-2 text-right font-semibold text-ink whitespace-nowrap">{fmtDecimal(statValue, 1)}</td>
                     <td className="px-1 md:px-2 py-2 text-right text-ink-dim whitespace-nowrap">
-                      {hasValidLine ? lineValue.toFixed(1) : 'N/A'}
+                      {hasValidLine ? fmtLinhaAnalisada(lineValue) : t('jogador.semDado')}
                     </td>
                     <td className="px-2 md:px-4 py-2 text-right whitespace-nowrap">
                       {diffPercent !== null ? (
@@ -95,7 +99,7 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({ gameStats }) =
                           {diff > 0 ? '+' : ''}{diffPercent}%
                         </span>
                       ) : (
-                        <span className="text-ink-dim">N/A</span>
+                        <span className="text-ink-dim">{t('jogador.semDado')}</span>
                       )}
                     </td>
                   </tr>
@@ -105,15 +109,15 @@ export const ComparisonTable: React.FC<ComparisonTableProps> = ({ gameStats }) =
           </table>
         </div>
         <div className="px-4 py-3 border-t border-line flex items-center justify-between text-[11px]">
-          <span className="text-ink-dim">Exibindo {recentGames.length} jogos</span>
+          <span className="text-ink-dim">{t('jogador.recentesExibindo', { count: recentGames.length })}</span>
           <span className="text-ink-2">
-            Taxa de acerto{' '}
+            {t('jogador.recentesTaxaAcerto')}{' '}
             {hitRate !== null ? (
               <span className={`font-semibold ml-1 ${hitRate >= 60 ? 'text-forest' : hitRate >= 40 ? 'text-amber-700' : 'text-rose-700'}`}>
                 {hitRate}%
               </span>
             ) : (
-              <span className="text-ink-dim ml-1">N/A</span>
+              <span className="text-ink-dim ml-1">{t('jogador.semDado')}</span>
             )}
           </span>
         </div>

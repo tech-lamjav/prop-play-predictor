@@ -7,6 +7,7 @@ import { generateQuickPickPredictions } from '@/components/bolao/quick-pick';
 import { ScoreStepper } from '@/components/bolao/ScoreStepper';
 import { TeamFlag } from '@/components/bolao/TeamFlag';
 import { BetinhoCTA } from '@/components/bolao/BetinhoCTA';
+import { localeAtivo } from '@/utils/idioma-ativo';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -185,7 +186,7 @@ export const MatchPredictionCard: React.FC<MatchPredictionCardProps> = ({
   };
 
   const matchDate = new Date(match.match_date + 'T00:00:00');
-  const dateStr = matchDate.toLocaleDateString('pt-BR', {
+  const dateStr = matchDate.toLocaleDateString(localeAtivo(), {
     day: '2-digit',
     month: '2-digit',
   });

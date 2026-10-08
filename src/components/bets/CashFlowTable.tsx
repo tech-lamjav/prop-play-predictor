@@ -1,25 +1,27 @@
 import React, { useMemo, useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { DollarSign, Pencil, Trash2, ChevronLeft, ChevronRight, Search, X, Calendar as CalendarIcon, TrendingUp, TrendingDown, ArrowDownCircle, ArrowUpCircle, Target, Flag } from 'lucide-react';
 import type { CapitalMovement } from '@/hooks/use-capital-movements';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar as CalendarComponent } from '../ui/calendar';
 import { format, parse, isValid } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { localeAtivo } from '@/utils/idioma-ativo';
+import { localeDoDateFns } from '@/utils/locale-do-date-fns';
 
 const PAGE_SIZE = 25;
 
 type EntryType = 'win' | 'loss' | 'cashout' | 'half_win' | 'half_loss' | 'void' | 'initial' | 'deposit' | 'withdrawal';
 
-const TYPE_FILTER_OPTIONS: { value: EntryType | 'all'; label: string }[] = [
-  { value: 'all', label: 'Todos' },
-  { value: 'deposit', label: 'Aportes' },
-  { value: 'withdrawal', label: 'Saques' },
-  { value: 'win', label: 'Ganhou' },
-  { value: 'loss', label: 'Perdeu' },
-  { value: 'cashout', label: 'Cashout' },
-  { value: 'half_win', label: '1/2 Green' },
-  { value: 'half_loss', label: '1/2 Red' },
-  { value: 'void', label: 'Anulada' },
+const TYPE_FILTER_OPTIONS: { value: EntryType | 'all'; chave: string }[] = [
+  { value: 'all', chave: 'fluxo.filtro.todos' },
+  { value: 'deposit', chave: 'fluxo.filtro.aportes' },
+  { value: 'withdrawal', chave: 'fluxo.filtro.saques' },
+  { value: 'win', chave: 'status.ganhou' },
+  { value: 'loss', chave: 'status.perdeu' },
+  { value: 'cashout', chave: 'status.cashout' },
+  { value: 'half_win', chave: 'status.meioGreen' },
+  { value: 'half_loss', chave: 'status.meioRed' },
+  { value: 'void', chave: 'status.anulada' },
 ];
 
 const parseDateString = (s: string): Date | undefined => {
@@ -69,6 +71,7 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
   onDeleteCapitalMovement,
   canEditMovement,
 }) => {
+  const { t } = useTranslation('apostas');
   const showActions = Boolean(onEditCapitalMovement || onDeleteCapitalMovement);
   const isCapitalEntry = (type: CashFlowEntry['type']) => type === 'deposit' || type === 'withdrawal';
   const canEdit = (id: string) => canEditMovement === undefined || canEditMovement(id);
@@ -101,7 +104,7 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
         }
         return {
           id: bet.id,
-          date: new Date(bet.bet_date).toLocaleDateString('pt-BR'),
+          date: new Date(bet.bet_date).toLocaleDateString(localeAtivo()),
           dateSort: new Date(bet.bet_date).getTime(),
           description: bet.bet_description,
           type,
@@ -111,14 +114,14 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
 
     const movementEntries: (Omit<CashFlowEntry, 'balance'> & { affectsBalance: boolean })[] = capitalMovements.map((m) => ({
       id: m.id,
-      date: new Date(m.movement_date).toLocaleDateString('pt-BR'),
+      date: new Date(m.movement_date).toLocaleDateString(localeAtivo()),
       dateSort: new Date(m.movement_date).getTime(),
       description:
         m.source === 'bankroll_edit'
           ? m.type === 'deposit'
-            ? 'Ajuste de banca (aporte)'
-            : 'Ajuste de banca (resgate)'
-          : m.description || (m.type === 'deposit' ? 'Aporte' : 'Resgate'),
+            ? t('fluxo.ajusteAporte')
+            : t('fluxo.ajusteResgate')
+          : m.description || (m.type === 'deposit' ? t('fluxo.aporte') : t('fluxo.resgate')),
       type: m.type === 'deposit' ? 'deposit' : 'withdrawal',
       amount: m.type === 'deposit' ? m.amount : -m.amount,
       affectsBalance: m.affects_balance,
@@ -138,9 +141,9 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
 
     entries.push({
       id: 'initial',
-      date: 'Início',
+      date: t('fluxo.inicio'),
       dateSort: 0,
-      description: 'Saldo Inicial',
+      description: t('fluxo.saldoInicial'),
       type: 'initial',
       amount: 0,
       balance: startBalance,
@@ -157,7 +160,7 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
     });
 
     return entries.reverse(); // Show newest first
-  }, [bets, initialBankroll, capitalMovements]);
+  }, [bets, initialBankroll, capitalMovements, t]);
 
   // Filtros — state interno
   const [searchQuery, setSearchQuery] = useState('');
@@ -232,26 +235,27 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
     setCurrentPage(Math.max(1, Math.min(page, totalPages)));
   };
 
+  // Caixa alta porque a pílula desenha assim; o catálogo guarda a forma final.
   const getTypeLabel = (type: CashFlowEntry['type']) => {
     switch (type) {
       case 'win':
-        return 'GANHOU';
+        return t('statusMaiusculo.ganhou');
       case 'loss':
-        return 'PERDEU';
+        return t('statusMaiusculo.perdeu');
       case 'cashout':
-        return 'CASHOUT';
+        return t('statusMaiusculo.cashout');
       case 'half_win':
-        return '1/2 GREEN';
+        return t('statusMaiusculo.meioGreen');
       case 'half_loss':
-        return '1/2 RED';
+        return t('statusMaiusculo.meioRed');
       case 'void':
-        return 'ANULADA';
+        return t('statusMaiusculo.anulada');
       case 'initial':
-        return 'INICIAL';
+        return t('statusMaiusculo.inicial');
       case 'deposit':
-        return 'APORTE';
+        return t('statusMaiusculo.aporte');
       case 'withdrawal':
-        return 'RESGATE';
+        return t('statusMaiusculo.resgate');
     }
   };
 
@@ -295,8 +299,8 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
         <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-forest-tint grid place-items-center">
           <DollarSign className="w-6 h-6 text-forest" />
         </div>
-        <p className="text-[14px] font-medium text-ink">Nenhuma transação para exibir</p>
-        <p className="text-[12px] text-ink-2 mt-1">Apostas finalizadas e movimentos aparecerão aqui</p>
+        <p className="text-[14px] font-medium text-ink">{t('fluxo.vazio.titulo')}</p>
+        <p className="text-[12px] text-ink-2 mt-1">{t('fluxo.vazio.texto')}</p>
       </div>
     );
   }
@@ -307,14 +311,17 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
         <div>
           <h2 className="text-[13px] font-semibold text-ink flex items-center gap-2">
             <DollarSign className="w-3.5 h-3.5 text-forest" />
-            Fluxo de caixa
+            {t('fluxo.titulo')}
           </h2>
-          <p className="text-[11px] text-ink-2 mt-0.5">Histórico completo de transações</p>
+          <p className="text-[11px] text-ink-2 mt-0.5">{t('fluxo.subtitulo')}</p>
         </div>
         <span className="text-[11px] text-ink-2 tabular">
           {hasActiveFilters
-            ? `${filteredData.filter((e) => e.type !== 'initial').length} de ${cashFlowData.filter((e) => e.type !== 'initial').length}`
-            : `${cashFlowData.length} ${cashFlowData.length === 1 ? 'lançamento' : 'lançamentos'}`}
+            ? t('fluxo.contagem.filtrado', {
+                mostrados: filteredData.filter((e) => e.type !== 'initial').length,
+                total: cashFlowData.filter((e) => e.type !== 'initial').length,
+              })
+            : t('fluxo.contagem.lancamentos', { count: cashFlowData.length })}
         </span>
       </div>
 
@@ -325,7 +332,7 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
           <Search className="w-4 h-4 text-ink-2 shrink-0" />
           <input
             type="text"
-            placeholder="Buscar transação…"
+            placeholder={t('fluxo.buscar')}
             className="bg-transparent text-[13px] text-ink placeholder:text-ink-2 flex-1 outline-none min-w-0"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -335,7 +342,7 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
               type="button"
               onClick={() => setSearchQuery('')}
               className="text-ink-2 hover:text-ink"
-              aria-label="Limpar busca"
+              aria-label={t('fluxo.limparBusca')}
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -358,7 +365,7 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
                   active ? 'bg-ink text-white border-ink' : 'bg-white text-ink-2 border-line hover:border-forest/30 hover:text-ink'
                 }`}
               >
-                {opt.label}
+                {t(opt.chave)}
               </button>
             );
           })}
@@ -378,8 +385,8 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
                 {(() => {
                   const from = parseDateString(dateFrom);
                   const to = parseDateString(dateTo);
-                  if (from && to) return `${format(from, 'dd MMM', { locale: ptBR })} – ${format(to, 'dd MMM', { locale: ptBR })}`;
-                  return 'Período';
+                  if (from && to) return `${format(from, 'dd MMM', { locale: localeDoDateFns() })} – ${format(to, 'dd MMM', { locale: localeDoDateFns() })}`;
+                  return t('fluxo.periodo');
                 })()}
               </button>
             </PopoverTrigger>
@@ -406,7 +413,7 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
                     }}
                     className="h-8 px-3 text-[11px] font-semibold border border-line text-ink-2 hover:bg-forest-tint hover:text-forest hover:border-forest/30 rounded-md transition-colors"
                   >
-                    Últimos {p.l}
+                    {t('fluxo.ultimos', { periodo: p.l })}
                   </button>
                 ))}
               </div>
@@ -439,7 +446,7 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
                     onClick={() => { setDateFrom(''); setDateTo(''); }}
                     className="text-[11px] font-semibold text-ink-2 hover:text-status-danger transition-colors"
                   >
-                    Limpar período
+                    {t('fluxo.limparPeriodo')}
                   </button>
                 </div>
               )}
@@ -455,7 +462,7 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
             className="shrink-0 h-9 px-3 text-[12px] font-medium rounded-md text-ink-2 hover:text-status-danger hover:bg-status-danger/10 inline-flex items-center gap-1.5 transition-colors"
           >
             <X className="w-3.5 h-3.5" />
-            Limpar filtros
+            {t('fluxo.limparFiltros')}
           </button>
         )}
       </div>
@@ -463,13 +470,13 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
       {/* Estado vazio quando filtros não retornam nada */}
       {filteredData.filter((e) => e.type !== 'initial').length === 0 && hasActiveFilters && (
         <div className="p-8 text-center border-b border-line">
-          <p className="text-[13px] text-ink-2">Nenhuma transação encontrada com os filtros aplicados.</p>
+          <p className="text-[13px] text-ink-2">{t('fluxo.vazioFiltro')}</p>
           <button
             type="button"
             onClick={clearFilters}
             className="mt-3 text-[12px] font-semibold text-forest hover:underline"
           >
-            Limpar filtros
+            {t('fluxo.limparFiltros')}
           </button>
         </div>
       )}
@@ -479,13 +486,13 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
         <table className="w-full text-[12px]">
           <thead className="bg-canvas-2">
             <tr className="text-left text-[10px] uppercase tracking-[0.1em] text-ink-2 font-semibold">
-              <th className="py-2.5 px-3">Data</th>
-              <th className="py-2.5 px-3">Descrição</th>
-              <th className="py-2.5 px-3">Tipo</th>
-              <th className="py-2.5 px-3 text-right">Valor</th>
-              <th className="py-2.5 px-3 text-right">Saldo após</th>
+              <th className="py-2.5 px-3">{t('fluxo.tabela.data')}</th>
+              <th className="py-2.5 px-3">{t('fluxo.tabela.descricao')}</th>
+              <th className="py-2.5 px-3">{t('fluxo.tabela.tipo')}</th>
+              <th className="py-2.5 px-3 text-right">{t('fluxo.tabela.valor')}</th>
+              <th className="py-2.5 px-3 text-right">{t('fluxo.tabela.saldoApos')}</th>
               {showActions && (
-                <th className="py-2.5 px-3 text-right w-24">Ações</th>
+                <th className="py-2.5 px-3 text-right w-24">{t('fluxo.tabela.acoes')}</th>
               )}
             </tr>
           </thead>
@@ -501,7 +508,7 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
                 <td className="py-2.5 px-3 font-medium text-ink">
                   {entry.description}
                   {entry.type === 'initial' && (
-                    <span className="ml-2 text-[10px] uppercase tracking-[0.1em] text-forest font-semibold">· Início do histórico</span>
+                    <span className="ml-2 text-[10px] uppercase tracking-[0.1em] text-forest font-semibold">{t('fluxo.inicioDoHistoricoInline')}</span>
                   )}
                 </td>
                 <td className="py-2.5 px-3">
@@ -539,8 +546,8 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
                             type="button"
                             className="w-9 h-9 grid place-items-center text-ink-2 hover:text-ink hover:bg-canvas-2 rounded transition-colors"
                             onClick={() => onEditCapitalMovement(entry.id)}
-                            title="Editar movimento"
-                            aria-label="Editar movimento"
+                            title={t('fluxo.editarMovimento')}
+                            aria-label={t('fluxo.editarMovimento')}
                           >
                             <Pencil className="h-3.5 w-3.5" />
                           </button>
@@ -550,8 +557,8 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
                             type="button"
                             className="w-9 h-9 grid place-items-center text-ink-2 hover:text-rose-700 hover:bg-rose-50 rounded transition-colors"
                             onClick={() => onDeleteCapitalMovement(entry.id)}
-                            title="Excluir movimento"
-                            aria-label="Excluir movimento"
+                            title={t('fluxo.excluirMovimento')}
+                            aria-label={t('fluxo.excluirMovimento')}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </button>
@@ -575,7 +582,7 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
                 <div className="text-[10px] text-ink-2 tabular mb-0.5">{entry.date}</div>
                 <div className="text-[13px] font-medium text-ink truncate">{entry.description}</div>
                 {entry.type === 'initial' && (
-                  <div className="text-[10px] uppercase tracking-[0.1em] text-forest font-semibold mt-0.5">Início do histórico</div>
+                  <div className="text-[10px] uppercase tracking-[0.1em] text-forest font-semibold mt-0.5">{t('fluxo.inicioDoHistorico')}</div>
                 )}
               </div>
               <div className="flex items-center gap-1 shrink-0">
@@ -590,8 +597,8 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
                         type="button"
                         className="w-9 h-9 grid place-items-center text-ink-2 hover:text-ink hover:bg-canvas-2 rounded transition-colors"
                         onClick={() => onEditCapitalMovement(entry.id)}
-                        title="Editar movimento"
-                        aria-label="Editar movimento"
+                        title={t('fluxo.editarMovimento')}
+                        aria-label={t('fluxo.editarMovimento')}
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
@@ -601,8 +608,8 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
                         type="button"
                         className="w-9 h-9 grid place-items-center text-ink-2 hover:text-rose-700 hover:bg-rose-50 rounded transition-colors"
                         onClick={() => onDeleteCapitalMovement(entry.id)}
-                        title="Excluir movimento"
-                        aria-label="Excluir movimento"
+                        title={t('fluxo.excluirMovimento')}
+                        aria-label={t('fluxo.excluirMovimento')}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -614,7 +621,7 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
 
             <div className="flex justify-between items-end pt-2 border-t border-line">
               <div>
-                <div className="text-[9px] uppercase tracking-[0.1em] text-ink-2 font-semibold">Valor</div>
+                <div className="text-[9px] uppercase tracking-[0.1em] text-ink-2 font-semibold">{t('fluxo.valor')}</div>
                 <div className={`text-[13px] font-semibold tabular ${
                   entry.amount > 0 ? 'text-emerald-700' :
                   entry.amount < 0 ? 'text-rose-700' :
@@ -626,7 +633,7 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
                 </div>
               </div>
               <div className="text-right">
-                <div className="text-[9px] uppercase tracking-[0.1em] text-ink-2 font-semibold">Saldo</div>
+                <div className="text-[9px] uppercase tracking-[0.1em] text-ink-2 font-semibold">{t('fluxo.saldo')}</div>
                 <div className={`text-[13px] font-semibold tabular ${
                   entry.type === 'initial'
                     ? 'text-ink'
@@ -646,14 +653,14 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
       {totalPages > 1 && (
         <div className="flex items-center justify-between gap-3 px-5 py-3 border-t border-line text-[12px]">
           <div className="text-[11px] text-ink-2 tabular">
-            Página {currentPage} de {totalPages} · {cashFlowData.length} lançamentos
+            {t('fluxo.paginacao.pagina', { atual: currentPage, total: totalPages })} · {t('fluxo.contagem.lancamentos', { count: cashFlowData.length })}
           </div>
           <div className="flex items-center gap-1">
             <button
               type="button"
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage === 1}
-              aria-label="Página anterior"
+              aria-label={t('fluxo.paginacao.anterior')}
               className="h-8 w-8 inline-flex items-center justify-center text-ink-2 hover:text-ink hover:bg-canvas-2 rounded-md transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             >
               <ChevronLeft className="w-4 h-4" />
@@ -679,7 +686,7 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
                     key={p}
                     type="button"
                     onClick={() => handlePageChange(p)}
-                    aria-label={`Página ${p}`}
+                    aria-label={t('fluxo.paginacao.numero', { n: p })}
                     aria-current={p === currentPage ? 'page' : undefined}
                     className={`h-8 w-8 inline-flex items-center justify-center text-[12px] rounded-md font-medium transition-colors ${
                       p === currentPage
@@ -696,7 +703,7 @@ export const CashFlowTable: React.FC<CashFlowTableProps> = ({
               type="button"
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
-              aria-label="Próxima página"
+              aria-label={t('fluxo.paginacao.proxima')}
               className="h-8 w-8 inline-flex items-center justify-center text-ink-2 hover:text-ink hover:bg-canvas-2 rounded-md transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             >
               <ChevronRight className="w-4 h-4" />

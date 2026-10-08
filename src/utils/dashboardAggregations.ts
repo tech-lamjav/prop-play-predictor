@@ -1,5 +1,22 @@
+import type { TFunction } from 'i18next';
 import type { Bet } from '@/hooks/use-bets';
-import { fmtDinheiro, fmtOdd, fmtDecimal } from '@/utils/formato';
+import { fmtDinheiroDaPessoa, fmtOdd, fmtDecimal, fmtPct } from '@/utils/formato';
+import { localeAtivo } from '@/utils/idioma-ativo';
+
+/**
+ * O `t` da área `apostas`, recebido por PARÂMETRO.
+ *
+ * As funções daqui são puras e moram fora de componente: não podem chamar
+ * `useTranslation`. Quem desenha passa o `t`, do mesmo jeito que `comoDizer`
+ * em `ListaDeCobranca.tsx`. O plural mora no catálogo, em `_one`/`_other`, e
+ * não num ternário aqui dentro.
+ */
+type T = TFunction<'apostas'>;
+
+// O nome do dia da semana mudou para `utils/nomes-de-data.ts`, porque a home
+// da NBA precisa da mesma função. Reexportado para quem já importava daqui.
+export { nomeDoDiaDaSemana } from '@/utils/nomes-de-data';
+import { nomeDoDiaDaSemana } from '@/utils/nomes-de-data';
 
 export type BetWithTags = Bet & { tags?: { id: string; name: string; color?: string }[] };
 
@@ -36,6 +53,15 @@ export interface HeatmapData {
   cells: HeatmapCell[];
 }
 
+// ⚠️ 'Outros' NÃO É RÓTULO E NÃO ENTRA NO CATÁLOGO, pelo mesmo motivo de
+// `SPORTS_LIST` em `Bets.tsx`: é o VALOR com que uma aposta sem liga ou sem
+// mercado é agrupada, e o mesmo valor é comparado de volta em `applyFocus`, em
+// `computeDrillDown` e no título que `BettingDashboard` reparte para achar a
+// célula no mapa. Traduzir criaria duas fatias onde há uma — "Outros" gravado
+// e "Otros" procurado — e a fatia selecionada não acharia aposta nenhuma.
+//
+// O custo conhecido: num produto em espanhol este valor aparece em português,
+// junto com os nomes de liga e de mercado que vêm do banco pela mesma porta.
 export function aggregateHeatmap(
   bets: Bet[],
   maxLeagues = 6,
@@ -258,8 +284,6 @@ const parseKey = (s: string): Date => {
   return new Date(y, m - 1, d);
 };
 
-const DAY_NAMES_FULL = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
-
 /**
  * Calendar heatmap das apostas — janela fixa de `windowDays` dias terminando em `endDate`
  * (default: hoje). Stats refletem APENAS o que está na janela visível, então setinhas de
@@ -268,7 +292,14 @@ const DAY_NAMES_FULL = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sex
 export function aggregateCalendarHeatmap(
   bets: Bet[],
   windowDays = 91,
-  endDate?: Date
+  endDate?: Date,
+  // ⚠️ O IDIOMA ENTRA POR PARÂMETRO PARA SER DEPENDÊNCIA VISÍVEL. Esta função
+  // escreve DOIS rótulos com o `Intl` — o mês da régua e o dia mais ativo — e
+  // quem a chama guarda o resultado num `useMemo`. Lendo `localeAtivo()` por
+  // dentro, a lista de dependências não tinha como saber que o resultado
+  // depende do idioma, e trocar de idioma deixava os dois rótulos na língua
+  // anterior até a janela de datas mudar. O padrão continua o idioma ativo.
+  locale = localeAtivo()
 ): CalendarHeatmapData {
   const settled = bets.filter(isSettled);
 
@@ -330,7 +361,7 @@ export function aggregateCalendarHeatmap(
 
     if (cursor.getMonth() !== lastMonthSeen) {
       months.push({
-        label: cursor.toLocaleString('pt-BR', { month: 'short' }).replace('.', ''),
+        label: cursor.toLocaleString(locale, { month: 'short' }).replace('.', ''),
         weekIndex: weekIdx,
       });
       lastMonthSeen = cursor.getMonth();
@@ -376,7 +407,7 @@ export function aggregateCalendarHeatmap(
     }
   });
   const mostActiveDay = mostActiveCount > 0
-    ? { name: DAY_NAMES_FULL[mostActiveDayIdx], count: mostActiveCount }
+    ? { name: nomeDoDiaDaSemana(mostActiveDayIdx, 'long', locale), count: mostActiveCount }
     : null;
 
   const weekendBetsWindow = byDayOfWeekWindow[0] + byDayOfWeekWindow[6];
@@ -440,12 +471,14 @@ export function applyFocus(bets: BetWithTags[], focus: FocusFilter): BetWithTags
   });
 }
 
-export function focusLabel(f: FocusFilter): string {
-  if (isEmptyFocus(f)) return 'todos os escopos';
+export function focusLabel(f: FocusFilter, t: T): string {
+  if (isEmptyFocus(f)) return t('painel.foco.todos');
+  // Liga e etiqueta entram como VIERAM: liga é valor do banco, etiqueta é
+  // texto do próprio usuário. Nenhuma das duas é rótulo a traduzir.
   const parts = [...f.leagues, ...f.tags];
   if (parts.length === 1) return parts[0];
   if (parts.length === 2) return `${parts[0]} + ${parts[1]}`;
-  return `${parts[0]} + ${parts.length - 1} outros`;
+  return t('painel.foco.maisOutros', { primeiro: parts[0], count: parts.length - 1 });
 }
 
 /**
@@ -536,7 +569,8 @@ interface StatsSummary {
 const MIN_SLICE_N = 3;
 
 /** Formatter padrão pra moeda — strip ",00" final quando inteiro. */
-const defaultMoneyFmt = (v: number): string => fmtDinheiro(v, { casas: 0 });
+// Dinheiro da pessoa. Função pura: quem a chama na pintura já assinou a moeda.
+const defaultMoneyFmt = (v: number): string => fmtDinheiroDaPessoa(v, { casas: 0 });
 
 /** Strip trailing ",00" se aparecer (útil quando o formatter da página adiciona centavos). */
 const cleanCents = (s: string): string => s.replace(/[,.]00\b/, '');
@@ -582,6 +616,7 @@ export const compactify = (s: string): string => {
 export function deriveInsights(
   bets: Bet[],
   heatmap: HeatmapData,
+  t: T,
   formatCurrency: (v: number) => string = defaultMoneyFmt
 ): DerivedInsight[] {
   const fmt = (v: number) => cleanCents(formatCurrency(Math.abs(v)));
@@ -596,9 +631,16 @@ export function deriveInsights(
     insights.push({
       type: 'opportunity',
       icon: 'trending-up',
-      label: 'Oportunidade',
+      label: t('painel.insights.oportunidade.etiqueta'),
+      // ⚠️ O TÍTULO É CONTRATO, e não frase: `BettingDashboard` o reparte no
+      // ' · ' para achar a célula de volta no mapa. Liga e mercado vêm do
+      // banco e ficam como vieram.
       title: `${heatmap.leagues[cell.l]} · ${heatmap.markets[cell.m]}`,
-      body: `${(cell.roi ?? 0).toFixed(1)}% de ROI em ${cell.n} ${cell.n === 1 ? 'aposta' : 'apostas'} (${cell.profit > 0 ? '+' : '-'}${fmt(cell.profit)}). Continue apostando aqui.`,
+      body: t('painel.insights.oportunidade.texto', {
+        roi: fmtPct((cell.roi ?? 0) / 100, 1),
+        count: cell.n,
+        valor: `${cell.profit > 0 ? '+' : '-'}${fmt(cell.profit)}`,
+      }),
     });
   }
 
@@ -611,9 +653,13 @@ export function deriveInsights(
     insights.push({
       type: 'warning',
       icon: 'alert-triangle',
-      label: 'Vazamento',
+      label: t('painel.insights.vazamento.etiqueta'),
       title: `${heatmap.leagues[cell.l]} · ${heatmap.markets[cell.m]}`,
-      body: `${(cell.roi ?? 0).toFixed(1)}% de ROI em ${cell.n} apostas (-${fmt(cell.profit)}). Considere pausar ou ajustar critério.`,
+      body: t('painel.insights.vazamento.texto', {
+        roi: fmtPct((cell.roi ?? 0) / 100, 1),
+        count: cell.n,
+        valor: `-${fmt(cell.profit)}`,
+      }),
     });
   }
 
@@ -628,9 +674,12 @@ export function deriveInsights(
       insights.push({
         type: 'discipline',
         icon: 'target',
-        label: 'Disciplina',
-        title: 'Stake varia muito',
-        body: `Seu stake varia ${(cv * 100).toFixed(0)}% em relação à média (${fmt(mean)}). Padronizar reduz risco.`,
+        label: t('painel.insights.disciplina.etiqueta'),
+        title: t('painel.insights.disciplina.stakeVariaTitulo'),
+        body: t('painel.insights.disciplina.stakeVariaTexto', {
+          pct: fmtPct(cv, 0),
+          media: fmt(mean),
+        }),
       });
     }
   }
@@ -643,17 +692,17 @@ export function deriveInsights(
       insights.push({
         type: 'discipline',
         icon: 'target',
-        label: 'Disciplina',
-        title: 'Odd média alta',
-        body: `Odd média ${fmtOdd(avgOdd)} é arriscada. Apostas com odd 1.5–2.1 tendem a ter ROI mais estável.`,
+        label: t('painel.insights.disciplina.etiqueta'),
+        title: t('painel.insights.disciplina.oddAltaTitulo'),
+        body: t('painel.insights.disciplina.oddAltaTexto', { odd: fmtOdd(avgOdd) }),
       });
     } else if (avgOdd < 1.5) {
       insights.push({
         type: 'discipline',
         icon: 'target',
-        label: 'Disciplina',
-        title: 'Odd média baixa',
-        body: `Odd média ${fmtOdd(avgOdd)} é conservadora. Pouco upside por aposta — vale revisar critério de seleção.`,
+        label: t('painel.insights.disciplina.etiqueta'),
+        title: t('painel.insights.disciplina.oddBaixaTitulo'),
+        body: t('painel.insights.disciplina.oddBaixaTexto', { odd: fmtOdd(avgOdd) }),
       });
     }
   }
@@ -666,6 +715,7 @@ export function composeNarrative(
   stats: StatsSummary,
   heatmap: HeatmapData,
   periodLabel: string,
+  t: T,
   formatCurrency: (v: number) => string = defaultMoneyFmt
 ): Narrative {
   const fmt = (v: number) => cleanCents(formatCurrency(Math.abs(v)));
@@ -674,13 +724,9 @@ export function composeNarrative(
 
   if (!hasEnoughData) {
     return {
-      eyebrow: `Análise · ${periodLabel}`,
-      headline: 'Pouco dado pra uma análise sólida.',
-      body: [
-        {
-          text: `Você tem ${settled.length} ${settled.length === 1 ? 'aposta encerrada' : 'apostas encerradas'} no período. Cadastre pelo menos 5 apostas pra começar a ver padrões.`,
-        },
-      ],
+      eyebrow: t('painel.narrativa.eyebrow', { periodo: periodLabel }),
+      headline: t('painel.narrativa.semDados.titulo'),
+      body: [{ text: t('painel.narrativa.semDados.texto', { count: settled.length }) }],
       bullets: [],
       hasEnoughData: false,
     };
@@ -701,20 +747,29 @@ export function composeNarrative(
   // Headline composition
   let headline: string;
   let headlineHighlight: Narrative['headlineHighlight'];
+  // ⚠️ O DESTAQUE É UM PEDAÇO DA PRÓPRIA FRASE: `splitHeadline` o procura
+  // dentro do headline com `indexOf`. As duas chaves andam JUNTAS em todo
+  // idioma — destaque que não aparece na frase só apaga a cor, sem erro.
   if (isPositive && stats.roi > 10) {
-    headline = 'Você teve um período sólido.';
-    headlineHighlight = { text: 'sólido', tone: 'positive' };
+    headline = t('painel.narrativa.headline.solido');
+    headlineHighlight = { text: t('painel.narrativa.headline.solidoDestaque'), tone: 'positive' };
   } else if (isPositive && stats.roi > 0) {
-    headline = 'Período no positivo, mas dá pra subir o ROI.';
-    headlineHighlight = { text: 'positivo', tone: 'positive' };
+    headline = t('painel.narrativa.headline.positivo');
+    headlineHighlight = {
+      text: t('painel.narrativa.headline.positivoDestaque'),
+      tone: 'positive',
+    };
   } else if (Math.abs(stats.profit) < stats.totalStaked * 0.02) {
-    headline = 'Período praticamente neutro.';
+    headline = t('painel.narrativa.headline.neutro');
   } else if (stats.roi > -10) {
-    headline = 'Período negativo, mas recuperável.';
-    headlineHighlight = { text: 'recuperável', tone: 'positive' };
+    headline = t('painel.narrativa.headline.recuperavel');
+    headlineHighlight = {
+      text: t('painel.narrativa.headline.recuperavelDestaque'),
+      tone: 'positive',
+    };
   } else {
-    headline = 'Período difícil. Vale revisar a estratégia.';
-    headlineHighlight = { text: 'difícil', tone: 'negative' };
+    headline = t('painel.narrativa.headline.dificil');
+    headlineHighlight = { text: t('painel.narrativa.headline.dificilDestaque'), tone: 'negative' };
   }
 
   // Body como segments com tone nos números-chave
@@ -722,17 +777,19 @@ export function composeNarrative(
   const profitSign = stats.profit >= 0 ? '+' : '-';
   const profitTone: NarrativeSegment['tone'] = stats.profit >= 0 ? 'positive' : 'negative';
   body.push({ text: `${profitSign}${fmt(stats.profit)}`, tone: profitTone });
-  body.push({ text: ' com ROI ' });
+  body.push({ text: t('painel.narrativa.corpo.comRoi') });
   body.push({
-    text: `${stats.roi >= 0 ? '+' : ''}${stats.roi.toFixed(1)}%`,
+    text: `${stats.roi >= 0 ? '+' : ''}${fmtPct(stats.roi / 100, 1)}`,
     tone: stats.roi >= 0 ? 'positive' : 'negative',
   });
-  body.push({
-    text: ` em ${stats.totalBets} ${stats.totalBets === 1 ? 'aposta' : 'apostas'}.`,
-  });
+  body.push({ text: t('painel.narrativa.corpo.emApostas', { count: stats.totalBets }) });
   if (bestSlice) {
     body.push({
-      text: ` ${heatmap.leagues[bestSlice.l]} (${heatmap.markets[bestSlice.m]}) puxou: ${bestSlice.n} apostas, `,
+      text: t('painel.narrativa.corpo.puxou', {
+        liga: heatmap.leagues[bestSlice.l],
+        mercado: heatmap.markets[bestSlice.m],
+        count: bestSlice.n,
+      }),
     });
     body.push({
       text: `${bestSlice.profit >= 0 ? '+' : '-'}${fmt(bestSlice.profit)}`,
@@ -747,7 +804,9 @@ export function composeNarrative(
     bullets.push({
       icon: 'trending-up',
       text: `${heatmap.leagues[bestSlice.l]} ${heatmap.markets[bestSlice.m]}:`,
-      highlight: `${(bestSlice.roi ?? 0) > 0 ? '+' : ''}${(bestSlice.roi ?? 0).toFixed(1)}% ROI · mantenha o ritmo.`,
+      highlight: t('painel.narrativa.bullets.mantenhaRitmo', {
+        roi: `${(bestSlice.roi ?? 0) > 0 ? '+' : ''}${fmtPct((bestSlice.roi ?? 0) / 100, 1)}`,
+      }),
       highlightTone: 'positive',
     });
   }
@@ -755,7 +814,9 @@ export function composeNarrative(
     bullets.push({
       icon: 'alert-triangle',
       text: `${heatmap.leagues[worstSlice.l]} ${heatmap.markets[worstSlice.m]}:`,
-      highlight: `${(worstSlice.roi ?? 0).toFixed(1)}% ROI · considere pausar.`,
+      highlight: t('painel.narrativa.bullets.considerePausar', {
+        roi: fmtPct((worstSlice.roi ?? 0) / 100, 1),
+      }),
       highlightTone: 'negative',
     });
   }
@@ -768,23 +829,26 @@ export function composeNarrative(
     if (cv > 0.5) {
       bullets.push({
         icon: 'target',
-        text: 'Stake oscilando:',
-        highlight: `variação de ${(cv * 100).toFixed(0)}% · padronize pra reduzir risco.`,
+        text: t('painel.narrativa.bullets.stakeOscilando'),
+        highlight: t('painel.narrativa.bullets.variacao', { pct: fmtPct(cv, 0) }),
         highlightTone: 'negative',
       });
     } else {
       const avgOdd = settled.reduce((s, b) => s + b.odds, 0) / settled.length;
       bullets.push({
         icon: 'target',
-        text: 'Odd média:',
-        highlight: `${fmtOdd(avgOdd)} · ${avgOdd >= 1.5 && avgOdd <= 2.5 ? 'dentro da faixa estável.' : 'fora da zona estável (1.5–2.5).'}`,
+        text: t('painel.narrativa.bullets.oddMedia'),
+        highlight:
+          avgOdd >= 1.5 && avgOdd <= 2.5
+            ? t('painel.narrativa.bullets.oddDentro', { odd: fmtOdd(avgOdd) })
+            : t('painel.narrativa.bullets.oddFora', { odd: fmtOdd(avgOdd) }),
         highlightTone: avgOdd >= 1.5 && avgOdd <= 2.5 ? 'positive' : 'negative',
       });
     }
   }
 
   return {
-    eyebrow: `Análise · ${periodLabel}`,
+    eyebrow: t('painel.narrativa.eyebrow', { periodo: periodLabel }),
     headline,
     headlineHighlight,
     body,
@@ -853,7 +917,8 @@ export function composeSliceNarrative(
   bets: Bet[],
   league: string,
   market: string,
-  formatCurrency: (v: number) => string = (v) => `R$ ${v.toFixed(0)}`
+  t: T,
+  formatCurrency: (v: number) => string = defaultMoneyFmt
 ): SliceNarrative {
   const drill = computeDrillDown(bets, league, market);
   const settled = drill.bets;
@@ -861,10 +926,11 @@ export function composeSliceNarrative(
   if (settled.length === 0) {
     return {
       kind: 'slice',
-      eyebrow: 'Análise da fatia',
+      eyebrow: t('painel.analiseFatia.eyebrow'),
+      // Liga e mercado vêm do banco: título é valor, não frase.
       title: `${league} · ${market}`,
       metrics: [],
-      paragraph: 'Nenhuma aposta nesta fatia no período selecionado.',
+      paragraph: t('painel.analiseFatia.vazia'),
       insights: [],
       totalBets: 0,
     };
@@ -884,23 +950,23 @@ export function composeSliceNarrative(
   // Metrics row
   const metrics: SliceMetric[] = [
     {
-      label: 'ROI',
-      // Formato BR: vírgula como decimal (compactify assume BR-format ao parsear)
+      label: t('painel.analiseFatia.metrica.roi'),
+      // O separador decimal segue o idioma ativo (compactify sabe ler os dois)
       value: `${drill.roi >= 0 ? '+' : ''}${fmtDecimal(drill.roi, 1)}%`,
       tone: drill.roi >= 0 ? 'positive' : 'negative',
     },
     {
-      label: 'Lucro',
+      label: t('painel.analiseFatia.metrica.lucro'),
       value: `${drill.profit >= 0 ? '+' : ''}${formatCurrency(drill.profit)}`,
       tone: drill.profit >= 0 ? 'positive' : 'negative',
     },
     {
-      label: 'Acerto',
-      value: `${winRate.toFixed(0)}%`,
+      label: t('painel.analiseFatia.metrica.acerto'),
+      value: fmtPct(winRate / 100, 0),
       tone: 'neutral',
     },
     {
-      label: 'Apostas',
+      label: t('painel.analiseFatia.metrica.apostas'),
       value: `${drill.n}`,
       tone: 'neutral',
     },
@@ -909,11 +975,23 @@ export function composeSliceNarrative(
   // Paragraph composition
   const paraParts: string[] = [];
   paraParts.push(
-    `Você tem ${drill.n} ${drill.n === 1 ? 'aposta' : 'apostas'} em ${league} (${market}), com ${drill.roi >= 0 ? '+' : ''}${drill.roi.toFixed(1)}% de ROI e ${drill.profit >= 0 ? '+' : ''}${formatCurrency(drill.profit)} de lucro no período.`
+    t('painel.analiseFatia.paragrafo', {
+      count: drill.n,
+      liga: league,
+      mercado: market,
+      roi: `${drill.roi >= 0 ? '+' : ''}${fmtPct(drill.roi / 100, 1)}`,
+      lucro: `${drill.profit >= 0 ? '+' : ''}${formatCurrency(drill.profit)}`,
+    })
   );
   if (drill.won + drill.lost > 0) {
     paraParts.push(
-      `Acerto em ${drill.won} de ${drill.won + drill.lost} (${winRate.toFixed(0)}%), com odd média ${fmtOdd(avgOdd)} e stake médio ${formatCurrency(avgStake)}.`
+      t('painel.analiseFatia.acertoEm', {
+        acertos: drill.won,
+        total: drill.won + drill.lost,
+        taxa: fmtPct(winRate / 100, 0),
+        odd: fmtOdd(avgOdd),
+        stake: formatCurrency(avgStake),
+      })
     );
   }
   const paragraph = paraParts.join(' ');
@@ -923,42 +1001,45 @@ export function composeSliceNarrative(
   if (streak.type === 'win' && streak.count >= 3) {
     insights.push({
       icon: 'flame',
-      text: `Sequência atual: ${streak.count} ${streak.count === 1 ? 'green' : 'greens'} consecutivos. Momento positivo.`,
+      text: t('painel.analiseFatia.sequenciaGreen', { count: streak.count }),
     });
   } else if (streak.type === 'loss' && streak.count >= 3) {
     insights.push({
       icon: 'snowflake',
-      text: `Sequência atual: ${streak.count} ${streak.count === 1 ? 'red' : 'reds'} consecutivas. Cuidado com tilt.`,
+      text: t('painel.analiseFatia.sequenciaRed', { count: streak.count }),
     });
   }
   if (avgOdd > 0) {
     if (avgOdd >= 1.5 && avgOdd <= 2.1) {
       insights.push({
         icon: 'target',
-        text: `Odd média ${fmtOdd(avgOdd)} está na zona estável (1.5–2.1).`,
+        text: t('painel.analiseFatia.oddEstavel', { odd: fmtOdd(avgOdd) }),
       });
     } else if (avgOdd < 1.5) {
       insights.push({
         icon: 'target',
-        text: `Odd média ${fmtOdd(avgOdd)} é conservadora — pouco upside por aposta.`,
+        text: t('painel.analiseFatia.oddConservadora', { odd: fmtOdd(avgOdd) }),
       });
     } else {
       insights.push({
         icon: 'target',
-        text: `Odd média ${fmtOdd(avgOdd)} é arriscada — variância alta.`,
+        text: t('painel.analiseFatia.oddArriscada', { odd: fmtOdd(avgOdd) }),
       });
     }
   }
   if (bestProfit > 0 && Math.abs(worstProfit) > 0) {
     insights.push({
       icon: 'chart-bar',
-      text: `Maior green ${formatCurrency(bestProfit)} · maior red ${formatCurrency(Math.abs(worstProfit))}.`,
+      text: t('painel.analiseFatia.maiorGreenRed', {
+        maior: formatCurrency(bestProfit),
+        menor: formatCurrency(Math.abs(worstProfit)),
+      }),
     });
   }
 
   return {
     kind: 'slice',
-    eyebrow: 'Análise da fatia',
+    eyebrow: t('painel.analiseFatia.eyebrow'),
     title: `${league} · ${market}`,
     metrics,
     paragraph,
@@ -971,26 +1052,35 @@ export function composeSliceNarrative(
 export function composeTagNarrative(
   bets: BetWithTags[],
   selectedTagNames: string[],
+  t: T,
   formatCurrency: (v: number) => string = defaultMoneyFmt
 ): SliceNarrative {
   const matching = bets.filter(
     (b) => isSettled(b) && (b.tags ?? []).some((t) => selectedTagNames.includes(t.name))
   );
 
+  // O nome da etiqueta é texto do próprio usuário: entra como ele escreveu.
   const tagsTitle =
     selectedTagNames.length === 1
       ? selectedTagNames[0]
       : selectedTagNames.length === 2
         ? `${selectedTagNames[0]}, ${selectedTagNames[1]}`
-        : `${selectedTagNames[0]} + ${selectedTagNames.length - 1} outras tags`;
+        : t('painel.analiseFatia.maisTags', {
+            primeira: selectedTagNames[0],
+            count: selectedTagNames.length - 1,
+          });
+  const eyebrowDasTags =
+    selectedTagNames.length === 1
+      ? t('painel.analiseFatia.eyebrowTag')
+      : t('painel.analiseFatia.eyebrowTags');
 
   if (matching.length === 0) {
     return {
       kind: 'tag',
-      eyebrow: selectedTagNames.length === 1 ? 'Análise da tag' : 'Análise das tags',
+      eyebrow: eyebrowDasTags,
       title: tagsTitle,
       metrics: [],
-      paragraph: 'Nenhuma aposta com essas tags no período selecionado.',
+      paragraph: t('painel.analiseFatia.vaziaTags'),
       insights: [],
       totalBets: 0,
     };
@@ -1011,38 +1101,49 @@ export function composeTagNarrative(
 
   const metrics: SliceMetric[] = [
     {
-      label: 'ROI',
-      value: `${roi >= 0 ? '+' : ''}${roi.toFixed(1)}%`,
+      label: t('painel.analiseFatia.metrica.roi'),
+      value: `${roi >= 0 ? '+' : ''}${fmtDecimal(roi, 1)}%`,
       tone: roi >= 0 ? 'positive' : 'negative',
     },
     {
-      label: 'Lucro',
+      label: t('painel.analiseFatia.metrica.lucro'),
       value: `${profit >= 0 ? '+' : ''}${formatCurrency(profit)}`,
       tone: profit >= 0 ? 'positive' : 'negative',
     },
     {
-      label: 'Acerto',
-      value: `${winRate.toFixed(0)}%`,
+      label: t('painel.analiseFatia.metrica.acerto'),
+      value: fmtPct(winRate / 100, 0),
       tone: 'neutral',
     },
     {
-      label: 'Apostas',
+      label: t('painel.analiseFatia.metrica.apostas'),
       value: `${matching.length}`,
       tone: 'neutral',
     },
   ];
 
   const scopePhrase = selectedTagNames.length === 1
-    ? `com a tag ${selectedTagNames[0]}`
-    : `com as tags ${selectedTagNames.join(', ')}`;
+    ? t('painel.analiseFatia.escopoUmaTag', { tag: selectedTagNames[0] })
+    : t('painel.analiseFatia.escopoVariasTags', { tags: selectedTagNames.join(', ') });
 
   const paraParts: string[] = [];
   paraParts.push(
-    `Você tem ${matching.length} ${matching.length === 1 ? 'aposta' : 'apostas'} ${scopePhrase}, com ${roi >= 0 ? '+' : ''}${roi.toFixed(1)}% de ROI e ${profit >= 0 ? '+' : ''}${formatCurrency(profit)} de lucro no período.`
+    t('painel.analiseFatia.paragrafoTag', {
+      count: matching.length,
+      escopo: scopePhrase,
+      roi: `${roi >= 0 ? '+' : ''}${fmtPct(roi / 100, 1)}`,
+      lucro: `${profit >= 0 ? '+' : ''}${formatCurrency(profit)}`,
+    })
   );
   if (won + lost > 0) {
     paraParts.push(
-      `Acerto em ${won} de ${won + lost} (${winRate.toFixed(0)}%), com odd média ${fmtOdd(avgOdd)} e stake médio ${formatCurrency(avgStake)}.`
+      t('painel.analiseFatia.acertoEm', {
+        acertos: won,
+        total: won + lost,
+        taxa: fmtPct(winRate / 100, 0),
+        odd: fmtOdd(avgOdd),
+        stake: formatCurrency(avgStake),
+      })
     );
   }
   const paragraph = paraParts.join(' ');
@@ -1051,42 +1152,45 @@ export function composeTagNarrative(
   if (streak.type === 'win' && streak.count >= 3) {
     insights.push({
       icon: 'flame',
-      text: `Sequência atual: ${streak.count} greens consecutivos. Momento positivo.`,
+      text: t('painel.analiseFatia.sequenciaGreen', { count: streak.count }),
     });
   } else if (streak.type === 'loss' && streak.count >= 3) {
     insights.push({
       icon: 'snowflake',
-      text: `Sequência atual: ${streak.count} reds consecutivas. Cuidado com tilt.`,
+      text: t('painel.analiseFatia.sequenciaRed', { count: streak.count }),
     });
   }
   if (avgOdd > 0) {
     if (avgOdd >= 1.5 && avgOdd <= 2.1) {
       insights.push({
         icon: 'target',
-        text: `Odd média ${fmtOdd(avgOdd)} está na zona estável (1.5–2.1).`,
+        text: t('painel.analiseFatia.oddEstavel', { odd: fmtOdd(avgOdd) }),
       });
     } else if (avgOdd < 1.5) {
       insights.push({
         icon: 'target',
-        text: `Odd média ${fmtOdd(avgOdd)} é conservadora — pouco upside por aposta.`,
+        text: t('painel.analiseFatia.oddConservadora', { odd: fmtOdd(avgOdd) }),
       });
     } else {
       insights.push({
         icon: 'target',
-        text: `Odd média ${fmtOdd(avgOdd)} é arriscada — variância alta.`,
+        text: t('painel.analiseFatia.oddArriscada', { odd: fmtOdd(avgOdd) }),
       });
     }
   }
   if (bestProfit > 0 && Math.abs(worstProfit) > 0) {
     insights.push({
       icon: 'chart-bar',
-      text: `Maior green ${formatCurrency(bestProfit)} · maior red ${formatCurrency(Math.abs(worstProfit))}.`,
+      text: t('painel.analiseFatia.maiorGreenRed', {
+        maior: formatCurrency(bestProfit),
+        menor: formatCurrency(Math.abs(worstProfit)),
+      }),
     });
   }
 
   return {
     kind: 'tag',
-    eyebrow: selectedTagNames.length === 1 ? 'Análise da tag' : 'Análise das tags',
+    eyebrow: eyebrowDasTags,
     title: tagsTitle,
     metrics,
     paragraph,
@@ -1103,6 +1207,11 @@ export function aggregateTagPivot(bets: BetWithTags[]): TagPivotEntry[] {
     const stake = b.stake_amount;
     const p = profitForBet(b);
     if (tags.length === 0) {
+      // ⚠️ 'Sem tag' é IDENTIDADE e não rótulo: é a chave do balde, e é ela que
+      // volta por `entry.name` para `toggleTag` e para `composeTagNarrative`,
+      // onde é comparada com o nome das etiquetas da aposta. Traduzir aqui
+      // quebraria a seleção, do mesmo jeito que traduzir 'Outros' no mapa.
+      // Dar nome traduzido a este balde é trabalho de quem desenha o gráfico.
       const prev = byTag.get('Sem tag') ?? { n: 0, totalStaked: 0, profit: 0 };
       byTag.set('Sem tag', {
         color: prev.color,

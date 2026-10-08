@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { AlertTriangle, CreditCard, HelpCircle } from 'lucide-react';
 import type { AssinaturaDoStripe } from './crm-assinatura-do-stripe';
 import { formatarDia } from './crm-lista';
@@ -19,6 +20,7 @@ export type EstadoDoStripe =
  * passando, que é como se produz pagamento em dobro.
  */
 function LinhaDoStripe({ assinatura }: { assinatura: AssinaturaDoStripe }) {
+  const { t } = useTranslation('socios');
   const { userId, pessoa, produto, renovaEm, situacao } = assinatura;
 
   return (
@@ -46,6 +48,9 @@ function LinhaDoStripe({ assinatura }: { assinatura: AssinaturaDoStripe }) {
             ) : (
               <CreditCard aria-hidden className="h-3 w-3" />
             )}
+            {/* ⚠️ Em PORTUGUÊS neste passo. O rótulo nasce em
+                `crm-assinatura-do-stripe.ts`, que tem teste cobrando o texto
+                exato e não entrou nesta migração. */}
             {situacao.rotulo}
           </span>
 
@@ -54,7 +59,9 @@ function LinhaDoStripe({ assinatura }: { assinatura: AssinaturaDoStripe }) {
             {/* ⚠️ "Não sabemos", e nunca um traço ou um vazio. Quem assina só o
                 futebol não tem coluna de prazo, e uma tela calada aqui seria
                 lida como "renova hoje" ou como defeito. */}
-            {renovaEm === null ? 'renovação: não sabemos' : `renova em ${formatarDia(renovaEm)}`}
+            {renovaEm === null
+              ? t('dinheiro.stripe.renovacaoNaoSabemos')
+              : t('dinheiro.stripe.renovaEm', { dia: formatarDia(renovaEm) })}
           </span>
         </div>
       </div>
@@ -62,7 +69,9 @@ function LinhaDoStripe({ assinatura }: { assinatura: AssinaturaDoStripe }) {
       <p className="mt-0.5 text-[13px] text-ink-2">
         {/* O produto sai como o gateway gravou. Traduzir para a escada de venda
             inventaria um plano que a pessoa não contratou. */}
-        {produto === null ? 'produto não gravado' : produto} no cartão
+        {t('dinheiro.stripe.noCartao', {
+          produto: produto === null ? t('dinheiro.stripe.produtoNaoGravado') : produto,
+        })}
       </p>
     </div>
   );
@@ -81,20 +90,18 @@ function LinhaDoStripe({ assinatura }: { assinatura: AssinaturaDoStripe }) {
  * cometer — é código que não compila.
  */
 export function ListaDoStripe({ estado }: { estado: EstadoDoStripe }) {
+  const { t } = useTranslation('socios');
+
   if (estado.tipo === 'carregando') {
-    return <p className="px-5 py-8 text-[14px] text-ink-2">Carregando quem paga no cartão…</p>;
+    return <p className="px-5 py-8 text-[14px] text-ink-2">{t('dinheiro.stripe.carregando')}</p>;
   }
 
   if (estado.tipo === 'erro') {
-    return (
-      <p className="px-5 py-8 text-[14px] text-ink-2">
-        Não deu para carregar a base, então não dá para saber quem paga no cartão.
-      </p>
-    );
+    return <p className="px-5 py-8 text-[14px] text-ink-2">{t('dinheiro.stripe.erro')}</p>;
   }
 
   if (estado.assinaturas.length === 0) {
-    return <p className="px-5 py-8 text-[14px] text-ink-2">Ninguém assinando pelo cartão ainda.</p>;
+    return <p className="px-5 py-8 text-[14px] text-ink-2">{t('dinheiro.stripe.vazio')}</p>;
   }
 
   return (

@@ -13,26 +13,38 @@
 // em silêncio — um id que ninguém reconhece renderizaria uma tela em branco.
 // ============================================================
 
+/**
+ * As seções, com CHAVE de tradução no lugar do texto.
+ *
+ * Mesmo arranjo do menu da conta (`src/config/menu-da-conta.ts`): a tabela de
+ * dados guarda a chave, e quem resolve o texto é a pintura. Assim o catálogo
+ * continua sendo dado puro — o teste desta tabela não precisa de i18next de pé
+ * — e o id, que vai para a URL e é contrato de link, não vira texto traduzido.
+ *
+ * ⚠️ `rotulo` e `resumo` são chaves sob a área `conta`, e NÃO a frase. Trocar
+ * uma delas pela frase traduzida faria a tela mostrar português em espanhol sem
+ * nenhum teste reclamar, porque em teste a interface roda em português.
+ */
 export const SECOES = [
   {
     id: 'perfil',
-    rotulo: 'Perfil',
-    resumo: 'Nome, e-mail e Telegram',
+    rotulo: 'configuracoes.secoes.perfil.rotulo',
+    resumo: 'configuracoes.secoes.perfil.resumo',
   },
   {
     id: 'alertas',
-    rotulo: 'Alertas',
-    resumo: 'Oportunidades no Telegram',
+    rotulo: 'configuracoes.secoes.alertas.rotulo',
+    resumo: 'configuracoes.secoes.alertas.resumo',
   },
   {
     id: 'assinatura',
-    rotulo: 'Assinatura',
-    resumo: 'Planos e pagamentos',
+    rotulo: 'configuracoes.secoes.assinatura.rotulo',
+    resumo: 'configuracoes.secoes.assinatura.resumo',
   },
   {
     id: 'tour',
-    rotulo: 'Tour guiado',
-    resumo: 'Rever a apresentação',
+    rotulo: 'configuracoes.secoes.tour.rotulo',
+    resumo: 'configuracoes.secoes.tour.resumo',
   },
 ] as const;
 

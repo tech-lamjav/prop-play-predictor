@@ -22,6 +22,8 @@ import { IconSoccer, IconBasketball } from './icons/sports';
 import { useAuth } from '../hooks/use-auth';
 import { useSubscription } from '@/hooks/use-subscription';
 import UserNav from './UserNav';
+import { useTranslation } from 'react-i18next';
+import { SeletorDeIdiomaCompacto } from './SeletorDeIdioma';
 import { FutebolTrialChip } from './futebol/FutebolGate';
 import { SHOW_BOLAO_ENTRY_POINTS } from '@/config/bolao';
 import { ROTA_DO_CRM, ROTA_DOS_SOCIOS } from '@/components/socios/crm-vocabulario';
@@ -44,7 +46,12 @@ import { ROTA_DO_PLACAR } from '@/components/placar/placar-vocabulario';
  * "+4 esportes", "Odds em queda", "Favoritos", "Agenda".
  */
 
-type SubItem = { name: string; href: string; icon: typeof BarChart3 };
+/**
+ * ⚠️ `chave` e não `name`: texto resolvido dentro de tabela de módulo fica
+ * preso no idioma em que foi escrito, e estas tabelas vivem fora de qualquer
+ * componente. Quem traduz é a pintura. Mesmo padrão do `menu-da-conta`.
+ */
+type SubItem = { chave: string; href: string; icon: typeof BarChart3 };
 
 /**
  * Conceito repetido usa o MESMO glifo nos dois esportes — "Hoje" era
@@ -53,20 +60,20 @@ type SubItem = { name: string; href: string; icon: typeof BarChart3 };
  * que são coisas diferentes.
  */
 const NBA_ITEMS: SubItem[] = [
-  { name: 'Hoje', href: '/home-nba', icon: LayoutGrid },
-  { name: 'Oportunidades', href: '/oportunidades', icon: Zap },
-  { name: 'Análise 360', href: '/analise-360', icon: Radar },
-  { name: 'Jogos', href: '/home-games', icon: Calendar },
-  { name: 'Relatório', href: '/report', icon: FileText },
+  { chave: 'nav.hoje', href: '/home-nba', icon: LayoutGrid },
+  { chave: 'nav.oportunidades', href: '/oportunidades', icon: Zap },
+  { chave: 'nav.analise360', href: '/analise-360', icon: Radar },
+  { chave: 'nav.jogos', href: '/home-games', icon: Calendar },
+  { chave: 'nav.relatorio', href: '/report', icon: FileText },
 ];
 
 const FUTEBOL_ITEMS: SubItem[] = [
-  { name: 'Hoje', href: '/futebol', icon: LayoutGrid },
-  { name: 'Oportunidades', href: '/futebol/oportunidades', icon: Zap },
-  { name: 'Jogos', href: '/futebol/jogos', icon: Calendar },
+  { chave: 'nav.hoje', href: '/futebol', icon: LayoutGrid },
+  { chave: 'nav.oportunidades', href: '/futebol/oportunidades', icon: Zap },
+  { chave: 'nav.jogos', href: '/futebol/jogos', icon: Calendar },
   // "Jogos" é a agenda por dia (todas as ligas); "Campeonatos" é a navegação por
   // liga, com rodada, tabela e artilheiros.
-  { name: 'Campeonatos', href: '/futebol/campeonatos', icon: Trophy },
+  { chave: 'nav.campeonatos', href: '/futebol/campeonatos', icon: Trophy },
 ];
 
 /**
@@ -77,15 +84,15 @@ const FUTEBOL_ITEMS: SubItem[] = [
  * que a rota é gated — quem não é sócio nunca chega numa URL que os mostre.
  */
 const SOCIOS_ITEMS: SubItem[] = [
-  { name: 'CRM', href: ROTA_DO_CRM, icon: Users },
-  { name: 'Metodologia', href: ROTA_DO_PLACAR, icon: Gauge },
+  { chave: 'nav.crm', href: ROTA_DO_CRM, icon: Users },
+  { chave: 'nav.metodologia', href: ROTA_DO_PLACAR, icon: Gauge },
 ];
 
 const BETINHO_ITEMS: SubItem[] = [
-  { name: 'Apostas', href: '/bets', icon: Target },
+  { chave: 'nav.apostas', href: '/bets', icon: Target },
   // `Wallet` e não `BarChart3`: é a banca, e o gráfico já é "Análises" na
   // faixa 1. Mesmo glifo da banca no rodapé (ver docs/design-system/handoff-header-footer.md).
-  { name: 'Dashboard', href: '/betting-dashboard', icon: Wallet },
+  { chave: 'nav.dashboard', href: '/betting-dashboard', icon: Wallet },
 ];
 
 interface AnalyticsNavProps {
@@ -122,6 +129,7 @@ export default function AnalyticsNav({
   semSecoes,
 }: AnalyticsNavProps) {
   const location = useLocation();
+  const { t: tComum } = useTranslation('comum');
   const navigate = useNavigate();
   const { user } = useAuth();
   const { isPremium } = useSubscription();
@@ -211,7 +219,7 @@ export default function AnalyticsNav({
               type="button"
               onClick={() => navigate(user ? '/inicio' : '/')}
               className="flex items-center hover:opacity-80 transition-opacity shrink-0"
-              aria-label="Início"
+              aria-label={tComum('nav.inicio')}
             >
               {/* Fundo forest → logo reversa (branca). É o arquivo original,
                   sem o filtro `invert hue-rotate-180` que o header claro usava. */}
@@ -226,7 +234,7 @@ export default function AnalyticsNav({
                 className="-ml-1 h-8 px-2 text-white/80 hover:text-white hover:bg-white/10"
               >
                 <ChevronLeft className="w-4 h-4 mr-1" />
-                <span className="text-xs">Voltar</span>
+                <span className="text-xs">{tComum('nav.voltar')}</span>
               </Button>
             )}
 
@@ -244,12 +252,12 @@ export default function AnalyticsNav({
           <div className={`${semSecoes ? 'hidden' : 'hidden md:flex'} items-center gap-1`}>
             <button type="button" onClick={() => go(nbaActive ? '/home-nba' : '/futebol')} className={sectionCls(analisesActive)}>
               <BarChart3 className="w-[15px] h-[15px]" strokeWidth={analisesActive ? 2.2 : 2} />
-              Análises
+              {tComum('nav.analises')}
             </button>
 
             <button type="button" onClick={() => go('/bets')} className={sectionCls(betinhoActive)}>
               <Bot className="w-[15px] h-[15px]" strokeWidth={betinhoActive ? 2.2 : 2} />
-              Betinho
+              {tComum('nav.betinho')}
             </button>
 
             {SHOW_BOLAO_ENTRY_POINTS && (
@@ -265,7 +273,17 @@ export default function AnalyticsNav({
 
           {/* Direita: assinatura + conta */}
           <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
-            {futebolActive && <FutebolTrialChip />}
+            {/* ⚠️ O CHIP SAI NAS TELAS ESTREITAS. Com ele, este bloco mede 319px
+                e, somado à logo, empurrava a PÁGINA INTEIRA para rolar na
+                horizontal a 320px — a 305px úteis o documento ia a 351px.
+
+                Ele é o único item daqui que não é AÇÃO: diz quanto tempo de
+                teste resta, e a mesma informação espera do outro lado do
+                botão. Entre perder o aviso e deixar a página rolar de lado,
+                perde o aviso. O espanhol tornou isso visível porque
+                "Suscribirse" e "Iniciar sesión" são mais largos que "Assinar"
+                e "Entrar". */}
+            <span className="hidden sm:contents">{futebolActive && <FutebolTrialChip />}</span>
 
             {user ? (
               <>
@@ -285,16 +303,24 @@ export default function AnalyticsNav({
               </>
             ) : (
               // Ordem espelha o estado logado — comercial no meio, conta na
-              // ponta: [PREMIUM][Perfil] logado, [Assinar][Entrar] deslogado.
+              // ponta: [PREMIUM][Assinar][Entrar] deslogado.
               // Assim o botão âmbar não muda de posição quando o usuário loga.
+              //
+              // O SELETOR DE IDIOMA abre a fila, e é o único elemento deste
+              // cabeçalho que não existe do lado logado — lá ele mora dentro do
+              // menu da conta. Aqui ele precisa de lugar próprio porque aquele
+              // menu não renderiza sem usuário, e quem mais precisa do espanhol
+              // chega assim. Primeiro na ordem e discreto no peso: encontrável
+              // sem disputar com as duas ações que o negócio quer em destaque.
               <div className="flex items-center gap-2">
+                <SeletorDeIdiomaCompacto />
                 <Button
                   size="sm"
                   onClick={() => navigate('/planos')}
                   className="h-9 px-3 rounded-[10px] bg-amber-400 hover:bg-amber-300 text-ink text-xs font-bold"
                 >
                   <Zap className="w-3 h-3 mr-1 fill-current" strokeWidth={0} />
-                  Assinar
+                  {tComum('acoes.assinar')}
                 </Button>
                 <Button
                   variant="ghost"
@@ -302,8 +328,13 @@ export default function AnalyticsNav({
                   onClick={() => navigate('/auth')}
                   className="h-9 text-xs text-white/80 hover:text-white hover:bg-white/10"
                 >
-                  <LogIn className="w-3 h-3 mr-1" />
-                  Entrar
+                  {/* ⚠️ NO ESTREITO O "ENTRAR" FICA SÓ COM O ÍCONE. Os dois
+                      botões mais o seletor somam 319px numa barra de 273, e era
+                      isso que punha a página inteira para rolar de lado a 320px.
+                      O ícone de porta é reconhecível sozinho, e assim nenhuma
+                      das duas ações desaparece — só a palavra. */}
+                  <LogIn className="w-3 h-3 sm:mr-1" />
+                  <span className="hidden sm:inline">{tComum('acoes.entrar')}</span>
                 </Button>
               </div>
             )}
@@ -322,11 +353,11 @@ export default function AnalyticsNav({
                 <div className="flex items-center gap-1.5">
                   <button type="button" onClick={() => go('/futebol')} className={sportCls(futebolActive)}>
                     <IconSoccer className="w-3.5 h-3.5" strokeWidth={futebolActive ? 2.2 : 2} />
-                    Futebol
+                    {tComum('nav.futebol')}
                   </button>
                   <button type="button" onClick={() => go('/home-nba')} className={sportCls(nbaActive)}>
                     <IconBasketball className="w-3.5 h-3.5" strokeWidth={nbaActive ? 2.2 : 2} />
-                    NBA
+                    {tComum('nav.nba')}
                   </button>
                 </div>
               )}
@@ -343,7 +374,7 @@ export default function AnalyticsNav({
                       className={subCls(isActive(item.href))}
                     >
                       <Icon className="w-3.5 h-3.5" />
-                      {item.name}
+                      {tComum(item.chave)}
                     </button>
                   );
                 })}
@@ -361,11 +392,11 @@ export default function AnalyticsNav({
                 <>
                   <button type="button" onClick={() => go('/futebol')} className={`${sportCls(futebolActive)} shrink-0`}>
                     <IconSoccer className="w-3.5 h-3.5" strokeWidth={futebolActive ? 2.2 : 2} />
-                    Futebol
+                    {tComum('nav.futebol')}
                   </button>
                   <button type="button" onClick={() => go('/home-nba')} className={`${sportCls(nbaActive)} shrink-0`}>
                     <IconBasketball className="w-3.5 h-3.5" strokeWidth={nbaActive ? 2.2 : 2} />
-                    NBA
+                    {tComum('nav.nba')}
                   </button>
                   <span className="w-px h-5 bg-white/15 mx-1.5 shrink-0" />
                 </>
@@ -380,7 +411,7 @@ export default function AnalyticsNav({
                     className={`${subCls(isActive(item.href))} shrink-0`}
                   >
                     <Icon className="w-3.5 h-3.5" />
-                    {item.name}
+                    {tComum(item.chave)}
                   </button>
                 );
               })}
@@ -426,6 +457,11 @@ function MobileTabBar({
   perfilActive: boolean;
   onGo: (href: string) => void;
 }) {
+  // A barra do celular é componente próprio e precisa do tradutor dela: os
+  // rótulos aqui são os mesmos da faixa do computador, e ficaram em português
+  // até uma varredura no navegador pegar. Guarda de catálogo não vê tela que
+  // nunca teve chave.
+  const { t: tComum } = useTranslation('comum');
   const { user } = useAuth();
   // A barra cobre os últimos 62px da viewport; a classe faz o body reservar
   // esse espaço. Fica no efeito pra sumir junto com a barra (ex.: landings,
@@ -449,18 +485,18 @@ function MobileTabBar({
       <div className={`grid ${SHOW_BOLAO_ENTRY_POINTS ? 'grid-cols-4' : 'grid-cols-3'}`}>
         <button type="button" onClick={() => onGo(nbaActive ? '/home-nba' : '/futebol')} className={itemCls(analisesActive)}>
           <BarChart3 className="w-5 h-5" strokeWidth={analisesActive ? 2.2 : 2} />
-          <span className={labelCls(analisesActive)}>Análises</span>
+          <span className={labelCls(analisesActive)}>{tComum('nav.analises')}</span>
         </button>
 
         <button type="button" onClick={() => onGo('/bets')} className={itemCls(betinhoActive)}>
           <Bot className="w-5 h-5" strokeWidth={betinhoActive ? 2.2 : 2} />
-          <span className={labelCls(betinhoActive)}>Betinho</span>
+          <span className={labelCls(betinhoActive)}>{tComum('nav.betinho')}</span>
         </button>
 
         {SHOW_BOLAO_ENTRY_POINTS && (
           <button type="button" onClick={() => onGo('/bolao')} className={itemCls(bolaoActive)}>
             <Trophy className="w-5 h-5" strokeWidth={bolaoActive ? 2.2 : 2} />
-            <span className={labelCls(bolaoActive)}>Bolão</span>
+            <span className={labelCls(bolaoActive)}>{tComum('nav.bolao')}</span>
           </button>
         )}
 
@@ -469,7 +505,7 @@ function MobileTabBar({
         {user ? (
           <button type="button" onClick={() => onGo('/perfil')} className={itemCls(perfilActive)}>
             <CircleUser className="w-5 h-5" strokeWidth={perfilActive ? 2.2 : 2} />
-            <span className={labelCls(perfilActive)}>Perfil</span>
+            <span className={labelCls(perfilActive)}>{tComum('nav.perfil')}</span>
           </button>
         ) : (
           <button type="button" onClick={() => onGo('/auth')} className={itemCls(false)}>

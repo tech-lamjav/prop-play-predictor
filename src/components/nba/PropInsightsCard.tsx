@@ -1,43 +1,14 @@
 import React from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { PropPlayer } from '@/services/nba-data.service';
 import { Lightbulb, AlertTriangle, Star, ChevronRight } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
-const STAT_LABELS: Record<string, string> = {
-  player_points: 'Pontos',
-  player_assists: 'Assistências',
-  player_rebounds: 'Rebotes',
-  player_threes: '3 Pontos',
-  player_steals: 'Roubos',
-  player_blocks: 'Bloqueios',
-  player_turnovers: 'Erros',
-  player_points_assists: 'Pts + Ast',
-  player_points_rebounds: 'Pts + Reb',
-  player_rebounds_assists: 'Reb + Ast',
-  player_points_rebounds_assists: 'PRA',
-  player_double_double: 'Double-Double',
-};
-
-const STAT_LABELS_SHORT: Record<string, { article: string; name: string }> = {
-  player_points: { article: 'os', name: 'pontos' },
-  player_assists: { article: 'as', name: 'assistências' },
-  player_rebounds: { article: 'os', name: 'rebotes' },
-  player_threes: { article: 'os', name: '3 pontos' },
-  player_steals: { article: 'os', name: 'roubos' },
-  player_blocks: { article: 'os', name: 'bloqueios' },
-  player_turnovers: { article: 'os', name: 'turnovers' },
-  player_points_assists: { article: 'os', name: 'pts + ast' },
-  player_points_rebounds: { article: 'os', name: 'pts + reb' },
-  player_rebounds_assists: { article: 'os', name: 'reb + ast' },
-  player_points_rebounds_assists: { article: 'o', name: 'PRA' },
-  player_double_double: { article: 'os', name: 'double-doubles' },
-};
-
-const STATUS_CONFIG: Record<string, { badge: string; badgeClass: string; color: string }> = {
-  out: { badge: 'OUT', badgeClass: 'bg-rose-100 text-rose-700', color: 'text-rose-700' },
-  'out for season': { badge: 'OFS', badgeClass: 'bg-rose-100 text-rose-700', color: 'text-rose-700' },
-  doubtful: { badge: 'DTD', badgeClass: 'bg-orange-400/20 text-orange-400', color: 'text-orange-400' },
-  questionable: { badge: 'Q', badgeClass: 'bg-yellow-400/20 text-yellow-400', color: 'text-yellow-400' },
+const STATUS_CONFIG: Record<string, { estado: string; badgeClass: string; color: string }> = {
+  out: { estado: 'out', badgeClass: 'bg-rose-100 text-rose-700', color: 'text-rose-700' },
+  'out for season': { estado: 'out_for_season', badgeClass: 'bg-rose-100 text-rose-700', color: 'text-rose-700' },
+  doubtful: { estado: 'doubtful', badgeClass: 'bg-orange-400/20 text-orange-400', color: 'text-orange-400' },
+  questionable: { estado: 'questionable', badgeClass: 'bg-yellow-400/20 text-yellow-400', color: 'text-yellow-400' },
 };
 
 function isConfirmedOut(status: string | null): boolean {
@@ -54,6 +25,8 @@ interface PropInsightsCardProps {
 }
 
 export const PropInsightsCard: React.FC<PropInsightsCardProps> = ({ propPlayers, playerName, isLoading, onInsightClick }) => {
+  const { t } = useTranslation('nba');
+
   if (isLoading) {
     return (
       <div className="rounded-lg bg-white border border-line p-4">
@@ -121,46 +94,49 @@ export const PropInsightsCard: React.FC<PropInsightsCardProps> = ({ propPlayers,
                   <AlertTriangle className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
                 )}
                 <span className="text-[10px] font-bold text-amber-700 uppercase tracking-widest">
-                  {confirmed ? 'Dica' : 'Alerta'}
+                  {confirmed ? t('jogador.insightDica') : t('jogador.insightAlerta')}
                 </span>
                 <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${config.badgeClass}`}>
-                  {config.badge}
+                  {t(`estado.selo.${config.estado}`)}
                 </span>
               </div>
 
               {/* Storytelling */}
               <p className="text-xs text-ink opacity-80 mb-3 leading-relaxed">
-                {confirmed ? (
-                  <>
-                    Com <span className={`font-bold ${config.color}`}>{triggerLastName}</span> fora,{' '}
-                  </>
-                ) : (
-                  <>
-                    Se <span className={`font-bold ${config.color}`}>{triggerLastName}</span> for confirmado fora,{' '}
-                  </>
-                )}
                 {group.props.length === 1 ? (() => {
-                  const stat = STAT_LABELS_SHORT[group.props[0].stat_type];
-                  const article = stat?.article ?? 'os';
-                  const name = stat?.name ?? group.props[0].stat_type.replace('player_', '').replace(/_/g, ' ');
+                  const tipo = group.props[0].stat_type;
+                  const bruto = tipo.replace('player_', '').replace(/_/g, ' ');
                   const pct = group.props[0].next_player_stats_normal > 0
                     ? Math.round(((group.props[0].next_player_stats_when_leader_out - group.props[0].next_player_stats_normal) / group.props[0].next_player_stats_normal) * 100)
                     : 0;
                   return (
-                    <>
-                      {article}{' '}
-                      <span className="font-bold text-forest">{name}</span>
-                      {' '}de {playerLastName} {confirmed ? 'sobem' : 'podem subir'}{' '}
-                      <span className="font-bold text-forest">+{pct}%</span>
-                    </>
+                    <Trans
+                      t={t}
+                      i18nKey={confirmed ? 'jogador.insightConfirmadaUma' : 'jogador.insightDuvidaUma'}
+                      values={{
+                        gatilho: triggerLastName,
+                        artigo: t(`estatisticas.artigo.${tipo}`, { defaultValue: '' }),
+                        estatistica: t(`estatisticas.minusculo.${tipo}`, { defaultValue: bruto }),
+                        jogador: playerLastName,
+                        pct,
+                      }}
+                      components={[
+                        <span className={`font-bold ${config.color}`} key="gatilho" />,
+                        <span className="font-bold text-forest" key="estatistica" />,
+                        <span className="font-bold text-forest" key="pct" />,
+                      ]}
+                    />
                   );
                 })() : (
-                  <>
-                    as médias de {playerLastName} {confirmed ? 'sobem' : 'podem subir'} em{' '}
-                    <span className="font-bold text-forest">
-                      {group.props.length} categorias
-                    </span>
-                  </>
+                  <Trans
+                    t={t}
+                    i18nKey={confirmed ? 'jogador.insightConfirmadaVarias' : 'jogador.insightDuvidaVarias'}
+                    values={{ gatilho: triggerLastName, jogador: playerLastName, n: group.props.length }}
+                    components={[
+                      <span className={`font-bold ${config.color}`} key="gatilho" />,
+                      <span className="font-bold text-forest" key="n" />,
+                    ]}
+                  />
                 )}
               </p>
 
@@ -171,7 +147,7 @@ export const PropInsightsCard: React.FC<PropInsightsCardProps> = ({ propPlayers,
                   const semEle = prop.next_player_stats_when_leader_out;
                   const gap = semEle - normal;
                   const gapPct = normal > 0 ? Math.round((gap / normal) * 100) : 0;
-                  const statLabel = STAT_LABELS[prop.stat_type] ?? prop.stat_type.replace('player_', '').replace(/_/g, ' ');
+                  const statLabel = t(`estatisticas.nome.${prop.stat_type}`, { defaultValue: prop.stat_type.replace('player_', '').replace(/_/g, ' ') });
                   const isClickable = !!onInsightClick;
 
                   return (
@@ -219,7 +195,7 @@ export const PropInsightsCard: React.FC<PropInsightsCardProps> = ({ propPlayers,
 
                       {normal > 0 && (
                         <div className="text-[9px] opacity-40 mt-1">
-                          média normal → sem {triggerLastName}
+                          {t('jogador.insightMediaNormal', { gatilho: triggerLastName })}
                         </div>
                       )}
                     </button>
@@ -234,7 +210,7 @@ export const PropInsightsCard: React.FC<PropInsightsCardProps> = ({ propPlayers,
       {/* CTA hint */}
       {onInsightClick && (
         <div className="text-[9px] text-amber-700/40 mt-2 text-center">
-          Clique para filtrar o gráfico
+          {t('jogador.insightCliqueFiltrar')}
         </div>
       )}
     </div>

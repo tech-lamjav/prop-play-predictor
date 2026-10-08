@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { fraseEmPortugues } from '@/test/copy-em-portugues';
 import { evidenciaDe } from './futebol-evidencias';
 import { evidenciaDaPremissa } from './futebol-evidencia-da-premissa';
 import { prestacaoDaPremissa, divergenciaDaPrestacao } from './futebol-criterio';
@@ -50,14 +51,14 @@ describe('o número contraditório volta a aparecer', () => {
     const ev = evidenciaDe('goals_over_under', 'defesas_firmes', numeros({ ga_casa: 2, ga_fora: 2 }), 'home', true, 2.5);
 
     expect(ev).not.toBeNull();
-    expect(ev!.texto).toContain('4,0');
+    expect(fraseEmPortugues(ev!.texto)).toContain('4,0');
   });
 
   it('"defesas frágeis" acesa com soma ABAIXO da linha também mostra', () => {
     const ev = evidenciaDe('goals_over_under', 'defesas_vazaveis', numeros({ ga_casa: 0.5, ga_fora: 0.5 }), 'home', true, 2.5);
 
     expect(ev).not.toBeNull();
-    expect(ev!.texto).toContain('1,0');
+    expect(fraseEmPortugues(ev!.texto)).toContain('1,0');
   });
 
   it.each(['ataque_combinado', 'ataques_fracos'])('%s idem', (slug) => {
@@ -114,10 +115,11 @@ describe('a evidência tem uma fonte só', () => {
       linha: 3.25,
     });
 
-    expect(ev!.texto).toContain('2,0');
-    expect(ev!.texto).not.toContain('4,0');
+    const frase = fraseEmPortugues(ev!.texto);
+    expect(frase).toContain('2,0');
+    expect(frase).not.toContain('4,0');
     // E declara o corte, que o perfil de temporada nunca soube dizer.
-    expect(ev!.texto).toContain('2,95');
+    expect(frase).toContain('2,95');
   });
 
   it('sem prestação, o perfil de temporada continua servindo', () => {

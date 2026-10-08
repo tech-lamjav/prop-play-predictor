@@ -1,7 +1,7 @@
 import type { FutebolFixtureHistorico, FutebolFixtureNumeros } from '@/services/futebol-data.service';
 import { evidenciaDe, type Evidencia } from '@/utils/futebol-evidencias';
 import { evidenciaDoHistorico } from '@/utils/futebol-historico';
-import { fraseDaPrestacao, prestacaoDaPremissa } from '@/utils/futebol-criterio';
+import { copyDaPrestacao, prestacaoDaPremissa } from '@/utils/futebol-criterio';
 import { evidenciaDoInsumoMedido, type InsumoMedido } from '@/utils/futebol-insumo-medido';
 
 // O número que acompanha uma premissa, de UMA fonte só (spec #349, issue #358).
@@ -89,7 +89,7 @@ export function evidenciaDaPremissa({
   acesa?: boolean;
 }): Evidencia | null {
   const p = prestacaoDaPremissa(mercado, slug, historico, lado, linha);
-  if (p) return { texto: fraseDaPrestacao(p) };
+  if (p) return { texto: copyDaPrestacao(p) };
   // O nome do time sai da 094 e o VALOR do mart: nome não é medição, não muda
   // com a janela, e é o que a barra precisa para dizer de quem é cada lado.
   // Os quatro nomes, e não dois. `time`/`adversario` só existem onde a aposta

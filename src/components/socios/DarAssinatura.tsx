@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { PLANOS_A_VENDER, ROTULO_DO_PLANO, type PlanoAVender } from './crm-vocabulario';
 import { formatarDia } from './crm-lista';
 import { emReais, lerValorDigitado, valorComoTexto } from './crm-receita';
@@ -13,11 +14,15 @@ import { emReais, lerValorDigitado, valorComoTexto } from './crm-receita';
  * ⚠️ Isto é rótulo, não regra. Quem concede é a migration 142, que segue a
  * mesma escada de `shared/concessoes.ts`, e há um teste cobrando que as duas
  * não divirjam.
+ *
+ * ⚠️ Guarda CHAVE, e não texto. A tabela é declarada FORA do componente, então
+ * é avaliada uma vez no carregamento do módulo: texto aqui congelaria o idioma
+ * da primeira pintura. O `t()` acontece no render.
  */
-const O_QUE_LIBERA: Record<PlanoAVender, string> = {
-  entrada: 'Betinho ilimitado',
-  essencial: 'futebol completo e Betinho ilimitado',
-  completo: 'futebol, Betinho e as análises de NBA',
+const CHAVE_DO_QUE_LIBERA: Record<PlanoAVender, string> = {
+  entrada: 'dinheiro.assinatura.libera.entrada',
+  essencial: 'dinheiro.assinatura.libera.essencial',
+  completo: 'dinheiro.assinatura.libera.completo',
 };
 
 /** `2026-10-31`, daqui a um mês. O prazo mais comum, já preenchido. */
@@ -104,6 +109,7 @@ export function DarAssinatura({
   ) => void;
   aoEncerrar: (id: string) => void;
 }) {
+  const { t } = useTranslation('socios');
   const [plano, setPlano] = useState<PlanoAVender>(atual?.plano ?? 'essencial');
   const [vitalicia, setVitalicia] = useState(atual ? atual.venceEm === null : false);
   /*
@@ -132,14 +138,28 @@ export function DarAssinatura({
     <div className="rounded-rebrand-sm border border-line-2 bg-canvas p-3">
       {atual ? (
         <div className="mb-3">
+          {/* ⚠️ `ROTULO_DO_PLANO` entra INTERPOLADO e continua em português de
+              propósito (#558): o mesmo rótulo vai dentro da mensagem de cobrança
+              que o sócio cola no WhatsApp de um lead brasileiro. */}
           <p className="text-[13px] text-ink">
-            <span className="font-bold">{ROTULO_DO_PLANO[atual.plano]}</span> na mão,{' '}
-            {atual.venceEm === null ? 'vitalícia' : <>válida até {formatarDia(atual.venceEm)}</>}.
+            <Trans
+              t={t}
+              i18nKey={
+                atual.venceEm === null
+                  ? 'dinheiro.assinatura.atual.vitalicia'
+                  : 'dinheiro.assinatura.atual.validaAte'
+              }
+              values={{
+                plano: ROTULO_DO_PLANO[atual.plano],
+                dia: atual.venceEm === null ? '' : formatarDia(atual.venceEm),
+              }}
+              components={[<span className="font-bold" key="plano" />]}
+            />
           </p>
           <p className="text-[13px] text-ink-2">
             {atual.valorMensal === null
-              ? 'Sem cobrança combinada.'
-              : `${emReais(atual.valorMensal)} por mês.`}
+              ? t('dinheiro.assinatura.semCobrancaCombinada')
+              : t('dinheiro.assinatura.porMes', { valor: emReais(atual.valorMensal) })}
           </p>
           <button
             type="button"
@@ -147,7 +167,7 @@ export function DarAssinatura({
             onClick={() => aoEncerrar(atual.id)}
             className="mt-1 text-[12px] font-bold text-ink-2 underline hover:text-ink disabled:opacity-40"
           >
-            Encerrar a assinatura
+            {t('dinheiro.assinatura.encerrar')}
           </button>
           {/* ⚠️ Dizer isso aqui é o que impede o sócio de encerrar e ir embora
               achando que cortou.
@@ -157,19 +177,22 @@ export function DarAssinatura({
               nunca é preenchido — e derrubava o produto de quem estava pagando.
               Sem sinal confiável, a saída foi parar de adivinhar. */}
           <p className="mt-1 text-[11px] text-ink-2">
-            Encerrar registra o fim do acordo e <span className="font-bold">não tira o acesso</span>
-            . Para cortar o produto, use os acessos avulsos ao lado.
+            <Trans
+              t={t}
+              i18nKey="dinheiro.assinatura.encerrarNaoTiraAcesso"
+              components={[<span className="font-bold" key="naoTira" />]}
+            />
           </p>
         </div>
       ) : null}
 
       <label className="block text-[12px] text-ink-2">
-        Plano
+        {t('dinheiro.assinatura.campoPlano')}
         <select
           value={plano}
           disabled={salvando}
           onChange={(e) => setPlano(e.target.value as PlanoAVender)}
-          aria-label="Plano da assinatura manual"
+          aria-label={t('dinheiro.assinatura.ariaPlano')}
           className={CAMPO}
         >
           {PLANOS_A_VENDER.map((p) => (
@@ -182,21 +205,23 @@ export function DarAssinatura({
 
       {/* O que o plano libera, à vista. "Essencial" não diz nada sobre o
           Betinho ir junto, e ir junto é o que surpreende quem só leu o nome. */}
-      <p className="mt-1 text-[12px] text-ink-2">Libera {O_QUE_LIBERA[plano]}.</p>
+      <p className="mt-1 text-[12px] text-ink-2">
+        {t('dinheiro.assinatura.liberaFrase', { oQue: t(CHAVE_DO_QUE_LIBERA[plano]) })}
+      </p>
 
       {/* As duas perguntas lado a lado em tela larga: são do mesmo tamanho e
           são lidas juntas, porque juntas descrevem o acordo. */}
       <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <label className="block text-[12px] text-ink-2">
-            Válido até
+            {t('dinheiro.assinatura.campoValidoAte')}
             <input
               type="date"
               value={vitalicia ? '' : venceEm}
               min={hoje}
               disabled={salvando || vitalicia}
               onChange={(e) => setVenceEm(e.target.value)}
-              aria-label="Assinatura manual válida até"
+              aria-label={t('dinheiro.assinatura.ariaValidoAte')}
               className={CAMPO}
             />
           </label>
@@ -207,31 +232,33 @@ export function DarAssinatura({
               checked={vitalicia}
               disabled={salvando}
               onChange={(e) => setVitalicia(e.target.checked)}
-              aria-label="Assinatura vitalícia"
+              aria-label={t('dinheiro.assinatura.ariaVitalicia')}
               className="h-4 w-4 rounded border-line-2 accent-forest"
             />
-            Vitalícia, não vence
+            {t('dinheiro.assinatura.vitaliciaNaoVence')}
           </label>
         </div>
 
         <label className="block text-[12px] text-ink-2">
-          Cobrança mensal
+          {t('dinheiro.assinatura.campoCobrancaMensal')}
           <input
             type="text"
             inputMode="decimal"
             value={valor}
-            placeholder="R$ por mês"
+            // O símbolo da moeda no placeholder segue a MOEDA, e não o idioma: é
+            // o mesmo real em qualquer tela, como em `fmtDinheiro`.
+            placeholder={t('dinheiro.assinatura.placeholderValor')}
             disabled={salvando}
             onChange={(e) => setValor(e.target.value)}
-            aria-label="Valor cobrado por mês"
+            aria-label={t('dinheiro.assinatura.ariaValor')}
             className={CAMPO}
           />
           <span className="mt-1 block text-[11px] text-ink-2">
             {valorInvalido
-              ? 'Esse valor não dá para ler. Escreva só o número, como 39,90.'
+              ? t('dinheiro.comum.valorIlegivel')
               : valorLido === null
-                ? 'Em branco quer dizer sem cobrança.'
-                : `${emReais(valorLido)} todo mês, recorrente.`}
+                ? t('dinheiro.assinatura.emBrancoSemCobranca')
+                : t('dinheiro.assinatura.todoMesRecorrente', { valor: emReais(valorLido) })}
           </span>
         </label>
       </div>
@@ -242,7 +269,7 @@ export function DarAssinatura({
 
       {atual ? null : (
         <label className="mt-3 block text-[12px] text-ink-2">
-          Começou em
+          {t('dinheiro.assinatura.campoComecouEm')}
           <input
             type="date"
             value={comecouEm}
@@ -253,23 +280,24 @@ export function DarAssinatura({
             max={hoje}
             disabled={salvando}
             onChange={(e) => setComecouEm(e.target.value)}
-            aria-label="Quando a assinatura começou"
+            aria-label={t('dinheiro.assinatura.ariaComecouEm')}
             className={CAMPO}
           />
           <span className="mt-1 block text-[11px] text-ink-2">
             {comecouEm > hoje
-              ? 'Não dá para começar no futuro.'
+              ? t('dinheiro.assinatura.naoComecaNoFuturo')
               : comecouEm < umAnoAtras(hoje)
-                ? 'Mais de um ano atrás. Confira o ano antes de gravar.'
+                ? t('dinheiro.assinatura.maisDeUmAno')
                 : mesesQueVaoAbrir === null
-                  ? 'Hoje, no caso normal. Para trás, no máximo um ano.'
+                  ? t('dinheiro.assinatura.hojeNoCasoNormal')
                   : /* ⚠️ O aviso central deste campo. Retroagir com cobrança
                        combinada faz a pessoa aparecer devendo vários meses de
                        uma vez, e esse número não pode pegar ninguém de
                        surpresa depois, na fila. */
-                    `Vai abrir ${mesesQueVaoAbrir} ${
-                      mesesQueVaoAbrir === 1 ? 'mês' : 'meses'
-                    } em aberto, ${emReais(mesesQueVaoAbrir * (valorLido as number))} no total.`}
+                    t('dinheiro.assinatura.vaiAbrir', {
+                      count: mesesQueVaoAbrir,
+                      total: emReais(mesesQueVaoAbrir * (valorLido as number)),
+                    })}
           </span>
         </label>
       )}
@@ -294,7 +322,11 @@ export function DarAssinatura({
         }
         className="mt-3 h-10 w-full rounded-rebrand-sm bg-forest px-3 text-[13px] font-bold text-white disabled:opacity-40"
       >
-        {salvando ? 'Gravando…' : atual ? 'Trocar o plano ou o prazo' : 'Dar esta assinatura'}
+        {salvando
+          ? t('dinheiro.comum.gravando')
+          : atual
+            ? t('dinheiro.assinatura.trocarPlanoOuPrazo')
+            : t('dinheiro.assinatura.darEstaAssinatura')}
       </button>
 
       <p className="mt-2 text-[11px] text-ink-2">
@@ -302,8 +334,8 @@ export function DarAssinatura({
             acordo, porque é a pergunta que surge ao dar uma assinatura: e se a
             pessoa parar de pagar? */}
         {vitalicia
-          ? 'Vitalícia não entra na fila de vencimento. Se tiver cobrança mensal e deixar de pagar, entra na fila de inadimplentes.'
-          : 'Entra na fila de cobrança sete dias antes de vencer. Não encerra sozinha: parar de pagar só coloca a pessoa na fila de inadimplentes, e quem encerra é você.'}
+          ? t('dinheiro.assinatura.avisoVitalicia')
+          : t('dinheiro.assinatura.avisoComPrazo')}
       </p>
     </div>
   );

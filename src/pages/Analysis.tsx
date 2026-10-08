@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 import AuthenticatedLayout from "../components/AuthenticatedLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,13 +19,8 @@ import {
   Shield,
   Zap
 } from "lucide-react";
-import { LanguageToggle } from "@/components/LanguageToggle";
 import { InjuryInsightsDashboard } from "@/components/injury-insights/InjuryInsightsDashboard";
 import type { InjuryInsight } from "@/types/sports";
-// ⚠️ Toda tela que traduz precisa desta linha: o i18next deixou de ser
-// iniciado no main.tsx para sair do pacote de entrada. O porquê está em
-// src/lib/i18n.ts.
-import '@/lib/i18n';
 
 // Mock data for the analysis page (keeping existing mock data for now)
 const mockMetrics = {
@@ -94,8 +89,8 @@ const mockInjuries = [
 ];
 
 const Analysis = () => {
+  const { t } = useTranslation('nba');
   const navigate = useNavigate();
-  const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("insights");
 
@@ -128,16 +123,16 @@ const Analysis = () => {
                     className="text-slate-300 hover:text-white"
                     onClick={() => navigate("/bets")}
                   >
-                    Apostas
+                    {t('analiseInsights.navApostas')}
                   </Button>
                   <Button variant="ghost" className="text-slate-300 hover:text-white">
-                    Players
+                    {t('analiseInsights.navJogadores')}
                   </Button>
                   <Button variant="ghost" className="text-slate-300 hover:text-white">
-                    Games
+                    {t('analiseInsights.navJogos')}
                   </Button>
                   <Button variant="ghost" className="text-green-400 hover:text-green-300">
-                    Analysis
+                    {t('analiseInsights.navAnalise')}
                   </Button>
                 </nav>
               </div>
@@ -147,15 +142,14 @@ const Analysis = () => {
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
                   <Input
-                    placeholder="Search players..."
+                    placeholder={t('analiseInsights.buscarPlaceholder')}
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10 bg-slate-800 border-slate-700 text-white placeholder:text-slate-400 w-64"
                   />
                 </div>
-                <LanguageToggle />
                 <Button className="bg-green-600 hover:bg-green-700">
-                  Sign in
+                  {t('analiseInsights.entrar')}
                 </Button>
               </div>
             </div>
@@ -166,7 +160,7 @@ const Analysis = () => {
       <div className="container mx-auto px-4 py-8">
         {/* Page Header */}
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold">Analysis & Insights</h1>
+          <h1 className="text-3xl font-bold">{t('analiseInsights.titulo')}</h1>
           <Button variant="outline" className="border-slate-600 text-slate-300">
             <Filter className="h-4 w-4" />
           </Button>
@@ -180,23 +174,23 @@ const Analysis = () => {
               className="data-[state=active]:bg-green-600 data-[state=active]:text-white"
             >
               <Zap className="h-4 w-4 mr-2" />
-              Insights
+              {t('analiseInsights.abaInsights')}
             </TabsTrigger>
             <TabsTrigger value="injury-insights" className="text-slate-400">
               <AlertCircle className="h-4 w-4 mr-2" />
-              Injury Insights
+              {t('analiseInsights.abaLesoes')}
             </TabsTrigger>
             <TabsTrigger value="trends" className="text-slate-400">
               <TrendingUp className="h-4 w-4 mr-2" />
-              Trends
+              {t('analiseInsights.abaTendencias')}
             </TabsTrigger>
             <TabsTrigger value="models" className="text-slate-400">
               <BarChart3 className="h-4 w-4 mr-2" />
-              Models
+              {t('analiseInsights.abaModelos')}
             </TabsTrigger>
             <TabsTrigger value="history" className="text-slate-400">
               <Calendar className="h-4 w-4 mr-2" />
-              History
+              {t('analiseInsights.abaHistorico')}
             </TabsTrigger>
           </TabsList>
 
@@ -206,7 +200,7 @@ const Analysis = () => {
               <Card className="bg-slate-800 border-slate-700">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-slate-400">Win Rate</span>
+                    <span className="text-sm text-slate-400">{t('analiseInsights.kpiAcerto')}</span>
                     <BarChart3 className="h-4 w-4 text-green-400" />
                   </div>
                   <div className="text-2xl font-bold mb-1">{mockMetrics.winRate.value}%</div>
@@ -219,7 +213,7 @@ const Analysis = () => {
               <Card className="bg-slate-800 border-slate-700">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-slate-400">ROI</span>
+                    <span className="text-sm text-slate-400">{t('analiseInsights.kpiRoi')}</span>
                     <Target className="h-4 w-4 text-green-400" />
                   </div>
                   <div className="text-2xl font-bold mb-1">+{mockMetrics.roi.value}%</div>
@@ -232,7 +226,7 @@ const Analysis = () => {
               <Card className="bg-slate-800 border-slate-700">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-slate-400">Avg. Edge</span>
+                    <span className="text-sm text-slate-400">{t('analiseInsights.kpiVantagem')}</span>
                     <TrendingUp className="h-4 w-4 text-green-400" />
                   </div>
                   <div className="text-2xl font-bold mb-1">{mockMetrics.avgEdge.value}%</div>
@@ -245,7 +239,7 @@ const Analysis = () => {
               <Card className="bg-slate-800 border-slate-700">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-slate-400">Opportunities</span>
+                    <span className="text-sm text-slate-400">{t('analiseInsights.kpiOportunidades')}</span>
                     <BarChart3 className="h-4 w-4 text-green-400" />
                   </div>
                   <div className="text-2xl font-bold mb-1">{mockMetrics.opportunities.value}</div>
@@ -263,11 +257,11 @@ const Analysis = () => {
                 {/* Performance by Prop Type */}
                 <Card className="bg-slate-800 border-slate-700">
                   <CardHeader>
-                    <CardTitle className="text-white">Performance by Prop Type</CardTitle>
+                    <CardTitle className="text-white">{t('analiseInsights.porTipoTitulo')}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="h-48 flex items-center justify-center text-slate-400">
-                      Chart visualization would appear here
+                      {t('analiseInsights.graficoPlaceholder')}
                     </div>
                     
                     {/* Prop Performance Cards */}
@@ -288,19 +282,19 @@ const Analysis = () => {
                 {/* Recent Performance Table */}
                 <Card className="bg-slate-800 border-slate-700">
                   <CardHeader>
-                    <CardTitle className="text-white">Recent Performance</CardTitle>
+                    <CardTitle className="text-white">{t('analiseInsights.recentesTitulo')}</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="overflow-x-auto">
                       <table className="w-full">
                         <thead>
                           <tr className="border-b border-slate-700">
-                            <th className="text-left py-3 text-slate-400">Date</th>
-                            <th className="text-left py-3 text-slate-400">Player</th>
-                            <th className="text-left py-3 text-slate-400">Prop</th>
-                            <th className="text-left py-3 text-slate-400">Line</th>
-                            <th className="text-left py-3 text-slate-400">Result</th>
-                            <th className="text-left py-3 text-slate-400">Outcome</th>
+                            <th className="text-left py-3 text-slate-400">{t('analiseInsights.thData')}</th>
+                            <th className="text-left py-3 text-slate-400">{t('analiseInsights.thJogador')}</th>
+                            <th className="text-left py-3 text-slate-400">{t('analiseInsights.thProp')}</th>
+                            <th className="text-left py-3 text-slate-400">{t('analiseInsights.thLinha')}</th>
+                            <th className="text-left py-3 text-slate-400">{t('analiseInsights.thResultado')}</th>
+                            <th className="text-left py-3 text-slate-400">{t('analiseInsights.thDesfecho')}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -327,7 +321,7 @@ const Analysis = () => {
                       </table>
                     </div>
                     <Button className="w-full mt-6 bg-green-600 hover:bg-green-700">
-                      View All Results
+                      {t('analiseInsights.verTodos')}
                     </Button>
                   </CardContent>
                 </Card>
@@ -338,7 +332,7 @@ const Analysis = () => {
                 {/* Today's Top Insights */}
                 <Card className="bg-slate-800 border-slate-700">
                   <CardHeader>
-                    <CardTitle className="text-white">Today's Top Insights</CardTitle>
+                    <CardTitle className="text-white">{t('analiseInsights.topInsightsTitulo')}</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {mockInsights.map((insight, index) => (
@@ -351,7 +345,7 @@ const Analysis = () => {
                         </div>
                         <p className="text-sm text-slate-300">{insight.description}</p>
                         <Button variant="link" className="text-green-400 p-0 h-auto mt-2">
-                          Learn More →
+                          {t('analiseInsights.saibaMais')}
                         </Button>
                       </div>
                     ))}
@@ -363,7 +357,7 @@ const Analysis = () => {
                   <CardHeader>
                     <CardTitle className="text-white flex items-center gap-2">
                       <AlertCircle className="h-5 w-5 text-yellow-500" />
-                      Key Injuries
+                      {t('analiseInsights.lesoesTitulo')}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -392,11 +386,10 @@ const Analysis = () => {
             <div className="bg-slate-800 rounded-lg p-6">
               <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
                 <AlertCircle className="h-6 w-6 text-red-500" />
-                Injury Insights Dashboard
+                {t('analiseInsights.painelLesoesTitulo')}
               </h2>
               <p className="text-slate-300 mb-6">
-                Real-time analysis of player injuries and their impact on prop betting opportunities. 
-                Data sourced from BigQuery analytics.
+                {t('analiseInsights.painelLesoesTexto')}
               </p>
               
               <InjuryInsightsDashboard
@@ -411,8 +404,8 @@ const Analysis = () => {
             <Card className="bg-slate-800 border-slate-700">
               <CardContent className="p-12 text-center">
                 <TrendingUp className="h-16 w-16 text-slate-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-white mb-2">Trends Analysis</h3>
-                <p className="text-slate-400">Trend analysis and pattern recognition coming soon.</p>
+                <h3 className="text-lg font-semibold text-white mb-2">{t('analiseInsights.tendenciasTitulo')}</h3>
+                <p className="text-slate-400">{t('analiseInsights.tendenciasTexto')}</p>
               </CardContent>
             </Card>
           </TabsContent>
@@ -421,8 +414,8 @@ const Analysis = () => {
             <Card className="bg-slate-800 border-slate-700">
               <CardContent className="p-12 text-center">
                 <BarChart3 className="h-16 w-16 text-slate-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-white mb-2">Model Performance</h3>
-                <p className="text-slate-400">Model performance metrics and validation coming soon.</p>
+                <h3 className="text-lg font-semibold text-white mb-2">{t('analiseInsights.modelosTitulo')}</h3>
+                <p className="text-slate-400">{t('analiseInsights.modelosTexto')}</p>
               </CardContent>
             </Card>
           </TabsContent>
@@ -431,8 +424,8 @@ const Analysis = () => {
             <Card className="bg-slate-800 border-slate-700">
               <CardContent className="p-12 text-center">
                 <Calendar className="h-16 w-16 text-slate-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-white mb-2">Historical Data</h3>
-                <p className="text-slate-400">Historical performance data and analysis coming soon.</p>
+                <h3 className="text-lg font-semibold text-white mb-2">{t('analiseInsights.historicoTitulo')}</h3>
+                <p className="text-slate-400">{t('analiseInsights.historicoTexto')}</p>
               </CardContent>
             </Card>
           </TabsContent>

@@ -1,7 +1,32 @@
 import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { simboloDaMoeda } from '@/config/moedas';
+import { moedaAtiva } from '@/utils/moeda-ativa';
+import { fmtPct, fmtDinheiroDaPessoa } from '@/utils/formato';
 import { compactify, type HeatmapData, type HeatmapCell } from '@/utils/dashboardAggregations';
 
 export type HeatmapMetric = 'roi' | 'profit' | 'volume';
+
+/**
+ * Os três botões de métrica. A tabela mora FORA do componente e por isso
+ * guarda CHAVE, nunca texto — o `t()` acontece no render.
+ *
+ * `chaveCurta` é a versão de celular, onde "Quantidade" não cabe. O ROI usa a
+ * mesma chave nas duas larguras porque a sigla já é curta.
+ */
+const METRICAS: { valor: HeatmapMetric; chave: string; chaveCurta: string }[] = [
+  { valor: 'roi', chave: 'painel.mapa.metrica.roi', chaveCurta: 'painel.mapa.metrica.roi' },
+  {
+    valor: 'profit',
+    chave: 'painel.mapa.metrica.lucro',
+    chaveCurta: 'painel.mapa.metrica.lucroCurto',
+  },
+  {
+    valor: 'volume',
+    chave: 'painel.mapa.metrica.quantidade',
+    chaveCurta: 'painel.mapa.metrica.quantidadeCurto',
+  },
+];
 
 interface BigHeatmapProps {
   data: HeatmapData;
@@ -58,7 +83,7 @@ const textColorForCell = (
   return t > 0.5 ? '#fff' : '#1a1d1a';
 };
 
-const formatRoi = (roi: number) => `${roi > 0 ? '+' : ''}${roi.toFixed(0)}%`;
+const formatRoi = (roi: number) => `${roi > 0 ? '+' : ''}${fmtPct(roi / 100, 0)}`;
 
 
 export const BigHeatmap: React.FC<BigHeatmapProps> = ({
@@ -67,9 +92,10 @@ export const BigHeatmap: React.FC<BigHeatmapProps> = ({
   onSelectCell,
   metric = 'roi',
   onMetricChange,
-  formatValue = (v) => `R$ ${v.toFixed(0)}`,
+  formatValue = (v) => fmtDinheiroDaPessoa(v, { casas: 0 }),
   compact = false,
 }) => {
+  const { t } = useTranslation('apostas');
   const [hoveredCell, setHoveredCell] = useState<{ l: number; m: number } | null>(null);
   // Esconde linhas/colunas inteiramente vazias por padrão — usuário mais comum só quer ver o que realmente apostou
   const [hideEmpty, setHideEmpty] = useState(true);
@@ -109,17 +135,17 @@ export const BigHeatmap: React.FC<BigHeatmapProps> = ({
       <div className="bg-white border border-line rounded-xl p-5">
         <div className="flex items-center justify-between mb-3">
           <div>
-            <div className="text-[11px] uppercase tracking-[0.14em] text-ink-2 font-bold">ROI por liga × mercado</div>
-            <div className="text-[12px] text-ink-2 mt-0.5">Green = lucro · red = prejuízo · cinza = sem apostas</div>
+            <div className="text-[11px] uppercase tracking-[0.14em] text-ink-2 font-bold">{t('painel.mapa.etiqueta')}</div>
+            <div className="text-[12px] text-ink-2 mt-0.5">{t('painel.mapa.legenda')}</div>
           </div>
         </div>
-        <p className="text-[13px] text-ink-2 py-8 text-center">Nenhuma aposta encerrada no período</p>
+        <p className="text-[13px] text-ink-2 py-8 text-center">{t('painel.mapa.vazio')}</p>
       </div>
     );
   }
 
   const renderCellValue = (cell: HeatmapCell) => {
-    if (cell.n === 0) return <span className={`${compact ? 'text-[10px]' : 'text-[11px]'} text-ink-2`}>{compact ? '—' : 'sem dados'}</span>;
+    if (cell.n === 0) return <span className={`${compact ? 'text-[10px]' : 'text-[11px]'} text-ink-2`}>{compact ? '—' : t('painel.mapa.semDados')}</span>;
     if (metric === 'roi' && cell.roi != null) {
       return (
         <>
@@ -143,7 +169,7 @@ export const BigHeatmap: React.FC<BigHeatmapProps> = ({
     return (
       <>
         <div className={`font-bold tabular leading-none ${compact ? 'text-[14px]' : 'text-[18px]'}`}>{cell.n}</div>
-        <div className={`tabular opacity-80 mt-1 ${compact ? 'text-[9px]' : 'text-[10px]'}`}>apostas</div>
+        <div className={`tabular opacity-80 mt-1 ${compact ? 'text-[9px]' : 'text-[10px]'}`}>{t('painel.mapa.apostas')}</div>
       </>
     );
   };
@@ -153,13 +179,13 @@ export const BigHeatmap: React.FC<BigHeatmapProps> = ({
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
         <div>
-          <div className="text-[11px] uppercase tracking-[0.14em] text-ink-2 font-bold">ROI por liga × mercado</div>
+          <div className="text-[11px] uppercase tracking-[0.14em] text-ink-2 font-bold">{t('painel.mapa.etiqueta')}</div>
           <div className="text-[12px] text-ink-2 mt-0.5">
             {selectedCell
-              ? 'Clique novamente pra desmarcar'
+              ? t('painel.mapa.desmarcar')
               : compact
-                ? 'Toque num quadradinho pra ver detalhes'
-                : 'Clique num quadradinho pra ver detalhes ao lado'}
+                ? t('painel.mapa.tocarDetalhes')
+                : t('painel.mapa.clicarDetalhes')}
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2 self-start">
@@ -176,35 +202,34 @@ export const BigHeatmap: React.FC<BigHeatmapProps> = ({
                   ? 'bg-forest-tint text-forest border border-forest/30'
                   : 'bg-white text-ink-2 border border-line hover:bg-canvas-2'
               }`}
-              title={hideEmpty ? `${hiddenCount} ${hiddenCount === 1 ? 'linha/coluna oculta' : 'linhas/colunas ocultas'}. Clique para mostrar todas.` : 'Esconder linhas e colunas vazias'}
+              title={
+                hideEmpty
+                  ? t('painel.mapa.ocultas', { count: hiddenCount })
+                  : t('painel.mapa.esconderVaziosTitulo')
+              }
               aria-pressed={hideEmpty}
             >
-              {hideEmpty ? 'Mostrar tudo' : 'Esconder vazios'}
+              {hideEmpty ? t('painel.mapa.mostrarTudo') : t('painel.mapa.esconderVazios')}
             </button>
           )}
           {onMetricChange && (
             <div className="flex gap-1">
-              {(['roi', 'profit', 'volume'] as const).map((m) => {
-                const label = compact
-                  ? m === 'roi' ? 'ROI' : m === 'profit' ? 'R$' : 'Qtd'
-                  : m === 'roi' ? 'ROI' : m === 'profit' ? 'Lucro' : 'Quantidade';
-                return (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => onMetricChange(m)}
-                    className={`rounded-md font-extrabold uppercase tracking-[0.08em] transition-colors ${
-                      compact ? 'h-9 px-3 text-[11px]' : 'h-7 px-2.5 text-[10px]'
-                    } ${
-                      metric === m
-                        ? 'bg-forest text-white'
-                        : 'bg-white text-ink-2 border border-line hover:bg-canvas-2'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
+              {METRICAS.map(({ valor, chave, chaveCurta }) => (
+                <button
+                  key={valor}
+                  type="button"
+                  onClick={() => onMetricChange(valor)}
+                  className={`rounded-md font-extrabold uppercase tracking-[0.08em] transition-colors ${
+                    compact ? 'h-9 px-3 text-[11px]' : 'h-7 px-2.5 text-[10px]'
+                  } ${
+                    metric === valor
+                      ? 'bg-forest text-white'
+                      : 'bg-white text-ink-2 border border-line hover:bg-canvas-2'
+                  }`}
+                >
+                  {t(compact ? chaveCurta : chave, { simbolo: simboloDaMoeda(moedaAtiva()) })}
+                </button>
+              ))}
             </div>
           )}
         </div>
@@ -285,9 +310,16 @@ export const BigHeatmap: React.FC<BigHeatmapProps> = ({
                     }`}
                     style={{ backgroundColor: bg, color: fg }}
                     title={
+                      // Liga e mercado vêm do banco e entram como vieram.
                       cell.n === 0
-                        ? `${lg} · ${mk} — sem dados`
-                        : `${lg} · ${mk} — ${cell.n} apostas, ROI ${cell.roi?.toFixed(1)}%, ${formatValue(cell.profit)}`
+                        ? t('painel.mapa.celulaSemDados', { liga: lg, mercado: mk })
+                        : t('painel.mapa.celula', {
+                            liga: lg,
+                            mercado: mk,
+                            count: cell.n,
+                            roi: fmtPct((cell.roi ?? 0) / 100, 1),
+                            valor: formatValue(cell.profit),
+                          })
                     }
                   >
                     {renderCellValue(cell)}

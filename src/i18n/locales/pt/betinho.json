@@ -1,0 +1,215 @@
+{
+  "acoes": {
+    "telegram": "Começar grátis no Telegram",
+    "verPainel": "Ver o dashboard",
+    "verComoFunciona": "Ver como funciona",
+    "guia": "Guia de uso"
+  },
+  "hero": {
+    "bolao": {
+      "etiqueta": "Vindo do bolão da Copa",
+      "tituloLinhaUm": "Você acabou de palpitar no bolão.",
+      "tituloLinhaDois": "E as apostas de verdade, você anota?",
+      "chamada": "Documenta tudo no Telegram em 10 segundos — print do bilhete, a IA registra, e a sua banca aparece organizada no dashboard. Sem planilha, sem app novo."
+    },
+    "padrao": {
+      "etiqueta": "Betinho · Gestão de banca no Telegram",
+      "tituloLinhaUm": "Você tá no lucro ou no prejuízo?",
+      "tituloLinhaDois": "O Betinho sabe de cabeça.",
+      "chamada": "Manda o print do bilhete no Telegram. A IA lê, registra e te devolve banca, ROI e taxa de acerto — sem planilha, sem digitação. Testa aí embaixo: <0>manda um print pro Betinho.</0>",
+      "rodape": "3 apostas por dia grátis · Sem cartão · A banca é sua, a gente só organiza"
+    }
+  },
+  "demo": {
+    "selo": "dados de exemplo",
+    "chat": {
+      "remetente": "Telegram · @betinho",
+      "lendo": "lendo o bilhete…",
+      "fim": "Esses eram os 3 prints de exemplo — no bot é igual: <0>3 registros por dia grátis.</0>",
+      "queroBot": "Quero o bot de verdade",
+      "mandarPrint": "Mandar print pro Betinho"
+    },
+    "narrativa": {
+      "etiqueta": "Betinho · resumo do período",
+      "recebi": "Recebi! <0>{{aposta}}</0> registrada como pendente. Resolveu? Me conta que eu atualizo a banca.",
+      "resumo": "Seu mês tá positivo: <0>{{roi}} de ROI</0> — as props da NBA puxaram o resultado."
+    },
+    "kpis": {
+      "roi": "ROI",
+      "lucro": "Lucro líquido",
+      "totalApostado": "Total apostado",
+      "taxa": "Taxa de acerto",
+      "apostas": "Apostas",
+      "pendentes_zero": "{{count}} pendentes",
+      "pendentes_one": "{{count}} pendente",
+      "pendentes_other": "{{count}} pendentes"
+    },
+    "plano": {
+      "etiqueta": "Plano de ação",
+      "titulo": "3 movimentos que aumentariam seu ROI",
+      "verFatia": "Ver fatia no mapa",
+      "oportunidade": {
+        "rotulo": "Oportunidade",
+        "titulo": "Props da NBA é sua mina",
+        "texto": "+38% de ROI em 12 apostas. É a sua melhor fatia — volume aqui tem pagado."
+      },
+      "alerta": {
+        "rotulo": "Alerta",
+        "titulo": "Serie A tá custando caro",
+        "texto": "−45% de ROI no Over/Under da Serie A: 4 apostas, 3 reds. Vale repensar essa fatia."
+      },
+      "disciplina": {
+        "rotulo": "Disciplina",
+        "titulo": "Stake dobrada depois de red",
+        "texto": "Sua média é R$ 120, mas depois de perder você dobra a mão. Constância paga mais que recuperação."
+      }
+    },
+    "mapa": {
+      "titulo": "ROI por liga × mercado",
+      "legenda": "Verde = lucro · vermelho = prejuízo · cinza = sem volume",
+      "semDados": "sem dados",
+      "colunas": {
+        "props": "Player Props",
+        "ml": "ML",
+        "overUnder": "Over/Under"
+      }
+    },
+    "tabela": {
+      "titulo": "Últimos registros",
+      "contagem": "{{total}} apostas no período · mostrando as últimas 5",
+      "hoje": "hoje",
+      "colunas": {
+        "data": "Data",
+        "descricao": "Descrição",
+        "esporte": "Esporte",
+        "valor": "Valor",
+        "odd": "Odd",
+        "retorno": "Retorno",
+        "situacao": "Situação"
+      }
+    },
+    "status": {
+      "ganhou": "GANHOU",
+      "perdeu": "PERDEU",
+      "pendente": "PENDENTE",
+      "cashout": "CASHOUT"
+    },
+    "esportes": {
+      "basquete": "Basquete",
+      "futebol": "Futebol"
+    },
+    "apostas": {
+      "lebronPontos": "LeBron 25+ pontos",
+      "corinthiansML": "Corinthians ML",
+      "curryTres": "Curry 5+ bolas de 3",
+      "underGols": "Under 2.5 gols",
+      "jokicPontosAssistencias": "Jokic 25+ pts & 8+ asts",
+      "flamengoML": "Flamengo ML",
+      "overPontos": "Over 215.5 pontos"
+    },
+    "rodape": "3 apostas por dia grátis · sem cartão"
+  },
+  "fatos": {
+    "um": "Print ou texto",
+    "dois": "1 mensagem = 1 aposta",
+    "tres": "Banca, ROI e taxa",
+    "quatro": "Cashout e status",
+    "cinco": "Tags e filtros"
+  },
+  "comoFunciona": {
+    "etiqueta": "Como funciona",
+    "titulo": "3 passos. Sem complicação.",
+    "passos": {
+      "um": {
+        "titulo": "Conecta seu Telegram",
+        "texto": "Sincroniza o bot com sua conta em segundos."
+      },
+      "dois": {
+        "titulo": "Manda como você fala",
+        "texto": "\"Apostei 50 no Brasil a 1.85\" ou o print do bilhete. A IA extrai e organiza tudo."
+      },
+      "tres": {
+        "titulo": "Vê tudo no dashboard",
+        "texto": "Banca, ROI, taxa de acerto. Organizado, automático."
+      }
+    }
+  },
+  "video": {
+    "etiqueta": "Sem truque",
+    "titulo": "O Betinho de verdade, em 30 segundos",
+    "chamada": "A demonstração lá em cima é simulada. Isto aqui é gravação real do bot no Telegram — print enviado, aposta confirmada.",
+    "semSuporte": "Seu navegador não suporta o elemento de vídeo."
+  },
+  "dentro": {
+    "etiqueta": "O que tem dentro",
+    "titulo": "A planilha que se preenche sozinha",
+    "chamada": "Todo apostador já tentou anotar as apostas. A planilha morre na segunda semana — não pela falta de vontade, pelo trabalho. O Betinho tira o trabalho da equação.",
+    "itens": {
+      "um": {
+        "titulo": "Registro por print ou texto",
+        "texto": "Manda o print do bilhete ou escreve \"apostei 50 no Corinthians a 2.10\". A IA extrai jogo, odd e valor — 1 mensagem, 1 aposta."
+      },
+      "dois": {
+        "titulo": "Banca, ROI e taxa sem planilha",
+        "texto": "Lucro, retorno, média de odds e evolução da banca calculados sozinhos, aposta a aposta. O número que você evita olhar, sempre à vista."
+      },
+      "tres": {
+        "titulo": "O Betinho comenta seus números",
+        "texto": "No dashboard, ele resume seu período em bom português: onde você ganha, onde você insiste em perder. Análise, não julgamento."
+      },
+      "quatro": {
+        "titulo": "Cashout, status e filtros",
+        "texto": "Resolveu a aposta? Responde \"ganhou\", \"perdeu\" ou \"cashout\" no bot e o painel atualiza. Depois filtre por esporte, status, data ou tag."
+      }
+    }
+  },
+  "combinado": {
+    "etiqueta": "Transparência",
+    "titulo": "O combinado que a gente assina",
+    "nuncaTitulo": "O que você nunca vai ver aqui",
+    "nunca": {
+      "um": "Dica de aposta no meio do seu chat",
+      "dois": "Acesso à sua conta na casa de aposta",
+      "tres": "Spam — o bot só fala de registro",
+      "quatro": "Número maquiado pra você se sentir melhor"
+    },
+    "sempreTitulo": "O que você sempre vai ter",
+    "sempre": {
+      "um": "Registro em segundos, por print ou texto",
+      "dois": "Seu lucro e seu prejuízo, sem filtro",
+      "tres": "Seus dados exportáveis quando quiser",
+      "quatro": "A banca é sua — a gente só organiza"
+    },
+    "assinatura": "— Betinho · combinado válido desde o primeiro print"
+  },
+  "faq": {
+    "etiqueta": "Perguntas frequentes",
+    "titulo": "Bora tirar dúvida",
+    "itens": {
+      "gratis": {
+        "pergunta": "É grátis?",
+        "resposta": "É. No plano grátis você registra até 3 apostas por dia pelo bot e usa o gestor completo — banca, ROI, filtros e exportação. O Premium libera registros ilimitados e as análises do Betinho IA no dashboard."
+      },
+      "whatsapp": {
+        "pergunta": "Funciona no WhatsApp?",
+        "resposta": "Não — o Betinho mora no Telegram. Você conecta sua conta em segundos e todo o registro acontece por lá."
+      },
+      "print": {
+        "pergunta": "Funciona com print de qualquer casa?",
+        "resposta": "Serve print de bilhete de qualquer casa — a IA lê o texto da imagem e extrai jogo, odd e valor. Saiu algo errado? Você corrige no dashboard em segundos. E se quiser, manda o caso pro suporte: cada bilhete que a IA erra ajuda a gente a melhorar a leitura."
+      },
+      "dinheiro": {
+        "pergunta": "Vocês têm acesso ao meu dinheiro?",
+        "resposta": "Zero. O Betinho não conecta na sua conta da casa de aposta — ele registra o que você manda. É um caderno inteligente, não uma carteira."
+      },
+      "trabalho": {
+        "pergunta": "Dá trabalho manter?",
+        "resposta": "Uma mensagem por aposta. Resolveu? Responde \"ganhou\", \"perdeu\" ou \"cashout\" e o painel atualiza. Planilha nunca mais."
+      }
+    }
+  },
+  "fechamento": {
+    "titulo": "Manda o primeiro print.",
+    "texto": "Conta grátis em um minuto, bot no Telegram, 3 registros por dia sem pagar nada. Na próxima aposta, você já sabe onde sua banca está."
+  }
+}

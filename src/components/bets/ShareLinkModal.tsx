@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link2, Copy, Loader2, Calendar as CalendarIcon, X } from 'lucide-react';
 import { format, isBefore } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
@@ -10,14 +11,14 @@ import { Badge } from '@/components/ui/badge';
 import { useShareLink, type ShareLinkFilters } from '@/hooks/use-share-link';
 import { toast } from 'sonner';
 
-const STATUS_LABELS: Record<string, string> = {
-  pending: 'Pendente',
-  won: 'Ganhou',
-  lost: 'Perdeu',
-  half_won: '1/2 Green',
-  half_lost: '1/2 Red',
-  cashout: 'Cashout',
-  void: 'Void',
+const STATUS_CHAVES: Record<string, string> = {
+  pending: 'status.pendente',
+  won: 'status.ganhou',
+  lost: 'status.perdeu',
+  half_won: 'status.meioGreen',
+  half_lost: 'status.meioRed',
+  cashout: 'status.cashout',
+  void: 'status.void',
 };
 
 interface Tag {
@@ -52,6 +53,7 @@ export const ShareLinkModal: React.FC<ShareLinkModalProps> = ({
   filters,
   userTags,
 }) => {
+  const { t } = useTranslation('apostas');
   const { generateLink, isLoading, shareUrl, reset } = useShareLink();
 
   const [localDateFrom, setLocalDateFrom] = useState<string>(filters.dateFrom || '');
@@ -78,16 +80,16 @@ export const ShareLinkModal: React.FC<ShareLinkModalProps> = ({
     };
     try {
       await generateLink(mergedFilters);
-      toast.success('Link gerado com sucesso!');
+      toast.success(t('compartilhar.linkGerado'));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Falha ao gerar link');
+      toast.error(err instanceof Error ? err.message : t('compartilhar.falhaLink'));
     }
   };
 
   const handleCopy = () => {
     if (!shareUrl) return;
     navigator.clipboard.writeText(shareUrl);
-    toast.success('Link copiado!');
+    toast.success(t('compartilhar.linkCopiado'));
   };
 
   const displayFilters: ShareLinkFilters = {
@@ -100,7 +102,7 @@ export const ShareLinkModal: React.FC<ShareLinkModalProps> = ({
 
   const filterChips: { label: string }[] = [];
   displayFilters.status.forEach((v) => {
-    filterChips.push({ label: STATUS_LABELS[v] || v });
+    filterChips.push({ label: STATUS_CHAVES[v] ? t(STATUS_CHAVES[v]) : v });
   });
   displayFilters.sport.filter((v) => v !== '__empty__').forEach((v) => filterChips.push({ label: v }));
   displayFilters.league.filter((v) => v !== '__empty__').forEach((v) => filterChips.push({ label: v }));
@@ -109,18 +111,18 @@ export const ShareLinkModal: React.FC<ShareLinkModalProps> = ({
     const tag = userTags.find((t) => t.id === tagId);
     filterChips.push({ label: tag?.name || tagId });
   });
-  if (displayFilters.dateFrom) filterChips.push({ label: `De ${displayFilters.dateFrom}` });
-  if (displayFilters.dateTo) filterChips.push({ label: `Até ${displayFilters.dateTo}` });
-  if (displayFilters.searchQuery?.trim()) filterChips.push({ label: `Busca: "${displayFilters.searchQuery.trim()}"` });
+  if (displayFilters.dateFrom) filterChips.push({ label: t('compartilhar.de', { data: displayFilters.dateFrom }) });
+  if (displayFilters.dateTo) filterChips.push({ label: t('compartilhar.ate', { data: displayFilters.dateTo }) });
+  if (displayFilters.searchQuery?.trim()) filterChips.push({ label: t('compartilhar.busca', { termo: displayFilters.searchQuery.trim() }) });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="theme-rebrand bg-white border-line text-ink max-w-md shadow-[0_30px_60px_-20px_rgba(0,0,0,0.15)]">
         <DialogHeader>
-          <div className="text-[11px] uppercase tracking-[0.16em] text-forest font-semibold">Compartilhar</div>
+          <div className="text-[11px] uppercase tracking-[0.16em] text-forest font-semibold">{t('compartilhar.etiqueta')}</div>
           <DialogTitle className="flex items-center gap-2 text-[18px] font-semibold tracking-tight text-ink">
             <Link2 className="w-4 h-4 text-forest" />
-            Compartilhar apostas
+            {t('compartilhar.titulo')}
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
@@ -139,12 +141,12 @@ export const ShareLinkModal: React.FC<ShareLinkModalProps> = ({
           )}
           {!activeFilters && (
             <p className="text-xs text-status-warning">
-              Este link compartilhará todas as suas apostas.
+              {t('compartilhar.aviso')}
             </p>
           )}
           {/* Período */}
           <div className="space-y-1.5">
-            <p className="text-[10px] font-semibold text-ink-2 uppercase tracking-[0.12em]">Período</p>
+            <p className="text-[10px] font-semibold text-ink-2 uppercase tracking-[0.12em]">{t('compartilhar.periodo')}</p>
             <div className="flex gap-2">
               <Popover open={isDateFromOpen} onOpenChange={setIsDateFromOpen} modal>
                 <PopoverTrigger asChild>
@@ -152,7 +154,7 @@ export const ShareLinkModal: React.FC<ShareLinkModalProps> = ({
                     <CalendarIcon className="mr-2 h-3.5 w-3.5 text-forest" />
                     {localDateFrom
                       ? format(new Date(localDateFrom + 'T12:00:00'), 'dd/MM/yyyy')
-                      : 'Data inicial'}
+                      : t('compartilhar.dataInicial')}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="theme-rebrand w-auto p-0 bg-white border-line shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)]">
@@ -185,7 +187,7 @@ export const ShareLinkModal: React.FC<ShareLinkModalProps> = ({
                     <CalendarIcon className="mr-2 h-3.5 w-3.5 text-forest" />
                     {localDateTo
                       ? format(new Date(localDateTo + 'T12:00:00'), 'dd/MM/yyyy')
-                      : 'Data final'}
+                      : t('compartilhar.dataFinal')}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="theme-rebrand w-auto p-0 bg-white border-line shadow-[0_10px_30px_-10px_rgba(0,0,0,0.15)]">
@@ -220,7 +222,7 @@ export const ShareLinkModal: React.FC<ShareLinkModalProps> = ({
                     setLocalDateTo('');
                   }}
                   className="p-1.5 rounded-md border border-line bg-white hover:border-status-danger text-ink-2 hover:text-status-danger transition-colors"
-                  aria-label="Limpar período"
+                  aria-label={t('compartilhar.limparPeriodo')}
                 >
                   <X className="w-3.5 h-3.5" />
                 </button>
@@ -231,7 +233,7 @@ export const ShareLinkModal: React.FC<ShareLinkModalProps> = ({
           {/* Tags */}
           {userTags.length > 0 && (
             <div className="space-y-1.5">
-              <p className="text-[10px] font-semibold text-ink-2 uppercase tracking-[0.12em]">Etiquetas</p>
+              <p className="text-[10px] font-semibold text-ink-2 uppercase tracking-[0.12em]">{t('compartilhar.etiquetas')}</p>
               <div className="flex flex-wrap gap-1.5">
                 {userTags.map((tag) => {
                   const selected = localTags.includes(tag.id);
@@ -268,12 +270,12 @@ export const ShareLinkModal: React.FC<ShareLinkModalProps> = ({
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  Gerando...
+                  {t('compartilhar.gerando')}
                 </>
               ) : (
                 <>
                   <Link2 className="w-4 h-4 mr-2" />
-                  Gerar link
+                  {t('compartilhar.gerarLink')}
                 </>
               )}
             </Button>

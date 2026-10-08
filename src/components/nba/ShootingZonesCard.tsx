@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronDown } from 'lucide-react';
 import { PlayerShootingZones, TeamOppShootingZones } from '@/services/nba-data.service';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -13,13 +14,13 @@ interface ShootingZonesCardProps {
   opponentAbbreviation?: string | null;
 }
 
-// Nomes em PT-BR — versao curta pro badge SVG (uppercase, cabe em 64px)
-const ZONE_LABELS_SHORT_PT = {
-  restricted_area:     'SOB O ARO',
-  in_the_paint_non_ra: 'GARRAFÃO',
-  mid_range:           'MEIA DIST',
-  corner_3:            '3PT CANTO',
-  above_the_break_3:   '3PT FRONT',
+// Chaves do catálogo — versao curta pro badge SVG (uppercase, cabe em 64px)
+const ZONE_LABEL_KEYS = {
+  restricted_area:     'zonas.curtoRestricted',
+  in_the_paint_non_ra: 'zonas.curtoGarrafao',
+  mid_range:           'zonas.curtoMeia',
+  corner_3:            'zonas.curtoCanto',
+  above_the_break_3:   'zonas.curtoFrontal',
 } as const;
 
 /*
@@ -66,6 +67,7 @@ interface ZoneBadgeProps {
 }
 
 const ZoneBadge: React.FC<ZoneBadgeProps> = ({ x, y, pct, fga, label }) => {
+  const { t } = useTranslation('nba');
   const color = badgeColor(pct, fga);
   const pctStr = fga >= 0.3 ? `${Math.round(pct * 100)}%` : '—';
   const fgaStr = (Math.round(fga * 10) / 10).toFixed(1);
@@ -105,7 +107,7 @@ const ZoneBadge: React.FC<ZoneBadgeProps> = ({ x, y, pct, fga, label }) => {
         fill="#ffffff"
         opacity={0.7}
       >
-        {fgaStr} fg/g
+        {t('zonas.porJogo', { n: fgaStr })}
       </text>
     </g>
   );
@@ -118,13 +120,14 @@ export const ShootingZonesCard: React.FC<ShootingZonesCardProps> = ({
   oppShootingZones,
   opponentAbbreviation,
 }) => {
+  const { t } = useTranslation('nba');
   const [expanded, setExpanded] = useState(false);
 
   if (isLoading) {
     return (
       <div className="rounded-lg bg-white border border-line overflow-hidden">
         <div className="px-4 py-3 border-b border-line">
-          <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2">Zonas de arremesso</span>
+          <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2">{t('zonas.titulo')}</span>
         </div>
         <div className="p-4">
           <Skeleton className="h-80 w-full" />
@@ -137,10 +140,10 @@ export const ShootingZonesCard: React.FC<ShootingZonesCardProps> = ({
     return (
       <div className="rounded-lg bg-white border border-line overflow-hidden">
         <div className="px-4 py-3 border-b border-line">
-          <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2">Zonas de arremesso</span>
+          <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2">{t('zonas.titulo')}</span>
         </div>
         <div className="p-4 text-[12px] text-ink-dim">
-          Nenhum dado de zonas de arremesso para {playerName || 'o jogador selecionado'}.
+          {t('zonas.vazio', { jogador: playerName || t('zonas.jogadorSelecionado') })}
         </div>
       </div>
     );
@@ -155,7 +158,7 @@ export const ShootingZonesCard: React.FC<ShootingZonesCardProps> = ({
         className="w-full px-4 py-3 flex items-center justify-between border-b border-line md:cursor-default"
         onClick={() => setExpanded(prev => !prev)}
       >
-        <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2">Zonas de arremesso</span>
+        <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2">{t('zonas.titulo')}</span>
         <ChevronDown className={`w-4 h-4 text-ink-dim transition-transform md:hidden ${expanded ? 'rotate-180' : ''}`} />
       </button>
 
@@ -247,22 +250,22 @@ export const ShootingZonesCard: React.FC<ShootingZonesCardProps> = ({
         {/* ── ZONE BADGES ── */}
 
         {/* Left corner 3 — inside court, left edge safe */}
-        <ZoneBadge x={55} y={410} pct={d.left_corner_3_fg_pct} fga={d.left_corner_3_fga} label={ZONE_LABELS_SHORT_PT.corner_3} />
+        <ZoneBadge x={55} y={410} pct={d.left_corner_3_fg_pct} fga={d.left_corner_3_fga} label={t(ZONE_LABEL_KEYS.corner_3)} />
 
         {/* Right corner 3 */}
-        <ZoneBadge x={545} y={410} pct={d.right_corner_3_fg_pct} fga={d.right_corner_3_fga} label={ZONE_LABELS_SHORT_PT.corner_3} />
+        <ZoneBadge x={545} y={410} pct={d.right_corner_3_fg_pct} fga={d.right_corner_3_fga} label={t(ZONE_LABEL_KEYS.corner_3)} />
 
         {/* Above the break 3 — center, clearly outside the 3pt arc */}
-        <ZoneBadge x={300} y={80} pct={d.above_the_break_3_fg_pct} fga={d.above_the_break_3_fga} label={ZONE_LABELS_SHORT_PT.above_the_break_3} />
+        <ZoneBadge x={300} y={80} pct={d.above_the_break_3_fg_pct} fga={d.above_the_break_3_fga} label={t(ZONE_LABEL_KEYS.above_the_break_3)} />
 
         {/* Mid range — left wing, inside court between paint and 3pt arc */}
-        <ZoneBadge x={132} y={345} pct={d.mid_range_fg_pct} fga={d.mid_range_fga} label={ZONE_LABELS_SHORT_PT.mid_range} />
+        <ZoneBadge x={132} y={345} pct={d.mid_range_fg_pct} fga={d.mid_range_fga} label={t(ZONE_LABEL_KEYS.mid_range)} />
 
         {/* Paint non-RA — center of paint, above RA */}
-        <ZoneBadge x={300} y={338} pct={d.in_the_paint_non_ra_fg_pct} fga={d.in_the_paint_non_ra_fga} label={ZONE_LABELS_SHORT_PT.in_the_paint_non_ra} />
+        <ZoneBadge x={300} y={338} pct={d.in_the_paint_non_ra_fg_pct} fga={d.in_the_paint_non_ra_fga} label={t(ZONE_LABEL_KEYS.in_the_paint_non_ra)} />
 
         {/* Restricted area — at basket */}
-        <ZoneBadge x={300} y={460} pct={d.restricted_area_fg_pct} fga={d.restricted_area_fga} label={ZONE_LABELS_SHORT_PT.restricted_area} />
+        <ZoneBadge x={300} y={460} pct={d.restricted_area_fg_pct} fga={d.restricted_area_fga} label={t(ZONE_LABEL_KEYS.restricted_area)} />
 
       </svg>
 
@@ -273,7 +276,7 @@ export const ShootingZonesCard: React.FC<ShootingZonesCardProps> = ({
           { color: '#1f5640', label: '45–54%' },
           { color: '#c97a1a', label: '35–44%' },
           { color: '#be123c', label: '<35%' },
-          { color: '#9aa097', label: 'baixo vol.' },
+          { color: '#9aa097', label: t('zonas.baixoVolume') },
         ].map(({ color, label }) => (
           <div key={label} className="flex items-center gap-1.5">
             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />

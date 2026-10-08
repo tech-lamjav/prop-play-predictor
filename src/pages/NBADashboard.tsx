@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate, useSearchParams, useLocation, Navigate } from 'react-router-dom';
 import { nbaDataService, Player, GamePlayerStats, PropPlayer, TeamPlayer, Team, PlayerShootingZones, DailyOpportunity, OpponentRankings, TeamPlaytypes, TeamOppShootingZones, PlayerPassingSeason } from '@/services/nba-data.service';
 import AnalyticsNav from '@/components/AnalyticsNav';
@@ -22,6 +23,7 @@ import { TeammateFilter } from '@/components/nba/TeammateFilterBar';
 import { useSubscription } from '@/hooks/use-subscription';
 import { useAuth } from '@/hooks/use-auth';
 import { isFreePlayer } from '@/config/freemium';
+import { fmtDecimal, fmtLinhaAnalisada, fmtPct } from '@/utils/formato';
 
 const VALID_STAT_TYPES = ['player_points', 'player_assists', 'player_rebounds', 'player_points_rebounds_assists', 'player_points_assists', 'player_rebounds_assists'];
 
@@ -40,6 +42,7 @@ interface PlayerCache {
 const dashboardCache = new Map<string, PlayerCache>();
 
 export default function NBADashboard() {
+  const { t } = useTranslation('nba');
   const { playerName } = useParams<{ playerName: string }>();
   const [searchParams] = useSearchParams();
   const location = useLocation();
@@ -155,8 +158,8 @@ export default function NBADashboard() {
     if (!subscriptionLoading && user && player && !isPremium && !isFree && !isPicksTrial) {
       const playerFullName = player.player_name;
       toast({
-        title: 'Acesso Premium Necessário',
-        description: `Análises completas de ${playerFullName} estão disponíveis apenas para assinantes premium.`,
+        title: t('jogador.paywallTitulo'),
+        description: t('jogador.paywallTexto', { jogador: playerFullName }),
         variant: 'default',
       });
       setTimeout(() => {
@@ -421,8 +424,8 @@ export default function NBADashboard() {
           return;
         }
         toast({
-          title: 'Jogador não encontrado',
-          description: `Não encontramos o jogador "${playerName.replace(/-/g, ' ')}"`,
+          title: t('jogador.erroNaoEncontradoTitulo'),
+          description: t('jogador.erroNaoEncontradoTexto', { nome: playerName.replace(/-/g, ' ') }),
           variant: 'destructive',
         });
         navigate('/home-nba');
@@ -547,8 +550,8 @@ export default function NBADashboard() {
       setPlayerLookupDone(true);
       console.error('Error loading player:', error);
       toast({
-        title: 'Erro',
-        description: 'Falha ao carregar os dados do jogador',
+        title: t('jogador.erroTitulo'),
+        description: t('jogador.erroTexto'),
         variant: 'destructive',
       });
       setStatsLoading(false);
@@ -628,13 +631,13 @@ export default function NBADashboard() {
   if (!player && playerLookupDone && !isDemo) {
     return (
       <div className="theme-bolao w-full min-h-screen bg-canvas text-ink flex flex-col items-center justify-center gap-4 px-4">
-        <p className="text-ink opacity-80">Jogador não encontrado.</p>
+        <p className="text-ink opacity-80">{t('jogador.vazioJogador')}</p>
         <Button
           variant="outline"
           className="bg-white border border-line text-ink hover:border-forest/30"
           onClick={() => navigate(-1)}
         >
-          Voltar
+          {t('jogador.vazioVoltar')}
         </Button>
       </div>
     );
@@ -679,28 +682,20 @@ export default function NBADashboard() {
               <div className="rounded-lg bg-white border border-line overflow-hidden">
                 <div className="px-4 py-3 flex items-center justify-between border-b border-line">
                   <span className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-2">
-                    Oportunidades do dia
+                    {t('jogador.oportunidadesEtiqueta')}
                   </span>
-                  <span className="text-[10px] text-ink-dim">mesma análise da tela de Picks</span>
+                  <span className="text-[10px] text-ink-dim">{t('jogador.oportunidadesMesmaAnalise')}</span>
                 </div>
                 {dailyOppsView.map((opp, i) => {
                   const triggerLastName = opp.trigger_name.split(' ').pop() ?? opp.trigger_name;
                   const status = opp.trigger_status.toLowerCase();
-                  const statusBadge = status.includes('out')
-                    ? 'OUT'
+                  const estadoId = status.includes('out')
+                    ? 'out'
                     : status.includes('doubtful')
-                      ? 'DTD'
-                      : 'Q';
-                  const statLabel: Record<string, string> = {
-                    player_points: 'Pontos',
-                    player_assists: 'Assistências',
-                    player_rebounds: 'Rebotes',
-                    player_points_rebounds_assists: 'PRA',
-                    player_threes: '3 Pontos',
-                    player_steals: 'Roubos',
-                    player_blocks: 'Bloqueios',
-                  };
-                  const label = statLabel[opp.stat_type] || opp.stat_type;
+                      ? 'doubtful'
+                      : 'questionable';
+                  const statusBadge = t(`estado.selo.${estadoId}`);
+                  const label = t(`estatisticas.nome.${opp.stat_type}`, { defaultValue: opp.stat_type });
                   const isClickable = !!handleInsightClick;
                   const score = opp.score ?? 0;
                   const scoreColor = score >= 80 ? 'text-forest' : score >= 70 ? 'text-forest' : 'text-amber-700';
@@ -719,24 +714,25 @@ export default function NBADashboard() {
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="text-[12px] font-semibold tracking-tight text-ink">{label}</span>
                             <span className="px-1.5 h-5 inline-flex items-center rounded text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                              Sem {triggerLastName} ({statusBadge})
+                              {t('jogador.oportunidadesSem', { gatilho: triggerLastName, estado: statusBadge })}
                             </span>
                           </div>
                           <div className="text-[12px] tabular mt-1.5 text-ink-2 flex items-center gap-1.5 flex-wrap">
-                            <span>{opp.avg_com?.toFixed(1) ?? '—'}</span>
+                            <span>{fmtDecimal(opp.avg_com, 1)}</span>
                             <span className="text-ink-dim">→</span>
-                            <span className="font-semibold text-[14px] text-ink">{opp.avg_sem?.toFixed(1) ?? '—'}</span>
+                            <span className="font-semibold text-[14px] text-ink">{fmtDecimal(opp.avg_sem, 1)}</span>
                             {opp.gap_pct != null && (
-                              <span className="ml-1 font-semibold text-forest">+{opp.gap_pct.toFixed(1)}%</span>
+                              <span className="ml-1 font-semibold text-forest">+{fmtPct(opp.gap_pct / 100, 1)}</span>
                             )}
                           </div>
                           <div className="text-[10px] mt-1.5 text-ink-dim">
-                            {opp.line_value != null ? `Linha: ${opp.line_value.toFixed(1)} · ` : ''}
-                            clique para filtrar o gráfico
+                            {opp.line_value != null
+                              ? t('jogador.oportunidadesLinhaEClique', { valor: fmtLinhaAnalisada(opp.line_value) })
+                              : t('jogador.oportunidadesClique')}
                           </div>
                         </div>
                         <div className="text-right shrink-0">
-                          <div className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-dim">Score</div>
+                          <div className="text-[10px] uppercase tracking-[0.16em] font-bold text-ink-dim">{t('jogador.oportunidadesScore')}</div>
                           <div className={`text-[24px] font-semibold tabular tracking-tight ${scoreColor}`}>{opp.score ?? '—'}</div>
                         </div>
                       </div>

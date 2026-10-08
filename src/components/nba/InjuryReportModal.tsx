@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Trans, useTranslation } from 'react-i18next';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { nbaDataService, Game, Player, DailyOpportunity } from '@/services/nba-data.service';
@@ -6,15 +7,16 @@ import { getTeamLogoUrl } from '@/utils/team-logos';
 import { Loader2, Star, ArrowRight, Check } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useNavigate } from 'react-router-dom';
+import { localeAtivo, RELOGIO_DE_24H } from '@/utils/idioma-ativo';
 
 const STATUSES = ['probable', 'questionable', 'doubtful', 'out'] as const;
 type Status = typeof STATUSES[number];
 
-const STATUS_META: Record<Status, { label: string; bg: string; fg: string; dot: string }> = {
-  probable:     { label: 'Provável',     bg: 'bg-emerald-100', fg: 'text-forest',       dot: 'bg-forest' },
-  questionable: { label: 'Questionável', bg: 'bg-amber-100',   fg: 'text-amber-700',    dot: 'bg-amber-400' },
-  doubtful:     { label: 'Duvidoso',     bg: 'bg-orange-100',  fg: 'text-orange-700',   dot: 'bg-orange-500' },
-  out:          { label: 'Fora',          bg: 'bg-rose-100',    fg: 'text-rose-700',     dot: 'bg-rose-600' },
+const STATUS_META: Record<Status, { bg: string; fg: string; dot: string }> = {
+  probable:     { bg: 'bg-emerald-100', fg: 'text-forest',     dot: 'bg-forest' },
+  questionable: { bg: 'bg-amber-100',   fg: 'text-amber-700',  dot: 'bg-amber-400' },
+  doubtful:     { bg: 'bg-orange-100',  fg: 'text-orange-700', dot: 'bg-orange-500' },
+  out:          { bg: 'bg-rose-100',    fg: 'text-rose-700',   dot: 'bg-rose-600' },
 };
 
 interface InjuredPlayer {
@@ -40,7 +42,7 @@ function normalizeStatus(status: string): Status | null {
 function formatPtDate(iso: string): string {
   if (!iso) return '';
   const d = new Date(`${iso}T12:00:00-03:00`);
-  return d.toLocaleDateString('pt-BR', {
+  return d.toLocaleDateString(localeAtivo(), {
     timeZone: 'America/Sao_Paulo',
     weekday: 'long',
     day: '2-digit',
@@ -59,6 +61,7 @@ interface Props {
 }
 
 export function InjuryReportModal({ open, onClose, games, opportunities }: Props) {
+  const { t } = useTranslation('nba');
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const [players, setPlayers] = useState<Player[]>(playersCache ?? []);
@@ -131,8 +134,8 @@ export function InjuryReportModal({ open, onClose, games, opportunities }: Props
         gameId: g.game_id,
         label: `${g.visitor_team_abbreviation} vs ${g.home_team_abbreviation}`,
         time: g.game_datetime_brasilia
-          ? new Date(g.game_datetime_brasilia).toLocaleTimeString('pt-BR', {
-              timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit',
+          ? new Date(g.game_datetime_brasilia).toLocaleTimeString(localeAtivo(), {
+              timeZone: 'America/Sao_Paulo', hour: '2-digit', hourCycle: RELOGIO_DE_24H, minute: '2-digit',
             })
           : '',
         home: {
@@ -244,12 +247,13 @@ export function InjuryReportModal({ open, onClose, games, opportunities }: Props
             <div className="w-9 h-1 rounded-full bg-line" />
           </div>
           <header className="px-4 py-3 shrink-0 border-b border-line pr-12">
-            <div className="text-[10px] uppercase tracking-[0.18em] font-semibold text-ink-2">Relatório de lesões</div>
+            <div className="text-[10px] uppercase tracking-[0.18em] font-semibold text-ink-2">{t('relatorio.etiqueta')}</div>
             <div className="text-[14px] font-semibold tracking-tight text-ink mt-0.5 truncate">
-              {headerDate || 'Jogos de hoje'}
+              {headerDate || t('relatorio.jogosDeHoje')}
             </div>
             <div className="text-[10px] text-ink-2 mt-0.5">
-              {totalInjuries} lesões{opportunities ? ` · ${totalImpact} com impacto` : ''}
+              {t('relatorio.lesoes', { count: totalInjuries })}
+              {opportunities ? t('relatorio.comImpacto', { n: totalImpact }) : ''}
             </div>
           </header>
 
@@ -262,7 +266,7 @@ export function InjuryReportModal({ open, onClose, games, opportunities }: Props
                 activeGameId === 'all' ? 'bg-forest text-white' : 'bg-white text-ink border border-line'
               }`}
             >
-              Todos os jogos
+              {t('relatorio.todosOsJogos')}
             </button>
             {matchups.map(m => {
               const active = activeGameId === m.gameId;
@@ -293,7 +297,7 @@ export function InjuryReportModal({ open, onClose, games, opportunities }: Props
                   : 'bg-white text-ink border border-line'
               }`}
             >
-              <span>Todos</span>
+              <span>{t('relatorio.todos')}</span>
               <span className="tabular opacity-70">{totalInjuries}</span>
             </button>
             {STATUSES.map(s => {
@@ -311,7 +315,7 @@ export function InjuryReportModal({ open, onClose, games, opportunities }: Props
                   }`}
                 >
                   <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />
-                  <span>{meta.label}</span>
+                  <span>{t(`estado.longo.${s}`)}</span>
                   <span className="tabular opacity-70">{totals[s]}</span>
                 </button>
               );
@@ -329,7 +333,7 @@ export function InjuryReportModal({ open, onClose, games, opportunities }: Props
                 <span className={`w-3.5 h-3.5 rounded border grid place-items-center transition-colors ${impactOnly ? 'border-forest bg-forest' : 'border-line bg-white'}`}>
                   {impactOnly && <Check className="w-2.5 h-2.5 text-white" />}
                 </span>
-                Só lesões com impacto <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+                {t('relatorio.soImpacto')} <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
               </button>
             </div>
           )}
@@ -339,11 +343,13 @@ export function InjuryReportModal({ open, onClose, games, opportunities }: Props
             {isLoading ? (
               <div className="flex items-center justify-center py-10 gap-2 text-ink-2">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span className="text-xs">Carregando…</span>
+                <span className="text-xs">{t('relatorio.carregando')}</span>
               </div>
             ) : mobileFlatList.length === 0 ? (
               <div className="text-center py-10 text-[12px] text-ink-2">
-                Nenhuma lesão {activeStatusMobile === 'all' ? 'encontrada' : STATUS_META[activeStatusMobile].label.toLowerCase()}
+                {activeStatusMobile === 'all'
+                  ? t('relatorio.vazioEncontrada')
+                  : t('relatorio.vazioComStatus', { status: t(`estado.longo.${activeStatusMobile}`).toLowerCase() })}
               </div>
             ) : (
               <div className="flex flex-col">
@@ -365,7 +371,7 @@ export function InjuryReportModal({ open, onClose, games, opportunities }: Props
                       <div className="text-[11px] text-ink-2 mt-0.5">{p.teamAbbr}</div>
                     </div>
                     <span className={`px-1.5 h-5 inline-flex items-center rounded text-[10px] font-bold tabular ${STATUS_META[p.status].bg} ${STATUS_META[p.status].fg}`}>
-                      {STATUS_META[p.status].label.toUpperCase().slice(0, 3)}
+                      {t(`estado.selo3.${p.status}`)}
                     </span>
                   </div>
                 ))}
@@ -380,7 +386,7 @@ export function InjuryReportModal({ open, onClose, games, opportunities }: Props
               onClick={handleAnalise360}
               className="w-full h-10 rounded-md text-[12px] font-semibold inline-flex items-center justify-center gap-2 bg-amber-400 text-ink hover:bg-amber-300 transition-colors"
             >
-              <span>Abrir Análise 360° das lesões</span>
+              <span>{t('relatorio.abrir360')}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
@@ -395,14 +401,19 @@ export function InjuryReportModal({ open, onClose, games, opportunities }: Props
       <DialogContent className="theme-rebrand max-w-5xl w-full bg-white text-ink border border-line p-0 overflow-hidden max-h-[88vh] flex flex-col">
         {/* Header */}
         <header className="px-7 py-5 border-b border-line shrink-0 pr-14">
-          <div className="text-[10px] uppercase tracking-[0.18em] font-semibold text-ink-2">Relatório de lesões</div>
+          <div className="text-[10px] uppercase tracking-[0.18em] font-semibold text-ink-2">{t('relatorio.etiqueta')}</div>
           <h2 className="text-[22px] font-semibold tracking-tight text-ink mt-1">
-            Jogos de hoje{headerDate ? ` · ${headerDate}` : ''}
+            {headerDate ? t('relatorio.tituloComData', { data: headerDate }) : t('relatorio.jogosDeHoje')}
           </h2>
           <p className="text-[12px] mt-1 text-ink-2">
-            {totalInjuries} lesões nos {matchups.length} {matchups.length === 1 ? 'jogo' : 'jogos'}
+            {t('relatorio.lesoesNosJogos', { count: matchups.length, lesoes: totalInjuries })}
             {opportunities && (
-              <> · <span className="font-semibold text-ink">{totalImpact} com impacto direto</span> em alguma análise de pick <Star className="w-3 h-3 text-amber-400 fill-amber-400 inline-block align-text-bottom" /></>
+              <> · <Trans
+                t={t}
+                i18nKey="relatorio.impactoDireto"
+                values={{ n: totalImpact }}
+                components={[<span className="font-semibold text-ink" key="n" />]}
+              /> <Star className="w-3 h-3 text-amber-400 fill-amber-400 inline-block align-text-bottom" /></>
             )}
           </p>
         </header>
@@ -416,7 +427,7 @@ export function InjuryReportModal({ open, onClose, games, opportunities }: Props
               activeGameId === 'all' ? 'bg-forest text-white' : 'bg-white text-ink border border-line'
             }`}
           >
-            Todos os jogos
+            {t('relatorio.todosOsJogos')}
           </button>
           {matchups.map(m => {
             const active = activeGameId === m.gameId;
@@ -446,7 +457,7 @@ export function InjuryReportModal({ open, onClose, games, opportunities }: Props
               }`}>
                 {impactOnly && <Check className="w-2.5 h-2.5 text-white" />}
               </span>
-              Só lesões com impacto <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+              {t('relatorio.soImpacto')} <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
             </button>
           )}
         </div>
@@ -459,7 +470,7 @@ export function InjuryReportModal({ open, onClose, games, opportunities }: Props
             return (
               <div key={s} className="px-3 flex items-center gap-2">
                 <span className={`w-2 h-2 rounded-full ${meta.dot}`} />
-                <span className={`text-[11px] font-semibold tracking-tight ${meta.fg}`}>{meta.label}</span>
+                <span className={`text-[11px] font-semibold tracking-tight ${meta.fg}`}>{t(`estado.longo.${s}`)}</span>
                 <span className={`text-[10px] tabular px-1.5 h-4 rounded inline-flex items-center font-semibold ${meta.bg} ${meta.fg}`}>
                   {totals[s]}
                 </span>
@@ -472,11 +483,11 @@ export function InjuryReportModal({ open, onClose, games, opportunities }: Props
         {isLoading ? (
           <div className="flex items-center justify-center py-16 gap-2 text-ink-2">
             <Loader2 className="w-4 h-4 animate-spin" />
-            <span className="text-xs">Carregando…</span>
+            <span className="text-xs">{t('relatorio.carregando')}</span>
           </div>
         ) : visibleMatchups.length === 0 ? (
           <div className="text-center py-16 text-[13px] text-ink-2">
-            Nenhuma lesão reportada
+            {t('relatorio.nenhumaReportada')}
           </div>
         ) : (
           <div className="overflow-y-auto flex-1">
@@ -492,7 +503,7 @@ export function InjuryReportModal({ open, onClose, games, opportunities }: Props
                   <div
                     className={`px-7 py-2.5 flex items-center gap-3 bg-canvas-2 ${gi > 0 ? 'border-t border-line' : ''}`}
                   >
-                    <span className="text-[10px] uppercase tracking-[0.16em] font-semibold text-ink-2/70">Jogo</span>
+                    <span className="text-[10px] uppercase tracking-[0.16em] font-semibold text-ink-2/70">{t('relatorio.jogo')}</span>
                     <span className="text-[12px] font-semibold tracking-tight text-ink">{m.label}</span>
                     {m.time && <span className="text-[11px] tabular text-ink-2">{m.time}</span>}
                   </div>
@@ -514,14 +525,14 @@ export function InjuryReportModal({ open, onClose, games, opportunities }: Props
         <div className="px-7 py-3 flex items-center justify-between text-[11px] border-t border-line bg-canvas-2 shrink-0">
           <div className="text-ink-2">
             <Star className="w-3 h-3 text-amber-400 fill-amber-400 inline-block align-text-bottom mr-1" />
-            Lesões com impacto = jogadores que afetam pelo menos uma análise de pick do dia
+            {t('relatorio.rodapeLegenda')}
           </div>
           <button
             type="button"
             onClick={handleAnalise360}
             className="font-semibold inline-flex items-center gap-1 text-forest hover:text-forest-soft"
           >
-            <span>Abrir Análise 360° das lesões</span>
+            <span>{t('relatorio.abrir360')}</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -537,6 +548,7 @@ interface TeamRowProps {
 }
 
 const TeamRow: React.FC<TeamRowProps> = ({ team, filterPlayers, isImpact }) => {
+  const { t } = useTranslation('nba');
   return (
     <div className="grid grid-cols-[260px_1fr_1fr_1fr_1fr] px-7 py-3 items-start border-t border-line">
       <div className="flex items-center gap-3 pr-4 min-w-0">
@@ -555,7 +567,7 @@ const TeamRow: React.FC<TeamRowProps> = ({ team, filterPlayers, isImpact }) => {
         </div>
         <div className="min-w-0">
           <div className="text-[12px] font-semibold tracking-tight text-ink truncate">{team.name}</div>
-          <div className="text-[10px] text-ink-2">{team.isHome ? 'casa' : 'fora'}</div>
+          <div className="text-[10px] text-ink-2">{team.isHome ? t('relatorio.casa') : t('relatorio.fora')}</div>
         </div>
       </div>
       {STATUSES.map(st => {

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ChevronDown } from 'lucide-react';
 import {
   DropdownMenu,
@@ -57,13 +58,14 @@ export function SeletorDeMenu({
   align?: 'start' | 'end';
   children: React.ReactNode;
 }) {
+  const { t } = useTranslation('futebol');
   const [aberto, setAberto] = useState(false);
   return (
     <DropdownMenu open={aberto} onOpenChange={setAberto}>
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          aria-label={`${rotulo} ${resumo}`}
+          aria-label={t('seletor.aria', { rotulo, resumo })}
           onPointerDown={(event) => event.preventDefault()}
           onClick={() => setAberto((estava) => !estava)}
           className={cn(GATILHO_CLS, largura)}
@@ -85,7 +87,7 @@ export function SeletorDeMenu({
           onSelect={() => setAberto(false)}
           className="sm:hidden justify-center min-h-11 text-[13px] font-semibold text-forest focus:bg-forest-tint focus:text-forest"
         >
-          Pronto
+          {t('seletor.pronto')}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

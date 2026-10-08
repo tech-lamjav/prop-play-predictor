@@ -1,5 +1,6 @@
 import { SlidersHorizontal } from 'lucide-react';
-import { fmtExato } from '@/utils/formato';
+import { useTranslation } from 'react-i18next';
+import { fmtExato, fmtPct } from '@/utils/formato';
 import { CampoNumerico } from './CampoNumerico';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ehSimulacao, type PesoPorFaixa } from './placar-agregacao';
@@ -13,14 +14,33 @@ import {
 /** Os tamanhos de aposta que a simulação usa de verdade. */
 const PESOS_RAPIDOS = [0, 0.5, 1] as const;
 
-/** O resumo que fica no botão, para o estado ser visível sem abrir. */
-function resumo(recorte: Recorte, pesos: PesoPorFaixa): string {
+/**
+ * O resumo que fica no botão, para o estado ser visível sem abrir.
+ *
+ * O `t` chega por parâmetro, e não de um `useTranslation` aqui dentro: esta é
+ * uma função pura chamada no render, e trazer o hook para dentro dela a
+ * transformaria num componente só para ler três palavras.
+ */
+function resumo(
+  recorte: Recorte,
+  pesos: PesoPorFaixa,
+  t: (chave: string, valores?: Record<string, unknown>) => string,
+): string {
   const partes: string[] = [];
-  if (recorte.faixas.length > 0) partes.push(`${recorte.faixas.length} faixa(s)`);
+  if (recorte.faixas.length > 0)
+    partes.push(t('placar.recorte.faixasEscolhidas', { quantas: recorte.faixas.length }));
   if (recorte.valorMinimo != null)
-    partes.push(`valor ≥ ${(recorte.valorMinimo * 100).toFixed(0).replace('-', '−')}%`);
-  if (ehSimulacao(pesos)) partes.push('simulando');
-  return partes.length === 0 ? 'Recorte e simulação' : partes.join(' · ');
+    // ⚠️ O `.replace` do menos fica. `fmtPct` devolve o hífen do `Intl`, e a
+    // tela escreve o menos tipográfico (−) em todo lugar — inclusive no rótulo
+    // do botão "≥ −2%" logo abaixo. Sem a troca, o resumo passaria a mostrar um
+    // sinal diferente do da opção que ele está resumindo.
+    partes.push(
+      t('placar.recorte.valorMinimoResumo', {
+        valor: fmtPct(recorte.valorMinimo, 0).replace('-', '−'),
+      }),
+    );
+  if (ehSimulacao(pesos)) partes.push(t('placar.recorte.simulando'));
+  return partes.length === 0 ? t('placar.recorte.rotulo') : partes.join(' · ');
 }
 
 /**
@@ -51,6 +71,7 @@ export function RecorteESimulacao({
   aoMudarRecorte: (r: Recorte) => void;
   aoMudarPesos: (p: PesoPorFaixa) => void;
 }) {
+  const { t } = useTranslation('socios');
   const ativo = temRecorte(recorte) || ehSimulacao(pesos);
 
   const alternarFaixa = (faixa: string) =>
@@ -73,7 +94,7 @@ export function RecorteESimulacao({
           }`}
         >
           <SlidersHorizontal className="h-4 w-4" />
-          {resumo(recorte, pesos)}
+          {resumo(recorte, pesos, t)}
         </button>
       </PopoverTrigger>
 
@@ -86,9 +107,12 @@ export function RecorteESimulacao({
         <div className="flex flex-col gap-4">
           <div>
             <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-ink-dim">
-              Só estas faixas de Score
+              {t('placar.recorte.soEstasFaixas')}
             </p>
             <div className="mt-2 flex flex-wrap gap-1">
+              {/* O nome da faixa é o valor gravado no banco (FAIXAS_DO_SCORE), e
+                  por isso ele não passa pelo catálogo: é contrato de dado, e a
+                  tela compara contra ele. */}
               {FAIXAS_PARA_FILTRAR.map((f) => {
                 const dentro = recorte.faixas.length === 0 || recorte.faixas.includes(f);
                 return (
@@ -108,18 +132,22 @@ export function RecorteESimulacao({
               })}
             </div>
             <p className="mt-1 text-[11px] text-ink-dim">
-              Nenhuma escolhida é o mesmo que todas.
+              {t('placar.recorte.nenhumaEhTodas')}
             </p>
           </div>
 
           <div>
             <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-ink-dim">
-              Valor mínimo
+              {t('placar.recorte.valorMinimo')}
             </p>
             <div className="mt-2 flex flex-wrap items-center gap-1">
+              {/* ⚠️ `c.rotulo` continua em português: CORTES_DE_VALOR mora em
+                  `placar-filtros.ts`, que não entra nesta migração. A chave do
+                  React é o VALOR, e não o rótulo: rótulo traduzido remonta a
+                  lista a cada troca de idioma. */}
               {CORTES_DE_VALOR.map((c) => (
                 <button
-                  key={c.rotulo}
+                  key={String(c.valor)}
                   type="button"
                   onClick={() => aoMudarRecorte({ ...recorte, valorMinimo: c.valor })}
                   className={`rounded-rebrand-sm border px-2.5 py-1 text-[12px] font-bold transition ${
@@ -132,7 +160,7 @@ export function RecorteESimulacao({
                 </button>
               ))}
               <CampoNumerico
-                aria="Valor mínimo em por cento"
+                aria={t('placar.recorte.valorMinimoAria')}
                 sufixo="%"
                 valor={recorte.valorMinimo == null ? null : recorte.valorMinimo * 100}
                 aoMudar={(n) =>
@@ -144,11 +172,10 @@ export function RecorteESimulacao({
 
           <div className="border-t border-line-2 pt-3">
             <p className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-ink-dim">
-              Unidades por faixa
+              {t('placar.recorte.unidadesPorFaixa')}
             </p>
             <p className="mt-1 text-[11px] text-ink-dim">
-              Quanto apostar em cada faixa. Zero é não apostar — a linha sai da conta e é contada à
-              parte. Mexer aqui vira simulação, e a tela avisa.
+              {t('placar.recorte.unidadesPorFaixaAjuda')}
             </p>
             <div className="mt-2 flex flex-col gap-1.5">
               {FAIXAS_PARA_FILTRAR.map((f) => (
@@ -173,7 +200,7 @@ export function RecorteESimulacao({
                       </button>
                     ))}
                     <CampoNumerico
-                      aria={`Unidades na faixa ${f}`}
+                      aria={t('placar.recorte.unidadesNaFaixaAria', { faixa: f })}
                       valor={pesos[f] ?? 1}
                       minimo={0}
                       maximo={5}

@@ -11,6 +11,8 @@
 // regra em `public.futebol_dia_brt` (migration 092) e a RPC da agenda já devolve
 // `day_brt` pronto; estas funções são pro que o front calcula por conta.
 
+import { localeAtivo, RELOGIO_DE_24H } from '@/utils/idioma-ativo';
+
 export const SAO_PAULO_TZ = 'America/Sao_Paulo';
 
 /**
@@ -130,9 +132,9 @@ export function diasEntre(de: string, ate: string): number {
 export function fmtTime(raw: string | null | undefined): string {
   const d = parseUtc(raw);
   if (!d) return '';
-  return formatadorDeData('pt-BR', {
+  return formatadorDeData(localeAtivo(), {
     timeZone: SAO_PAULO_TZ,
-    hour: '2-digit',
+    hour: '2-digit', hourCycle: RELOGIO_DE_24H,
     minute: '2-digit',
   }).format(d);
 }
@@ -147,7 +149,7 @@ export function fmtDayHeader(dayKey: string | null | undefined): string {
   // BRT (UTC−3), então o rótulo não escorrega pro dia vizinho.
   const d = new Date(`${dayKey}T12:00:00Z`);
   if (isNaN(d.getTime())) return '—';
-  const s = formatadorDeData('pt-BR', {
+  const s = formatadorDeData(localeAtivo(), {
     timeZone: SAO_PAULO_TZ,
     weekday: 'long',
     day: '2-digit',
@@ -159,6 +161,29 @@ export function fmtDayHeader(dayKey: string | null | undefined): string {
 }
 
 /**
+ * O separador entre dia e mês, uniforme.
+ *
+ * ⚠️ MESMA FUNÇÃO, DOIS SEPARADORES, E A CULPA NÃO É NOSSA. O CLDR escreve
+ * dia+mês de `es-419` com HÍFEN e dia+mês+ano com ESPAÇO:
+ *
+ *   dia e mês ....... "02-dic"
+ *   com o ano ....... "30 may 2027"
+ *
+ * Na tela de campeonatos as duas pontas do intervalo saem da mesma
+ * `fmtDayShort`, uma com ano e outra sem — então o produto escrevia
+ * "del 15-ago al 30 may 2027" e parecia defeito nosso. Em português o problema
+ * não existe, porque `pt-BR` usa "de" nos dois casos.
+ *
+ * Trocar o hífen por espaço iguala as duas pontas e não muda nada em português,
+ * que não tem hífen nessa posição. O que NÃO serve é mexer em
+ * `LOCALE_DO_IDIOMA`: `es-419` está escolhido por causa do separador DECIMAL
+ * dos quatro mercados, e data não manda nessa decisão.
+ */
+function separadorUniforme(s: string): string {
+  return s.replace(/-/g, ' ');
+}
+
+/**
  * Dia sem o dia da semana: "21 de mar", ou "21 de mar de 2027" com `comAno`.
  * Pra intervalo (temporada de 15/ago a 30/mai), repetir "Sábado," nas duas pontas
  * só ocupa espaço, e o ano importa quando a temporada atravessa o ano.
@@ -167,7 +192,7 @@ export function fmtDayShort(dayKey: string | null | undefined, comAno = false): 
   if (!dayKey) return '—';
   const d = new Date(`${dayKey}T12:00:00Z`);
   if (isNaN(d.getTime())) return '—';
-  return formatadorDeData('pt-BR', {
+  const bruto = formatadorDeData(localeAtivo(), {
     timeZone: SAO_PAULO_TZ,
     day: '2-digit',
     month: 'short',
@@ -175,6 +200,7 @@ export function fmtDayShort(dayKey: string | null | undefined, comAno = false): 
   })
     .format(d)
     .replace('.', '');
+  return separadorUniforme(bruto);
 }
 
 /** Ano de uma chave `YYYY-MM-DD`. */
@@ -185,10 +211,10 @@ export function yearOf(dayKey: string | null | undefined): string | null {
 /** Rótulo curto pra régua de datas: `{ weekday: 'qua', day: '29/07' }`. */
 export function fmtDayChip(dayKey: string): { weekday: string; day: string } {
   const d = new Date(`${dayKey}T12:00:00Z`);
-  const weekday = formatadorDeData('pt-BR', { timeZone: SAO_PAULO_TZ, weekday: 'short' })
+  const weekday = formatadorDeData(localeAtivo(), { timeZone: SAO_PAULO_TZ, weekday: 'short' })
     .format(d)
     .replace('.', '');
-  const day = formatadorDeData('pt-BR', {
+  const day = formatadorDeData(localeAtivo(), {
     timeZone: SAO_PAULO_TZ,
     day: '2-digit',
     month: '2-digit',

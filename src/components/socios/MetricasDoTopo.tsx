@@ -1,4 +1,6 @@
+import { useTranslation } from 'react-i18next';
 import { Users, TrendingUp, Handshake } from 'lucide-react';
+import { fmtPct } from '@/utils/formato';
 import type { MetricasDeNegocio } from './crm-painel';
 
 /**
@@ -52,10 +54,12 @@ function Indicador({
  * aparece em nenhuma métrica de conversão, e é o que fica feio primeiro.
  */
 export function MetricasDoTopo({ metricas }: { metricas: MetricasDeNegocio }) {
+  const { t } = useTranslation('socios');
+
   return (
     <section
       role="region"
-      aria-label="Números da operação"
+      aria-label={t('painel.metricas.aria')}
       className="relative overflow-hidden rounded-rebrand-lg p-6"
       style={{ background: 'linear-gradient(135deg,#0a3d2e,#08321f 60%,#051f12)' }}
     >
@@ -78,22 +82,23 @@ export function MetricasDoTopo({ metricas }: { metricas: MetricasDeNegocio }) {
         <Indicador
           Icone={Users}
           valor={String(metricas.cadastrosNoMes)}
-          rotulo="Cadastros em 30 dias"
-          explicacao="quanta gente nova chegou"
+          rotulo={t('painel.metricas.cadastros.rotulo')}
+          explicacao={t('painel.metricas.cadastros.explicacao')}
         />
         <Indicador
           Icone={TrendingUp}
-          valor={`${metricas.conversao}%`}
-          rotulo="Conversão"
-          explicacao={`${metricas.assinantes} ${
-            metricas.assinantes === 1 ? 'assinante' : 'assinantes'
-          } na base`}
+          // `conversao` e `abordados` já vêm em pontos percentuais inteiros e
+          // `fmtPct` espera uma taxa de 0 a 1 — daí a divisão. O helper põe o
+          // símbolo e a formatação do país onde antes havia `${n}%` na mão.
+          valor={fmtPct(metricas.conversao / 100)}
+          rotulo={t('painel.metricas.conversao.rotulo')}
+          explicacao={t('painel.metricas.conversao.explicacao', { count: metricas.assinantes })}
         />
         <Indicador
           Icone={Handshake}
-          valor={`${metricas.abordados}%`}
-          rotulo="Abordados"
-          explicacao="tocados por vocês, não pelo produto"
+          valor={fmtPct(metricas.abordados / 100)}
+          rotulo={t('painel.metricas.abordados.rotulo')}
+          explicacao={t('painel.metricas.abordados.explicacao')}
         />
       </div>
     </section>

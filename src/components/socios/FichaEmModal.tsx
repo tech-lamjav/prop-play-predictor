@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 
 /**
@@ -26,6 +27,8 @@ export function FichaEmModal({
   aoFechar: () => void;
   children: ReactNode;
 }) {
+  const { t } = useTranslation('socios');
+
   return (
     <Dialog open={aberta} onOpenChange={(aberto) => !aberto && aoFechar()}>
       {/* O tema entra aqui também, e não só no painel: o modal sai por portal,
@@ -36,7 +39,7 @@ export function FichaEmModal({
         {/* O título existe para o leitor de tela: o Radix avisa no console
             quando falta, e sem ele quem navega por teclado não sabe o que
             abriu. Some da vista sem sumir da árvore de acessibilidade. */}
-        <DialogTitle className="sr-only">Ficha do lead</DialogTitle>
+        <DialogTitle className="sr-only">{t('ficha.modal.titulo')}</DialogTitle>
         {children}
       </DialogContent>
     </Dialog>

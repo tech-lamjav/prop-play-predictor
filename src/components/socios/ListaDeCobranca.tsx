@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom';
+import { Trans, useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { AlertTriangle, Clock, Infinity as SemFim } from 'lucide-react';
 import { mensagemDeCobranca, prazoDe, type Prazo } from './crm-cobranca';
 import { formatarDia } from './crm-lista';
@@ -8,11 +10,18 @@ import { emReais } from './crm-receita';
 import { MensagemPronta } from './MensagemPronta';
 import type { EstadoDasAssinaturas } from '@/hooks/use-assinaturas';
 
-/** "vence em 8 dias", "vence hoje", "venceu faz 7 dias". */
-function comoDizer(prazo: Prazo): string {
-  if (prazo.tipo === 'hoje') return 'vence hoje';
-  const dias = `${prazo.dias} ${prazo.dias === 1 ? 'dia' : 'dias'}`;
-  return prazo.tipo === 'a_vencer' ? `vence em ${dias}` : `venceu faz ${dias}`;
+/**
+ * "vence em 8 dias", "vence hoje", "venceu faz 7 dias".
+ *
+ * Recebe o `t` em vez de chamar `useTranslation` por conta própria: é função
+ * pura, fora do componente. O plural de "dia" mora no catálogo, em `_one` e
+ * `_other`, e não num ternário aqui dentro.
+ */
+function comoDizer(prazo: Prazo, t: TFunction<'socios'>): string {
+  if (prazo.tipo === 'hoje') return t('dinheiro.cobranca.venceHoje');
+  return prazo.tipo === 'a_vencer'
+    ? t('dinheiro.cobranca.aVencer', { count: prazo.dias })
+    : t('dinheiro.cobranca.vencida', { count: prazo.dias });
 }
 
 /**
@@ -24,10 +33,15 @@ function comoDizer(prazo: Prazo): string {
  * situações diferentes.
  */
 export function SeloDoCartao() {
+  const { t } = useTranslation('socios');
+
   return (
     <p className="mt-1 text-[12px] text-ink-2">
-      <span className="font-bold">Também paga no cartão.</span> O acordo feito na mão continua
-      aberto e parou de acumular mês. Se ele acabou, encerre na ficha.
+      <Trans
+        t={t}
+        i18nKey="dinheiro.cobranca.seloDoCartao"
+        components={[<span className="font-bold" key="tambemPaga" />]}
+      />
     </p>
   );
 }
@@ -46,6 +60,7 @@ export function SeloDoCartao() {
  * é outra conversa e outro texto.
  */
 function Cobranca({ assinatura, hoje }: { assinatura: Assinatura; hoje: string }) {
+  const { t } = useTranslation('socios');
   const prazo = assinatura.venceEm === null ? null : prazoDe(assinatura.venceEm, hoje);
   const vencida = prazo?.tipo === 'vencida';
 
@@ -71,17 +86,24 @@ function Cobranca({ assinatura, hoje }: { assinatura: Assinatura; hoje: string }
           ) : (
             <Clock aria-hidden className="h-3 w-3" />
           )}
-          {prazo === null ? 'não vence' : comoDizer(prazo)}
+          {prazo === null ? t('dinheiro.cobranca.naoVence') : comoDizer(prazo, t)}
         </span>
       </div>
 
+      {/* ⚠️ `ROTULO_DO_PLANO` entra INTERPOLADO e continua em português de
+          propósito (#558): o mesmo rótulo vai dentro da mensagem de cobrança que
+          o sócio cola no WhatsApp de um lead brasileiro. */}
       <p className="mt-0.5 text-[13px] text-ink-2">
-        {ROTULO_DO_PLANO[assinatura.plano]} na mão,{' '}
-        {assinatura.venceEm === null ? 'vitalícia' : `até ${formatarDia(assinatura.venceEm)}`}
+        {assinatura.venceEm === null
+          ? t('dinheiro.comum.planoVitalicia', { plano: ROTULO_DO_PLANO[assinatura.plano] })
+          : t('dinheiro.comum.planoAte', {
+              plano: ROTULO_DO_PLANO[assinatura.plano],
+              dia: formatarDia(assinatura.venceEm),
+            })}
         {' · '}
         {assinatura.valorMensal === null
-          ? 'sem cobrança'
-          : `${emReais(assinatura.valorMensal)} por mês`}
+          ? t('dinheiro.comum.semCobranca')
+          : t('dinheiro.comum.porMes', { valor: emReais(assinatura.valorMensal) })}
       </p>
 
       {assinatura.pagaNoCartao ? <SeloDoCartao /> : null}
@@ -128,16 +150,14 @@ export function ListaDeCobranca({
   /** Quantos venceriam na janela mas saíram da fila por pagar no cartão. */
   noCartao: number;
 }) {
+  const { t } = useTranslation('socios');
+
   if (estado.tipo === 'carregando') {
-    return <p className="px-5 py-8 text-[14px] text-ink-2">Carregando as assinaturas…</p>;
+    return <p className="px-5 py-8 text-[14px] text-ink-2">{t('dinheiro.cobranca.carregando')}</p>;
   }
 
   if (estado.tipo === 'erro') {
-    return (
-      <p className="px-5 py-8 text-[14px] text-ink-2">
-        Não deu para carregar as assinaturas dadas na mão agora.
-      </p>
-    );
+    return <p className="px-5 py-8 text-[14px] text-ink-2">{t('dinheiro.cobranca.erro')}</p>;
   }
 
   /*
@@ -158,11 +178,8 @@ export function ListaDeCobranca({
 
       {noCartao > 0 ? (
         <p className="border-t border-line-2 px-5 py-3 text-[12px] text-ink-2">
-          {noCartao === 1
-            ? '1 pessoa saiu desta fila por já pagar no cartão.'
-            : `${noCartao} pessoas saíram desta fila por já pagarem no cartão.`}{' '}
-          O gateway cobra sozinho, e pedir Pix a quem tem cartão passando é como se produz
-          pagamento em dobro. O acordo na mão delas continua aberto, em "Todas".
+          {t('dinheiro.cobranca.saiuDaFila', { count: noCartao })}{' '}
+          {t('dinheiro.cobranca.saiuDaFilaPorQue')}
         </p>
       ) : null}
     </div>

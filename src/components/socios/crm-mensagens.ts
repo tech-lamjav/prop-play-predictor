@@ -5,7 +5,7 @@ import {
   prazoDe,
 } from './crm-cobranca';
 import { primeiroNome as primeiroNomeDe, saudacao, type TipoDeGancho } from './crm-ficha';
-import { ETAPAS, ROTULO_DA_ETAPA, type Etapa } from './crm-vocabulario';
+import { CHAVE_DA_ETAPA, ETAPAS, type Etapa } from './crm-vocabulario';
 
 // ============================================================================
 // As mensagens prontas
@@ -144,18 +144,42 @@ export function mensagemPara(
 export interface ModeloDeMensagem {
   /** `novo` para o texto da etapa, `novo:betinho` para o do par. */
   id: string;
-  /** A etapa a que o texto pertence. É o que agrupa as opções na tela. */
+  /**
+   * A etapa a que o texto pertence. É o que agrupa as opções na tela.
+   *
+   * ⚠️ CHAVE de catálogo, e não texto — ver `CHAVE_DA_ETAPA`. Serve de
+   * identificador estável para o agrupamento também: a tela agrupa comparando
+   * este valor, e com o rótulo traduzido ali a lista se remontaria a cada troca
+   * de idioma.
+   */
   grupo: string;
+  /** Como a opção se chama no seletor. CHAVE de catálogo, e não texto. */
   rotulo: string;
+  /**
+   * O que interpolar no rótulo, quando ele tem buraco.
+   *
+   * Existe por UM caso — "Acaba em {{dias}} dias" —, e é por isso que ele é
+   * opcional em vez de obrigatório e vazio: nove dos dez rótulos não têm nada a
+   * interpolar, e um campo obrigatório ali seria `{}` repetido nove vezes.
+   */
+  rotuloDados?: Record<string, unknown>;
+  /**
+   * O texto da mensagem, EM PORTUGUÊS e fora do catálogo.
+   *
+   * ⚠️ Esta é a fronteira deste módulo: o que o sócio lê (grupo, rótulo) é
+   * interface e fala o idioma dele; o que ele COLA NO WHATSAPP é uma mensagem
+   * para um lead brasileiro e continua em português, qualquer que seja o idioma
+   * da tela. Traduzir `texto` mandaria espanhol para quem fala português.
+   */
   texto: string;
 }
 
-/** Como cada gancho aparece como opção no seletor. */
-const ROTULO_DO_GANCHO: Record<TipoDeGancho, string> = {
-  betinho: 'Betinho',
-  futebol: 'Futebol',
-  nba: 'NBA',
-  indefinido: 'Geral',
+/** Como cada gancho aparece como opção no seletor. CHAVE, e não texto. */
+const CHAVE_DO_GANCHO: Record<TipoDeGancho, string> = {
+  betinho: 'vocabulario.gancho.betinho',
+  futebol: 'vocabulario.gancho.futebol',
+  nba: 'vocabulario.gancho.nba',
+  indefinido: 'vocabulario.gancho.indefinido',
 };
 
 /**
@@ -184,14 +208,14 @@ export function modelosDeAbordagem(primeiroNome: string | null): ModeloDeMensage
   const comNome = (modelo: string) => modelo.replace('{saudacao}', saudacao(primeiroNome));
 
   return ETAPAS.flatMap((etapa) => {
-    const grupo = ROTULO_DA_ETAPA[etapa];
+    const grupo = CHAVE_DA_ETAPA[etapa];
     const pares = Object.entries(POR_PAR[etapa] ?? {}) as [TipoDeGancho, string][];
     return [
-      { id: etapa, grupo, rotulo: 'Geral', texto: comNome(POR_ETAPA[etapa]) },
+      { id: etapa, grupo, rotulo: 'vocabulario.gancho.indefinido', texto: comNome(POR_ETAPA[etapa]) },
       ...pares.map(([gancho, modelo]) => ({
         id: `${etapa}:${gancho}`,
         grupo,
-        rotulo: ROTULO_DO_GANCHO[gancho],
+        rotulo: CHAVE_DO_GANCHO[gancho],
         texto: comNome(modelo),
       })),
     ];
@@ -233,29 +257,41 @@ export function modelosDaFicha(
   nome: string | null,
   contexto: ContextoDaMensagem,
 ): ModeloDeMensagem[] {
-  const deTeste = (id: string, rotulo: string, dias: number): ModeloDeMensagem => ({
+  const deTeste = (
+    id: string,
+    rotulo: string,
+    dias: number,
+    rotuloDados?: Record<string, unknown>,
+  ): ModeloDeMensagem => ({
     id,
-    grupo: 'Teste gratuito',
+    grupo: 'vocabulario.mensagem.grupoTesteGratuito',
     rotulo,
+    ...(rotuloDados ? { rotuloDados } : {}),
     texto: mensagemDeConversao(nome, dias),
   });
 
   const conversao = [
-    deTeste('teste:amanha', 'Acaba amanhã', 1),
-    deTeste('teste:hoje', 'Acaba hoje', 0),
-    deTeste('teste:acabou', 'Já acabou', -1),
+    deTeste('teste:amanha', 'vocabulario.mensagem.acabaAmanha', 1),
+    deTeste('teste:hoje', 'vocabulario.mensagem.acabaHoje', 0),
+    deTeste('teste:acabou', 'vocabulario.mensagem.jaAcabou', -1),
   ];
   const { diasDeTeste, cobranca } = contexto;
   if (diasDeTeste !== null && diasDeTeste > 1) {
-    conversao.unshift(deTeste('teste:em-dias', `Acaba em ${diasDeTeste} dias`, diasDeTeste));
+    // Sem forma de plural, e é medido: este ramo só roda com `diasDeTeste > 1`,
+    // então o singular seria texto que nenhuma tela alcança.
+    conversao.unshift(
+      deTeste('teste:em-dias', 'vocabulario.mensagem.acabaEmDias', diasDeTeste, {
+        dias: diasDeTeste,
+      }),
+    );
   }
 
   const deCobranca: ModeloDeMensagem[] = cobranca
     ? [
         {
           id: 'cobranca',
-          grupo: 'Cobrança',
-          rotulo: 'Vencimento da assinatura',
+          grupo: 'vocabulario.mensagem.grupoCobranca',
+          rotulo: 'vocabulario.mensagem.vencimentoDaAssinatura',
           texto: mensagemDeCobranca(
             nome,
             cobranca.plano,
@@ -271,8 +307,8 @@ export function modelosDaFicha(
   // teste que venceu.
   const fechamento: ModeloDeMensagem = {
     id: 'fechamento',
-    grupo: 'Fechamento',
-    rotulo: 'Depois do sim',
+    grupo: 'vocabulario.mensagem.grupoFechamento',
+    rotulo: 'vocabulario.mensagem.depoisDoSim',
     texto: mensagemDeFechamento(nome),
   };
 

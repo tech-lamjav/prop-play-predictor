@@ -1,4 +1,5 @@
 import type { Bet } from '@/hooks/use-bets';
+import { localeAtivo } from '@/utils/idioma-ativo';
 
 function profitForBet(bet: Bet): number {
   if (bet.status === 'won') return bet.potential_return - bet.stake_amount;
@@ -41,7 +42,7 @@ export function exportBetsToCSV(
 
   const rows = bets.map((bet) => {
     const profit = profitForBet(bet);
-    const betDate = bet.bet_date ? new Date(bet.bet_date).toLocaleDateString('pt-BR') : '';
+    const betDate = bet.bet_date ? new Date(bet.bet_date).toLocaleDateString(localeAtivo()) : '';
     return [
       escapeCsvField(betDate),
       escapeCsvField(bet.sport ?? ''),

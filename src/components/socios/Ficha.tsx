@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { brtDayOf } from '@/utils/futebol-datas';
 import { formatarDia } from './crm-lista';
-import { ETAPAS, ROTULO_DA_ETAPA, type Etapa } from './crm-vocabulario';
+import { CHAVE_DA_ETAPA, ETAPAS, type Etapa } from './crm-vocabulario';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Bloco } from './Bloco';
 import { MensagemPronta } from './MensagemPronta';
@@ -44,13 +45,15 @@ function dia(carimbo: string | null): string | null {
  * cima, o valor tem a largura inteira e o rótulo nunca quebra.
  */
 function Campo({ rotulo, valor }: { rotulo: string; valor: string | null }) {
+  const { t } = useTranslation('socios');
+
   return (
     <div className="border-t border-line-2 py-2 first:border-t-0 first:pt-0">
       <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-dim">{rotulo}</p>
       {/* Sem valor, a palavra explícita. Um campo em branco é lido como dado, e
           o que existe aqui é a ausência dele. */}
       <p className="break-words text-[14px] text-ink">
-        {valor ?? <span className="text-ink-2">não informado</span>}
+        {valor ?? <span className="text-ink-2">{t('ficha.identificacao.naoInformado')}</span>}
       </p>
     </div>
   );
@@ -64,6 +67,8 @@ function Campo({ rotulo, valor }: { rotulo: string; valor: string | null }) {
  * entre linhas.
  */
 function Contato({ rotulo, valor }: { rotulo: string; valor: string | null }) {
+  const { t } = useTranslation('socios');
+
   return (
     <div className="min-w-[140px]">
       <p className="font-mono text-[9.5px] font-bold uppercase tracking-[0.16em] text-ink-dim">
@@ -72,7 +77,7 @@ function Contato({ rotulo, valor }: { rotulo: string; valor: string | null }) {
       {/* Sem valor, a palavra explícita: um campo em branco é lido como dado, e
           o que existe aqui é a ausência dele. */}
       <p className="mt-0.5 break-words text-[13.5px] text-ink">
-        {valor ?? <span className="text-ink-2">não informado</span>}
+        {valor ?? <span className="text-ink-2">{t('ficha.identificacao.naoInformado')}</span>}
       </p>
     </div>
   );
@@ -111,11 +116,19 @@ const ABA =
  */
 const PAINEL = 'min-h-0 flex-1 space-y-3.5 overflow-y-auto bg-canvas p-6 pt-5';
 
-const COMO_CHAMAR: Record<TipoDeGancho, string> = {
-  betinho: 'veio pelo Betinho',
-  futebol: 'veio pelo futebol',
-  nba: 'veio pela NBA',
-  indefinido: 'não dá para dizer ainda',
+/**
+ * O palpite do gancho, numa expressão.
+ *
+ * ⚠️ CHAVE de catálogo, e não texto — pela razão de `CHAVE_DA_ETAPA`: tabela
+ * declarada fora do componente é avaliada uma vez, no carregamento do módulo,
+ * então guardar texto aqui congelaria o idioma da primeira pintura. O `t()`
+ * acontece no render.
+ */
+const CHAVE_DO_PALPITE: Record<TipoDeGancho, string> = {
+  betinho: 'ficha.gancho.origem.betinho',
+  futebol: 'ficha.gancho.origem.futebol',
+  nba: 'ficha.gancho.origem.nba',
+  indefinido: 'ficha.gancho.origem.indefinido',
 };
 
 /**
@@ -213,13 +226,15 @@ export function Ficha({
    *  ficha continua sendo só desenho. */
   linhaDoTempo: ReactNode;
 }) {
+  const { t } = useTranslation('socios');
+
   if (estado.tipo !== 'pronta') {
     const recado =
       estado.tipo === 'carregando'
-        ? 'Carregando a ficha…'
+        ? t('ficha.estado.carregando')
         : estado.tipo === 'erro'
-          ? 'Não deu para carregar a ficha agora.'
-          : 'Não encontramos esse cadastro.';
+          ? t('ficha.estado.erro')
+          : t('ficha.estado.naoEncontrada');
     return <p className="p-8 text-[15px] text-ink-2">{recado}</p>;
   }
 
@@ -290,6 +305,13 @@ function Conteudo({
   receita: ReactNode;
   testeDoFutebol: ReactNode;
 }) {
+  const { t } = useTranslation('socios');
+  /*
+   * ⚠️ `nomeDoPlano` devolve `ROTULO_DO_PLANO`, que continua em PORTUGUÊS de
+   * propósito e não entra no catálogo: o mesmo rótulo é interpolado na mensagem
+   * de cobrança que o sócio cola no WhatsApp de um lead brasileiro. A decisão
+   * está em `crm-vocabulario.ts`.
+   */
   const plano = nomeDoPlano(pessoa.subscription_product_type);
   const bruto = (pessoa.subscription_product_type ?? '').trim();
   const gancho = ganchoDe(pessoa, apostas);
@@ -345,7 +367,7 @@ function Conteudo({
       */}
       <section
         role="region"
-        aria-label="Identificação do lead"
+        aria-label={t('ficha.identificacao.regiao')}
         className="shrink-0 bg-white px-6 pt-5"
       >
         <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
@@ -356,7 +378,9 @@ function Conteudo({
               {pessoa.name ?? pessoa.email}
             </h1>
             <p className="mt-0.5 text-[12.5px] text-ink-2">
-              {cadastroEm ? `Cadastrou em ${cadastroEm}` : 'Sem data de cadastro no banco'}
+              {cadastroEm
+                ? t('ficha.cabecalho.cadastrouEm', { dia: cadastroEm })
+                : t('ficha.cabecalho.semDataDeCadastro')}
             </p>
             {/* Os dois selos dividem a faixa: estar em teste e não ter WhatsApp
                 são fatos independentes, e alguém pode ter os dois. */}
@@ -387,7 +411,7 @@ function Conteudo({
                 htmlFor="etapa-do-lead"
                 className="font-mono text-[9.5px] font-bold uppercase tracking-[0.16em] text-ink-dim"
               >
-                Etapa
+                {t('ficha.cabecalho.etapa')}
               </label>
               <div className="mt-1 flex items-center gap-2">
                 <select
@@ -395,13 +419,17 @@ function Conteudo({
                   value={etapa ?? ''}
                   disabled={mudandoEtapa || etapa === null}
                   onChange={(e) => aoMudarEtapa(e.target.value as Etapa)}
-                  aria-label="Etapa do lead"
+                  aria-label={t('ficha.cabecalho.etapaDoLead')}
                   className="h-9 rounded-rebrand-sm border border-line-2 bg-white px-2.5 text-[13.5px] font-bold text-ink disabled:opacity-60"
                 >
-                  {etapa === null ? <option value="">Carregando…</option> : null}
+                  {etapa === null ? (
+                    <option value="">{t('ficha.cabecalho.carregandoEtapa')}</option>
+                  ) : null}
+                  {/* `key={e}` é o valor gravado no banco, e não o rótulo: é ele
+                      que não muda quando o idioma troca. */}
                   {ETAPAS.map((e) => (
                     <option key={e} value={e}>
-                      {ROTULO_DA_ETAPA[e]}
+                      {t(CHAVE_DA_ETAPA[e])}
                     </option>
                   ))}
                 </select>
@@ -418,7 +446,9 @@ function Conteudo({
                   <span
                     className={`text-[11.5px] ${erroAoMudarEtapa ? 'font-bold text-ink' : 'text-ink-2'}`}
                   >
-                    {erroAoMudarEtapa ? 'Não gravou. Continua como estava.' : 'Gravando…'}
+                    {erroAoMudarEtapa
+                      ? t('ficha.cabecalho.naoGravou')
+                      : t('ficha.cabecalho.gravando')}
                   </span>
                 )}
               </div>
@@ -437,6 +467,8 @@ function Conteudo({
                 inútil; o que falta ali é completar o cadastro. */}
             {podeDecidir ? (
               <div>
+                {/* "WhatsApp" fica fora do catálogo: é nome de produto, e se
+                    escreve igual nos dois idiomas. */}
                 <label
                   htmlFor="whatsapp-do-lead"
                   className="font-mono text-[9.5px] font-bold uppercase tracking-[0.16em] text-ink-dim"
@@ -449,11 +481,11 @@ function Conteudo({
                     value={marcadoSemWhatsApp ? 'nao' : 'ok'}
                     disabled={marcandoSemWhatsApp}
                     onChange={(e) => aoMarcarSemWhatsApp(e.target.value === 'nao')}
-                    aria-label="Situação do WhatsApp"
+                    aria-label={t('ficha.whatsapp.situacao')}
                     className="h-9 rounded-rebrand-sm border border-line-2 bg-white px-2.5 text-[13.5px] font-bold text-ink disabled:opacity-60"
                   >
-                    <option value="ok">Número ok</option>
-                    <option value="nao">Não leva à pessoa</option>
+                    <option value="ok">{t('ficha.whatsapp.numeroOk')}</option>
+                    <option value="nao">{t('ficha.whatsapp.naoLevaAPessoa')}</option>
                   </select>
                   {/* Mesmo recado da etapa, e pela mesma razão: o seletor é
                       controlado pelo valor do servidor, então uma gravação que
@@ -464,8 +496,8 @@ function Conteudo({
                       className={`text-[11.5px] ${erroAoMarcarSemWhatsApp ? 'font-bold text-ink' : 'text-ink-2'}`}
                     >
                       {erroAoMarcarSemWhatsApp
-                        ? 'Não gravou. Continua como estava.'
-                        : 'Gravando…'}
+                        ? t('ficha.cabecalho.naoGravou')
+                        : t('ficha.cabecalho.gravando')}
                     </span>
                   )}
                 </div>
@@ -475,13 +507,17 @@ function Conteudo({
         </div>
 
         <div className="mt-4 flex flex-wrap items-start gap-x-7 gap-y-3">
-          <Contato rotulo="E-mail" valor={pessoa.email} />
+          <Contato rotulo={t('ficha.identificacao.email')} valor={pessoa.email} />
+          {/* "WhatsApp" e "Telegram" são nomes de produto: ficam fora do
+              catálogo porque se escrevem igual nos dois idiomas. */}
           <Contato rotulo="WhatsApp" valor={pessoa.whatsapp_number} />
           <Contato
             rotulo="Telegram"
             valor={
               pessoa.telegram_username
-                ? `@${pessoa.telegram_username}${pessoa.telegram_synced ? '' : ' (não vinculado)'}`
+                ? `@${pessoa.telegram_username}${
+                    pessoa.telegram_synced ? '' : t('ficha.identificacao.naoVinculado')
+                  }`
                 : null
             }
           />
@@ -512,36 +548,41 @@ function Conteudo({
             respiro lateral e as abas encostavam na borda do modal. */}
         <TabsList className="h-auto shrink-0 justify-start gap-6 rounded-none border-b border-line-2 bg-white p-0 px-6">
           <TabsTrigger value="conversa" className={ABA}>
-            Conversa
+            {t('ficha.abas.conversa')}
           </TabsTrigger>
           <TabsTrigger value="planos" className={ABA}>
-            Planos
+            {t('ficha.abas.planos')}
           </TabsTrigger>
           <TabsTrigger value="comportamento" className={ABA}>
-            Comportamento
+            {t('ficha.abas.comportamento')}
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="conversa" className={PAINEL}>
-          <Bloco titulo="Gancho">
+          <Bloco titulo={t('ficha.gancho.titulo')}>
             <p className="text-[15px] text-ink">
-              <span className="font-bold">Palpite:</span> {COMO_CHAMAR[gancho.tipo]}
+              <span className="font-bold">{t('ficha.gancho.palpite')}</span>{' '}
+              {t(CHAVE_DO_PALPITE[gancho.tipo])}
             </p>
-            <p className="mt-1 text-[13px] text-ink-2">Porque {gancho.porque}.</p>
+            {/* ⚠️ `gancho.porque` vem de `crm-ficha.ts` e ainda é texto em
+                PORTUGUÊS: o motivo do palpite não foi migrado neste passo. */}
+            <p className="mt-1 text-[13px] text-ink-2">
+              {t('ficha.gancho.porque', { porque: gancho.porque })}
+            </p>
             {ultimaAposta ? (
-              <p className="mt-1 text-[13px] text-ink-2">Última aposta em {ultimaAposta}.</p>
+              <p className="mt-1 text-[13px] text-ink-2">
+                {t('ficha.gancho.ultimaAposta', { dia: ultimaAposta })}
+              </p>
             ) : null}
             {/* A aposta é o sinal mais forte e o primeiro da fila. Sem ela, o
                 palpite pode estar apontando para o lado errado, e o sócio
                 precisa saber disso antes de abrir a conversa. */}
             {gancho.apostasDesconhecidas ? (
               <p className="mt-2 text-[13px] font-bold text-ink">
-                Não deu para consultar as apostas, então este palpite está incompleto.
+                {t('ficha.gancho.apostasDesconhecidas')}
               </p>
             ) : null}
-            <p className="mt-3 text-[12px] text-ink-2">
-              É leitura do que o banco registrou, não do que a pessoa disse.
-            </p>
+            <p className="mt-3 text-[12px] text-ink-2">{t('ficha.gancho.aviso')}</p>
           </Bloco>
 
           {/* Só depois de saber a etapa: o modelo depende dela, e o campo é
@@ -576,20 +617,20 @@ function Conteudo({
                 dele. Soltos no grid, o segundo cairia na coluna dos
                 remendos e empurraria os avulsos para baixo. */}
             <div className="space-y-3.5">
-              <Bloco titulo="Assinatura">
+              <Bloco titulo={t('ficha.planos.assinatura')}>
                 <Campo
-                  rotulo="Plano"
-                  valor={plano ?? (bruto ? `Não identificado: ${bruto}` : null)}
+                  rotulo={t('ficha.planos.plano')}
+                  valor={plano ?? (bruto ? t('ficha.planos.naoIdentificado', { bruto }) : null)}
                 />
                 {assinatura}
               </Bloco>
 
-              <Bloco titulo="Receita">{receita}</Bloco>
+              <Bloco titulo={t('ficha.planos.receita')}>{receita}</Bloco>
             </div>
 
             <div className="space-y-3.5">
-              <Bloco titulo="Acessos avulsos">{edicaoDeAcesso}</Bloco>
-              <Bloco titulo="Teste do futebol">{testeDoFutebol}</Bloco>
+              <Bloco titulo={t('ficha.planos.acessosAvulsos')}>{edicaoDeAcesso}</Bloco>
+              <Bloco titulo={t('ficha.planos.testeDoFutebol')}>{testeDoFutebol}</Bloco>
             </div>
           </div>
         </TabsContent>

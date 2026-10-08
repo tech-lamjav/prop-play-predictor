@@ -12,6 +12,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Copy, Users, Mail, Check } from 'lucide-react';
 import { useToast } from '../hooks/use-toast';
+import { localeAtivo } from '@/utils/idioma-ativo';
 
 interface Referral {
   referred_id: string;
@@ -220,7 +221,7 @@ export const ReferralModal: React.FC<ReferralModalProps> = ({
                       </div>
                     </div>
                     <div className="text-xs opacity-50 ml-2 flex-shrink-0">
-                      {new Date(referral.created_at).toLocaleDateString('pt-BR')}
+                      {new Date(referral.created_at).toLocaleDateString(localeAtivo())}
                     </div>
                   </div>
                 ))}

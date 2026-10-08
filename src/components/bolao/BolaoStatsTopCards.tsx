@@ -5,6 +5,7 @@ import { TeamFlag } from '@/components/bolao/TeamFlag';
 import { computeMatchDeadline, useMySpecialPredictions } from '@/hooks/use-bolao';
 import { specialDeadline, type SpecialDeadlineType } from '@/components/bolao/special-deadlines';
 import type { Bolao, BolaoPrediction, WcMatch } from '@/services/bolao.service';
+import { localeAtivo, RELOGIO_DE_24H } from '@/utils/idioma-ativo';
 
 interface BolaoStatsTopCardsProps {
   bolao: Bolao;
@@ -49,11 +50,11 @@ const STAGE_LABELS: { key: WcMatch['stage']; label: string }[] = [
 
 /** Date → { day: 'Sáb 14/06', time: '16:00' } em BRT (pra âncora do prazo). */
 function formatAnchorHeadline(d: Date): { day: string; time: string } {
-  const dayRaw = new Intl.DateTimeFormat('pt-BR', {
+  const dayRaw = new Intl.DateTimeFormat(localeAtivo(), {
     timeZone: 'America/Sao_Paulo', weekday: 'short', day: '2-digit', month: '2-digit',
   }).format(d).replace(/\./g, '');
-  const time = new Intl.DateTimeFormat('pt-BR', {
-    timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit',
+  const time = new Intl.DateTimeFormat(localeAtivo(), {
+    timeZone: 'America/Sao_Paulo', hour: '2-digit', hourCycle: RELOGIO_DE_24H, minute: '2-digit',
   }).format(d);
   return { day: dayRaw.charAt(0).toUpperCase() + dayRaw.slice(1), time };
 }

@@ -1,4 +1,5 @@
 import { AlertTriangle, CircleDot, History } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import {
   ETIQUETAS,
   EXPLICACAO_DA_ETIQUETA,
@@ -33,6 +34,10 @@ const ICONE: Record<Etiqueta, typeof CircleDot> = {
  * ⚠️ Clicar aqui filtra a lista, e o filtro se SOMA ao do funil em vez de
  * substituí-lo: "quem está em teste e ainda está em nutrindo" é uma pergunta
  * legítima, e é exatamente o tipo de recorte que o eixo separado permite.
+ *
+ * ⚠️ O rótulo e a explicação de cada etiqueta ainda são PORTUGUÊS: vêm de
+ * `crm-etiquetas.ts` (`ROTULO_DA_ETIQUETA`, `EXPLICACAO_DA_ETIQUETA`), que não
+ * foi migrado para o catálogo neste passo.
  */
 export function FaixaDeEtiquetas({
   contagem,
@@ -43,17 +48,19 @@ export function FaixaDeEtiquetas({
   selecionada: Etiqueta | null;
   aoSelecionar: (etiqueta: Etiqueta | null) => void;
 }) {
+  const { t } = useTranslation('socios');
+
   const temAlguem = ETIQUETAS.some((e) => contagem[e] > 0);
   if (!temAlguem) return null;
 
   return (
     <section
       role="region"
-      aria-label="Teste gratuito"
+      aria-label={t('ficha.etiquetas.titulo')}
       className="rounded-rebrand-md border border-line-2 bg-white p-4"
     >
       <p className="mb-2.5 font-mono text-[9.5px] font-bold uppercase tracking-[0.16em] text-ink-dim">
-        Teste gratuito
+        {t('ficha.etiquetas.titulo')}
       </p>
 
       <div className="flex flex-wrap gap-2">

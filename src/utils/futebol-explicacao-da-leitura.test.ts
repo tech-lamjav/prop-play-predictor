@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { explicacaoDaLeitura } from './futebol-motivos';
+import { COPY_DO_ROTULO_DA_EXPLICACAO, explicacaoDaLeitura } from './futebol-motivos';
 
 // ============================================================================
 // Uma resposta só para "por que essa aposta" (#334)
@@ -12,6 +12,12 @@ import { explicacaoDaLeitura } from './futebol-motivos';
 // Agora: leitura COM preço lê o contrato; leitura SEM preço continua nas
 // premissas, mas com nome próprio, porque sem preço não há aposta a favor de
 // quê. Ver o glossário: motivo · porquê · o que o jogo mostra.
+//
+// ⚠️ O `rotulo` é um IDENTIFICADOR (`porque` / `oQueOJogoMostra`), e não a
+// frase (#544). Era a frase, e o painel do jogo decidia o sufixo comparando
+// contra ela — traduzir o texto quebraria a tela em espanhol sem nenhum teste
+// acusar, porque em teste a interface está em português. A frase de cada rótulo
+// continua pinada, num teste próprio no fim deste arquivo.
 // ============================================================================
 
 const GOLS = 'goals_over_under';
@@ -74,7 +80,7 @@ describe('explicacaoDaLeitura', () => {
         },
         opcoes,
       );
-      expect(r.rotulo).toBe('Por quê');
+      expect(r.rotulo).toBe('porque');
     });
 
     // O contrato antigo ainda manda preço junto do cenário, e ele continua no ar
@@ -134,7 +140,7 @@ describe('explicacaoDaLeitura', () => {
         opcoes,
       );
 
-      expect(r.rotulo).toBe('O que o jogo mostra');
+      expect(r.rotulo).toBe('oQueOJogoMostra');
       expect(slugs(r.itens)).toEqual(['defesas_firmes']);
       // Nada do contrato de outra linha vaza para cá.
       expect(slugs(r.itens)).not.toContain('ataque_combinado');
@@ -154,7 +160,7 @@ describe('explicacaoDaLeitura', () => {
       );
 
       expect(r.itens).toEqual([]);
-      expect(r.rotulo).toBe('Por quê');
+      expect(r.rotulo).toBe('porque');
     });
   });
 
@@ -186,7 +192,7 @@ describe('explicacaoDaLeitura', () => {
         opcoes,
       );
 
-      expect(r.rotulo).toBe('O que o jogo mostra');
+      expect(r.rotulo).toBe('oQueOJogoMostra');
     });
 
     it('não tem contra: sem preço, não há o que pesar contra', () => {
@@ -277,7 +283,7 @@ describe('a linha casa com folga, porque ela vem em float', () => {
       opcoes,
     );
 
-    expect(r.rotulo).toBe('Por quê');
+    expect(r.rotulo).toBe('porque');
     expect(slugs(r.itens)).toEqual(['ataque_combinado']);
   });
 
@@ -293,7 +299,19 @@ describe('a linha casa com folga, porque ela vem em float', () => {
       opcoes,
     );
 
-    expect(r.rotulo).toBe('O que o jogo mostra');
+    expect(r.rotulo).toBe('oQueOJogoMostra');
     expect(slugs(r.itens)).toEqual(['defesas_firmes']);
+  });
+});
+
+describe('a frase de cada rótulo é a do glossário', () => {
+  // O identificador é o que atravessa o código; a FRASE é vocabulário de
+  // produto, e continua pinada aqui para uma reescrita descuidada não passar
+  // em silêncio só porque o resto do arquivo compara identificadores.
+  it('porquê e o que o jogo mostra, escritos como o glossário escreve', () => {
+    expect(COPY_DO_ROTULO_DA_EXPLICACAO).toEqual({
+      porque: 'Por quê',
+      oQueOJogoMostra: 'O que o jogo mostra',
+    });
   });
 });

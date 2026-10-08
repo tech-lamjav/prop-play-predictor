@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useSimboloDaMoeda } from '@/hooks/use-moeda';
+import { fmtPct } from '@/utils/formato';
 import { useAuth } from '../hooks/use-auth';
 import AnalyticsNav from '@/components/AnalyticsNav';
 import OnboardingTour from '@/components/onboarding/OnboardingTour';
@@ -34,7 +37,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { format, parse, isValid } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { localeDoDateFns } from '@/utils/locale-do-date-fns';
 
 interface Tag {
   id: string;
@@ -80,6 +83,9 @@ const formatDateToString = (date: Date | undefined): string => {
 };
 
 export default function Bankroll() {
+  const { t } = useTranslation('apostas');
+  // O símbolo da moeda escolhida — era "R$" escrito à mão.
+  const simbolo = useSimboloDaMoeda();
   const { user, isLoading: authLoading } = useAuth();
   const { config, formatCurrency } = useUserUnit();
   const { movements: capitalMovements, addMovement, updateMovement, deleteMovement, fetchMovements } = useCapitalMovements(user?.id);
@@ -142,7 +148,7 @@ export default function Bankroll() {
   if (authLoading || isLoading) {
     return (
       <div className="theme-bolao min-h-screen bg-canvas text-ink flex items-center justify-center">
-        <div className="text-ink-2 text-[13px]">Carregando...</div>
+        <div className="text-ink-2 text-[13px]">{t('banca.carregando')}</div>
       </div>
     );
   }
@@ -159,7 +165,7 @@ export default function Bankroll() {
           description: movementDesc.trim() || undefined,
           movement_date: movementDate ? new Date(movementDate).toISOString() : undefined,
         });
-        toast({ title: 'Movimentação atualizada.', variant: 'default' });
+        toast({ title: t('banca.aviso.atualizada'), variant: 'default' });
       } else {
         await addMovement({
           type: movementType,
@@ -169,7 +175,7 @@ export default function Bankroll() {
           source: 'manual',
           affects_balance: true,
         });
-        toast({ title: 'Movimentação adicionada.', variant: 'default' });
+        toast({ title: t('banca.aviso.adicionada'), variant: 'default' });
       }
       setMovementModalOpen(false);
       setEditingMovement(null);
@@ -178,7 +184,7 @@ export default function Bankroll() {
       setMovementDate('');
       fetchMovements();
     } catch {
-      toast({ title: 'Erro ao salvar movimentação.', variant: 'destructive' });
+      toast({ title: t('banca.aviso.erroSalvar'), variant: 'destructive' });
     } finally {
       setMovementSaving(false);
     }
@@ -189,11 +195,11 @@ export default function Bankroll() {
     setDeleteConfirming(true);
     try {
       await deleteMovement(deletingMovementId);
-      toast({ title: 'Movimentação excluída.', variant: 'default' });
+      toast({ title: t('banca.aviso.excluida'), variant: 'default' });
       setDeletingMovementId(null);
       fetchMovements();
     } catch {
-      toast({ title: 'Erro ao excluir movimentação.', variant: 'destructive' });
+      toast({ title: t('banca.aviso.erroExcluir'), variant: 'destructive' });
     } finally {
       setDeleteConfirming(false);
     }
@@ -208,9 +214,9 @@ export default function Bankroll() {
       <div className="bg-white border-b border-line">
         <div className="max-w-7xl mx-auto px-4 py-6 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
-            <div className="text-[11px] font-semibold tracking-[0.2em] text-ink-2 uppercase flex items-center gap-2">Banca{isDemo && <DemoBadge />}</div>
-            <h1 className="text-[28px] font-semibold tracking-tight text-ink mt-1">Minha banca</h1>
-            <p className="text-[13px] text-ink-2 mt-1">Visão geral, evolução e histórico de movimentações</p>
+            <div className="text-[11px] font-semibold tracking-[0.2em] text-ink-2 uppercase flex items-center gap-2">{t('banca.etiqueta')}{isDemo && <DemoBadge />}</div>
+            <h1 className="text-[28px] font-semibold tracking-tight text-ink mt-1">{t('banca.titulo')}</h1>
+            <p className="text-[13px] text-ink-2 mt-1">{t('banca.subtitulo')}</p>
           </div>
           <div data-tour="bankroll-acoes" className="flex flex-wrap items-center gap-2">
             <button
@@ -226,7 +232,7 @@ export default function Bankroll() {
               className="h-9 px-3 inline-flex items-center gap-2 text-[13px] font-medium text-ink-2 hover:text-ink border border-line bg-white hover:bg-canvas-2 rounded-md transition-colors"
             >
               <ArrowUpCircle className="w-4 h-4" />
-              <span>Resgate</span>
+              <span>{t('banca.acoes.resgate')}</span>
             </button>
             <button
               type="button"
@@ -241,7 +247,7 @@ export default function Bankroll() {
               className="h-9 px-4 inline-flex items-center gap-2 text-[13px] font-semibold text-white bg-forest hover:bg-forest-soft rounded-md transition-colors"
             >
               <ArrowDownCircle className="w-4 h-4" />
-              <span>Aporte</span>
+              <span>{t('banca.acoes.aporte')}</span>
             </button>
           </div>
         </div>
@@ -276,33 +282,35 @@ export default function Bankroll() {
           return (
             <div data-tour="bankroll-resumo" className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div className="bg-white border border-line rounded-lg p-4">
-                <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">Saldo atual</div>
+                <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">{t('banca.kpi.saldoAtual')}</div>
                 <div className="text-[22px] font-semibold tabular text-ink mt-1 leading-tight">{formatCurrency(currentBalance)}</div>
-                <div className="text-[11px] text-ink-2 mt-0.5">base {formatCurrency(startBalance)}</div>
+                <div className="text-[11px] text-ink-2 mt-0.5">{t('banca.kpi.base', { valor: formatCurrency(startBalance) })}</div>
               </div>
               <div className="bg-white border border-line rounded-lg p-4">
-                <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">Total aportado</div>
+                <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">{t('banca.kpi.totalAportado')}</div>
                 <div className="text-[22px] font-semibold tabular text-status-success mt-1 leading-tight">+{formatCurrency(totalDeposits)}</div>
                 <div className="text-[11px] text-ink-2 mt-0.5">
-                  {capitalMovements.filter(m => m.type === 'deposit' && m.source !== 'bankroll_edit').length} {capitalMovements.filter(m => m.type === 'deposit' && m.source !== 'bankroll_edit').length === 1 ? 'depósito' : 'depósitos'}
+                  {t('banca.kpi.depositos', { count: capitalMovements.filter(m => m.type === 'deposit' && m.source !== 'bankroll_edit').length })}
                 </div>
               </div>
               <div className="bg-white border border-line rounded-lg p-4">
-                <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">Total retirado</div>
+                <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">{t('banca.kpi.totalRetirado')}</div>
                 <div className={`text-[22px] font-semibold tabular mt-1 leading-tight ${totalWithdrawals > 0 ? 'text-status-danger' : 'text-ink-2'}`}>
                   {totalWithdrawals > 0 ? `-${formatCurrency(totalWithdrawals)}` : formatCurrency(0)}
                 </div>
                 <div className="text-[11px] text-ink-2 mt-0.5">
-                  {capitalMovements.filter(m => m.type === 'withdrawal' && m.source !== 'bankroll_edit').length} {capitalMovements.filter(m => m.type === 'withdrawal' && m.source !== 'bankroll_edit').length === 1 ? 'saque' : 'saques'}
+                  {t('banca.kpi.saques', { count: capitalMovements.filter(m => m.type === 'withdrawal' && m.source !== 'bankroll_edit').length })}
                 </div>
               </div>
               <div className="bg-white border border-line rounded-lg p-4">
-                <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">Lucro acumulado</div>
+                <div className="text-[10px] font-semibold tracking-[0.14em] text-ink-2 uppercase">{t('banca.kpi.lucroAcumulado')}</div>
                 <div className={`text-[22px] font-semibold tabular mt-1 leading-tight ${betProfit >= 0 ? 'text-status-success' : 'text-status-danger'}`}>
                   {betProfit >= 0 ? '+' : ''}{formatCurrency(betProfit)}
                 </div>
                 <div className="text-[11px] text-ink-2 mt-0.5">
-                  {startBalance > 0 ? `${profitPct >= 0 ? '+' : ''}${profitPct.toFixed(1)}% sobre a banca` : 'sobre as apostas'}
+                  {startBalance > 0
+                    ? t('banca.kpi.sobreABanca', { pct: `${profitPct >= 0 ? '+' : ''}${fmtPct(profitPct / 100, 1)}` })
+                    : t('banca.kpi.sobreAsApostas')}
                 </div>
               </div>
             </div>
@@ -342,30 +350,30 @@ export default function Bankroll() {
         <DialogContent className="theme-rebrand bg-white border-line text-ink sm:max-w-md shadow-[0_30px_60px_-20px_rgba(0,0,0,0.15)]">
           <DialogHeader>
             <div className={`text-[11px] uppercase tracking-[0.16em] font-semibold ${movementType === 'deposit' ? 'text-status-success' : 'text-status-danger'}`}>
-              {movementType === 'deposit' ? 'Aporte' : 'Resgate'}
+              {movementType === 'deposit' ? t('banca.acoes.aporte') : t('banca.acoes.resgate')}
             </div>
             <DialogTitle className="text-[18px] font-semibold tracking-tight text-ink">
               {editingMovement
                 ? movementType === 'deposit'
-                  ? 'Editar aporte'
-                  : 'Editar resgate'
+                  ? t('banca.modal.editarAporte')
+                  : t('banca.modal.editarResgate')
                 : movementType === 'deposit'
-                  ? 'Adicionar aporte'
-                  : 'Adicionar resgate'}
+                  ? t('banca.modal.adicionarAporte')
+                  : t('banca.modal.adicionarResgate')}
             </DialogTitle>
             <DialogDescription className="text-[13px] text-ink-2">
               {editingMovement
-                ? 'Altere os dados da movimentação.'
+                ? t('banca.modal.descricaoEdicao')
                 : movementType === 'deposit'
-                  ? 'Registre um aporte de capital na sua banca.'
-                  : 'Registre um resgate de capital da sua banca.'}
+                  ? t('banca.modal.descricaoAporte')
+                  : t('banca.modal.descricaoResgate')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-1.5">
-              <Label htmlFor="amount" className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-2">Valor</Label>
+              <Label htmlFor="amount" className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-2">{t('banca.modal.valor')}</Label>
               <div className="flex items-center h-10 bg-canvas border border-line rounded-md focus-within:border-forest/50 focus-within:ring-2 focus-within:ring-forest/10">
-                <span className="pl-3 pr-1 text-[13px] text-ink-2 font-medium">R$</span>
+                <span className="pl-3 pr-1 text-[13px] text-ink-2 font-medium">{simbolo}</span>
                 <Input
                   id="amount"
                   type="number"
@@ -380,7 +388,7 @@ export default function Bankroll() {
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-2">Data</Label>
+              <Label className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-2">{t('banca.modal.data')}</Label>
               <Popover open={movementDatePopoverOpen} onOpenChange={setMovementDatePopoverOpen} modal>
                 <PopoverTrigger asChild>
                   <button
@@ -391,9 +399,9 @@ export default function Bankroll() {
                     {(() => {
                       const date = parseDateString(movementDate);
                       return date ? (
-                        <span className="tabular">{format(date, 'dd/MM/yyyy', { locale: ptBR })}</span>
+                        <span className="tabular">{format(date, 'dd/MM/yyyy', { locale: localeDoDateFns() })}</span>
                       ) : (
-                        <span className="text-ink-2">Selecione a data</span>
+                        <span className="text-ink-2">{t('banca.modal.selecioneData')}</span>
                       );
                     })()}
                   </button>
@@ -423,11 +431,11 @@ export default function Bankroll() {
               </Popover>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="desc" className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-2">Descrição <span className="normal-case tracking-normal text-ink-2/70 font-normal">(opcional)</span></Label>
+              <Label htmlFor="desc" className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-2">{t('banca.modal.descricao')} <span className="normal-case tracking-normal text-ink-2/70 font-normal">{t('banca.modal.opcional')}</span></Label>
               <Input
                 id="desc"
                 type="text"
-                placeholder={movementType === 'deposit' ? 'Ex: Depósito mensal' : 'Ex: Saque para conta'}
+                placeholder={movementType === 'deposit' ? t('banca.modal.placeholderAporte') : t('banca.modal.placeholderResgate')}
                 value={movementDesc}
                 onChange={(e) => setMovementDesc(e.target.value)}
                 autoComplete="off"
@@ -439,7 +447,7 @@ export default function Bankroll() {
               disabled={movementSaving || !movementAmount || parseFloat(movementAmount) <= 0}
               className="w-full h-10 bg-forest hover:bg-forest-soft text-white font-semibold disabled:opacity-50"
             >
-              {movementSaving ? 'Salvando...' : editingMovement ? 'Salvar alterações' : 'Salvar'}
+              {movementSaving ? t('banca.acoes.salvando') : editingMovement ? t('banca.acoes.salvarAlteracoes') : t('banca.acoes.salvar')}
             </Button>
           </div>
         </DialogContent>
@@ -448,10 +456,10 @@ export default function Bankroll() {
       <AlertDialog open={deletingMovementId !== null} onOpenChange={(open) => !open && setDeletingMovementId(null)}>
         <AlertDialogContent className="theme-rebrand bg-white border-line text-ink shadow-[0_30px_60px_-20px_rgba(0,0,0,0.15)]">
           <AlertDialogHeader>
-            <div className="text-[11px] uppercase tracking-[0.16em] text-status-danger font-semibold">Excluir</div>
-            <AlertDialogTitle className="text-[18px] font-semibold tracking-tight text-ink">Excluir movimentação</AlertDialogTitle>
+            <div className="text-[11px] uppercase tracking-[0.16em] text-status-danger font-semibold">{t('banca.exclusao.etiqueta')}</div>
+            <AlertDialogTitle className="text-[18px] font-semibold tracking-tight text-ink">{t('banca.exclusao.titulo')}</AlertDialogTitle>
             <AlertDialogDescription className="text-[13px] text-ink-2">
-              Excluir este aporte/resgate? O saldo será recalculado.
+              {t('banca.exclusao.descricao')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -459,7 +467,7 @@ export default function Bankroll() {
               disabled={deleteConfirming}
               className="h-9 px-4 text-[13px] font-medium text-ink-2 hover:text-ink border-line bg-white hover:bg-canvas-2"
             >
-              Cancelar
+              {t('banca.acoes.cancelar')}
             </AlertDialogCancel>
             <Button
               type="button"
@@ -467,7 +475,7 @@ export default function Bankroll() {
               onClick={handleConfirmDelete}
               className="h-9 px-4 text-[13px] font-semibold text-white bg-status-danger hover:bg-status-danger/90"
             >
-              {deleteConfirming ? 'Excluindo...' : 'Excluir'}
+              {deleteConfirming ? t('banca.acoes.excluindo') : t('banca.acoes.excluir')}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>

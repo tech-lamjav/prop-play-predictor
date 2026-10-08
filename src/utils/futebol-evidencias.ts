@@ -1,5 +1,6 @@
 import type { FutebolFixtureNumeros } from '@/services/futebol-data.service';
 import { fmtDecimal } from '@/utils/formato';
+import type { CopyComParametros } from '@/utils/futebol-copy';
 
 // O número que embasa cada premissa.
 //
@@ -27,14 +28,118 @@ export interface Comparacao {
   destaque?: 'esq' | 'dir' | 'nenhum';
 }
 
-/** Concordância de número: "1 vitória" e não "1 vitórias". */
-export function plural(n: number, singular: string, plural_: string): string {
-  return `${n} ${n === 1 ? singular : plural_}`;
-}
+/**
+ * As palavras que CONTAM, com a concordância de número a cargo do catálogo.
+ *
+ * Isto substituiu uma função `plural(n, singular, plural)` que recebia os dois
+ * ramos em português. Concordância é regra de idioma: o espanhol tem as mesmas
+ * duas formas aqui, mas quem decide qual usar é o i18next pelo `count`, e não
+ * uma função nossa — e é o que permite um idioma com outras regras entrar depois
+ * sem mexer em código.
+ *
+ * Compartilhado porque três arquivos contam as mesmas coisas: o perfil de
+ * temporada, o histórico jogo a jogo e o valor medido pelo mart.
+ */
+export const COPY_DA_CONTAGEM = {
+  vitorias_zero: '{{count}} vitórias',
+  vitorias_one: '{{count}} vitória',
+  vitorias_other: '{{count}} vitórias',
+  empates_zero: '{{count}} empates',
+  empates_one: '{{count}} empate',
+  empates_other: '{{count}} empates',
+  derrotas_zero: '{{count}} derrotas',
+  derrotas_one: '{{count}} derrota',
+  derrotas_other: '{{count}} derrotas',
+  confrontos_zero: '{{count}} confrontos',
+  confrontos_one: '{{count}} confronto',
+  confrontos_other: '{{count}} confrontos',
+  desfalques_zero: '{{count}} desfalques',
+  desfalques_one: '{{count}} desfalque',
+  desfalques_other: '{{count}} desfalques',
+  times_zero: '{{count}} times',
+  times_one: '{{count}} time',
+  times_other: '{{count}} times',
+} as const;
+
+/**
+ * O nome de um lado quando o dado do confronto não trouxe o nome do time.
+ *
+ * Existe porque a frase precisa chamar o lado de alguma coisa, e "—" no meio de
+ * uma frase lê como defeito. As formas com e sem artigo são as duas posições em
+ * que esses nomes caem, e em português a preposição contrai ("do adversário"),
+ * então a frase não pode montar o artigo por fora.
+ */
+export const COPY_DO_NOME_DO_LADO = {
+  time: 'O time',
+  timeSemArtigo: 'time',
+  adversario: 'Adversário',
+  adversarioComArtigo: 'o adversário',
+  adversarioSemArtigo: 'adversário',
+  mandante: 'O mandante',
+  mandanteSemArtigo: 'mandante',
+  visitanteComArtigo: 'o visitante',
+  visitanteSemArtigo: 'visitante',
+} as const;
+
+/**
+ * As frases do PERFIL DE TEMPORADA — a quarta e última porta da evidência.
+ *
+ * Último recurso, para o que não tem gráfico nem critério transcrito. Ver a ordem
+ * das quatro portas em `futebol-evidencia-da-premissa.ts`.
+ */
+export const COPY_DO_PERFIL = {
+  forma: '{{time}} nos últimos 5: {{vitorias}}, {{empates}} e {{derrotas}}',
+  mando: '{{vitorias}}, {{empates}} e {{derrotas}} em {{jogos}} jogos {{onde}}',
+  tabela:
+    '{{time}} em {{posicao}}º com {{pontos}} pontos contra {{adversario}} em {{posicaoAdv}}º com {{pontosAdv}}. {{dif}} pontos de diferença',
+  forcaMismatch: '{{time}} marca {{ataque}} {{onde}} e {{adversario}} sofre {{defesa}} {{ondeAdv}}',
+  h2h: 'Nos últimos {{jogos}} confrontos: {{vitorias}} do {{time}}, {{empates}} e {{vitoriasAdv}} do {{adversario}}',
+  somadosMarcam: 'Somados, marcam {{valor}} gols por jogo',
+  somadosSofrem: 'Somados, sofrem {{valor}} gols por jogo',
+  cleanSheets: 'Jogos sem sofrer gol: {{casa}} de {{jogosCasa}} e {{fora}} de {{jogosFora}}',
+  sofrePorJogo: '{{time}} sofre {{valor}} gol por jogo {{onde}}, em {{jogos}} jogos',
+  tendeGolear: 'Marca {{ataque}} por jogo contra quem sofre {{defesa}}',
+  passaramEmBranco: 'Passaram em branco em {{casa}} e {{fora}} jogos de {{jogos}}',
+  marcaPorJogo: '{{time}} marca {{valor}} gol por jogo{{classificacao}}',
+  eEstaEm: ' e está em {{posicao}}º',
+} as const;
+
+/**
+ * Onde o time jogou — o vocabulário de MANDO das frases de evidência.
+ *
+ * Vive neste arquivo, e não no do histórico, porque as três portas que montam
+ * frase o usam e este é o módulo que as outras já importam: posto no histórico,
+ * o `import` de volta fecharia um ciclo entre os dois.
+ *
+ * ⚠️ `fora` e `foraDeCasa` são DUAS entradas para o mesmo lado, e é deliberado:
+ * o título da série é curto e usa a forma breve, e a frase do adversário tem
+ * espaço para a longa. Em espanhol as duas caem em **de visitante** — o
+ * glossário escolheu Local e Visitante para os quatro países, e "fuera de casa"
+ * não tem a mesma aceitação (CONTEXT.md, "Vocabulario en español").
+ */
+export const COPY_DO_MANDO = {
+  casa: 'em casa',
+  fora: 'fora',
+  foraDeCasa: 'fora de casa',
+} as const;
+
+/** A chave do mando deste jogo, na forma curta. */
+export const CHAVE_DO_MANDO = (emCasa: boolean) => `mando.${emCasa ? 'casa' : 'fora'}`;
+
+/** Sem número, o traço. Fica fora do catálogo: pontuação não se traduz. */
+const SEM_NUMERO = '—';
 
 export interface Evidencia {
-  /** Frase curta com o dado. */
-  texto: string;
+  /**
+   * O PEDIDO da frase curta com o dado — chave e valores, não a frase.
+   *
+   * Pedido e não frase (#544 estendido às evidências): era daqui que saía o
+   * "6.0 gols sofridos por jogo, somados" que o usuário fotografou no site em
+   * espanhol. Quem troca o pedido pela frase é `useCopyDoFutebol`, e as quatro
+   * portas da evidência (prestação, insumo medido, histórico e perfil) devolvem
+   * todas o mesmo formato.
+   */
+  texto: CopyComParametros;
   /**
    * A comparação dos dois lados, quando o número é de dois lados. O desenho dela
    * vive nas abas de motivos: o resumo mostra só a frase, por decisão de produto
@@ -141,7 +246,15 @@ export const BUILDERS: Record<string, Builder> = {
     if (!time?.forma) return null;
     const c = contaForma(time.forma, 5);
     return {
-      texto: `${time.team_name} nos últimos 5: ${plural(c.v, 'vitória', 'vitórias')}, ${plural(c.e, 'empate', 'empates')} e ${plural(c.d, 'derrota', 'derrotas')}`,
+      texto: {
+        chave: 'perfil.forma',
+        params: {
+          time: time.team_name,
+          vitorias: { chave: 'contagem.vitorias', params: { count: c.v } },
+          empates: { chave: 'contagem.empates', params: { count: c.e } },
+          derrotas: { chave: 'contagem.derrotas', params: { count: c.d } },
+        },
+      },
     };
   },
 
@@ -155,7 +268,16 @@ export const BUILDERS: Record<string, Builder> = {
     if (j == null) return null;
     const onde = emCasa ? 'em casa' : 'fora';
     return {
-      texto: `${plural(v ?? 0, 'vitória', 'vitórias')}, ${plural(e ?? 0, 'empate', 'empates')} e ${plural(d ?? 0, 'derrota', 'derrotas')} em ${j} jogos ${onde}`,
+      texto: {
+        chave: 'perfil.mando',
+        params: {
+          vitorias: { chave: 'contagem.vitorias', params: { count: v ?? 0 } },
+          empates: { chave: 'contagem.empates', params: { count: e ?? 0 } },
+          derrotas: { chave: 'contagem.derrotas', params: { count: d ?? 0 } },
+          jogos: j,
+          onde: { chave: CHAVE_DO_MANDO(emCasa) },
+        },
+      },
       comparacao: {
         esqLabel: `Marca ${onde}`,
         esqValor: (emCasa ? time.gf_casa : time.gf_fora) ?? 0,
@@ -177,7 +299,18 @@ export const BUILDERS: Record<string, Builder> = {
       // com 36", e quem lia tinha de deduzir quem era o 6º — a barra de
       // comparação logo abaixo já trazia os nomes, então a frase era a única
       // parte do card que falava de posição sem dizer de quem.
-      texto: `${time.team_name} em ${time.posicao}º com ${time.pontos} pontos contra ${adv.team_name} em ${adv.posicao}º com ${adv.pontos}. ${dif} pontos de diferença`,
+      texto: {
+        chave: 'perfil.tabela',
+        params: {
+          time: time.team_name,
+          posicao: time.posicao,
+          pontos: time.pontos ?? 0,
+          adversario: adv.team_name,
+          posicaoAdv: adv.posicao,
+          pontosAdv: adv.pontos ?? 0,
+          dif,
+        },
+      },
       comparacao: {
         esqLabel: `${time.team_name}, ${time.posicao}º`,
         esqValor: time.pontos ?? 0,
@@ -195,7 +328,17 @@ export const BUILDERS: Record<string, Builder> = {
     const defesa = emCasa ? adv.ga_fora : adv.ga_casa;
     if (ataque == null || defesa == null) return null;
     return {
-      texto: `${time.team_name} marca ${n1(ataque)} ${emCasa ? 'em casa' : 'fora'} e ${adv.team_name} sofre ${n1(defesa)} ${emCasa ? 'fora' : 'em casa'}`,
+      texto: {
+        chave: 'perfil.forcaMismatch',
+        params: {
+          time: time.team_name,
+          ataque: n1(ataque),
+          onde: { chave: CHAVE_DO_MANDO(emCasa) },
+          adversario: adv.team_name,
+          defesa: n1(defesa),
+          ondeAdv: { chave: CHAVE_DO_MANDO(!emCasa) },
+        },
+      },
       comparacao: {
         esqLabel: `${time.team_name} marca`,
         esqValor: ataque,
@@ -215,7 +358,17 @@ export const BUILDERS: Record<string, Builder> = {
     const e = time.h2h_empates ?? 0;
     const d = time.h2h_jogos - v - e;
     return {
-      texto: `Nos últimos ${time.h2h_jogos} confrontos: ${plural(v, 'vitória', 'vitórias')} do ${time.team_name}, ${plural(e, 'empate', 'empates')} e ${plural(d, 'vitória', 'vitórias')} do ${adv?.team_name ?? 'adversário'}`,
+      texto: {
+        chave: 'perfil.h2h',
+        params: {
+          jogos: time.h2h_jogos,
+          vitorias: { chave: 'contagem.vitorias', params: { count: v } },
+          time: time.team_name,
+          empates: { chave: 'contagem.empates', params: { count: e } },
+          vitoriasAdv: { chave: 'contagem.vitorias', params: { count: d } },
+          adversario: adv?.team_name ?? { chave: 'nome.adversarioSemArtigo' },
+        },
+      },
       comparacao: {
         esqLabel: time.team_name,
         esqValor: v,
@@ -235,7 +388,7 @@ export const BUILDERS: Record<string, Builder> = {
     const b = ctx.fora.gf_fora ?? ctx.fora.gf_total;
     if (a == null || b == null) return null;
     return {
-      texto: `Somados, marcam ${n1(a + b)} gols por jogo`,
+      texto: { chave: 'perfil.somadosMarcam', params: { valor: n1(a + b) } },
       comparacao: {
         esqLabel: `${ctx.casa.team_name} em casa`,
         esqValor: a,
@@ -260,7 +413,7 @@ export const BUILDERS: Record<string, Builder> = {
     const b = ctx.fora.ga_fora ?? ctx.fora.ga_total;
     if (a == null || b == null) return null;
     return {
-      texto: `Somados, sofrem ${n1(a + b)} gols por jogo`,
+      texto: { chave: 'perfil.somadosSofrem', params: { valor: n1(a + b) } },
       comparacao: {
         esqLabel: `${ctx.casa.team_name} sofre em casa`,
         esqValor: a,
@@ -283,7 +436,15 @@ export const BUILDERS: Record<string, Builder> = {
     if (!ctx.casa || !ctx.fora) return null;
     if (ctx.casa.clean_sheets == null || ctx.fora.clean_sheets == null) return null;
     return {
-      texto: `Jogos sem sofrer gol: ${ctx.casa.clean_sheets} de ${ctx.casa.jogos ?? '—'} e ${ctx.fora.clean_sheets} de ${ctx.fora.jogos ?? '—'}`,
+      texto: {
+        chave: 'perfil.cleanSheets',
+        params: {
+          casa: ctx.casa.clean_sheets,
+          jogosCasa: ctx.casa.jogos ?? SEM_NUMERO,
+          fora: ctx.fora.clean_sheets,
+          jogosFora: ctx.fora.jogos ?? SEM_NUMERO,
+        },
+      },
       comparacao: {
         esqLabel: ctx.casa.team_name,
         esqValor: ctx.casa.clean_sheets,
@@ -308,7 +469,17 @@ export const BUILDERS: Record<string, Builder> = {
     const jogos = emCasa ? adv.jogos_fora : adv.jogos_casa;
     if (ga == null) return null;
     return {
-      texto: `${adv.team_name} sofre ${n1(ga)} gol por jogo ${emCasa ? 'fora de casa' : 'em casa'}, em ${jogos ?? '—'} jogos`,
+      texto: {
+        chave: 'perfil.sofrePorJogo',
+        params: {
+          time: adv.team_name,
+          valor: n1(ga),
+          // "fora de casa" e não "fora": é a frase do ADVERSÁRIO, e aqui ela tem
+          // espaço para a forma longa.
+          onde: { chave: emCasa ? 'mando.foraDeCasa' : 'mando.casa' },
+          jogos: jogos ?? SEM_NUMERO,
+        },
+      },
     };
   },
 
@@ -321,7 +492,15 @@ export const BUILDERS: Record<string, Builder> = {
     const jogos = emCasa ? time.jogos_casa : time.jogos_fora;
     if (ga == null) return null;
     return {
-      texto: `${time.team_name} sofre ${n1(ga)} gol por jogo ${emCasa ? 'em casa' : 'fora'}, em ${jogos ?? '—'} jogos`,
+      texto: {
+        chave: 'perfil.sofrePorJogo',
+        params: {
+          time: time.team_name,
+          valor: n1(ga),
+          onde: { chave: CHAVE_DO_MANDO(emCasa) },
+          jogos: jogos ?? SEM_NUMERO,
+        },
+      },
     };
   },
 
@@ -332,7 +511,7 @@ export const BUILDERS: Record<string, Builder> = {
     const defesa = emCasa ? adv.ga_fora : adv.ga_casa;
     if (ataque == null || defesa == null) return null;
     return {
-      texto: `Marca ${n1(ataque)} por jogo contra quem sofre ${n1(defesa)}`,
+      texto: { chave: 'perfil.tendeGolear', params: { ataque: n1(ataque), defesa: n1(defesa) } },
       comparacao: {
         esqLabel: `${time.team_name} marca`,
         esqValor: ataque,
@@ -348,7 +527,14 @@ export const BUILDERS: Record<string, Builder> = {
     if (!ctx.casa || !ctx.fora) return null;
     if (ctx.casa.sem_marcar == null || ctx.fora.sem_marcar == null) return null;
     return {
-      texto: `Passaram em branco em ${ctx.casa.sem_marcar} e ${ctx.fora.sem_marcar} jogos de ${ctx.casa.jogos ?? '—'}`,
+      texto: {
+        chave: 'perfil.passaramEmBranco',
+        params: {
+          casa: ctx.casa.sem_marcar,
+          fora: ctx.fora.sem_marcar,
+          jogos: ctx.casa.jogos ?? SEM_NUMERO,
+        },
+      },
       comparacao: {
         esqLabel: `${ctx.casa.team_name} marca`,
         esqValor: ctx.casa.gf_total ?? 0,
@@ -380,8 +566,19 @@ export const BUILDERS: Record<string, Builder> = {
     // não existe tabela, então a colocação não é um dado que faltou: é uma
     // pergunta que não se faz naquela competição. O traço fazia a tela parecer
     // quebrada num caso em que ela está certa.
-    const tabela = adv.posicao != null ? ` e está em ${adv.posicao}º` : '';
-    return { texto: `${adv.team_name} marca ${n1(adv.gf_total)} gol por jogo${tabela}` };
+    return {
+      texto: {
+        chave: 'perfil.marcaPorJogo',
+        params: {
+          time: adv.team_name,
+          valor: n1(adv.gf_total),
+          classificacao:
+            adv.posicao != null
+              ? { chave: 'perfil.eEstaEm', params: { posicao: adv.posicao } }
+              : '',
+        },
+      },
+    };
   },
 };
 
